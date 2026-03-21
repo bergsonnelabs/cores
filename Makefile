@@ -19,6 +19,7 @@ AS      = $(PREFIX)gcc -x assembler-with-cpp
 OBJCOPY = $(PREFIX)objcopy
 OBJDUMP = $(PREFIX)objdump
 SIZE    = $(PREFIX)size
+GDB     = $(PREFIX)gdb
 
 # Tilegen
 TILEGEN = python3 tools/tilegen/tilegen.py
@@ -38,12 +39,14 @@ ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
   FLOAT_ABI   = hard
   LDSCRIPT    = link/stm32l422tb.ld
   STARTUP     = sdk/device/stm32l4xx/startup_stm32l422xx.s
+  OPENOCD_CFG = debug/stm32l4.cfg
 else ifeq ($(TILE),Core-L-1-a)
   MCU_FAMILY  = stm32l0xx
   MCU_PART    = STM32L011xx
   CPU         = cortex-m0plus
   LDSCRIPT    = link/stm32l011e4.ld
   STARTUP     = sdk/device/stm32l0xx/startup_stm32l011xx.s
+  OPENOCD_CFG = debug/stm32l0.cfg
 else ifeq ($(TILE),Core-W-b)
   MCU_FAMILY  = stm32wbaxx
   MCU_PART    = STM32WBA55xx
@@ -52,6 +55,7 @@ else ifeq ($(TILE),Core-W-b)
   FLOAT_ABI   = hard
   LDSCRIPT    = link/stm32wba55hg.ld
   STARTUP     = sdk/device/stm32wbaxx/startup_stm32wba55xx.s
+  OPENOCD_CFG = debug/stm32l4.cfg
 else ifeq ($(TILE),Core-H-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
@@ -60,6 +64,7 @@ else ifeq ($(TILE),Core-H-1-a)
   FLOAT_ABI   = hard
   LDSCRIPT    = link/stm32h523he.ld
   STARTUP     = sdk/device/stm32h5xx/startup_stm32h523xx.s
+  OPENOCD_CFG = debug/stm32l4.cfg
 else
   $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a)
 endif
@@ -68,6 +73,10 @@ endif
 
 BUILD_DIR = build/$(TILE)/$(PROJECT)
 TARGET    = $(BUILD_DIR)/$(PROJECT)
+
+# ---- Extract SYSCLK for SWO baud rate calc ----
+SYSCLK_MHZ = $(shell python3 -c "import json; print(json.load(open('$(PROJECT_JSON)'))['clock']['sysclk_mhz'])" 2>/dev/null || echo 80)
+SYSCLK_HZ  = $(shell echo $$(($(SYSCLK_MHZ) * 1000000)))
 
 # ---- Sources ----
 
@@ -176,6 +185,42 @@ size: $(TARGET).elf
 clean:
 	rm -rf build/
 
-flash: $(TARGET).bin
-	@echo "  DFU   Flashing $(TARGET).bin via USB DFU..."
+# ---- Flash via OpenOCD (ST-Link) ----
+
+flash: $(TARGET).elf
+	openocd -f $(OPENOCD_CFG) \
+		-c "init" \
+		-c "reset halt" \
+		-c "program $< verify" \
+		-c "reset run" \
+		-c "exit"
+
+# ---- Flash via USB DFU (Core.U/H with USB bootloader) ----
+
+flash-dfu: $(TARGET).bin
 	dfu-util -a 0 -s 0x08000000:leave -D $<
+
+# ---- GDB debug session ----
+# Starts OpenOCD as a GDB server, then connects arm-none-eabi-gdb.
+# Use Ctrl-C in GDB to halt, 'c' to continue, 'quit' to exit.
+
+debug: $(TARGET).elf
+	openocd -f $(OPENOCD_CFG) &
+	$(GDB) $< \
+		-ex "target extended-remote :3333" \
+		-ex "monitor reset halt" \
+		-ex "load"
+	@-pkill -f "openocd.*$(OPENOCD_CFG)" 2>/dev/null
+
+# ---- SWO trace output ----
+# Flashes firmware, enables SWO capture, prints ITM output.
+# Press Ctrl-C to stop.
+
+swo: $(TARGET).elf
+	openocd -f $(OPENOCD_CFG) \
+		-c "init" \
+		-c "reset halt" \
+		-c "program $< verify" \
+		-c "tpiu config internal /dev/stdout uart off $(SYSCLK_HZ) 2000000" \
+		-c "itm port 0 on" \
+		-c "reset run"
