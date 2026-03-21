@@ -34,9 +34,14 @@ MCU_DB = {
         "core": "cortex-m0plus",
         "cpu_flag": "-mcpu=cortex-m0plus",
         "fpu": None,
-        "clock_sources": ["hsi16", "msi", "hse"],
-        "default_clock": "hsi16",
-        "default_mhz": 16,
+        "max_sysclk_mhz": 32,
+        "pll": {
+            "m_range": (1, 4),      # DIV1-DIV4
+            "n_range": (8, 86),
+            "r_values": [2, 3, 4],
+            "vco_min_mhz": 96,
+            "vco_max_mhz": 344,
+        },
     },
     "STM32L422TB": {
         "define": "STM32L422xx",
@@ -44,9 +49,14 @@ MCU_DB = {
         "core": "cortex-m4",
         "cpu_flag": "-mcpu=cortex-m4",
         "fpu": "fpv4-sp-d16",
-        "clock_sources": ["hsi16", "msi", "hse"],
-        "default_clock": "hsi16",
-        "default_mhz": 16,
+        "max_sysclk_mhz": 80,
+        "pll": {
+            "m_range": (1, 8),
+            "n_range": (8, 86),
+            "r_values": [2, 4, 6, 8],
+            "vco_min_mhz": 64,
+            "vco_max_mhz": 344,
+        },
     },
     "STM32WBA55HGF6": {
         "define": "STM32WBA55xx",
@@ -54,9 +64,14 @@ MCU_DB = {
         "core": "cortex-m33",
         "cpu_flag": "-mcpu=cortex-m33",
         "fpu": "fpv5-sp-d16",
-        "clock_sources": ["hsi16", "hse"],
-        "default_clock": "hsi16",
-        "default_mhz": 16,
+        "max_sysclk_mhz": 100,
+        "pll": {
+            "m_range": (1, 8),
+            "n_range": (4, 512),
+            "r_values": [1, 2, 3, 4, 5, 6, 7, 8],
+            "vco_min_mhz": 128,
+            "vco_max_mhz": 544,
+        },
     },
     "STM32H523HE": {
         "define": "STM32H523xx",
@@ -64,11 +79,66 @@ MCU_DB = {
         "core": "cortex-m33",
         "cpu_flag": "-mcpu=cortex-m33",
         "fpu": "fpv5-sp-d16",
-        "clock_sources": ["hsi48", "hse", "csi"],
-        "default_clock": "hsi48",
-        "default_mhz": 48,
+        "max_sysclk_mhz": 250,
+        "pll": {
+            "m_range": (1, 63),
+            "n_range": (4, 512),
+            "r_values": [1, 2, 3, 4, 5, 6, 7, 128],
+            "vco_min_mhz": 150,
+            "vco_max_mhz": 836,
+        },
     },
 }
+
+
+def solve_pll(source_mhz, target_mhz, pll_spec):
+    """Find PLL M/N/R values to get from source_mhz to target_mhz.
+
+    Returns (m, n, r) tuple or None if no valid combination exists.
+    Prefers solutions with VCO closest to the middle of the valid range
+    (best jitter performance) and lowest M (widest PLL bandwidth).
+    """
+    m_min, m_max = pll_spec["m_range"]
+    n_min, n_max = pll_spec["n_range"]
+    r_values = pll_spec["r_values"]
+    vco_min = pll_spec["vco_min_mhz"]
+    vco_max = pll_spec["vco_max_mhz"]
+    vco_mid = (vco_min + vco_max) / 2
+
+    best = None
+    best_score = float("inf")
+
+    for m in range(m_min, m_max + 1):
+        pll_input = source_mhz / m
+        # PLL input should be 1-16 MHz typically
+        if pll_input < 1 or pll_input > 16:
+            continue
+
+        for r in r_values:
+            # target = source / m * n / r  →  n = target * m * r / source
+            n_exact = target_mhz * m * r / source_mhz
+            n = round(n_exact)
+
+            if n < n_min or n > n_max:
+                continue
+
+            # Check we hit the target exactly
+            actual = source_mhz / m * n / r
+            if abs(actual - target_mhz) > 0.01:
+                continue
+
+            # Check VCO range
+            vco = source_mhz / m * n
+            if vco < vco_min or vco > vco_max:
+                continue
+
+            # Score: prefer VCO near middle of range, then lowest M
+            score = abs(vco - vco_mid) + m * 0.01
+            if score < best_score:
+                best = (m, n, r)
+                best_score = score
+
+    return best
 
 
 def parse_gpio(function_str):
@@ -326,8 +396,12 @@ def build_pin_config(config, pad_map):
     return pin_configs
 
 
-def build_clock_config(config, tile):
-    """Build resolved clock configuration with defaults from tile JSON."""
+def build_clock_config(config, tile, mcu):
+    """Build resolved clock configuration with defaults from tile JSON.
+
+    Auto-calculates PLL M/N/R if sysclk_mhz requires it and no explicit
+    PLL config is provided.
+    """
     clock = config.get("clock", {})
     tile_clock = tile.get("clock", {})
 
@@ -336,16 +410,42 @@ def build_clock_config(config, tile):
 
     # Find frequency for the selected source
     source = clock.get("source", default_source)
-    default_mhz = 16
+    source_mhz = 16
     for src in tile_clock.get("sources", []):
         if src["type"] == source:
-            default_mhz = src["frequency_mhz"]
+            source_mhz = src["frequency_mhz"]
             break
+
+    target_mhz = clock.get("sysclk_mhz", source_mhz)
+    pll_config = clock.get("pll")
+
+    # Auto-calculate PLL if needed
+    if target_mhz != source_mhz and pll_config is None:
+        max_mhz = mcu.get("max_sysclk_mhz", 80)
+        if target_mhz > max_mhz:
+            print(f"  ERROR: sysclk_mhz={target_mhz} exceeds max {max_mhz}MHz for {tile['components'][0]['part']}")
+            sys.exit(1)
+
+        pll_spec = mcu.get("pll")
+        if pll_spec is None:
+            print(f"  ERROR: PLL not available on {tile['components'][0]['part']}, cannot reach {target_mhz}MHz from {source}={source_mhz}MHz")
+            sys.exit(1)
+
+        result = solve_pll(source_mhz, target_mhz, pll_spec)
+        if result is None:
+            print(f"  ERROR: No valid PLL configuration found for {source_mhz}MHz → {target_mhz}MHz")
+            sys.exit(1)
+
+        m, n, r = result
+        pll_config = {"m": m, "n": n, "r": r}
+        vco = source_mhz / m * n
+        print(f"  PLL: {source_mhz}MHz ÷{m} ×{n} ÷{r} = {target_mhz}MHz (VCO={vco:.0f}MHz)")
 
     return {
         "source": source,
-        "sysclk_mhz": clock.get("sysclk_mhz", default_mhz),
-        "pll": clock.get("pll"),
+        "source_mhz": source_mhz,
+        "sysclk_mhz": target_mhz,
+        "pll": pll_config,
         "ahb_div": clock.get("ahb_div", 1),
         "apb1_div": clock.get("apb1_div", 1),
         "apb2_div": clock.get("apb2_div", 1),
@@ -420,7 +520,7 @@ def generate(tile_path, output_dir, project_path=None):
         # Build resolved configs
         ctx["project"] = project.get("project", {})
         ctx["pin_config"] = build_pin_config(project, pad_map)
-        ctx["clock_config"] = build_clock_config(project, tile)
+        ctx["clock_config"] = build_clock_config(project, tile, mcu)
         ctx["iface_config"] = project.get("interfaces", {})
         ctx["project_file"] = os.path.basename(project_path)
 
