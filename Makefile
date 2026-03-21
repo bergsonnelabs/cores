@@ -23,6 +23,7 @@ SIZE    = $(PREFIX)size
 # Tilegen
 TILEGEN = python3 tools/tilegen/tilegen.py
 TILE_JSON = tiles/$(TILE).json
+PROJECT_JSON = projects/$(PROJECT)/project.json
 GEN_DIR = build/generated/$(TILE)
 
 # ---- Tile → MCU mapping ----
@@ -110,9 +111,17 @@ OBJECTS  = $(C_OBJS) $(ASM_OBJS)
 
 GEN_HEADERS = $(GEN_DIR)/tile_pins.h $(GEN_DIR)/tile_board.h $(GEN_DIR)/tile_interfaces.h
 
-$(GEN_HEADERS): $(TILE_JSON) tools/tilegen/tilegen.py tools/tilegen/templates/*.j2
+# Add tile_config.h if a project.json exists
+ifneq ($(wildcard $(PROJECT_JSON)),)
+  GEN_HEADERS += $(GEN_DIR)/tile_config.h
+  TILEGEN_FLAGS = --project $(PROJECT_JSON)
+else
+  TILEGEN_FLAGS =
+endif
+
+$(GEN_HEADERS): $(TILE_JSON) $(wildcard $(PROJECT_JSON)) tools/tilegen/tilegen.py tools/tilegen/templates/*.j2
 	@echo "  GEN   $(TILE)"
-	@$(TILEGEN) $(TILE_JSON) $(GEN_DIR)
+	@$(TILEGEN) $(TILE_JSON) $(GEN_DIR) $(TILEGEN_FLAGS)
 
 .PHONY: generate
 generate: $(GEN_HEADERS)

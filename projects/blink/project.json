@@ -1,0 +1,15 @@
+{
+  "project": {
+    "name": "blink",
+    "tile": "Core-U-2-a",
+    "description": "LED blink demo — minimal project config"
+  },
+
+  "clock": {
+    "source": "hsi16",
+    "sysclk_mhz": 16
+  },
+
+  "pins": {
+  }
+}

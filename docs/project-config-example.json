@@ -1,0 +1,39 @@
+{
+  "project": {
+    "name": "sensor-hub",
+    "tile": "Core-U-2-a",
+    "description": "I2C sensor + UART debug output"
+  },
+
+  "clock": {
+    "source": "hsi16",
+    "sysclk_mhz": 16,
+    "ahb_div": 1,
+    "apb1_div": 1,
+    "apb2_div": 1
+  },
+
+  "pins": {
+    "4":  "I2C1.CLK",
+    "5":  "I2C1.DAT",
+    "7":  "USART2.TX",
+    "6":  "USART2.RX",
+    "8":  "GPIO.OUT",
+    "9":  "ADC11",
+    "16": "USB.DP",
+    "17": "USB.DM"
+  },
+
+  "interfaces": {
+    "I2C1": {
+      "mode": "master",
+      "speed": 400000
+    },
+    "USART2": {
+      "baud": 115200,
+      "word_length": 8,
+      "stop_bits": 1,
+      "parity": "none"
+    }
+  }
+}

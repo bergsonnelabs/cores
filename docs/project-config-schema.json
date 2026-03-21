@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Core Firmware Project Configuration",
+  "description": "Defines pin assignments, clock config, and interface parameters for a Core tile firmware project.",
+  "type": "object",
+  "required": ["project"],
+  "properties": {
+    "project": {
+      "type": "object",
+      "required": ["name", "tile"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Project name (used in build output filenames)"
+        },
+        "tile": {
+          "type": "string",
+          "description": "Tile definition filename without .json (e.g., 'Core-U-2-a')"
+        },
+        "description": {
+          "type": "string",
+          "description": "Brief project description"
+        }
+      }
+    },
+
+    "clock": {
+      "type": "object",
+      "description": "System clock configuration",
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["hsi16", "hsi48", "msi", "hse"],
+          "default": "hsi16",
+          "description": "Clock source. hsi16=16MHz internal (available on all tiles), msi=multi-speed internal (L0/L4), hse=external crystal"
+        },
+        "sysclk_mhz": {
+          "type": "number",
+          "description": "Target SYSCLK frequency in MHz. Without PLL, must match the source frequency."
+        },
+        "pll": {
+          "type": "object",
+          "description": "PLL configuration (optional — omit to run directly from source)",
+          "properties": {
+            "m": { "type": "integer", "description": "PLL input divider" },
+            "n": { "type": "integer", "description": "PLL multiplier" },
+            "r": { "type": "integer", "description": "PLL output divider for SYSCLK" }
+          }
+        },
+        "ahb_div": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16, 64, 128, 256, 512],
+          "default": 1,
+          "description": "AHB prescaler"
+        },
+        "apb1_div": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16],
+          "default": 1,
+          "description": "APB1 prescaler"
+        },
+        "apb2_div": {
+          "type": "integer",
+          "enum": [1, 2, 4, 8, 16],
+          "default": 1,
+          "description": "APB2 prescaler"
+        }
+      }
+    },
+
+    "pins": {
+      "type": "object",
+      "description": "Pad function assignments. Key is the pad number (as string), value is the function name from the tile JSON. Unspecified pads default to their GPIO digital function. Use 'GPIO.OUT' or 'GPIO.IN' for explicit GPIO direction. Pads not listed remain unconfigured.",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+
+    "interfaces": {
+      "type": "object",
+      "description": "Configuration parameters for each interface used. Keys are interface names from the tile JSON (e.g., 'I2C1', 'USART2').",
+      "patternProperties": {
+        "^[A-Za-z0-9_]+$": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "description": "Interface mode (e.g., 'master', 'slave')"
+            },
+            "speed": {
+              "type": "integer",
+              "description": "Clock speed in Hz (for I2C, SPI)"
+            },
+            "baud": {
+              "type": "integer",
+              "description": "Baud rate (for UART/USART/LPUART)"
+            },
+            "word_length": {
+              "type": "integer",
+              "enum": [7, 8, 9],
+              "description": "Data word length in bits"
+            },
+            "stop_bits": {
+              "type": "number",
+              "enum": [0.5, 1, 1.5, 2],
+              "description": "Number of stop bits"
+            },
+            "parity": {
+              "type": "string",
+              "enum": ["none", "even", "odd"],
+              "description": "Parity mode"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

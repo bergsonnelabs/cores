@@ -3,16 +3,19 @@
 tilegen — Generate C headers from Mosaic tile JSON definitions.
 
 Usage:
-    python3 tilegen.py <tile.json> [output_dir]
+    python3 tilegen.py <tile.json> [output_dir] [--project project.json]
 
 Reads a tile JSON file and produces:
     tile_pins.h        Pad-to-GPIO mapping defines
     tile_board.h       Board-level defines (LED, power, debug)
     tile_interfaces.h  Interface convenience defines with AF numbers
+    tile_config.h      Project-specific pin and clock configuration
+                       (only when --project is provided)
 
 Output defaults to ./generated/ if not specified.
 """
 
+import argparse
 import json
 import os
 import re
@@ -31,6 +34,9 @@ MCU_DB = {
         "core": "cortex-m0plus",
         "cpu_flag": "-mcpu=cortex-m0plus",
         "fpu": None,
+        "clock_sources": ["hsi16", "msi", "hse"],
+        "default_clock": "hsi16",
+        "default_mhz": 16,
     },
     "STM32L422TB": {
         "define": "STM32L422xx",
@@ -38,6 +44,9 @@ MCU_DB = {
         "core": "cortex-m4",
         "cpu_flag": "-mcpu=cortex-m4",
         "fpu": "fpv4-sp-d16",
+        "clock_sources": ["hsi16", "msi", "hse"],
+        "default_clock": "hsi16",
+        "default_mhz": 16,
     },
     "STM32WBA55HGF6": {
         "define": "STM32WBA55xx",
@@ -45,6 +54,9 @@ MCU_DB = {
         "core": "cortex-m33",
         "cpu_flag": "-mcpu=cortex-m33",
         "fpu": "fpv5-sp-d16",
+        "clock_sources": ["hsi16", "hse"],
+        "default_clock": "hsi16",
+        "default_mhz": 16,
     },
     "STM32H523HE": {
         "define": "STM32H523xx",
@@ -52,16 +64,15 @@ MCU_DB = {
         "core": "cortex-m33",
         "cpu_flag": "-mcpu=cortex-m33",
         "fpu": "fpv5-sp-d16",
+        "clock_sources": ["hsi48", "hse", "csi"],
+        "default_clock": "hsi48",
+        "default_mhz": 48,
     },
 }
 
 
 def parse_gpio(function_str):
     """Parse a digital function name like 'A7' or 'B12' into (port, pin) or (None, None)."""
-    m = re.match(r'^([A-H])(\d+)$', function_str)
-    if m:
-        return m.group(1), int(m.group(2))
-    # Handle PH3 style (some JSONs use 'H3' or 'PH3')
     m = re.match(r'^P?([A-H])(\d+)$', function_str)
     if m:
         return m.group(1), int(m.group(2))
@@ -95,7 +106,6 @@ def extract_led_info(tile):
     for note in tile.get("application_notes", []):
         text = note.get("details", "") + " " + note.get("heading", "")
         if "LED" in text.upper():
-            # Look for patterns like "PA8", "PB12", etc.
             m = re.search(r'P([A-H])(\d+)', note.get("details", ""))
             if m:
                 port = m.group(1)
@@ -111,9 +121,11 @@ def build_pad_map(pads):
     for pad in pads:
         port, pin = extract_pad_gpio(pad)
 
-        # Collect AF functions
+        # Collect all available functions
+        all_functions = []
         af_functions = []
         for func in pad.get("functions", []):
+            all_functions.append(func["function"])
             if "af" in func:
                 af_functions.append({
                     "function": func["function"],
@@ -136,6 +148,7 @@ def build_pad_map(pads):
             "port": port,
             "pin": pin,
             "type": pad_type,
+            "all_functions": all_functions,
             "af_functions": af_functions,
         })
 
@@ -150,26 +163,19 @@ def sanitize_signal_name(name):
 
 
 def build_interface_map(tile, pad_map):
-    """Build interface info with resolved GPIO ports/pins/AFs.
-
-    When multiple pads map to the same signal (e.g., SPI1.CLK on pads 3 and 10),
-    only the first is_required pad is used for the primary define. Alternates are
-    emitted with a _ALT<n> suffix.
-    """
-    # Create a lookup: pad_number -> pad_info
+    """Build interface info with resolved GPIO ports/pins/AFs."""
     pad_lookup = {p["number"]: p for p in pad_map}
 
     interfaces = []
     for iface in tile.get("interfaces", []):
         signals = []
-        seen_signals = {}  # signal_name -> count
+        seen_signals = {}
 
         for assign in iface.get("pad_assignments", []):
             pad_num = assign["pad"]
             pad_info = pad_lookup.get(pad_num, {})
             fname = assign["function"]
 
-            # Find the AF for this specific function on this pad
             af = None
             for af_func in pad_info.get("af_functions", []):
                 if af_func["function"] == fname:
@@ -179,8 +185,6 @@ def build_interface_map(tile, pad_map):
             raw_signal = fname.split(".")[-1] if "." in fname else fname
             signal = sanitize_signal_name(raw_signal)
 
-            # Handle duplicate signals — first required gets the base name,
-            # subsequent get _ALT, _ALT2, etc.
             is_required = assign.get("is_required", False)
             if signal in seen_signals:
                 seen_signals[signal] += 1
@@ -208,8 +212,150 @@ def build_interface_map(tile, pad_map):
     return interfaces
 
 
-def generate(tile_path, output_dir):
-    """Generate all headers from a tile JSON."""
+# ---- Project config validation ----
+
+def validate_project_config(config, tile, pad_map):
+    """Validate a project config against a tile definition.
+
+    Returns (warnings, errors) where each is a list of strings.
+    """
+    warnings = []
+    errors = []
+
+    # Build lookup of available functions per pad
+    pad_lookup = {p["number"]: p for p in pad_map}
+
+    # Validate pin assignments
+    pins = config.get("pins", {})
+    for pad_num, assigned_func in pins.items():
+        if pad_num not in pad_lookup:
+            errors.append(f"Pad {pad_num}: does not exist on this tile (has {len(pad_lookup)} pads)")
+            continue
+
+        pad_info = pad_lookup[pad_num]
+
+        # GPIO.OUT and GPIO.IN are synthetic — always valid on GPIO pads
+        if assigned_func in ("GPIO.OUT", "GPIO.IN"):
+            if pad_info["port"] is None:
+                errors.append(f"Pad {pad_num}: cannot use {assigned_func} on a non-GPIO pad")
+            continue
+
+        # Check if the assigned function exists on this pad
+        if assigned_func not in pad_info["all_functions"]:
+            available = [f for f in pad_info["all_functions"]
+                         if f not in ("GND", "V+", "NRST")]
+            errors.append(
+                f"Pad {pad_num}: '{assigned_func}' is not available. "
+                f"Options: {', '.join(available)}"
+            )
+
+    # Validate interface configs reference real interfaces
+    iface_names = {i["name"] for i in tile.get("interfaces", [])}
+    for iface_name in config.get("interfaces", {}):
+        if iface_name not in iface_names:
+            errors.append(
+                f"Interface '{iface_name}': not found on this tile. "
+                f"Available: {', '.join(sorted(iface_names))}"
+            )
+
+    # Check that pin assignments are consistent with interface configs
+    configured_ifaces = set(config.get("interfaces", {}).keys())
+    assigned_ifaces = set()
+    for pad_num, func in pins.items():
+        if "." in func and func not in ("GPIO.OUT", "GPIO.IN"):
+            iface = func.split(".")[0]
+            assigned_ifaces.add(iface)
+
+    for iface in configured_ifaces - assigned_ifaces:
+        warnings.append(
+            f"Interface '{iface}' configured but no pins assigned to it"
+        )
+
+    # Validate clock source against tile (not chip — tile may have crystals)
+    clock = config.get("clock", {})
+    if clock:
+        tile_clocks = tile.get("clock", {})
+        available = [s["type"] for s in tile_clocks.get("sources", [])]
+        source = clock.get("source", "")
+        if source and available and source not in available:
+            errors.append(
+                f"Clock source '{source}' not available on this tile. "
+                f"Options: {', '.join(available)}"
+            )
+
+    return warnings, errors
+
+
+def build_pin_config(config, pad_map):
+    """Build the resolved pin configuration from project config.
+
+    For each assigned pin, resolves the GPIO port/pin and AF number.
+    """
+    pad_lookup = {p["number"]: p for p in pad_map}
+    pin_configs = []
+
+    for pad_num, assigned_func in config.get("pins", {}).items():
+        pad_info = pad_lookup.get(pad_num)
+        if pad_info is None:
+            continue
+
+        entry = {
+            "pad": pad_num,
+            "function": assigned_func,
+            "port": pad_info["port"],
+            "pin": pad_info["pin"],
+            "af": None,
+            "mode": "af",  # alternate function
+        }
+
+        if assigned_func == "GPIO.OUT":
+            entry["mode"] = "output"
+            entry["af"] = None
+        elif assigned_func == "GPIO.IN":
+            entry["mode"] = "input"
+            entry["af"] = None
+        else:
+            # Find AF for this function
+            for af_func in pad_info["af_functions"]:
+                if af_func["function"] == assigned_func:
+                    entry["af"] = af_func["af"]
+                    break
+
+        pin_configs.append(entry)
+
+    return pin_configs
+
+
+def build_clock_config(config, tile):
+    """Build resolved clock configuration with defaults from tile JSON."""
+    clock = config.get("clock", {})
+    tile_clock = tile.get("clock", {})
+
+    # Default source from tile definition
+    default_source = tile_clock.get("default", "hsi16")
+
+    # Find frequency for the selected source
+    source = clock.get("source", default_source)
+    default_mhz = 16
+    for src in tile_clock.get("sources", []):
+        if src["type"] == source:
+            default_mhz = src["frequency_mhz"]
+            break
+
+    return {
+        "source": source,
+        "sysclk_mhz": clock.get("sysclk_mhz", default_mhz),
+        "pll": clock.get("pll"),
+        "ahb_div": clock.get("ahb_div", 1),
+        "apb1_div": clock.get("apb1_div", 1),
+        "apb2_div": clock.get("apb2_div", 1),
+    }
+
+
+# ---- Generation ----
+
+def generate(tile_path, output_dir, project_path=None):
+    """Generate all headers from a tile JSON and optional project config."""
     with open(tile_path) as f:
         tile = json.load(f)
 
@@ -248,6 +394,38 @@ def generate(tile_path, output_dir):
         "source_file": os.path.basename(tile_path),
     }
 
+    # Load and validate project config if provided
+    templates = ["tile_pins.h.j2", "tile_board.h.j2", "tile_interfaces.h.j2"]
+
+    if project_path:
+        with open(project_path) as f:
+            project = json.load(f)
+
+        # Validate tile matches
+        proj_tile = project.get("project", {}).get("tile", "")
+        tile_file_stem = os.path.basename(tile_path).replace(".json", "")
+        if proj_tile and proj_tile != tile_file_stem:
+            print(f"ERROR: project.json targets '{proj_tile}' but tile is '{tile_file_stem}'")
+            sys.exit(1)
+
+        # Validate pin/interface/clock assignments
+        warnings, errors = validate_project_config(project, tile, pad_map)
+        for w in warnings:
+            print(f"  WARNING: {w}")
+        if errors:
+            for e in errors:
+                print(f"  ERROR: {e}")
+            sys.exit(1)
+
+        # Build resolved configs
+        ctx["project"] = project.get("project", {})
+        ctx["pin_config"] = build_pin_config(project, pad_map)
+        ctx["clock_config"] = build_clock_config(project, tile)
+        ctx["iface_config"] = project.get("interfaces", {})
+        ctx["project_file"] = os.path.basename(project_path)
+
+        templates.append("tile_config.h.j2")
+
     # Set up Jinja2
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")
     env = Environment(
@@ -260,7 +438,7 @@ def generate(tile_path, output_dir):
     # Generate each template
     os.makedirs(output_dir, exist_ok=True)
 
-    for template_name in ["tile_pins.h.j2", "tile_board.h.j2", "tile_interfaces.h.j2"]:
+    for template_name in templates:
         out_name = template_name.replace(".j2", "")
         template = env.get_template(template_name)
         output = template.render(**ctx)
@@ -273,20 +451,28 @@ def generate(tile_path, output_dir):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print(f"Usage: {sys.argv[0]} <tile.json> [output_dir]")
+    parser = argparse.ArgumentParser(
+        description="Generate C headers from Mosaic tile JSON definitions."
+    )
+    parser.add_argument("tile_json", help="Path to the tile JSON definition")
+    parser.add_argument("output_dir", nargs="?", default="generated",
+                        help="Output directory (default: generated)")
+    parser.add_argument("--project", "-p", metavar="FILE",
+                        help="Path to project.json config file")
+
+    args = parser.parse_args()
+
+    if not os.path.exists(args.tile_json):
+        print(f"ERROR: File not found: {args.tile_json}")
         sys.exit(1)
 
-    tile_path = sys.argv[1]
-    output_dir = sys.argv[2] if len(sys.argv) > 2 else "generated"
-
-    if not os.path.exists(tile_path):
-        print(f"ERROR: File not found: {tile_path}")
+    if args.project and not os.path.exists(args.project):
+        print(f"ERROR: Project config not found: {args.project}")
         sys.exit(1)
 
-    tile_name = os.path.basename(tile_path).replace(".json", "")
+    tile_name = os.path.basename(args.tile_json).replace(".json", "")
     print(f"tilegen: {tile_name}")
-    generate(tile_path, output_dir)
+    generate(args.tile_json, args.output_dir, args.project)
 
 
 if __name__ == "__main__":
