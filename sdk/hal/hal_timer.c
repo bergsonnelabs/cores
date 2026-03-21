@@ -6,6 +6,33 @@
 #include "ll_rcc.h"
 #include <string.h>
 
+/* ---- Peripheral clock enable ---- */
+
+static void _tim_clk_enable(TIM_TypeDef *instance)
+{
+#if defined(STM32L011xx)
+    if (instance == TIM2)  ll_rcc_apb1_clk_enable(LL_APB1_TIM2);
+    if (instance == TIM21) ll_rcc_apb2_clk_enable(LL_APB2_TIM21);
+#elif defined(STM32L422xx)
+    if (instance == TIM1)  ll_rcc_apb2_clk_enable(LL_APB2_TIM1);
+    if (instance == TIM2)  ll_rcc_apb1_clk_enable(LL_APB1_TIM2);
+    if (instance == TIM15) ll_rcc_apb2_clk_enable(LL_APB2_TIM15);
+    if (instance == TIM16) ll_rcc_apb2_clk_enable(LL_APB2_TIM16);
+#elif defined(STM32WBA55xx)
+    if (instance == TIM1)  ll_rcc_apb2_clk_enable(LL_APB2_TIM1);
+    if (instance == TIM2)  ll_rcc_apb1_clk_enable(LL_APB1_TIM2);
+    if (instance == TIM3)  ll_rcc_apb1_clk_enable(LL_APB1_TIM3);
+    if (instance == TIM16) ll_rcc_apb2_clk_enable(LL_APB2_TIM16);
+    if (instance == TIM17) ll_rcc_apb2_clk_enable(LL_APB2_TIM17);
+#elif defined(STM32H523xx)
+    if (instance == TIM1)  ll_rcc_apb2_clk_enable(LL_APB2_TIM1);
+    if (instance == TIM2)  ll_rcc_apb1_clk_enable(LL_APB1_TIM2);
+    if (instance == TIM3)  ll_rcc_apb1_clk_enable(LL_APB1_TIM3);
+    if (instance == TIM6)  ll_rcc_apb1_clk_enable(LL_APB1_TIM6);
+    if (instance == TIM7)  ll_rcc_apb1_clk_enable(LL_APB1_TIM7);
+#endif
+}
+
 /* ============================================================
  * Handle registry for tick callbacks
  * ============================================================ */
@@ -138,6 +165,8 @@ hal_status_t hal_timer_pwm_init(hal_timer_t *h, TIM_TypeDef *instance,
     h->instance = instance;
     h->pclk_hz = pclk_hz;
 
+    _tim_clk_enable(instance);
+
     uint32_t psc, arr;
     _calc_psc_arr(pclk_hz, freq_hz, &psc, &arr);
     ll_tim_config(instance, psc, arr);
@@ -193,6 +222,8 @@ hal_status_t hal_timer_tick_init(hal_timer_t *h, TIM_TypeDef *instance,
     h->pclk_hz = pclk_hz;
     h->tick_cb = cb;
     h->tick_ctx = ctx;
+
+    _tim_clk_enable(instance);
 
     /* Calculate PSC/ARR for the requested period:
        pclk / (psc+1) gives us the tick rate

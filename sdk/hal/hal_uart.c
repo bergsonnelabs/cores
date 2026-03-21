@@ -11,6 +11,29 @@
 #include <stdio.h>
 #include <string.h>
 
+/* ---- Peripheral clock enable ---- */
+
+static void _uart_clk_enable(USART_TypeDef *instance)
+{
+#if defined(STM32L011xx)
+    if (instance == USART2)  ll_rcc_apb1_clk_enable(LL_APB1_USART2);
+#elif defined(STM32L422xx)
+    if (instance == USART1)  ll_rcc_apb2_clk_enable(LL_APB2_USART1);
+    if (instance == USART2)  ll_rcc_apb1_clk_enable(LL_APB1_USART2);
+    if (instance == LPUART1) SET_BITS(REG32(RCC_BASE + 0x5CUL), (1UL << 0));
+#elif defined(STM32WBA55xx)
+    if (instance == USART1)  ll_rcc_apb2_clk_enable(LL_APB2_USART1);
+    if (instance == USART2)  ll_rcc_apb1_clk_enable(LL_APB1_USART2);
+    if (instance == LPUART1) SET_BITS(REG32(RCC_BASE + 0xACUL), LL_APB7_LPUART1);
+#elif defined(STM32H523xx)
+    if (instance == USART1)  ll_rcc_apb2_clk_enable(LL_APB2_USART1);
+    if (instance == USART2)  ll_rcc_apb1_clk_enable(LL_APB1_USART2);
+    if (instance == USART3)  ll_rcc_apb1_clk_enable(LL_APB1_USART3);
+    if (instance == LPUART1) SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB3_LPUART1);
+#endif
+    (void)REG32(RCC_BASE);
+}
+
 /* ============================================================
  * Handle registry (maps USART instance → HAL handle)
  * ============================================================ */
@@ -157,6 +180,9 @@ hal_status_t hal_uart_init(hal_uart_t *h, USART_TypeDef *instance,
     h->instance = instance;
     h->pclk_hz = pclk_hz;
 
+    /* Enable peripheral clock */
+    _uart_clk_enable(instance);
+
     /* Initialize LL UART */
     if (instance == LPUART1) {
         ll_lpuart_init(instance, pclk_hz, cfg->baud);
@@ -293,7 +319,8 @@ hal_status_t hal_uart_tx_dma(hal_uart_t *h, const uint8_t *data, uint32_t len,
                               hal_callback_t cb, void *ctx)
 {
     (void)h; (void)data; (void)len; (void)cb; (void)ctx;
-    /* TODO: implement when tilegen generates DMA channel assignments */
+    /* DMA TX not yet implemented — requires DMA channel assignment
+       from tilegen (tile_dma.h) and per-family DMA setup. */
     return HAL_ERROR;
 }
 

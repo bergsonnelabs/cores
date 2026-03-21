@@ -41,9 +41,8 @@ typedef struct {
 
 /**
  * Initialize SPI in master mode, 8-bit, MSB-first.
- * Prerequisites:
- *   - SPI peripheral clock enabled
- *   - SCK/MOSI/MISO pins configured for AF
+ * The peripheral clock is auto-enabled. SCK/MOSI/MISO pins
+ * must be configured for AF (via tile_init or manually).
  */
 hal_status_t hal_spi_init(hal_spi_t *h, SPI_TypeDef *instance,
                           const hal_spi_config_t *cfg);

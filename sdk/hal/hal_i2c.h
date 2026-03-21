@@ -31,9 +31,8 @@ typedef struct {
 
 /**
  * Initialize I2C in master mode.
- * Prerequisites:
- *   - I2C peripheral clock enabled
- *   - SDA/SCL pins configured as AF open-drain with pull-up
+ * The peripheral clock is auto-enabled. SDA/SCL pins must be
+ * configured as AF open-drain with pull-up (via tile_init or manually).
  */
 hal_status_t hal_i2c_init(hal_i2c_t *h, I2C_TypeDef *instance,
                           const hal_i2c_config_t *cfg);

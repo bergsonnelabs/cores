@@ -294,6 +294,37 @@ static inline int ll_rcc_pll_ready(void)
 #endif
 }
 
+/**
+ * Enable PLL and wait for lock with timeout.
+ * Returns 1 on success, 0 on timeout (PLL failed to lock).
+ */
+static inline int ll_rcc_pll_enable_timeout(uint32_t retries)
+{
+    ll_rcc_pll_enable();
+    while (!ll_rcc_pll_ready()) {
+        if (--retries == 0) return 0;
+    }
+    return 1;
+}
+
+/**
+ * Wait for HSI16 ready with timeout.
+ * Returns 1 on success, 0 on timeout.
+ */
+static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
+{
+#if !defined(STM32H523xx)
+    ll_rcc_hsi16_enable();
+    while (!ll_rcc_hsi16_ready()) {
+        if (--retries == 0) return 0;
+    }
+    return 1;
+#else
+    (void)retries;
+    return 0;
+#endif
+}
+
 /* ============================================================
  * SYSCLK source selection
  * ============================================================ */
@@ -498,25 +529,76 @@ static inline void ll_rcc_apb2_clk_enable(uint32_t mask)
     (void)REG32(RCC_BASE);
 }
 
-/* Common peripheral clock enable bits */
-#if defined(STM32L422xx)
+/* ============================================================
+ * Peripheral clock enable bit masks (per family)
+ * ============================================================ */
+
+#if defined(STM32L011xx)
+  /* APB1 */
+  #define LL_APB1_TIM2      (1UL << 0)
+  #define LL_APB1_USART2    (1UL << 17)
+  #define LL_APB1_I2C1      (1UL << 21)
+  #define LL_APB1_LPTIM1    (1UL << 31)
+  /* APB2 */
+  #define LL_APB2_TIM21     (1UL << 2)
+  #define LL_APB2_SPI1      (1UL << 12)
+
+#elif defined(STM32L422xx)
+  /* APB1 */
   #define LL_APB1_TIM2      (1UL << 0)
   #define LL_APB1_USART2    (1UL << 17)
   #define LL_APB1_I2C1      (1UL << 21)
   #define LL_APB1_I2C3      (1UL << 23)
   #define LL_APB1_USB       (1UL << 26)
+  /* APB2 */
   #define LL_APB2_TIM1      (1UL << 11)
   #define LL_APB2_SPI1      (1UL << 12)
   #define LL_APB2_USART1    (1UL << 14)
   #define LL_APB2_TIM15     (1UL << 16)
   #define LL_APB2_TIM16     (1UL << 17)
-#elif defined(STM32L011xx)
+  /* AHB2 */
+  #define LL_AHB2_ADC       (1UL << 13)
+
+#elif defined(STM32WBA55xx)
+  /* APB1 */
   #define LL_APB1_TIM2      (1UL << 0)
+  #define LL_APB1_TIM3      (1UL << 1)
   #define LL_APB1_USART2    (1UL << 17)
   #define LL_APB1_I2C1      (1UL << 21)
-  #define LL_APB1_LPTIM1    (1UL << 31)
-  #define LL_APB2_TIM21     (1UL << 2)
+  /* APB2 */
+  #define LL_APB2_TIM1      (1UL << 11)
   #define LL_APB2_SPI1      (1UL << 12)
+  #define LL_APB2_USART1    (1UL << 14)
+  #define LL_APB2_TIM16     (1UL << 17)
+  #define LL_APB2_TIM17     (1UL << 18)
+  /* APB7 (WBA-specific) */
+  #define LL_APB7_I2C3      (1UL << 2)
+  #define LL_APB7_LPTIM1    (1UL << 0)
+  #define LL_APB7_SPI3      (1UL << 3)
+  #define LL_APB7_LPUART1   (1UL << 6)
+  /* AHB2 */
+  #define LL_AHB2_ADC4      (1UL << 10)
+
+#elif defined(STM32H523xx)
+  /* APB1 */
+  #define LL_APB1_TIM2      (1UL << 0)
+  #define LL_APB1_TIM3      (1UL << 1)
+  #define LL_APB1_TIM6      (1UL << 4)
+  #define LL_APB1_TIM7      (1UL << 5)
+  #define LL_APB1_USART2    (1UL << 17)
+  #define LL_APB1_USART3    (1UL << 18)
+  #define LL_APB1_I2C1      (1UL << 21)
+  #define LL_APB1_I2C2      (1UL << 22)
+  /* APB2 */
+  #define LL_APB2_TIM1      (1UL << 11)
+  #define LL_APB2_SPI1      (1UL << 12)
+  #define LL_APB2_USART1    (1UL << 14)
+  /* APB3 */
+  #define LL_APB3_LPUART1   (1UL << 6)
+  #define LL_APB3_I2C3      (1UL << 23)
+  #define LL_APB3_SPI3      (1UL << 5)
+  /* AHB2 */
+  #define LL_AHB2_ADC       (1UL << 10)
 #endif
 
 #endif /* LL_RCC_H */

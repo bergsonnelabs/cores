@@ -68,9 +68,8 @@ typedef struct {
  *   pclk_hz:  peripheral clock frequency feeding this USART
  *   cfg:      configuration (baud rate, interrupt RX enable)
  *
- * Prerequisites:
- *   - Peripheral clock enabled (ll_rcc_apb1/2_clk_enable)
- *   - TX/RX pins configured for AF (via tile_init or manually)
+ * The peripheral clock is auto-enabled. TX/RX pins must be
+ * configured for AF (via tile_init or manually).
  */
 hal_status_t hal_uart_init(hal_uart_t *h, USART_TypeDef *instance,
                            uint32_t pclk_hz, const hal_uart_config_t *cfg);

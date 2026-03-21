@@ -3,7 +3,23 @@
  */
 
 #include "hal_i2c.h"
+#include "ll_rcc.h"
 #include <string.h>
+
+/* ---- Peripheral clock enable ---- */
+
+static void _i2c_clk_enable(I2C_TypeDef *instance)
+{
+    if (instance == I2C1) ll_rcc_apb1_clk_enable(LL_APB1_I2C1);
+#if defined(STM32L422xx)
+    if (instance == I2C3) ll_rcc_apb1_clk_enable(LL_APB1_I2C3);
+#elif defined(STM32WBA55xx)
+    if (instance == I2C3) SET_BITS(REG32(RCC_BASE + 0xACUL), LL_APB7_I2C3);
+#elif defined(STM32H523xx)
+    if (instance == I2C2) ll_rcc_apb1_clk_enable(LL_APB1_I2C2);
+#endif
+    (void)REG32(RCC_BASE);
+}
 
 /* ============================================================
  * Init / Deinit
@@ -16,6 +32,7 @@ hal_status_t hal_i2c_init(hal_i2c_t *h, I2C_TypeDef *instance,
     h->instance = instance;
     h->timeout_ms = cfg->timeout_ms ? cfg->timeout_ms : 100;
 
+    _i2c_clk_enable(instance);
     ll_i2c_init(instance, cfg->timing);
     return HAL_OK;
 }

@@ -185,6 +185,21 @@ def extract_led_info(tile):
     return None
 
 
+def extract_adc_channel(pad):
+    """Extract ADC channel number from a pad's analog functions.
+
+    Looks for functions like 'ADC7', 'ADC11', 'ADC_IN5', etc.
+    Returns the channel number as int, or None if no ADC function exists.
+    """
+    for func in pad.get("functions", []):
+        if func.get("type") == "analog":
+            fname = func["function"]
+            m = re.match(r'ADC_?(?:IN)?(\d+)', fname)
+            if m:
+                return int(m.group(1))
+    return None
+
+
 def build_pad_map(pads):
     """Build a list of pad info dicts for template rendering."""
     pad_map = []
@@ -203,6 +218,9 @@ def build_pad_map(pads):
                     "af": func["af"],
                 })
 
+        # Extract ADC channel if present
+        adc_channel = extract_adc_channel(pad)
+
         # Classify the pad
         pad_type = "gpio"
         for func in pad.get("functions", []):
@@ -220,6 +238,7 @@ def build_pad_map(pads):
             "type": pad_type,
             "all_functions": all_functions,
             "af_functions": af_functions,
+            "adc_channel": adc_channel,
         })
 
     return pad_map

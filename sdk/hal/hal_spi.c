@@ -6,6 +6,20 @@
 #include "ll_rcc.h"
 #include <string.h>
 
+/* ---- Peripheral clock enable ---- */
+
+static void _spi_clk_enable(SPI_TypeDef *instance)
+{
+    if (instance == SPI1) ll_rcc_apb2_clk_enable(LL_APB2_SPI1);
+#if defined(STM32WBA55xx)
+    if (instance == SPI3) SET_BITS(REG32(RCC_BASE + 0xACUL), LL_APB7_SPI3);
+#elif defined(STM32H523xx)
+    if (instance == SPI2) ll_rcc_apb1_clk_enable((1UL << 14));
+    if (instance == SPI3) SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB3_SPI3);
+#endif
+    (void)REG32(RCC_BASE);
+}
+
 /* ============================================================
  * Init / Deinit
  * ============================================================ */
@@ -17,6 +31,7 @@ hal_status_t hal_spi_init(hal_spi_t *h, SPI_TypeDef *instance,
     h->instance = instance;
     h->cs_active_low = 1;  /* Default: CS active low */
 
+    _spi_clk_enable(instance);
     ll_spi_init(instance, cfg->prescaler, cfg->cpol, cfg->cpha);
     return HAL_OK;
 }
@@ -111,6 +126,8 @@ hal_status_t hal_spi_xfer_dma(hal_spi_t *h, const uint8_t *tx, uint8_t *rx,
                                uint32_t len, hal_callback_t cb, void *ctx)
 {
     (void)h; (void)tx; (void)rx; (void)len; (void)cb; (void)ctx;
+    /* DMA SPI not yet implemented — requires DMA channel assignment
+       from tilegen (tile_dma.h) and per-family DMA setup. */
     return HAL_ERROR;
 }
 

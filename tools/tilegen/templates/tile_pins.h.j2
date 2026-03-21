@@ -11,6 +11,8 @@
 #ifndef TILE_PINS_H
 #define TILE_PINS_H
 
+#include <stdint.h>
+
 /* ---- Tile identity ---- */
 
 #define TILE_FAMILY        "{{ tile_family }}"
@@ -75,5 +77,31 @@
 #define PAD_{{ pad.number }}_MASK       (1UL << {{ pad.pin }})
 {% endif %}
 {% endfor %}
+
+/* ---- ADC channel mapping ---- */
+/* Maps pad numbers to ADC channel numbers for pads with analog functions. */
+/* Use with hal_adc_read() or the generated PAD_n_ADC_CH defines. */
+
+{% for pad in pads %}
+{% if pad.adc_channel is not none %}
+#define PAD_{{ pad.number }}_ADC_CH     {{ pad.adc_channel }}
+{% endif %}
+{% endfor %}
+
+/**
+ * Pad-to-ADC-channel lookup (auto-generated).
+ * Returns the ADC channel for a pad, or -1 if no ADC on that pad.
+ */
+static inline int tile_pad_adc_channel(uint8_t pad)
+{
+    switch (pad) {
+{% for pad in pads %}
+{% if pad.adc_channel is not none %}
+    case {{ pad.number }}: return {{ pad.adc_channel }};
+{% endif %}
+{% endfor %}
+    default: return -1;
+    }
+}
 
 #endif /* TILE_PINS_H */

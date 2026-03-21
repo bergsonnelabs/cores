@@ -25,9 +25,8 @@ typedef struct {
 
 /**
  * Initialize ADC with calibration.
- * Prerequisites:
- *   - ADC peripheral clock enabled
- *   - ADC pins configured as analog (hal_pad_analog or ll_gpio_config_analog)
+ * The peripheral clock is auto-enabled. ADC pins must be
+ * configured as analog (hal_pad_analog or ll_gpio_config_analog).
  */
 hal_status_t hal_adc_init(hal_adc_t *h, ADC_TypeDef *instance);
 

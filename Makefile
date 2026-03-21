@@ -201,16 +201,26 @@ flash-dfu: $(TARGET).bin
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 
 # ---- GDB debug session ----
-# Starts OpenOCD as a GDB server, then connects arm-none-eabi-gdb.
-# Use Ctrl-C in GDB to halt, 'c' to continue, 'quit' to exit.
+# Step 1: Run 'make openocd' in one terminal (starts GDB server)
+# Step 2: Run 'make gdb' in another terminal (connects debugger)
+#
+# In GDB: Ctrl-C to halt, 'c' to continue, 'b main' to set breakpoint,
+# 'n' to step over, 's' to step into, 'p variable' to print, 'quit' to exit.
 
-debug: $(TARGET).elf
-	openocd -f $(OPENOCD_CFG) &
+openocd: $(TARGET).elf
+	openocd -f $(OPENOCD_CFG) \
+		-c "init" \
+		-c "reset halt" \
+		-c "program $< verify" \
+		-c "reset halt"
+
+gdb: $(TARGET).elf
 	$(GDB) $< \
 		-ex "target extended-remote :3333" \
 		-ex "monitor reset halt" \
-		-ex "load"
-	@-pkill -f "openocd.*$(OPENOCD_CFG)" 2>/dev/null
+		-ex "load" \
+		-ex "break main" \
+		-ex "continue"
 
 # ---- SWO trace output ----
 # Flashes firmware, enables SWO capture, prints ITM output.
