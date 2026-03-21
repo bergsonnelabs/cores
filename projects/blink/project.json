@@ -6,8 +6,8 @@
   },
 
   "clock": {
-    "source": "hsi16",
-    "sysclk_mhz": 80
+    "source": "msi",
+    "sysclk_mhz": 4
   },
 
   "pins": {
