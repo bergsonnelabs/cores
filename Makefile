@@ -4,10 +4,8 @@
 #   make                    # Build blink for Core.U.2 (default)
 #   make TILE=Core-U-2-a PROJECT=blink
 #   make flash              # Flash via USB DFU
+#   make generate           # Run tilegen only (no compile)
 #   make clean
-#
-# This Makefile is the Phase 1 build system. It will be supplemented
-# (and eventually replaced) by CMake as the project grows.
 
 # ---- Configuration ----
 
@@ -22,10 +20,16 @@ OBJCOPY = $(PREFIX)objcopy
 OBJDUMP = $(PREFIX)objdump
 SIZE    = $(PREFIX)size
 
-# ---- Tile → MCU mapping ----
-# TODO: This will be replaced by tilegen reading the JSON
+# Tilegen
+TILEGEN = python3 tools/tilegen/tilegen.py
+TILE_JSON = tiles/$(TILE).json
+GEN_DIR = build/generated/$(TILE)
 
-ifeq ($(TILE),Core-U-1-a)
+# ---- Tile → MCU mapping ----
+# tilegen generates the headers; the Makefile still needs to know
+# CPU architecture and linker script for compiler flags.
+
+ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
   MCU_FAMILY  = stm32l4xx
   MCU_PART    = STM32L422xx
   CPU         = cortex-m4
@@ -33,16 +37,30 @@ ifeq ($(TILE),Core-U-1-a)
   FLOAT_ABI   = hard
   LDSCRIPT    = link/stm32l422tb.ld
   STARTUP     = sdk/device/stm32l4xx/startup_stm32l422xx.s
-else ifeq ($(TILE),Core-U-2-a)
-  MCU_FAMILY  = stm32l4xx
-  MCU_PART    = STM32L422xx
-  CPU         = cortex-m4
-  FPU         = fpv4-sp-d16
+else ifeq ($(TILE),Core-L-1-a)
+  MCU_FAMILY  = stm32l0xx
+  MCU_PART    = STM32L011xx
+  CPU         = cortex-m0plus
+  LDSCRIPT    = link/stm32l011e4.ld
+  STARTUP     = sdk/device/stm32l0xx/startup_stm32l011xx.s
+else ifeq ($(TILE),Core-W-b)
+  MCU_FAMILY  = stm32wbaxx
+  MCU_PART    = STM32WBA55xx
+  CPU         = cortex-m33
+  FPU         = fpv5-sp-d16
   FLOAT_ABI   = hard
-  LDSCRIPT    = link/stm32l422tb.ld
-  STARTUP     = sdk/device/stm32l4xx/startup_stm32l422xx.s
+  LDSCRIPT    = link/stm32wba55hg.ld
+  STARTUP     = sdk/device/stm32wbaxx/startup_stm32wba55xx.s
+else ifeq ($(TILE),Core-H-1-a)
+  MCU_FAMILY  = stm32h5xx
+  MCU_PART    = STM32H523xx
+  CPU         = cortex-m33
+  FPU         = fpv5-sp-d16
+  FLOAT_ABI   = hard
+  LDSCRIPT    = link/stm32h523he.ld
+  STARTUP     = sdk/device/stm32h5xx/startup_stm32h523xx.s
 else
-  $(error Unknown TILE: $(TILE). Supported: Core-U-1-a, Core-U-2-a)
+  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a)
 endif
 
 # ---- Paths ----
@@ -67,6 +85,7 @@ CFLAGS += -Wall -Wextra -Wshadow -Wdouble-promotion
 CFLAGS += -fdata-sections -ffunction-sections -fno-common
 CFLAGS += -std=c17
 CFLAGS += -D$(MCU_PART)
+CFLAGS += -I$(GEN_DIR)
 CFLAGS += -Og -g3
 
 ASFLAGS = $(CPU_FLAGS) -Wall
@@ -82,6 +101,21 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(ASM_SOURCES:.s=.o))
 OBJECTS  = $(C_OBJS) $(ASM_OBJS)
+
+# ---- Default goal ----
+
+.DEFAULT_GOAL := all
+
+# ---- Generated headers (tilegen) ----
+
+GEN_HEADERS = $(GEN_DIR)/tile_pins.h $(GEN_DIR)/tile_board.h $(GEN_DIR)/tile_interfaces.h
+
+$(GEN_HEADERS): $(TILE_JSON) tools/tilegen/tilegen.py tools/tilegen/templates/*.j2
+	@echo "  GEN   $(TILE)"
+	@$(TILEGEN) $(TILE_JSON) $(GEN_DIR)
+
+.PHONY: generate
+generate: $(GEN_HEADERS)
 
 # ---- Rules ----
 
@@ -101,7 +135,8 @@ $(TARGET).hex: $(TARGET).elf
 	@echo "  HEX   $@"
 	@$(OBJCOPY) -O ihex $< $@
 
-$(BUILD_DIR)/%.o: %.c
+# C sources depend on generated headers
+$(BUILD_DIR)/%.o: %.c $(GEN_HEADERS)
 	@mkdir -p $(dir $@)
 	@echo "  CC    $<"
 	@$(CC) $(CFLAGS) -c $< -o $@

@@ -1,43 +1,47 @@
 /**
- * Blink — bare-metal LED blink for Core.U.2
+ * Blink — LED blink using tilegen-generated board defines
  *
- * Toggles the onboard LED (PA8, active-high) using direct register
- * access. No HAL, no CMSIS device headers — just the reference manual
- * and the datasheet.
- *
- * This is the "prove the toolchain works" starting point.
+ * Uses tile_board.h for LED port/pin, so the same source
+ * compiles for any Core tile with an onboard LED.
  */
 
 #include <stdint.h>
+#include "tile_board.h"
 
-/* ---- Base addresses (from STM32L4 reference manual RM0394) ---- */
+/* ---- Minimal register definitions ---- */
+/* (These will move to the LL layer in Phase 3) */
 
 #define PERIPH_BASE       0x40000000UL
-#define AHB2_BASE         (PERIPH_BASE + 0x08000000UL)
-#define APB2_BASE         (PERIPH_BASE + 0x00010000UL)
 
-/* RCC — Reset and Clock Control */
-#define RCC_BASE          (PERIPH_BASE + 0x00021000UL)
-#define RCC_AHB2ENR       (*(volatile uint32_t *)(RCC_BASE + 0x4CUL))
+/* GPIO register layout (common across all STM32 families) */
+typedef struct {
+    volatile uint32_t MODER;
+    volatile uint32_t OTYPER;
+    volatile uint32_t OSPEEDR;
+    volatile uint32_t PUPDR;
+    volatile uint32_t IDR;
+    volatile uint32_t ODR;
+    volatile uint32_t BSRR;
+} GPIO_TypeDef;
 
-/* GPIO Port A */
-#define GPIOA_BASE        (AHB2_BASE + 0x0000UL)
-#define GPIOA_MODER       (*(volatile uint32_t *)(GPIOA_BASE + 0x00UL))
-#define GPIOA_ODR         (*(volatile uint32_t *)(GPIOA_BASE + 0x14UL))
-#define GPIOA_BSRR        (*(volatile uint32_t *)(GPIOA_BASE + 0x18UL))
+/* GPIO port base addresses */
+#define GPIOA  ((GPIO_TypeDef *)(PERIPH_BASE + 0x08000000UL + 0x0000UL))
+#define GPIOB  ((GPIO_TypeDef *)(PERIPH_BASE + 0x08000000UL + 0x0400UL))
 
-/* ---- Bit definitions ---- */
+/* RCC — clock enable (chip-specific) */
+#if defined(STM32L422xx)
+  #define RCC_GPIOEN      (*(volatile uint32_t *)(PERIPH_BASE + 0x0002104CUL))
+#elif defined(STM32L011xx)
+  #define RCC_GPIOEN      (*(volatile uint32_t *)(PERIPH_BASE + 0x0002102CUL))
+#elif defined(STM32WBA55xx)
+  #define RCC_GPIOEN      (*(volatile uint32_t *)(PERIPH_BASE + 0x00020C8CUL))
+#elif defined(STM32H523xx)
+  #define RCC_GPIOEN      (*(volatile uint32_t *)(PERIPH_BASE + 0x04020C8CUL))
+#else
+  #error "Unknown MCU — add RCC GPIO clock enable address"
+#endif
 
-#define RCC_AHB2ENR_GPIOAEN   (1UL << 0)   /* GPIOA clock enable */
-
-/* PA8 — LED pin */
-#define LED_PIN           8
-#define LED_MODER_MASK    (0x3UL << (LED_PIN * 2))
-#define LED_MODER_OUTPUT  (0x1UL << (LED_PIN * 2))
-#define LED_SET           (1UL << LED_PIN)
-#define LED_RESET         (1UL << (LED_PIN + 16))
-
-/* ---- Simple delay ---- */
+/* ---- Helpers ---- */
 
 static void delay(volatile uint32_t count)
 {
@@ -45,26 +49,31 @@ static void delay(volatile uint32_t count)
         ;
 }
 
+static void gpio_clock_enable(GPIO_TypeDef *port)
+{
+    uint32_t index = ((uint32_t)port - (uint32_t)GPIOA) / 0x0400UL;
+    RCC_GPIOEN |= (1UL << index);
+    delay(10);
+}
+
+static void gpio_set_output(GPIO_TypeDef *port, uint32_t pin)
+{
+    uint32_t mask = 0x3UL << (pin * 2);
+    uint32_t mode = 0x1UL << (pin * 2);
+    port->MODER = (port->MODER & ~mask) | mode;
+}
+
 /* ---- Main ---- */
 
 int main(void)
 {
-    /* Enable GPIOA clock */
-    RCC_AHB2ENR |= RCC_AHB2ENR_GPIOAEN;
+    gpio_clock_enable(LED_PORT);
+    gpio_set_output(LED_PORT, LED_PIN);
 
-    /* Small delay for clock to stabilize */
-    delay(10);
-
-    /* Configure PA8 as general-purpose output (MODER = 01) */
-    GPIOA_MODER = (GPIOA_MODER & ~LED_MODER_MASK) | LED_MODER_OUTPUT;
-
-    /* Blink forever */
     while (1) {
-        GPIOA_BSRR = LED_SET;       /* LED on */
+        LED_ON();
         delay(200000);
-        GPIOA_BSRR = LED_RESET;     /* LED off */
+        LED_OFF();
         delay(200000);
     }
-
-    return 0;  /* never reached */
 }
