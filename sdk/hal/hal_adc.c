@@ -3,8 +3,26 @@
  */
 
 #include "hal_adc.h"
+#include "ll_rcc.h"
 #include "tile_pins.h"
 #include <string.h>
+
+/* ---- ADC clock enable ---- */
+
+static void _adc_clk_enable(ADC_TypeDef *instance)
+{
+    (void)instance;
+#if defined(STM32L011xx)
+    SET_BITS(REG32(RCC_BASE + 0x34UL), (1UL << 9));   /* APB2ENR: ADCEN */
+#elif defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x4CUL), (1UL << 13));  /* AHB2ENR: ADCEN */
+#elif defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 10));  /* AHB2ENR: ADC4EN */
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 10));  /* AHB2ENR: ADCEN */
+#endif
+    (void)REG32(RCC_BASE);
+}
 
 /* ============================================================
  * Pad-to-ADC channel mapping
@@ -71,6 +89,7 @@ hal_status_t hal_adc_init(hal_adc_t *h, ADC_TypeDef *instance)
     h->instance = instance;
     h->vref_mv = 3300;
 
+    _adc_clk_enable(instance);
     ll_adc_init(instance, LL_ADC_SMPR_39_5);  /* Medium sampling time */
     return HAL_OK;
 }

@@ -151,12 +151,18 @@ static inline void ll_adc_init(ADC_TypeDef *adc, uint32_t smpr)
 
 #elif defined(STM32L422xx) || defined(STM32H523xx)
     /* L4/H5: ADC with per-channel sampling time in SMPR1/SMPR2 */
-    adc->CR = 0;
+
+    /* Exit deep power-down and enable the internal voltage regulator.
+       The ADC starts in deep power-down after reset — DEEPPWD must be
+       cleared first, then ADVREGEN set. Regulator needs ~20µs to start. */
+    adc->CR = 0;                                    /* Clear DEEPPWD */
+    SET_BITS(adc->CR, (1UL << 28));                 /* ADVREGEN = 1 */
+    for (volatile int i = 0; i < 1000; i++) {}      /* Wait ~20µs for regulator */
 
     /* Set ADC clock: ADCCLK = PCLK/4 via CCR PRESC */
     MOD_BITS(ADC_CCR, 0xFUL << 18, 0x2UL << 18);  /* PRESC = 0010 → /4 */
 
-    /* Calibrate first (ADC must be disabled) */
+    /* Calibrate (ADC must be disabled, regulator must be on) */
     ll_adc_calibrate(adc);
 
     /* Configuration: 12-bit, single conversion, overwrite on overrun */
