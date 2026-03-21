@@ -88,6 +88,7 @@ CFLAGS += -std=c17
 CFLAGS += -D$(MCU_PART)
 CFLAGS += -I$(GEN_DIR)
 CFLAGS += -Isdk/ll
+CFLAGS += -Isdk/hal
 CFLAGS += -Og -g3
 
 ASFLAGS = $(CPU_FLAGS) -Wall
@@ -103,7 +104,9 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(ASM_SOURCES:.s=.o))
 GEN_OBJS = $(GEN_SOURCES:.c=.o)
-OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS)
+HAL_SOURCES = $(wildcard sdk/hal/*.c)
+HAL_OBJS = $(addprefix $(BUILD_DIR)/, $(HAL_SOURCES:.c=.o))
+OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS) $(HAL_OBJS)
 
 # ---- Default goal ----
 
