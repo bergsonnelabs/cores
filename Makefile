@@ -87,6 +87,7 @@ CFLAGS += -fdata-sections -ffunction-sections -fno-common
 CFLAGS += -std=c17
 CFLAGS += -D$(MCU_PART)
 CFLAGS += -I$(GEN_DIR)
+CFLAGS += -Isdk/ll
 CFLAGS += -Og -g3
 
 ASFLAGS = $(CPU_FLAGS) -Wall
