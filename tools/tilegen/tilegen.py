@@ -525,6 +525,8 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["project_file"] = os.path.basename(project_path)
 
         templates.append("tile_config.h.j2")
+        templates.append("tile_init.h.j2")
+        templates.append("tile_init.c.j2")
 
     # Set up Jinja2
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")

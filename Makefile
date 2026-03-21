@@ -102,7 +102,8 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(ASM_SOURCES:.s=.o))
-OBJECTS  = $(C_OBJS) $(ASM_OBJS)
+GEN_OBJS = $(GEN_SOURCES:.c=.o)
+OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS)
 
 # ---- Default goal ----
 
@@ -112,11 +113,13 @@ OBJECTS  = $(C_OBJS) $(ASM_OBJS)
 
 GEN_HEADERS = $(GEN_DIR)/tile_pins.h $(GEN_DIR)/tile_board.h $(GEN_DIR)/tile_interfaces.h
 
-# Add tile_config.h if a project.json exists
+# Add project-specific generated files if a project.json exists
 ifneq ($(wildcard $(PROJECT_JSON)),)
-  GEN_HEADERS += $(GEN_DIR)/tile_config.h
+  GEN_HEADERS += $(GEN_DIR)/tile_config.h $(GEN_DIR)/tile_init.h
+  GEN_SOURCES = $(GEN_DIR)/tile_init.c
   TILEGEN_FLAGS = --project $(PROJECT_JSON)
 else
+  GEN_SOURCES =
   TILEGEN_FLAGS =
 endif
 
@@ -148,6 +151,12 @@ $(TARGET).hex: $(TARGET).elf
 # C sources depend on generated headers
 $(BUILD_DIR)/%.o: %.c $(GEN_HEADERS)
 	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(CFLAGS) -c $< -o $@
+
+# Generated C sources (tile_init.c etc.)
+# These are produced by tilegen alongside the headers
+$(GEN_DIR)/tile_init.o: $(GEN_DIR)/tile_init.c $(GEN_HEADERS)
 	@echo "  CC    $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 

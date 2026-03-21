@@ -1,9 +1,10 @@
 /**
  * ll_rcc.h — Low-level RCC (Reset and Clock Control)
  *
- * Peripheral clock enable/disable and basic clock source selection.
- * RCC register layouts differ significantly across STM32 families,
- * so this header provides a unified API with per-family implementations.
+ * Peripheral clock enable/disable, clock source selection, PLL
+ * configuration, and flash latency. RCC register layouts differ
+ * significantly across STM32 families, so this header provides a
+ * unified API with per-family implementations.
  */
 
 #ifndef LL_RCC_H
@@ -23,46 +24,437 @@
   #define RCC_BASE          (AHB1_BASE + 0x0C00UL)
 #endif
 
-/* ---- GPIO clock enable ---- */
-
-/**
- * Enable the clock for a GPIO port.
- * Must be called before accessing any GPIO registers.
- */
-static inline void ll_rcc_gpio_clk_enable(GPIO_TypeDef *port)
-{
-    /* Compute port index from address offset (A=0, B=1, C=2, ...) */
-    uint32_t index = ((uint32_t)port - (uint32_t)GPIOA) / 0x0400UL;
+/* ---- Flash base address (for wait state config) ---- */
 
 #if defined(STM32L011xx)
-    /* L0: RCC_IOPENR at offset 0x2C */
-    SET_BITS(REG32(RCC_BASE + 0x2CUL), (1UL << index));
-
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32L422xx)
-    /* L4: RCC_AHB2ENR at offset 0x4C */
-    SET_BITS(REG32(RCC_BASE + 0x4CUL), (1UL << index));
-
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32WBA55xx)
-    /* WBA: RCC_AHB2ENR at offset 0x8C */
-    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << index));
-
+  #define FLASH_BASE        (PERIPH_BASE + 0x04022000UL)
 #elif defined(STM32H523xx)
-    /* H5: RCC_AHB2ENR at offset 0x8C */
-    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << index));
+  #define FLASH_BASE        (PERIPH_BASE + 0x08022000UL)
 #endif
 
-    /* Read-back to ensure the clock is stable before returning */
+#define FLASH_ACR           REG32(FLASH_BASE + 0x00UL)
+
+/* ============================================================
+ * Clock source enable/ready
+ * ============================================================ */
+
+/* ---- HSI16 (16MHz internal, available on L0/L4/WBA) ---- */
+
+#if defined(STM32L011xx)
+
+static inline void ll_rcc_hsi16_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 0));  /* CR: HSION */
+}
+static inline int ll_rcc_hsi16_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 2)) != 0;  /* CR: HSIRDY */
+}
+
+#elif defined(STM32L422xx)
+
+static inline void ll_rcc_hsi16_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 8));  /* CR: HSION */
+}
+static inline int ll_rcc_hsi16_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 10)) != 0;  /* CR: HSIRDY */
+}
+
+#elif defined(STM32WBA55xx)
+
+static inline void ll_rcc_hsi16_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 8));  /* CR: HSION */
+}
+static inline int ll_rcc_hsi16_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 10)) != 0;  /* CR: HSIRDY */
+}
+
+#endif /* HSI16 */
+
+/* ---- HSE (external oscillator) ---- */
+
+static inline void ll_rcc_hse_enable(void)
+{
+#if defined(STM32L011xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
+#elif defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
+#elif defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
+#endif
+}
+
+static inline int ll_rcc_hse_ready(void)
+{
+#if defined(STM32L011xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 17)) != 0;
+#elif defined(STM32L422xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 17)) != 0;
+#elif defined(STM32WBA55xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 17)) != 0;
+#elif defined(STM32H523xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 17)) != 0;
+#else
+    return 0;
+#endif
+}
+
+/* ---- HSI48 (48MHz internal, L4/H5) ---- */
+
+#if defined(STM32L422xx) || defined(STM32H523xx)
+
+static inline void ll_rcc_hsi48_enable(void)
+{
+#if defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x08UL), (1UL << 0));  /* CRRCR: HSI48ON */
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 12));  /* CR: HSI48ON */
+#endif
+}
+
+static inline int ll_rcc_hsi48_ready(void)
+{
+#if defined(STM32L422xx)
+    return (REG32(RCC_BASE + 0x08UL) & (1UL << 1)) != 0;  /* CRRCR: HSI48RDY */
+#elif defined(STM32H523xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 13)) != 0;  /* CR: HSI48RDY */
+#else
+    return 0;
+#endif
+}
+
+#endif /* HSI48 */
+
+/* ============================================================
+ * Flash wait states
+ * ============================================================ */
+
+/**
+ * Set flash read latency (wait states).
+ * Must be set BEFORE increasing SYSCLK, or AFTER decreasing it.
+ *
+ * Typical values for VDD >= 2.7V:
+ *   L0:   0 WS ≤ 16MHz, 1 WS ≤ 32MHz
+ *   L4:   0 WS ≤ 16MHz, 1 WS ≤ 32MHz, 2 WS ≤ 48MHz, 3 WS ≤ 64MHz, 4 WS ≤ 80MHz
+ *   WBA:  0 WS ≤ 32MHz, 1 WS ≤ 64MHz, 2 WS ≤ 96MHz, 3 WS ≤ 100MHz
+ *   H5:   0 WS ≤ 32MHz, 1 WS ≤ 64MHz, 2 WS ≤ 96MHz, ... 5 WS ≤ 250MHz
+ */
+static inline void ll_flash_set_latency(uint32_t wait_states)
+{
+    MOD_BITS(FLASH_ACR, 0xFUL, wait_states);
+    /* Wait until the new latency is effective */
+    while ((FLASH_ACR & 0xFUL) != wait_states)
+        ;
+}
+
+/**
+ * Calculate required flash wait states from SYSCLK frequency.
+ */
+static inline uint32_t ll_flash_latency_for_mhz(uint32_t mhz)
+{
+#if defined(STM32L011xx)
+    return (mhz > 16) ? 1 : 0;
+#elif defined(STM32L422xx)
+    if (mhz <= 16) return 0;
+    if (mhz <= 32) return 1;
+    if (mhz <= 48) return 2;
+    if (mhz <= 64) return 3;
+    return 4;  /* up to 80 MHz */
+#elif defined(STM32WBA55xx)
+    if (mhz <= 32) return 0;
+    if (mhz <= 64) return 1;
+    if (mhz <= 96) return 2;
+    return 3;  /* up to 100 MHz */
+#elif defined(STM32H523xx)
+    if (mhz <= 32) return 0;
+    if (mhz <= 64) return 1;
+    if (mhz <= 96) return 2;
+    if (mhz <= 128) return 3;
+    if (mhz <= 160) return 4;
+    return 5;  /* up to 250 MHz */
+#else
+    return 0;
+#endif
+}
+
+/* ============================================================
+ * PLL configuration
+ * ============================================================ */
+
+/* PLL source selection values */
+#if defined(STM32L011xx)
+  #define LL_RCC_PLLSRC_HSI16  0x0UL
+  #define LL_RCC_PLLSRC_HSE    0x1UL
+#elif defined(STM32L422xx)
+  #define LL_RCC_PLLSRC_NONE   0x0UL
+  #define LL_RCC_PLLSRC_MSI    0x1UL
+  #define LL_RCC_PLLSRC_HSI16  0x2UL
+  #define LL_RCC_PLLSRC_HSE    0x3UL
+#elif defined(STM32WBA55xx)
+  #define LL_RCC_PLLSRC_NONE   0x0UL
+  #define LL_RCC_PLLSRC_HSI16  0x2UL
+  #define LL_RCC_PLLSRC_HSE    0x3UL
+#elif defined(STM32H523xx)
+  #define LL_RCC_PLLSRC_NONE   0x0UL
+  #define LL_RCC_PLLSRC_HSI48  0x1UL  /* Actually uses HSI for PLL */
+  #define LL_RCC_PLLSRC_CSI    0x2UL
+  #define LL_RCC_PLLSRC_HSE    0x3UL
+#endif
+
+/**
+ * Configure and enable the main PLL.
+ *   src:  PLL source (LL_RCC_PLLSRC_*)
+ *   m:    input divider (1-based)
+ *   n:    VCO multiplier
+ *   r:    output divider for SYSCLK
+ *
+ * PLL must be disabled before calling this function.
+ */
+static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint32_t r)
+{
+#if defined(STM32L011xx)
+    /* L0: RCC_CFGR bits [21:18]=PLLMUL, [16]=PLLSRC, no PLLM/PLLR
+       This is a simpler PLL — output = src × MUL / DIV
+       We'll handle this differently in the generated code */
+    (void)src; (void)m; (void)n; (void)r;
+
+#elif defined(STM32L422xx)
+    /* L4: RCC_PLLCFGR at offset 0x0C
+       [1:0] PLLSRC, [6:4] PLLM-1, [14:8] PLLN, [26:25] PLLR/2-1, [24] PLLREN */
+    uint32_t val = src
+                 | ((m - 1) << 4)
+                 | (n << 8)
+                 | (((r / 2) - 1) << 25)
+                 | (1UL << 24);  /* PLLREN: enable R output */
+    REG32(RCC_BASE + 0x0CUL) = val;
+
+#elif defined(STM32WBA55xx)
+    /* WBA: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
+       CFGR: [1:0] PLL1SRC, [5:4] PLL1M-1, [16] PLL1REN
+       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
+    uint32_t cfgr = src
+                  | ((m - 1) << 4)
+                  | (1UL << 16);  /* PLL1REN */
+    uint32_t divr = ((n - 1) << 0)
+                  | ((r - 1) << 24);
+    REG32(RCC_BASE + 0x28UL) = cfgr;
+    REG32(RCC_BASE + 0x34UL) = divr;
+
+#elif defined(STM32H523xx)
+    /* H5: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
+       CFGR: [1:0] PLL1SRC, [5:2] PLL1M-1, [18] PLL1REN
+       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
+    uint32_t cfgr = src
+                  | ((m - 1) << 2)
+                  | (1UL << 18);  /* PLL1REN */
+    uint32_t divr = ((n - 1) << 0)
+                  | ((r - 1) << 24);
+    REG32(RCC_BASE + 0x28UL) = cfgr;
+    REG32(RCC_BASE + 0x34UL) = divr;
+#endif
+}
+
+/** Enable the main PLL */
+static inline void ll_rcc_pll_enable(void)
+{
+#if defined(STM32L011xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 24));  /* CR: PLLON */
+#elif defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 24));  /* CR: PLLON */
+#elif defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 24));  /* CR: PLL1ON */
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 24));  /* CR: PLL1ON */
+#endif
+}
+
+/** Check if PLL is locked and ready */
+static inline int ll_rcc_pll_ready(void)
+{
+#if defined(STM32L011xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 25)) != 0;  /* CR: PLLRDY */
+#elif defined(STM32L422xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 25)) != 0;
+#elif defined(STM32WBA55xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 25)) != 0;
+#elif defined(STM32H523xx)
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 25)) != 0;
+#else
+    return 0;
+#endif
+}
+
+/* ============================================================
+ * SYSCLK source selection
+ * ============================================================ */
+
+/* SYSCLK source values (for RCC_CFGR SW bits) */
+#if defined(STM32L011xx)
+  #define LL_RCC_SYSCLK_MSI    0x0UL
+  #define LL_RCC_SYSCLK_HSI16  0x1UL
+  #define LL_RCC_SYSCLK_HSE    0x2UL
+  #define LL_RCC_SYSCLK_PLL    0x3UL
+  #define RCC_CFGR_OFFSET      0x0CUL
+  #define RCC_CFGR_SW_MASK     0x3UL
+  #define RCC_CFGR_SWS_SHIFT   2
+#elif defined(STM32L422xx)
+  #define LL_RCC_SYSCLK_MSI    0x0UL
+  #define LL_RCC_SYSCLK_HSI16  0x1UL
+  #define LL_RCC_SYSCLK_HSE    0x2UL
+  #define LL_RCC_SYSCLK_PLL    0x3UL
+  #define RCC_CFGR_OFFSET      0x08UL
+  #define RCC_CFGR_SW_MASK     0x3UL
+  #define RCC_CFGR_SWS_SHIFT   2
+#elif defined(STM32WBA55xx)
+  #define LL_RCC_SYSCLK_HSI16  0x0UL
+  #define LL_RCC_SYSCLK_HSE    0x1UL
+  #define LL_RCC_SYSCLK_PLL    0x2UL
+  #define RCC_CFGR_OFFSET      0x1CUL  /* RCC_CFGR1 */
+  #define RCC_CFGR_SW_MASK     0x3UL
+  #define RCC_CFGR_SWS_SHIFT   3
+#elif defined(STM32H523xx)
+  #define LL_RCC_SYSCLK_HSI48  0x0UL
+  #define LL_RCC_SYSCLK_CSI    0x1UL
+  #define LL_RCC_SYSCLK_HSE    0x2UL
+  #define LL_RCC_SYSCLK_PLL    0x3UL
+  #define RCC_CFGR_OFFSET      0x1CUL  /* RCC_CFGR1 */
+  #define RCC_CFGR_SW_MASK     0x7UL
+  #define RCC_CFGR_SWS_SHIFT   3
+#endif
+
+/** Set the SYSCLK source */
+static inline void ll_rcc_set_sysclk(uint32_t source)
+{
+    MOD_BITS(REG32(RCC_BASE + RCC_CFGR_OFFSET), RCC_CFGR_SW_MASK, source);
+}
+
+/** Wait until the SYSCLK source has switched */
+static inline void ll_rcc_wait_sysclk(uint32_t source)
+{
+    uint32_t sws_mask = RCC_CFGR_SW_MASK << RCC_CFGR_SWS_SHIFT;
+    uint32_t sws_val = source << RCC_CFGR_SWS_SHIFT;
+    while ((REG32(RCC_BASE + RCC_CFGR_OFFSET) & sws_mask) != sws_val)
+        ;
+}
+
+/* ============================================================
+ * Bus prescalers (AHB, APB1, APB2)
+ * ============================================================ */
+
+/**
+ * Set AHB prescaler.
+ *   div: 1, 2, 4, 8, 16, 64, 128, 256, 512
+ */
+static inline void ll_rcc_set_ahb_div(uint32_t div)
+{
+    uint32_t val;
+    switch (div) {
+        case 1:   val = 0x0; break;
+        case 2:   val = 0x8; break;
+        case 4:   val = 0x9; break;
+        case 8:   val = 0xA; break;
+        case 16:  val = 0xB; break;
+        case 64:  val = 0xC; break;
+        case 128: val = 0xD; break;
+        case 256: val = 0xE; break;
+        default:  val = 0xF; break;  /* 512 */
+    }
+#if defined(STM32L011xx)
+    MOD_BITS(REG32(RCC_BASE + 0x0CUL), 0xFUL << 4, val << 4);    /* CFGR HPRE */
+#elif defined(STM32L422xx)
+    MOD_BITS(REG32(RCC_BASE + 0x08UL), 0xFUL << 4, val << 4);    /* CFGR HPRE */
+#elif defined(STM32WBA55xx)
+    MOD_BITS(REG32(RCC_BASE + 0x1CUL), 0xFUL << 8, val << 8);    /* CFGR1 HPRE */
+#elif defined(STM32H523xx)
+    MOD_BITS(REG32(RCC_BASE + 0x1CUL), 0xFUL << 8, val << 8);    /* CFGR1 HPRE */
+#endif
+}
+
+/**
+ * Set APB1 prescaler.
+ *   div: 1, 2, 4, 8, 16
+ */
+static inline void ll_rcc_set_apb1_div(uint32_t div)
+{
+    uint32_t val;
+    switch (div) {
+        case 1:  val = 0x0; break;
+        case 2:  val = 0x4; break;
+        case 4:  val = 0x5; break;
+        case 8:  val = 0x6; break;
+        default: val = 0x7; break;  /* 16 */
+    }
+#if defined(STM32L011xx)
+    MOD_BITS(REG32(RCC_BASE + 0x0CUL), 0x7UL << 8, val << 8);    /* CFGR PPRE1 */
+#elif defined(STM32L422xx)
+    MOD_BITS(REG32(RCC_BASE + 0x08UL), 0x7UL << 8, val << 8);    /* CFGR PPRE1 */
+#elif defined(STM32WBA55xx)
+    MOD_BITS(REG32(RCC_BASE + 0x1CUL), 0x7UL << 12, val << 12);  /* CFGR1 PPRE1 */
+#elif defined(STM32H523xx)
+    MOD_BITS(REG32(RCC_BASE + 0x1CUL), 0x7UL << 12, val << 12);  /* CFGR1 PPRE1 */
+#endif
+}
+
+/**
+ * Set APB2 prescaler.
+ *   div: 1, 2, 4, 8, 16
+ */
+static inline void ll_rcc_set_apb2_div(uint32_t div)
+{
+    uint32_t val;
+    switch (div) {
+        case 1:  val = 0x0; break;
+        case 2:  val = 0x4; break;
+        case 4:  val = 0x5; break;
+        case 8:  val = 0x6; break;
+        default: val = 0x7; break;  /* 16 */
+    }
+#if defined(STM32L011xx)
+    MOD_BITS(REG32(RCC_BASE + 0x0CUL), 0x7UL << 11, val << 11);  /* CFGR PPRE2 */
+#elif defined(STM32L422xx)
+    MOD_BITS(REG32(RCC_BASE + 0x08UL), 0x7UL << 11, val << 11);  /* CFGR PPRE2 */
+#elif defined(STM32WBA55xx)
+    MOD_BITS(REG32(RCC_BASE + 0x20UL), 0x7UL << 4, val << 4);    /* CFGR2 PPRE2 */
+#elif defined(STM32H523xx)
+    MOD_BITS(REG32(RCC_BASE + 0x20UL), 0x7UL << 4, val << 4);    /* CFGR2 PPRE2 */
+#endif
+}
+
+/* ============================================================
+ * GPIO clock enable/disable (unchanged from before)
+ * ============================================================ */
+
+/** Enable the clock for a GPIO port. */
+static inline void ll_rcc_gpio_clk_enable(GPIO_TypeDef *port)
+{
+    uint32_t index = ((uint32_t)port - (uint32_t)GPIOA) / 0x0400UL;
+#if defined(STM32L011xx)
+    SET_BITS(REG32(RCC_BASE + 0x2CUL), (1UL << index));
+#elif defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x4CUL), (1UL << index));
+#elif defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << index));
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << index));
+#endif
     (void)REG32(RCC_BASE);
     (void)REG32(RCC_BASE);
 }
 
-/**
- * Disable the clock for a GPIO port.
- */
+/** Disable the clock for a GPIO port. */
 static inline void ll_rcc_gpio_clk_disable(GPIO_TypeDef *port)
 {
     uint32_t index = ((uint32_t)port - (uint32_t)GPIOA) / 0x0400UL;
-
 #if defined(STM32L011xx)
     CLR_BITS(REG32(RCC_BASE + 0x2CUL), (1UL << index));
 #elif defined(STM32L422xx)
@@ -74,39 +466,39 @@ static inline void ll_rcc_gpio_clk_disable(GPIO_TypeDef *port)
 #endif
 }
 
-/* ---- Peripheral clock enable (by bus) ---- */
+/* ============================================================
+ * Peripheral clock enable (by bus)
+ * ============================================================ */
 
-/* APB1 peripherals */
 static inline void ll_rcc_apb1_clk_enable(uint32_t mask)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x38UL), mask);  /* RCC_APB1ENR */
+    SET_BITS(REG32(RCC_BASE + 0x38UL), mask);
 #elif defined(STM32L422xx)
-    SET_BITS(REG32(RCC_BASE + 0x58UL), mask);  /* RCC_APB1ENR1 */
+    SET_BITS(REG32(RCC_BASE + 0x58UL), mask);
 #elif defined(STM32WBA55xx)
-    SET_BITS(REG32(RCC_BASE + 0x9CUL), mask);  /* RCC_APB1ENR1 */
+    SET_BITS(REG32(RCC_BASE + 0x9CUL), mask);
 #elif defined(STM32H523xx)
-    SET_BITS(REG32(RCC_BASE + 0x9CUL), mask);  /* RCC_APB1LENR */
+    SET_BITS(REG32(RCC_BASE + 0x9CUL), mask);
 #endif
     (void)REG32(RCC_BASE);
 }
 
-/* APB2 peripherals */
 static inline void ll_rcc_apb2_clk_enable(uint32_t mask)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x34UL), mask);  /* RCC_APB2ENR */
+    SET_BITS(REG32(RCC_BASE + 0x34UL), mask);
 #elif defined(STM32L422xx)
-    SET_BITS(REG32(RCC_BASE + 0x60UL), mask);  /* RCC_APB2ENR */
+    SET_BITS(REG32(RCC_BASE + 0x60UL), mask);
 #elif defined(STM32WBA55xx)
-    SET_BITS(REG32(RCC_BASE + 0xA4UL), mask);  /* RCC_APB2ENR */
+    SET_BITS(REG32(RCC_BASE + 0xA4UL), mask);
 #elif defined(STM32H523xx)
-    SET_BITS(REG32(RCC_BASE + 0xA4UL), mask);  /* RCC_APB2ENR */
+    SET_BITS(REG32(RCC_BASE + 0xA4UL), mask);
 #endif
     (void)REG32(RCC_BASE);
 }
 
-/* Common APB1 peripheral clock enable bits (vary by family but often similar) */
+/* Common peripheral clock enable bits */
 #if defined(STM32L422xx)
   #define LL_APB1_TIM2      (1UL << 0)
   #define LL_APB1_USART2    (1UL << 17)
