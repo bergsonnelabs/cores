@@ -21,7 +21,7 @@
 
 #include "ll_intf.h"
 #include "hci.h"
-#include "cmsis_compiler.h" 
+/* cmsis_compiler.h not needed — __WEAK defined via Makefile CFLAGS */
 #include <stdint.h>
 
 #define LL_DP_SLP_NO_WAKEUP                 ((uint32_t) ~(0) )

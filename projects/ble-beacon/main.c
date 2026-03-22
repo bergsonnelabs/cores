@@ -61,21 +61,11 @@ int main(void)
         }
     }
 
-    LED_ON();
+    LED_ON();  /* LED on = init complete, advertising started */
 
-    /* Main loop: call BLE stack continuously, toggle LED periodically */
-    uint32_t last_toggle = 0;
+    /* Main loop — matches reference project exactly */
     while (1) {
-        hal_ble_process();
-
-        /* Link layer background processing (deferred radio operations) */
-        extern void ll_sys_bg_process(void);
-        ll_sys_bg_process();
-
-        uint32_t now = hal_tick();
-        if ((now - last_toggle) >= 750) {
-            last_toggle = now;
-            LED_TOGGLE();
-        }
+        extern void UTIL_SEQ_Run(uint32_t mask);
+        UTIL_SEQ_Run(~0UL);
     }
 }
