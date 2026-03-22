@@ -31,48 +31,58 @@
 /* Ticks per microsecond, set by ll_systick_init() */
 static uint32_t _systick_us_ticks;
 
+/* Millisecond tick counter, incremented by SysTick_Handler.
+ * Defined in hal_systick.c. */
+extern volatile uint32_t _systick_ticks;
+
 /**
- * Initialize SysTick for delay functions.
+ * Initialize SysTick for 1ms interrupts + delay functions.
  *   sysclk_hz: System clock frequency in Hz (e.g., 80000000 for 80MHz)
+ *
+ * After calling this, SysTick fires every 1ms and increments
+ * _systick_ticks. ll_delay_ms() uses this counter.
+ * ll_delay_us() still uses polling mode for sub-ms precision.
  */
 static inline void ll_systick_init(uint32_t sysclk_hz)
 {
     _systick_us_ticks = sysclk_hz / 1000000UL;
+    _systick_ticks = 0;
+
+    /* Configure SysTick for 1ms interrupt */
+    SYSTICK_RVR = (sysclk_hz / 1000UL) - 1;
+    SYSTICK_CVR = 0;
+    SYSTICK_CSR = SYSTICK_CSR_ENABLE | SYSTICK_CSR_TICKINT | SYSTICK_CSR_CLKSRC;
 }
 
 /**
+ * SysTick interrupt handler — increments the ms tick counter.
+ * Placed here as a weak-overridable default.
+ */
+void SysTick_Handler(void);
+
+/**
  * Blocking delay in microseconds.
- * Uses SysTick in polling mode (no interrupt needed).
- * Max single delay: (2^24 - 1) / ticks_per_us microseconds.
+ * Uses a counting loop based on the known ticks-per-us.
+ * Less precise than the old SysTick-polling approach, but
+ * compatible with the interrupt-driven SysTick.
  */
 static inline void ll_delay_us(uint32_t us)
 {
-    uint32_t ticks = us * _systick_us_ticks;
-
-    /* SysTick is a 24-bit down-counter, max reload = 0xFFFFFF */
-    while (ticks > 0) {
-        uint32_t chunk = (ticks > 0xFFFFFFUL) ? 0xFFFFFFUL : ticks;
-        ticks -= chunk;
-
-        SYSTICK_RVR = chunk - 1;
-        SYSTICK_CVR = 0;  /* Writing any value clears the counter */
-        SYSTICK_CSR = SYSTICK_CSR_ENABLE | SYSTICK_CSR_CLKSRC;
-
-        while (!(SYSTICK_CSR & SYSTICK_CSR_COUNTFLAG))
-            ;
-
-        SYSTICK_CSR = 0;  /* Stop SysTick */
+    uint32_t count = us * _systick_us_ticks / 4;  /* ~4 cycles per loop iteration */
+    while (count--) {
+        __asm volatile ("nop");
     }
 }
 
 /**
  * Blocking delay in milliseconds.
+ * Uses the SysTick interrupt counter for accurate timing.
  */
 static inline void ll_delay_ms(uint32_t ms)
 {
-    while (ms--) {
-        ll_delay_us(1000);
-    }
+    uint32_t start = _systick_ticks;
+    while ((_systick_ticks - start) < ms)
+        ;
 }
 
 #endif /* LL_SYSTICK_H */

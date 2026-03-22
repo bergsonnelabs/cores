@@ -158,6 +158,7 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_DMA1_CH5      15
   #define HAL_IRQ_DMA1_CH6      16
   #define HAL_IRQ_DMA1_CH7      17
+  #define HAL_IRQ_USB            67
 
 #elif defined(STM32WBA55xx)
   #define HAL_IRQ_USART1        46
