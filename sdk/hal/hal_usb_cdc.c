@@ -17,6 +17,7 @@
 #include "ll_rcc.h"
 #include "ll_crs.h"
 #include "ll_gpio.h"
+#include "ll_pwr.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -640,8 +641,7 @@ void hal_usb_cdc_init(void)
         /* Enable PWR peripheral clock (APB1 bit 28) */
         ll_rcc_apb1_clk_enable(1UL << 28);
         /* PWR_CR2 at PWR_BASE + 0x04, USV = bit 10 */
-        #define PWR_BASE_ADDR  0x40007000UL
-        SET_BITS(REG32(PWR_BASE_ADDR + 0x04UL), (1UL << 10));
+        SET_BITS(REG32(PWR_BASE + 0x04UL), (1UL << 10));
     }
 
     /* Configure USB pins: PA11 (DM) and PA12 (DP) as AF10 */

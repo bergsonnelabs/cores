@@ -14,7 +14,7 @@
 #include "ll_systick.h"
 #include "hal_usb_cdc.h"
 
-static uint32_t tick = 0;
+static uint32_t last_print_ms = 0;
 
 void on_rx(const uint8_t *data, uint16_t len)
 {
@@ -33,10 +33,11 @@ int main(void)
 
     while (1) {
         if (hal_usb_cdc_connected()) {
-            if (++tick >= 500000) {
-                tick = 0;
+            uint32_t now = hal_tick();
+            if ((now - last_print_ms) >= 5000) {
+                last_print_ms = now;
                 hal_usb_cdc_printf("Hello from Core.U.2! Uptime: %lu ms\r\n",
-                                   (unsigned long)hal_tick());
+                                   (unsigned long)now);
                 LED_TOGGLE();
             }
         }

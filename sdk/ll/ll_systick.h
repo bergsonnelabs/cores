@@ -28,8 +28,9 @@
 
 /* ---- State ---- */
 
-/* Ticks per microsecond, set by ll_systick_init() */
-static uint32_t _systick_us_ticks;
+/* Ticks per microsecond, set by ll_systick_init().
+ * Defined in hal_systick.c. */
+extern uint32_t _systick_us_ticks;
 
 /* Millisecond tick counter, incremented by SysTick_Handler.
  * Defined in hal_systick.c. */

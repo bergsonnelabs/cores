@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "ll_common.h"
 
 /* ============================================================
  * Status codes
@@ -98,28 +99,13 @@ static inline uint16_t hal_ringbuf_read(hal_ringbuf_t *rb, uint8_t *buf, uint16_
 }
 
 /* ============================================================
- * NVIC helpers (ARM Cortex-M)
+ * NVIC helpers — thin wrappers around ll_common.h
  * ============================================================ */
 
-static inline void hal_nvic_enable_irq(uint32_t irqn)
-{
-    ((volatile uint32_t *)0xE000E100UL)[irqn >> 5] = 1UL << (irqn & 0x1F);
-}
-
-static inline void hal_nvic_disable_irq(uint32_t irqn)
-{
-    ((volatile uint32_t *)0xE000E180UL)[irqn >> 5] = 1UL << (irqn & 0x1F);
-}
-
-static inline void hal_nvic_set_priority(uint32_t irqn, uint8_t priority)
-{
-    ((volatile uint8_t *)0xE000E400UL)[irqn] = priority << 4;
-}
-
-static inline void hal_nvic_clear_pending(uint32_t irqn)
-{
-    ((volatile uint32_t *)0xE000E280UL)[irqn >> 5] = 1UL << (irqn & 0x1F);
-}
+static inline void hal_nvic_enable_irq(uint32_t irqn)  { ll_nvic_enable_irq(irqn); }
+static inline void hal_nvic_disable_irq(uint32_t irqn) { ll_nvic_disable_irq(irqn); }
+static inline void hal_nvic_set_priority(uint32_t irqn, uint8_t priority) { ll_nvic_set_priority(irqn, priority); }
+static inline void hal_nvic_clear_pending(uint32_t irqn) { ll_nvic_clear_pending(irqn); }
 
 /* ============================================================
  * Per-family IRQ numbers for peripherals used by HAL
@@ -132,6 +118,7 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_I2C1_EV       23
   #define HAL_IRQ_SPI1          25
   #define HAL_IRQ_TIM2          15
+  #define HAL_IRQ_TIM21         20
   #define HAL_IRQ_ADC1          12
   #define HAL_IRQ_DMA1_CH1      9
   #define HAL_IRQ_DMA1_CH2_3    10
@@ -184,7 +171,7 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_GPDMA1_CH4    33
   #define HAL_IRQ_GPDMA1_CH5    34
   #define HAL_IRQ_GPDMA1_CH6    35
-  #define HAL_IRQ_GPDMA1_CH7    36
+  /* WBA55 has GPDMA1 channels 0-6 only; no CH7 (IRQ 36 = TIM2) */
 
 #elif defined(STM32H523xx)
   #define HAL_IRQ_USART1        58

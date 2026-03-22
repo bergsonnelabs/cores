@@ -300,6 +300,9 @@ g_pfnVectors:
     .thumb_set I2C1_ER_IRQHandler, Default_Handler
     .weak I2C2_EV_IRQHandler
     .thumb_set I2C2_EV_IRQHandler, Default_Handler
+    /* I2C2_ER shares IRQ 58 with USART1 — both need weak aliases */
+    .weak I2C2_ER_IRQHandler
+    .thumb_set I2C2_ER_IRQHandler, Default_Handler
     .weak USART1_IRQHandler
     .thumb_set USART1_IRQHandler, Default_Handler
     .weak USART2_IRQHandler

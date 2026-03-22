@@ -75,7 +75,10 @@ static int _tim_index(TIM_TypeDef *instance)
 
 static uint32_t _tim_irq(TIM_TypeDef *instance)
 {
-#if defined(STM32L422xx)
+#if defined(STM32L011xx)
+    if (instance == TIM2)  return HAL_IRQ_TIM2;     /* IRQ 15 on L0 */
+    if (instance == TIM21) return HAL_IRQ_TIM21;   /* IRQ 20 on L0 */
+#elif defined(STM32L422xx)
     if (instance == TIM1)  return HAL_IRQ_TIM1_UP_16;
     if (instance == TIM2)  return HAL_IRQ_TIM2;
     if (instance == TIM15) return HAL_IRQ_TIM15;

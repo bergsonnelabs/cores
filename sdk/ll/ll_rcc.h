@@ -153,7 +153,8 @@ static inline void ll_flash_set_latency(uint32_t wait_states)
 {
     MOD_BITS(FLASH_ACR, 0xFUL, wait_states);
     /* Wait until the new latency is effective */
-    while ((FLASH_ACR & 0xFUL) != wait_states)
+    uint32_t timeout = 100000;
+    while ((FLASH_ACR & 0xFUL) != wait_states && --timeout)
         ;
 }
 
@@ -374,7 +375,8 @@ static inline void ll_rcc_wait_sysclk(uint32_t source)
 {
     uint32_t sws_mask = RCC_CFGR_SW_MASK << RCC_CFGR_SWS_SHIFT;
     uint32_t sws_val = source << RCC_CFGR_SWS_SHIFT;
-    while ((REG32(RCC_BASE + RCC_CFGR_OFFSET) & sws_mask) != sws_val)
+    uint32_t timeout = 100000;
+    while ((REG32(RCC_BASE + RCC_CFGR_OFFSET) & sws_mask) != sws_val && --timeout)
         ;
 }
 
@@ -442,6 +444,10 @@ static inline void ll_rcc_set_apb1_div(uint32_t div)
  */
 static inline void ll_rcc_set_apb2_div(uint32_t div)
 {
+#if defined(STM32L011xx)
+    /* L011 has only one APB bus (no APB2) — nothing to do */
+    (void)div;
+#else
     uint32_t val;
     switch (div) {
         case 1:  val = 0x0; break;
@@ -450,15 +456,14 @@ static inline void ll_rcc_set_apb2_div(uint32_t div)
         case 8:  val = 0x6; break;
         default: val = 0x7; break;  /* 16 */
     }
-#if defined(STM32L011xx)
-    MOD_BITS(REG32(RCC_BASE + 0x0CUL), 0x7UL << 11, val << 11);  /* CFGR PPRE2 */
-#elif defined(STM32L422xx)
+#if defined(STM32L422xx)
     MOD_BITS(REG32(RCC_BASE + 0x08UL), 0x7UL << 11, val << 11);  /* CFGR PPRE2 */
 #elif defined(STM32WBA55xx)
     MOD_BITS(REG32(RCC_BASE + 0x20UL), 0x7UL << 4, val << 4);    /* CFGR2 PPRE2 */
 #elif defined(STM32H523xx)
     MOD_BITS(REG32(RCC_BASE + 0x20UL), 0x7UL << 4, val << 4);    /* CFGR2 PPRE2 */
 #endif
+#endif /* !STM32L011xx */
 }
 
 /* ============================================================
