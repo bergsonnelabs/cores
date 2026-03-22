@@ -119,7 +119,11 @@ ifeq ($(BLE_ENABLED),1)
   CFLAGS += '-D__PACKED_UNION=union __attribute__((packed))'
   CFLAGS += '-D__STATIC_INLINE=static inline'
   CFLAGS += '-D__WEAK=__attribute__((weak))'
-  LDFLAGS += -L$(BLE_DIR)/lib -Wl,--start-group -l:stm32wba_ble_stack_basic.a -l:LinkLayer_BLE_Basic_lib.a -Wl,--end-group
+  LDFLAGS += -L$(BLE_DIR)/lib -Wl,--whole-archive -l:stm32wba_ble_stack_basic.a -l:LinkLayer_BLE_Basic_lib.a -Wl,--no-whole-archive
+  # Disable gc-sections for BLE builds — the BLE stack binary has
+  # internal cross-references via function pointers that gc-sections
+  # cannot trace, causing critical code to be discarded
+  LDFLAGS += -Wl,--no-gc-sections
   BLE_SOURCES = $(wildcard $(BLE_DIR)/*.c) sdk/hal/hal_ble.c
 endif
 

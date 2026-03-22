@@ -19,6 +19,11 @@
 void tile_clock_init(void)
 {
 {% if clock_config.pll %}
+{% if clock_config.sysclk_mhz > 16 %}
+    /* ---- Voltage scaling for {{ clock_config.sysclk_mhz }}MHz ---- */
+    ll_rcc_set_vos_range1();
+
+{% endif %}
     /* ---- Enable clock source: {{ clock_config.source }} ---- */
 {% if clock_config.source == "hsi16" %}
     ll_rcc_hsi16_enable();
@@ -45,6 +50,7 @@ void tile_clock_init(void)
 {% elif clock_config.source == "hsi48" %}
     ll_rcc_pll_config(LL_RCC_PLLSRC_HSI48, {{ clock_config.pll.m }}, {{ clock_config.pll.n }}, {{ clock_config.pll.r }});
 {% endif %}
+    ll_rcc_pll_set_input_range({{ clock_config.source_mhz // clock_config.pll.m }});  /* {{ clock_config.source_mhz }}MHz ÷ {{ clock_config.pll.m }} = {{ clock_config.source_mhz // clock_config.pll.m }}MHz */
     ll_rcc_pll_enable();
     while (!ll_rcc_pll_ready())
         ;

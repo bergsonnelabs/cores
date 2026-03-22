@@ -7,7 +7,7 @@
 
   "clock": {
     "source": "hse",
-    "sysclk_mhz": 100
+    "sysclk_mhz": 32
   },
 
   "pins": {},

@@ -8,6 +8,9 @@
 #include "hal_ble.h"
 #include "hal_common.h"
 #include "ll_common.h"
+#include "ll_rcc.h"
+#include "ll_systick.h"
+#include "tile_board.h"
 #include "blestack.h"
 #include "auto/ble_gap_aci.h"
 #include "auto/ble_gatt_aci.h"
@@ -77,22 +80,7 @@ static uint16_t gap_appearance_handle;
 static hal_ble_connect_cb_t    user_connect_cb = (void *)0;
 static hal_ble_disconnect_cb_t user_disconnect_cb = (void *)0;
 
-/* ============================================================
- * RCC / PWR helpers for radio peripheral
- * ============================================================ */
-
-/* AHB5 peripheral clock enable register */
-#define RCC_BASE            0x46020C00UL
-#define RCC_AHB5ENR         (*(volatile uint32_t *)(RCC_BASE + 0x0A4))
-#define RCC_AHB5ENR_RADIORSTNEN (1U << 0)
-
-/* PWR voltage scaling for radio */
-#define PWR_BASE            0x46020800UL
-#define PWR_VOSR            (*(volatile uint32_t *)(PWR_BASE + 0x0C))
-#define PWR_VOSR_RADIOSCEN  (1U << 13)
-
-/* Radio sleep timer clock control */
-#define RCC_RADIOENR        (*(volatile uint32_t *)(RCC_BASE + 0x0A8))
+/* RCC / PWR defines handled via ll_rcc.h LL functions */
 
 /* ============================================================
  * Init
@@ -100,19 +88,72 @@ static hal_ble_disconnect_cb_t user_disconnect_cb = (void *)0;
 
 void hal_ble_init(void)
 {
-    /* 1. Enable AHB5 clock for RADIO peripheral */
-    RCC_AHB5ENR |= RCC_AHB5ENR_RADIORSTNEN;
+    /* HSE tuning — must happen before radio PHY init.
+       Default trim = 0x0C. Ideally read from OTP. */
+    MOD_BITS(REG32(RCC_BASE + 0x210UL), 0x3FUL << 16, 0x0CUL << 16);
 
-    /* 2. Enable radio power supply */
-    PWR_VOSR |= PWR_VOSR_RADIOSCEN;
+    /* Configure power supply as LDO (Core.W uses LDO, not SMPS).
+       PWR_CR3 at offset 0x08, REGSEL bit 1: 0=LDO, 1=SMPS.
+       Wait for REGS=0 in PWR_SVMSR (offset 0x3C) to confirm LDO active. */
+    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
+    CLR_BITS(REG32(PWR_BASE_WBA + 0x08UL), (1UL << 1));  /* CR3.REGSEL = LDO */
+    for (volatile uint32_t t = 0; t < 1000000; t++) {
+        if (!(REG32(PWR_BASE_WBA + 0x3CUL) & (1UL << 1))) break;  /* SVMSR.REGS=0 */
+    }
 
-    /* 3. Configure RADIO and HASH (SW low ISR) interrupt priorities */
+    /* Enable AHB5 clock for RADIO peripheral */
+    ll_rcc_ahb5_clk_enable(LL_AHB5_RADIO);
+
+    /* Enable radio power supply (PWR_VOSR RADIOSCEN) */
+    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
+    SET_BITS(PWR_VOSR_REG, (1UL << 13));  /* RADIOSCEN */
+
+    /* Enable hardware RNG */
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 18));  /* RNG clock */
+    (void)REG32(RCC_BASE);
+    #define RNG_BASE_WBA  0x420C0800UL
+    #define RNG_CR_REG    REG32(RNG_BASE_WBA + 0x00UL)
+    #define RNG_DR_REG    REG32(RNG_BASE_WBA + 0x08UL)
+    RNG_CR_REG = (1UL << 2);  /* RNGEN */
+
+    /* Configure RADIO and HASH interrupt priorities */
     hal_nvic_set_priority(HAL_IRQ_RADIO, 0);
     hal_nvic_enable_irq(HAL_IRQ_RADIO);
     hal_nvic_set_priority(HAL_IRQ_HASH, 5);
     hal_nvic_enable_irq(HAL_IRQ_HASH);
 
-    /* 4. Initialize BLE stack */
+    /* Enable backup domain, start LSI, set radio sleep timer */
+    ll_pwr_enable_backup_access();
+    ll_rcc_lsi1_enable();
+    while (!ll_rcc_lsi1_ready()) ;
+    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
+    ll_rcc_radio_slp_tmr_clk_enable();
+
+    /* Initialize link layer platform clocks + enable baseband clock.
+       The baseband clock MUST be enabled before BleStack_Init because
+       ll_intf_init() reads radio registers immediately. */
+    extern void LINKLAYER_PLAT_ClockInit(void);
+    LINKLAYER_PLAT_ClockInit();
+    extern void LINKLAYER_PLAT_AclkCtrl(uint8_t enable);
+    LINKLAYER_PLAT_AclkCtrl(1);
+
+    /* Zero the BLE buffers in SRAM2 (startup only zeros SRAM1 BSS) */
+    extern uint32_t _sbss_ble, _ebss_ble;
+    for (uint32_t *p = &_sbss_ble; p < &_ebss_ble; p++)
+        *p = 0;
+
+    /* Pre-init link layer via its intended entry point.
+       Must happen before BleStack_Init because db_reset (inside
+       ll_intf_init) reads the power table immediately. */
+    extern void hci_get_dis_tbl(const void **tbl);
+    extern void ll_intf_init(const void *hci_tbl);
+    extern void ll_intf_cmn_select_tx_power_table(uint8_t table_id);
+    const void *hci_dis_tbl = (void *)0;
+    hci_get_dis_tbl(&hci_dis_tbl);
+    ll_intf_init(hci_dis_tbl);
+    ll_intf_cmn_select_tx_power_table(0);
+
+    /* Initialize BLE stack */
     BleStack_init_t init_params;
     init_params.numAttrRecord           = CFG_BLE_NUM_GATT_ATTRIBUTES;
     init_params.numAttrServ             = CFG_BLE_NUM_GATT_SERVICES;
@@ -133,13 +174,9 @@ void hal_ble_init(void)
 
     BleStack_Init(&init_params);
 
-    /* 5. Initialize GATT */
+    /* Initialize GATT + GAP */
     aci_gatt_init();
-
-    /* 6. Initialize GAP (peripheral role = 0x01) */
-    aci_gap_init(0x01, /* peripheral */
-                 0x00, /* no privacy */
-                 8,    /* device name max length */
+    aci_gap_init(0x01, 0x00, 8,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);

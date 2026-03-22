@@ -15,8 +15,8 @@ ENTRY(Reset_Handler)
 _estack = ORIGIN(SRAM1) + LENGTH(SRAM1);
 
 /* Minimum heap and stack sizes */
-_Min_Heap_Size  = 0x200;
-_Min_Stack_Size = 0x400;
+_Min_Heap_Size  = 0x400;
+_Min_Stack_Size = 0x3000;  /* 12KB — BLE stack needs significant depth */
 
 SECTIONS
 {

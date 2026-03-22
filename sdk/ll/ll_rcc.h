@@ -19,7 +19,7 @@
 #elif defined(STM32L422xx)
   #define RCC_BASE          (AHB1_BASE + 0x1000UL)
 #elif defined(STM32WBA55xx)
-  #define RCC_BASE          (AHB1_BASE + 0x0C00UL)
+  #define RCC_BASE          (AHB5_BASE + 0x0C00UL)  /* 0x46020C00 — RCC is on AHB5, not AHB1 */
 #elif defined(STM32H523xx)
   #define RCC_BASE          (AHB1_BASE + 0x0C00UL)
 #endif
@@ -31,7 +31,7 @@
 #elif defined(STM32L422xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32WBA55xx)
-  #define FLASH_BASE        (PERIPH_BASE + 0x04022000UL)
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)  /* 0x40022000 — same AHB1 domain as L4 */
 #elif defined(STM32H523xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x08022000UL)
 #endif
@@ -189,6 +189,42 @@ static inline uint32_t ll_flash_latency_for_mhz(uint32_t mhz)
 }
 
 /* ============================================================
+ * Voltage scaling (must be set before increasing SYSCLK)
+ * ============================================================ */
+
+/**
+ * Set voltage scaling range. Must be called BEFORE configuring
+ * PLL or increasing SYSCLK above the current range's limit.
+ *
+ *   WBA55: Range 1 = up to 100MHz, Range 2 = up to 16MHz
+ *   H5:    Range 0 = up to 250MHz, Range 1-3 for lower speeds
+ *   L4:    Range 1 = up to 80MHz (default), Range 2 = up to 26MHz
+ *   L0:    Range 1 = up to 32MHz, Range 2 = up to 16MHz, Range 3 = up to 4MHz
+ */
+static inline void ll_rcc_set_vos_range1(void)
+{
+#if defined(STM32WBA55xx)
+    /* PWR_BASE on WBA55 = 0x46020800 (AHB5 domain) */
+    #define PWR_BASE_WBA  (AHB5_BASE + 0x0800UL)
+    /* PWR_VOSR at offset 0x0C, VOS bits [9:8], VOSRDY bit 15 */
+    MOD_BITS(REG32(PWR_BASE_WBA + 0x0CUL), 0x3UL << 8, 0x1UL << 8);  /* VOS = 01 = Range 1 */
+    /* Wait for voltage scaling ready */
+    while (!(REG32(PWR_BASE_WBA + 0x0CUL) & (1UL << 15)))
+        ;
+#elif defined(STM32H523xx)
+    /* PWR_VOSCR at offset 0x10, VOS bits [5:4] */
+    #define PWR_BASE_H5  (0x44020800UL)
+    MOD_BITS(REG32(PWR_BASE_H5 + 0x10UL), 0x3UL << 4, 0x3UL << 4);  /* VOS = 11 = Range 0 */
+    while (!(REG32(PWR_BASE_H5 + 0x14UL) & (1UL << 3)))  /* VOSRDY in PWR_VOSSR */
+        ;
+#elif defined(STM32L422xx)
+    /* Already in Range 1 after reset — nothing to do */
+#elif defined(STM32L011xx)
+    /* Already in Range 1 after reset — nothing to do */
+#endif
+}
+
+/* ============================================================
  * PLL configuration
  * ============================================================ */
 
@@ -241,15 +277,19 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
 
 #elif defined(STM32WBA55xx)
     /* WBA: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
-       CFGR: [1:0] PLL1SRC, [5:4] PLL1M-1, [16] PLL1REN
+       CFGR: [1:0] PLL1SRC, [5:4] PLL1M-1, [12:11] PLL1RGE, [16] PLL1REN
        DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
-    uint32_t cfgr = src
-                  | ((m - 1) << 4)
-                  | (1UL << 16);  /* PLL1REN */
-    uint32_t divr = ((n - 1) << 0)
-                  | ((r - 1) << 24);
-    REG32(RCC_BASE + 0x28UL) = cfgr;
-    REG32(RCC_BASE + 0x34UL) = divr;
+    /* Note: PLL1RGE (input freq range) must match VCO input.
+       Use ll_rcc_pll_config_full() or set RGE via ll_rcc_pll_set_rge(). */
+    {
+        uint32_t cfgr = src
+                      | ((m - 1) << 4)
+                      | (1UL << 16);      /* PLL1REN: enable R output */
+        uint32_t divr = ((n - 1) << 0)
+                      | ((r - 1) << 24);
+        REG32(RCC_BASE + 0x28UL) = cfgr;
+        REG32(RCC_BASE + 0x34UL) = divr;
+    }
 
 #elif defined(STM32H523xx)
     /* H5: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
@@ -262,6 +302,26 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
                   | ((r - 1) << 24);
     REG32(RCC_BASE + 0x28UL) = cfgr;
     REG32(RCC_BASE + 0x34UL) = divr;
+#endif
+}
+
+/**
+ * Set PLL input frequency range (WBA55/H5 only).
+ * Call AFTER ll_rcc_pll_config() but BEFORE ll_rcc_pll_enable().
+ *   vco_input_mhz: VCO input frequency (source / M) in MHz
+ */
+static inline void ll_rcc_pll_set_input_range(uint32_t vco_input_mhz)
+{
+#if defined(STM32WBA55xx)
+    /* PLL1CFGR bits [12:11] = PLL1RGE
+       00 = 4-8 MHz, 10 = 8-16 MHz */
+    uint32_t rge = (vco_input_mhz > 8) ? 0x2UL : 0x0UL;
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 11, rge << 11);
+#elif defined(STM32H523xx)
+    uint32_t rge = (vco_input_mhz > 8) ? 0x3UL : (vco_input_mhz > 4) ? 0x2UL : (vco_input_mhz > 2) ? 0x1UL : 0x0UL;
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 3, rge << 3);
+#else
+    (void)vco_input_mhz;
 #endif
 }
 
@@ -561,6 +621,142 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
 #endif /* STM32L422xx */
 
 /* ============================================================
+ * WBA55-specific: AHB4/AHB5, PWR, LSI, radio sleep clock
+ * ============================================================ */
+
+#if defined(STM32WBA55xx)
+
+/* AHB4/AHB5 bit masks (needed by functions below) */
+#define LL_AHB4_PWR       (1UL << 2)
+#define LL_AHB5_RADIO     (1UL << 0)
+
+/* ---- AHB4 peripheral clock (PWR, ADC4) ---- */
+
+static inline void ll_rcc_ahb4_clk_enable(uint32_t mask)
+{
+    /* RCC_AHB4ENR at offset 0x094 */
+    SET_BITS(REG32(RCC_BASE + 0x094UL), mask);
+    (void)REG32(RCC_BASE);
+    (void)REG32(RCC_BASE);
+}
+
+/* ---- AHB5 peripheral clock (RADIO) ---- */
+
+static inline void ll_rcc_ahb5_clk_enable(uint32_t mask)
+{
+    /* RCC_AHB5ENR at offset 0x098 */
+    SET_BITS(REG32(RCC_BASE + 0x098UL), mask);
+    (void)REG32(RCC_BASE);
+    (void)REG32(RCC_BASE);
+}
+
+static inline void ll_rcc_ahb5_clk_sleep_enable(void)
+{
+    /* RCC_AHB5SMENR at offset 0x0D8 — keep RADIO clock in sleep */
+    SET_BITS(REG32(RCC_BASE + 0x0D8UL), LL_AHB5_RADIO);
+}
+
+static inline void ll_rcc_ahb5_clk_sleep_disable(void)
+{
+    CLR_BITS(REG32(RCC_BASE + 0x0D8UL), LL_AHB5_RADIO);
+}
+
+/* ---- PWR: backup domain access ---- */
+
+#define PWR_BASE_WBA    (AHB5_BASE + 0x0800UL)  /* 0x46020800 */
+#define PWR_DBPR_REG    REG32(PWR_BASE_WBA + 0x28UL)
+#define PWR_VOSR_REG    REG32(PWR_BASE_WBA + 0x0CUL)
+
+/** Enable PWR peripheral clock and backup domain write access. */
+static inline void ll_pwr_enable_backup_access(void)
+{
+    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
+    SET_BITS(PWR_DBPR_REG, (1UL << 0));  /* DBP */
+}
+
+/** Get radio power mode (PWR_SR1 bits [2:1]) */
+static inline uint32_t ll_pwr_get_radio_mode(void)
+{
+    /* PWR_SR1 at offset 0x04, RADIOST bits [2:1] */
+    return (REG32(PWR_BASE_WBA + 0x04UL) >> 1) & 0x3UL;
+}
+
+#define LL_PWR_RADIO_ACTIVE_MODE    0x2UL
+#define LL_PWR_RADIO_DEEPSLEEP      0x0UL
+
+/* ---- LSI1 oscillator ---- */
+
+/** Enable LSI1 (32kHz internal RC). Requires backup domain access. */
+static inline void ll_rcc_lsi1_enable(void)
+{
+    /* RCC_BDCR1 at offset 0x0F0, LSI1ON = bit 26 */
+    SET_BITS(REG32(RCC_BASE + 0x0F0UL), (1UL << 26));
+}
+
+/** Check if LSI1 is ready. */
+static inline int ll_rcc_lsi1_ready(void)
+{
+    /* RCC_BDCR1, LSI1RDY = bit 27 */
+    return (REG32(RCC_BASE + 0x0F0UL) & (1UL << 27)) != 0;
+}
+
+/** Wait for LSI1 ready with timeout. Returns 1 on success, 0 on timeout. */
+static inline int ll_rcc_lsi1_enable_wait(void)
+{
+    ll_rcc_lsi1_enable();
+    for (volatile uint32_t t = 0; t < 1000000; t++) {
+        if (ll_rcc_lsi1_ready()) return 1;
+    }
+    return 0;
+}
+
+/* ---- Radio sleep timer clock source ---- */
+
+#define LL_RCC_RADIOSLEEPSOURCE_NONE     0x0UL
+#define LL_RCC_RADIOSLEEPSOURCE_LSE      0x1UL
+#define LL_RCC_RADIOSLEEPSOURCE_LSI      0x2UL
+#define LL_RCC_RADIOSLEEPSOURCE_HSE_DIV  0x3UL  /* HSE / 1024 */
+
+/** Set the radio sleep timer clock source. Requires backup domain access. */
+static inline void ll_rcc_set_radio_sleep_clk(uint32_t src)
+{
+    /* RCC_BDCR1, RADIOSTSEL bits [19:18] */
+    MOD_BITS(REG32(RCC_BASE + 0x0F0UL), 0x3UL << 18, (src & 0x3UL) << 18);
+}
+
+/** Get the current radio sleep timer clock source. */
+static inline uint32_t ll_rcc_get_radio_sleep_clk(void)
+{
+    return (REG32(RCC_BASE + 0x0F0UL) >> 18) & 0x3UL;
+}
+
+/* ---- Radio baseband clock (active clock for 2.4GHz radio) ---- */
+
+static inline void ll_rcc_radio_bb_clk_enable(void)
+{
+    /* RCC_RADIOENR at offset 0x0A8, bit 1 = RADIOSTCKEN (sleep timer),
+       bit 0 = RADIOENEN (radio enable) — wait for RFSSMEN bit? */
+    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 0));  /* RADIOENEN */
+}
+
+static inline void ll_rcc_radio_bb_clk_disable(void)
+{
+    CLR_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 0));
+}
+
+static inline void ll_rcc_radio_slp_tmr_clk_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 1));  /* RADIOSTCKEN */
+}
+
+static inline int ll_rcc_radio_slp_tmr_clk_enabled(void)
+{
+    return (REG32(RCC_BASE + 0x208UL) & (1UL << 1)) != 0;
+}
+
+#endif /* STM32WBA55xx */
+
+/* ============================================================
  * Peripheral clock enable bit masks (per family)
  * ============================================================ */
 
@@ -609,6 +805,7 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   #define LL_APB7_LPUART1   (1UL << 6)
   /* AHB2 */
   #define LL_AHB2_ADC4      (1UL << 10)
+  /* AHB4/AHB5 defined above with WBA55 functions */
 
 #elif defined(STM32H523xx)
   /* APB1 */

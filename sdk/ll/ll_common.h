@@ -31,7 +31,8 @@
 #elif defined(STM32WBA55xx)
   #define AHB1_BASE         (PERIPH_BASE + 0x00020000UL)
   #define AHB2_BASE         (PERIPH_BASE + 0x02020000UL)
-  #define IOPORT_BASE       (PERIPH_BASE + 0x02000000UL)
+  #define AHB5_BASE         (PERIPH_BASE + 0x06020000UL)  /* 0x46020000 */
+  #define IOPORT_BASE       (PERIPH_BASE + 0x02020000UL)  /* 0x42020000 */
 #elif defined(STM32H523xx)
   #define AHB1_BASE         (PERIPH_BASE + 0x04020000UL)
   #define AHB2_BASE         (PERIPH_BASE + 0x08020000UL)

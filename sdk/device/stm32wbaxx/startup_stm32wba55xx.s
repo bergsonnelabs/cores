@@ -58,6 +58,19 @@ Reset_Handler:
     cmp r0, r1
     bcc .Lbss_zero
 
+    /* Enable FPU (CP10 + CP11 full access) */
+    ldr r0, =0xE000ED88    /* SCB->CPACR */
+    ldr r1, [r0]
+    orr r1, r1, #(0xF << 20)
+    str r1, [r0]
+    dsb
+    isb
+
+    /* Set VTOR to point to our vector table in FLASH */
+    ldr r0, =0xE000ED08    /* SCB->VTOR */
+    ldr r1, =0x08000000
+    str r1, [r0]
+
     /* Call main() */
     bl main
 
