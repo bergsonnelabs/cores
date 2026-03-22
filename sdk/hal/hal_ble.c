@@ -203,6 +203,10 @@ void hal_ble_init(void)
     /* Set TX power to maximum */
     aci_hal_set_tx_power_level(1, 0x19);
 
+    /* Initialize service controller (routes HCI/GAP/GATT events) */
+    extern void SVCCTL_Init(void);
+    SVCCTL_Init();
+
     /* Initialize GATT + GAP */
     dbg_gatt_init_ret = aci_gatt_init();
     dbg_gap_init_ret = aci_gap_init(0x01, 0x00, 16,
@@ -258,65 +262,46 @@ hal_status_t hal_ble_advertise(const char *name)
     extern tBleStatus hci_le_set_scan_response_data(uint8_t len, const uint8_t *data);
     extern tBleStatus hci_le_set_advertising_enable(uint8_t enable);
 
-    /* ---- Bypass host stack — call link layer directly ---- */
+    /* Use GAP-level API — same as working project */
+    extern tBleStatus aci_gap_set_discoverable(
+        uint8_t Advertising_Type, uint16_t Advertising_Interval_Min,
+        uint16_t Advertising_Interval_Max, uint8_t Own_Address_Type,
+        uint8_t Advertising_Filter_Policy, uint8_t Local_Name_Length,
+        const uint8_t *Local_Name, uint8_t Service_Uuid_length,
+        const uint8_t *Service_Uuid_List, uint16_t Conn_Interval_Min,
+        uint16_t Conn_Interval_Max);
 
-    /* ll_intf functions use HCI-format parameters internally */
-    extern uint8_t ll_intf_le_set_adv_params(uint16_t adv_interval_min,
-        uint16_t adv_interval_max, uint8_t adv_type,
-        uint8_t own_addr_type, uint8_t peer_addr_type,
-        const uint8_t *peer_addr, uint8_t adv_channel_map,
-        uint8_t adv_filter_policy);
-    extern uint8_t ll_intf_le_set_adv_data(uint8_t len, const uint8_t *data);
-    extern uint8_t ll_intf_le_set_adv_enable(uint8_t enable);
-    extern uint8_t ll_intf_le_set_random_addr(const uint8_t *addr);
-
-    /* Set a random static address */
-    uint8_t bd_addr[6] = {0x01, 0xEF, 0xBE, 0x00, 0x55, 0xC0 | 0xC0};
-    dbg_advertise_ret = ll_intf_le_set_random_addr(bd_addr);
-
-    /* Advertising parameters: 100ms interval, ADV_IND, random address */
-    dbg_advertise_ret = ll_intf_le_set_adv_params(
-        0x00A0, 0x00A0,  /* 100ms interval */
-        0x00,            /* ADV_IND */
-        0x01,            /* own: random */
-        0x00,            /* peer: public */
-        (const uint8_t *)"\x00\x00\x00\x00\x00\x00",
-        0x07,            /* all 3 channels */
-        0x00             /* no filter */
-    );
-
-    /* Build advertising data */
     uint8_t name_len = 0;
     while (name[name_len] && name_len < 20) name_len++;
 
-    uint8_t adv_data[31];
-    uint8_t pos = 0;
-
-    /* Flags: General Discoverable + BR/EDR Not Supported */
-    adv_data[pos++] = 0x02;
-    adv_data[pos++] = 0x01;
-    adv_data[pos++] = 0x06;
-
-    /* Complete Local Name */
-    adv_data[pos++] = name_len + 1;
-    adv_data[pos++] = 0x09;
+    /* Local name with AD type prefix (0x09 = Complete Local Name) */
+    uint8_t local_name[22];
+    local_name[0] = 0x09;
     for (uint8_t i = 0; i < name_len; i++)
-        adv_data[pos++] = (uint8_t)name[i];
+        local_name[i + 1] = (uint8_t)name[i];
 
-    /* Manufacturer data */
-    adv_data[pos++] = 0x05;
-    adv_data[pos++] = 0xFF;
-    adv_data[pos++] = 0x55;
-    adv_data[pos++] = 0xBE;
-    adv_data[pos++] = 0x42;
-    adv_data[pos++] = 0x4C;
+    dbg_advertise_ret = aci_gap_set_discoverable(
+        0x00,           /* ADV_IND */
+        0x0080,         /* min interval: 80ms */
+        0x00A0,         /* max interval: 100ms */
+        0x00,           /* public address */
+        0x00,           /* no filter */
+        name_len + 1,   /* local name length (includes AD type) */
+        local_name,
+        0, NULL,        /* no service UUIDs */
+        0x0006, 0x0010  /* conn interval min/max */
+    );
 
-    dbg_gatt_init_ret = ll_intf_le_set_adv_data(pos, adv_data);
+    /* Pump event loop aggressively to let the scheduler start advertising */
+    extern void UTIL_SEQ_Run(uint32_t mask);
+    for (volatile uint32_t i = 0; i < 5000; i++) {
+        BleStack_Process();
+        ll_sys_bg_process();
+        UTIL_SEQ_Run(~0UL);
+        for (volatile uint32_t d = 0; d < 5000; d++) ;
+    }
 
-    /* Enable advertising — direct to link layer */
-    dbg_scan_rsp_ret = ll_intf_le_set_adv_enable(0x01);
-
-    return (dbg_scan_rsp_ret == 0) ? HAL_OK : HAL_ERROR;
+    return (dbg_advertise_ret == 0) ? HAL_OK : HAL_ERROR;
 }
 
 hal_status_t hal_ble_stop_advertise(void)
@@ -370,4 +355,18 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
     (void)ext_length;
     /* TODO: parse HCI events for connect/disconnect */
     return 0;
+}
+
+/* ============================================================
+ * SVCCTL application notification — required by svc_ctl.c
+ * Called for GAP events and unhandled GATT events.
+ * ============================================================ */
+
+#include "svc_ctl.h"
+
+SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_pckt)
+{
+    (void)p_pckt;
+    /* Accept all events — don't block the flow */
+    return SVCCTL_UserEvtFlowEnable;
 }
