@@ -156,14 +156,14 @@ static inline void hal_nvic_clear_pending(uint32_t irqn) { ll_nvic_clear_pending
   #define HAL_IRQ_I2C3_EV       54
   #define HAL_IRQ_I2C3_ER       55
   #define HAL_IRQ_SPI1          45
-  #define HAL_IRQ_SPI3          53
-  #define HAL_IRQ_TIM1_UP       40
-  #define HAL_IRQ_TIM1_CC       42
-  #define HAL_IRQ_TIM2          36
-  #define HAL_IRQ_TIM3          37
-  #define HAL_IRQ_TIM16         38
-  #define HAL_IRQ_TIM17         39
-  #define HAL_IRQ_ADC4          17
+  #define HAL_IRQ_SPI3          63
+  #define HAL_IRQ_TIM1_UP       38
+  #define HAL_IRQ_TIM1_CC       40
+  #define HAL_IRQ_TIM2          41
+  #define HAL_IRQ_TIM3          42
+  #define HAL_IRQ_TIM16         51
+  #define HAL_IRQ_TIM17         52
+  #define HAL_IRQ_ADC4          65
   #define HAL_IRQ_GPDMA1_CH0    29
   #define HAL_IRQ_GPDMA1_CH1    30
   #define HAL_IRQ_GPDMA1_CH2    31
@@ -171,7 +171,11 @@ static inline void hal_nvic_clear_pending(uint32_t irqn) { ll_nvic_clear_pending
   #define HAL_IRQ_GPDMA1_CH4    33
   #define HAL_IRQ_GPDMA1_CH5    34
   #define HAL_IRQ_GPDMA1_CH6    35
-  /* WBA55 has GPDMA1 channels 0-6 only; no CH7 (IRQ 36 = TIM2) */
+  #define HAL_IRQ_GPDMA1_CH7    36
+  /* BLE-related IRQs */
+  #define HAL_IRQ_RADIO         66
+  #define HAL_IRQ_HASH          61  /* Used as RADIO_SW_LOW_INTR */
+  #define HAL_IRQ_RNG           59
 
 #elif defined(STM32H523xx)
   #define HAL_IRQ_USART1        58

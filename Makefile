@@ -55,7 +55,7 @@ else ifeq ($(TILE),Core-W-b)
   FLOAT_ABI   = hard
   LDSCRIPT    = link/stm32wba55hg.ld
   STARTUP     = sdk/device/stm32wbaxx/startup_stm32wba55xx.s
-  OPENOCD_CFG = debug/stm32l4.cfg
+  OPENOCD_CFG = debug/stm32wba.cfg
 else ifeq ($(TILE),Core-H-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
@@ -108,14 +108,33 @@ LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -specs=nosys.specs -specs=nano.specs
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 
+# ---- BLE support (Core-W-b only) ----
+
+BLE_ENABLED ?= 0
+ifeq ($(BLE_ENABLED),1)
+  BLE_DIR = sdk/ble
+  CFLAGS += -I$(BLE_DIR)/include -I$(BLE_DIR)/include/auto -I$(BLE_DIR)/link_layer/inc
+  CFLAGS += -DBASIC_FEATURES=1 -DBLE=1
+  CFLAGS += '-D__PACKED_STRUCT=struct __attribute__((packed))'
+  CFLAGS += '-D__PACKED_UNION=union __attribute__((packed))'
+  CFLAGS += '-D__STATIC_INLINE=static inline'
+  CFLAGS += '-D__WEAK=__attribute__((weak))'
+  LDFLAGS += -L$(BLE_DIR)/lib -Wl,--start-group -l:stm32wba_ble_stack_basic.a -l:LinkLayer_BLE_Basic_lib.a -Wl,--end-group
+  BLE_SOURCES = $(wildcard $(BLE_DIR)/*.c) sdk/hal/hal_ble.c
+endif
+
 # ---- Object files ----
 
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(ASM_SOURCES:.s=.o))
 GEN_OBJS = $(GEN_SOURCES:.c=.o)
-HAL_SOURCES = $(wildcard sdk/hal/*.c)
+HAL_SOURCES = $(filter-out sdk/hal/hal_ble.c, $(wildcard sdk/hal/*.c))
 HAL_OBJS = $(addprefix $(BUILD_DIR)/, $(HAL_SOURCES:.c=.o))
 OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS) $(HAL_OBJS)
+ifeq ($(BLE_ENABLED),1)
+  BLE_OBJS = $(addprefix $(BUILD_DIR)/, $(BLE_SOURCES:.c=.o))
+  OBJECTS += $(BLE_OBJS)
+endif
 
 # ---- Default goal ----
 

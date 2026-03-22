@@ -134,7 +134,7 @@ g_pfnVectors:
     .word EXTI14_IRQHandler         /* 25: EXTI Line 14 */
     .word EXTI15_IRQHandler         /* 26: EXTI Line 15 */
     .word IWDG_IRQHandler           /* 27: IWDG */
-    .word 0                         /* 28: Reserved */
+    .word SAES_IRQHandler           /* 28: SAES */
     .word GPDMA1_Channel0_IRQHandler /* 29: GPDMA1 Channel 0 */
     .word GPDMA1_Channel1_IRQHandler /* 30: GPDMA1 Channel 1 */
     .word GPDMA1_Channel2_IRQHandler /* 31: GPDMA1 Channel 2 */
@@ -142,26 +142,42 @@ g_pfnVectors:
     .word GPDMA1_Channel4_IRQHandler /* 33: GPDMA1 Channel 4 */
     .word GPDMA1_Channel5_IRQHandler /* 34: GPDMA1 Channel 5 */
     .word GPDMA1_Channel6_IRQHandler /* 35: GPDMA1 Channel 6 */
-    .word TIM2_IRQHandler           /* 36: TIM2 */
-    .word TIM3_IRQHandler           /* 37: TIM3 */
-    .word TIM16_IRQHandler          /* 38: TIM16 */
-    .word TIM17_IRQHandler          /* 39: TIM17 */
-    .word TIM1_UP_IRQHandler        /* 40: TIM1 Update */
-    .word 0                         /* 41: Reserved */
-    .word TIM1_CC_IRQHandler        /* 42: TIM1 Capture Compare */
+    .word GPDMA1_Channel7_IRQHandler /* 36: GPDMA1 Channel 7 */
+    .word TIM1_BRK_IRQHandler       /* 37: TIM1 Break */
+    .word TIM1_UP_IRQHandler        /* 38: TIM1 Update */
+    .word TIM1_TRG_COM_IRQHandler   /* 39: TIM1 Trigger/Commutation */
+    .word TIM1_CC_IRQHandler        /* 40: TIM1 Capture Compare */
+    .word TIM2_IRQHandler           /* 41: TIM2 */
+    .word TIM3_IRQHandler           /* 42: TIM3 */
     .word I2C1_EV_IRQHandler        /* 43: I2C1 Event */
     .word I2C1_ER_IRQHandler        /* 44: I2C1 Error */
     .word SPI1_IRQHandler           /* 45: SPI1 */
     .word USART1_IRQHandler         /* 46: USART1 */
     .word USART2_IRQHandler         /* 47: USART2 */
     .word LPUART1_IRQHandler        /* 48: LPUART1 */
-    .word 0                         /* 49: Reserved */
-    .word 0                         /* 50: Reserved */
-    .word 0                         /* 51: Reserved */
-    .word 0                         /* 52: Reserved */
-    .word SPI3_IRQHandler           /* 53: SPI3 */
+    .word LPTIM1_IRQHandler         /* 49: LPTIM1 */
+    .word LPTIM2_IRQHandler         /* 50: LPTIM2 */
+    .word TIM16_IRQHandler          /* 51: TIM16 */
+    .word TIM17_IRQHandler          /* 52: TIM17 */
+    .word COMP_IRQHandler           /* 53: COMP */
     .word I2C3_EV_IRQHandler        /* 54: I2C3 Event */
     .word I2C3_ER_IRQHandler        /* 55: I2C3 Error */
+    .word SAI1_IRQHandler           /* 56: SAI1 */
+    .word TSC_IRQHandler            /* 57: TSC */
+    .word AES_IRQHandler            /* 58: AES */
+    .word RNG_IRQHandler            /* 59: RNG */
+    .word FPU_IRQHandler            /* 60: FPU */
+    .word HASH_IRQHandler           /* 61: HASH */
+    .word PKA_IRQHandler            /* 62: PKA */
+    .word SPI3_IRQHandler           /* 63: SPI3 */
+    .word ICACHE_IRQHandler         /* 64: ICACHE */
+    .word ADC4_IRQHandler           /* 65: ADC4 */
+    .word RADIO_IRQHandler          /* 66: 2.4GHz RADIO */
+    .word WKUP_IRQHandler           /* 67: WKUP */
+    .word HSEM_IRQHandler           /* 68: HSEM */
+    .word HSEM_S_IRQHandler         /* 69: HSEM secure */
+    .word WKUP_S_IRQHandler         /* 70: WKUP secure */
+    .word RCC_AUDIOSYNC_IRQHandler  /* 71: RCC AudioSync */
 
 /**
  * Weak aliases — any of these can be overridden by defining the
@@ -244,6 +260,8 @@ g_pfnVectors:
     .thumb_set EXTI15_IRQHandler, Default_Handler
     .weak IWDG_IRQHandler
     .thumb_set IWDG_IRQHandler, Default_Handler
+    .weak SAES_IRQHandler
+    .thumb_set SAES_IRQHandler, Default_Handler
     .weak GPDMA1_Channel0_IRQHandler
     .thumb_set GPDMA1_Channel0_IRQHandler, Default_Handler
     .weak GPDMA1_Channel1_IRQHandler
@@ -258,18 +276,20 @@ g_pfnVectors:
     .thumb_set GPDMA1_Channel5_IRQHandler, Default_Handler
     .weak GPDMA1_Channel6_IRQHandler
     .thumb_set GPDMA1_Channel6_IRQHandler, Default_Handler
+    .weak GPDMA1_Channel7_IRQHandler
+    .thumb_set GPDMA1_Channel7_IRQHandler, Default_Handler
+    .weak TIM1_BRK_IRQHandler
+    .thumb_set TIM1_BRK_IRQHandler, Default_Handler
+    .weak TIM1_UP_IRQHandler
+    .thumb_set TIM1_UP_IRQHandler, Default_Handler
+    .weak TIM1_TRG_COM_IRQHandler
+    .thumb_set TIM1_TRG_COM_IRQHandler, Default_Handler
+    .weak TIM1_CC_IRQHandler
+    .thumb_set TIM1_CC_IRQHandler, Default_Handler
     .weak TIM2_IRQHandler
     .thumb_set TIM2_IRQHandler, Default_Handler
     .weak TIM3_IRQHandler
     .thumb_set TIM3_IRQHandler, Default_Handler
-    .weak TIM16_IRQHandler
-    .thumb_set TIM16_IRQHandler, Default_Handler
-    .weak TIM17_IRQHandler
-    .thumb_set TIM17_IRQHandler, Default_Handler
-    .weak TIM1_UP_IRQHandler
-    .thumb_set TIM1_UP_IRQHandler, Default_Handler
-    .weak TIM1_CC_IRQHandler
-    .thumb_set TIM1_CC_IRQHandler, Default_Handler
     .weak I2C1_EV_IRQHandler
     .thumb_set I2C1_EV_IRQHandler, Default_Handler
     .weak I2C1_ER_IRQHandler
@@ -282,9 +302,49 @@ g_pfnVectors:
     .thumb_set USART2_IRQHandler, Default_Handler
     .weak LPUART1_IRQHandler
     .thumb_set LPUART1_IRQHandler, Default_Handler
-    .weak SPI3_IRQHandler
-    .thumb_set SPI3_IRQHandler, Default_Handler
+    .weak LPTIM1_IRQHandler
+    .thumb_set LPTIM1_IRQHandler, Default_Handler
+    .weak LPTIM2_IRQHandler
+    .thumb_set LPTIM2_IRQHandler, Default_Handler
+    .weak TIM16_IRQHandler
+    .thumb_set TIM16_IRQHandler, Default_Handler
+    .weak TIM17_IRQHandler
+    .thumb_set TIM17_IRQHandler, Default_Handler
+    .weak COMP_IRQHandler
+    .thumb_set COMP_IRQHandler, Default_Handler
     .weak I2C3_EV_IRQHandler
     .thumb_set I2C3_EV_IRQHandler, Default_Handler
     .weak I2C3_ER_IRQHandler
     .thumb_set I2C3_ER_IRQHandler, Default_Handler
+    .weak SAI1_IRQHandler
+    .thumb_set SAI1_IRQHandler, Default_Handler
+    .weak TSC_IRQHandler
+    .thumb_set TSC_IRQHandler, Default_Handler
+    .weak AES_IRQHandler
+    .thumb_set AES_IRQHandler, Default_Handler
+    .weak RNG_IRQHandler
+    .thumb_set RNG_IRQHandler, Default_Handler
+    .weak FPU_IRQHandler
+    .thumb_set FPU_IRQHandler, Default_Handler
+    .weak HASH_IRQHandler
+    .thumb_set HASH_IRQHandler, Default_Handler
+    .weak PKA_IRQHandler
+    .thumb_set PKA_IRQHandler, Default_Handler
+    .weak SPI3_IRQHandler
+    .thumb_set SPI3_IRQHandler, Default_Handler
+    .weak ICACHE_IRQHandler
+    .thumb_set ICACHE_IRQHandler, Default_Handler
+    .weak ADC4_IRQHandler
+    .thumb_set ADC4_IRQHandler, Default_Handler
+    .weak RADIO_IRQHandler
+    .thumb_set RADIO_IRQHandler, Default_Handler
+    .weak WKUP_IRQHandler
+    .thumb_set WKUP_IRQHandler, Default_Handler
+    .weak HSEM_IRQHandler
+    .thumb_set HSEM_IRQHandler, Default_Handler
+    .weak HSEM_S_IRQHandler
+    .thumb_set HSEM_S_IRQHandler, Default_Handler
+    .weak WKUP_S_IRQHandler
+    .thumb_set WKUP_S_IRQHandler, Default_Handler
+    .weak RCC_AUDIOSYNC_IRQHandler
+    .thumb_set RCC_AUDIOSYNC_IRQHandler, Default_Handler

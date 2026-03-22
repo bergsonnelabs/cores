@@ -134,4 +134,12 @@ static inline void ll_nvic_clear_pending(uint32_t irq)
     REG32(LL_NVIC_ICPR_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
 }
 
+#define LL_NVIC_ISPR_BASE   0xE000E200UL   /* Interrupt Set-Pending */
+
+/** Set a pending IRQ (software trigger) */
+static inline void ll_nvic_set_pending(uint32_t irq)
+{
+    REG32(LL_NVIC_ISPR_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
+}
+
 #endif /* LL_COMMON_H */

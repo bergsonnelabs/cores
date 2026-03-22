@@ -1,0 +1,15 @@
+{
+  "project": {
+    "name": "ble-beacon",
+    "tile": "Core-W-b",
+    "description": "BLE beacon — advertise device name"
+  },
+
+  "clock": {
+    "source": "hse",
+    "sysclk_mhz": 100
+  },
+
+  "pins": {},
+  "interfaces": {}
+}
