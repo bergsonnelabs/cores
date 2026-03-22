@@ -421,6 +421,9 @@ int SNVMA_Write(uint32_t id, void *cb)
 
 /* ============================================================
  * AMM — Advanced Memory Manager stubs
+ * NOTE: BLECB_Indication now uses our own static pool allocator
+ * in hal_ble.c instead of AMM. These stubs remain for any other
+ * code that references AMM.
  * ============================================================ */
 
 int AMM_Init(void *cfg)
@@ -432,7 +435,7 @@ int AMM_Init(void *cfg)
 int AMM_Alloc(uint32_t id, uint32_t size, uint32_t **ptr, void *cb)
 {
     (void)id; (void)size; (void)ptr; (void)cb;
-    return -1; /* fail */
+    return -1; /* Not used — hal_ble.c has its own pool */
 }
 
 void AMM_Free(uint32_t *ptr)
@@ -445,69 +448,7 @@ int AMM_BackgroundProcess(void)
     return 0;
 }
 
-/* ============================================================
- * Linked list — minimal stubs used by BLE event queue
- * ============================================================ */
-
-typedef struct list_node {
-    struct list_node *next;
-} tListNode;
-
-void LST_init_head(tListNode *head)
-{
-    head->next = head;
-}
-
-uint8_t LST_is_empty(tListNode *head)
-{
-    return (head->next == head) ? 1 : 0;
-}
-
-void LST_insert_tail(tListNode *head, tListNode *node)
-{
-    tListNode *p = head;
-    while (p->next != head)
-        p = p->next;
-    p->next = node;
-    node->next = head;
-}
-
-void LST_remove_head(tListNode *head, tListNode **node)
-{
-    if (head->next != head) {
-        *node = head->next;
-        head->next = (*node)->next;
-    } else {
-        *node = NULL;
-    }
-}
-
-void LST_insert_head(tListNode *head, tListNode *node)
-{
-    node->next = head->next;
-    head->next = node;
-}
-
-void LST_remove_node(tListNode *node)
-{
-    (void)node;
-}
-
-void LST_get_next_node(tListNode *node, tListNode **next)
-{
-    *next = node->next;
-}
-
-int LST_get_size(tListNode *head)
-{
-    int count = 0;
-    tListNode *p = head->next;
-    while (p != head) {
-        count++;
-        p = p->next;
-    }
-    return count;
-}
+/* Linked list is now in stm_list.c (doubly-linked, ported from ST) */
 
 /* ============================================================
  * SCM — System Clock Manager stubs

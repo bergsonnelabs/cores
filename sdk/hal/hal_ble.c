@@ -19,6 +19,10 @@
 #include "ble_bufsize.h"
 #include "bleplat.h"
 
+/* Forward declarations */
+static void ble_evt_queue_init(void);
+static void _ble_host_task(void);
+
 /* ============================================================
  * Configuration
  * ============================================================ */
@@ -203,6 +207,9 @@ void hal_ble_init(void)
     /* Set TX power to maximum */
     aci_hal_set_tx_power_level(1, 0x19);
 
+    /* Initialize async event queue (MUST be before BleStack_Init) */
+    ble_evt_queue_init();
+
     /* Initialize service controller (routes HCI/GAP/GATT events) */
     extern void SVCCTL_Init(void);
     SVCCTL_Init();
@@ -292,15 +299,6 @@ hal_status_t hal_ble_advertise(const char *name)
         0x0006, 0x0010  /* conn interval min/max */
     );
 
-    /* Pump event loop aggressively to let the scheduler start advertising */
-    extern void UTIL_SEQ_Run(uint32_t mask);
-    for (volatile uint32_t i = 0; i < 5000; i++) {
-        BleStack_Process();
-        ll_sys_bg_process();
-        UTIL_SEQ_Run(~0UL);
-        for (volatile uint32_t d = 0; d < 5000; d++) ;
-    }
-
     return (dbg_advertise_ret == 0) ? HAL_OK : HAL_ERROR;
 }
 
@@ -343,26 +341,159 @@ hal_status_t hal_ble_notify(uint16_t conn_handle, uint16_t char_handle,
 }
 
 /* ============================================================
- * BLE stack callback — called from BleStack_Process()
+ * Async Event Queue — buffers HCI events from BLE stack
+ *
+ * The BLE host stack produces events via BLECB_Indication.
+ * These are queued here and drained by Ble_UserEvtRx (sequencer task).
+ * Without this queue, events are dropped and advertising never activates.
+ * ============================================================ */
+
+#include "stm_list.h"
+#include "svc_ctl.h"
+#include <string.h>
+
+/* HCI event packet types */
+#define HCI_EVENT_PKT_TYPE   0x04
+
+typedef struct {
+    tListNode node;         /* doubly-linked list pointers (must be first) */
+    struct {
+        uint8_t type;       /* HCI_EVENT_PKT_TYPE */
+        struct {
+            uint8_t evtcode;
+            uint8_t plen;
+            uint8_t payload[256];
+        } evt;
+    } evtserial;
+} BleEvtPacket_t;
+
+/* Static event pool — simple fixed-block allocator.
+ * Avoids the full AMM (717 lines) for now. */
+#define EVT_POOL_SIZE  8
+static BleEvtPacket_t evt_pool[EVT_POOL_SIZE];
+static uint8_t evt_pool_used[EVT_POOL_SIZE];
+
+static BleEvtPacket_t *evt_pool_alloc(void)
+{
+    for (int i = 0; i < EVT_POOL_SIZE; i++) {
+        if (!evt_pool_used[i]) {
+            evt_pool_used[i] = 1;
+            return &evt_pool[i];
+        }
+    }
+    return (BleEvtPacket_t *)0;
+}
+
+static void evt_pool_free(BleEvtPacket_t *pkt)
+{
+    for (int i = 0; i < EVT_POOL_SIZE; i++) {
+        if (&evt_pool[i] == pkt) {
+            evt_pool_used[i] = 0;
+            return;
+        }
+    }
+}
+
+/* Async event queue */
+static tListNode BleAsynchEventQueue;
+static uint8_t ble_evt_queue_initialized = 0;
+
+/* Forward declaration */
+static void Ble_UserEvtRx(void);
+
+/* Initialize the event queue — called from hal_ble_init */
+static void ble_evt_queue_init(void)
+{
+    LST_init_head(&BleAsynchEventQueue);
+    memset(evt_pool_used, 0, sizeof(evt_pool_used));
+    ble_evt_queue_initialized = 1;
+
+    /* Register the drain task with the sequencer */
+    extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
+    UTIL_SEQ_RegTask(1U << 5, 0, Ble_UserEvtRx);  /* CFG_TASK_HCI_ASYNCH_EVT_ID = 5 */
+}
+
+/* ============================================================
+ * BLECB_Indication — THE CRITICAL CALLBACK
+ *
+ * Called by BleStack_Process() for every HCI event the host
+ * stack produces. We allocate a buffer, copy the event,
+ * queue it, and trigger the async drain task.
+ *
+ * Returning 0 (BLE_STATUS_SUCCESS) tells the stack the event
+ * was consumed. Returning non-zero means it was dropped.
  * ============================================================ */
 
 uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
                          const uint8_t *ext_data, uint16_t ext_length)
 {
-    (void)data;
-    (void)length;
     (void)ext_data;
     (void)ext_length;
-    /* TODO: parse HCI events for connect/disconnect */
-    return 0;
+
+    if (!ble_evt_queue_initialized) return 1;
+    if (data[0] != HCI_EVENT_PKT_TYPE) return 1;
+
+    BleEvtPacket_t *pkt = evt_pool_alloc();
+    if (!pkt) return 1;  /* Pool exhausted — drop event */
+
+    /* Copy event data */
+    pkt->evtserial.type = HCI_EVENT_PKT_TYPE;
+    pkt->evtserial.evt.evtcode = data[1];
+    pkt->evtserial.evt.plen = data[2];
+    uint16_t copy_len = data[2];
+    if (copy_len > sizeof(pkt->evtserial.evt.payload))
+        copy_len = sizeof(pkt->evtserial.evt.payload);
+    memcpy(pkt->evtserial.evt.payload, &data[3], copy_len);
+
+    /* Queue the event */
+    LST_insert_tail(&BleAsynchEventQueue, (tListNode *)pkt);
+
+    /* Trigger the drain task */
+    extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
+    UTIL_SEQ_SetTask(1U << 5, 0);  /* CFG_TASK_HCI_ASYNCH_EVT_ID */
+
+    return 0;  /* BLE_STATUS_SUCCESS — event consumed */
+}
+
+/* ============================================================
+ * Ble_UserEvtRx — Drain the async event queue
+ *
+ * Called by the sequencer when events are pending. Pulls each
+ * event from the queue and routes it through SVCCTL.
+ * ============================================================ */
+
+static void Ble_UserEvtRx(void)
+{
+    BleEvtPacket_t *pkt = (BleEvtPacket_t *)0;
+
+    LST_remove_head(&BleAsynchEventQueue, (tListNode **)&pkt);
+    if (!pkt) return;
+
+    SVCCTL_UserEvtFlowStatus_t status;
+    status = SVCCTL_UserEvtRx((void *)&(pkt->evtserial));
+
+    if (status != SVCCTL_UserEvtFlowDisable) {
+        evt_pool_free(pkt);
+    } else {
+        /* Flow disabled — put it back */
+        LST_insert_head(&BleAsynchEventQueue, (tListNode *)pkt);
+    }
+
+    /* If more events pending, re-trigger */
+    if (LST_is_empty(&BleAsynchEventQueue) == FALSE) {
+        extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
+        UTIL_SEQ_SetTask(1U << 5, 0);
+    }
+
+    /* Trigger BLE host processing */
+    extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
+    UTIL_SEQ_SetTask(1U << 4, 0);  /* CFG_TASK_BLE_HOST */
 }
 
 /* ============================================================
  * SVCCTL application notification — required by svc_ctl.c
  * Called for GAP events and unhandled GATT events.
  * ============================================================ */
-
-#include "svc_ctl.h"
 
 SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_pckt)
 {

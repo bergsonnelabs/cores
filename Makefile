@@ -113,7 +113,7 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 BLE_ENABLED ?= 0
 ifeq ($(BLE_ENABLED),1)
   BLE_DIR = sdk/ble
-  CFLAGS += -I$(BLE_DIR)/include -I$(BLE_DIR)/include/auto -I$(BLE_DIR)/link_layer/inc
+  CFLAGS += -I$(BLE_DIR) -I$(BLE_DIR)/include -I$(BLE_DIR)/include/auto -I$(BLE_DIR)/link_layer/inc
   CFLAGS += -DBASIC_FEATURES=1 -DBLE=1
   CFLAGS += '-D__PACKED_STRUCT=struct __attribute__((packed))'
   CFLAGS += '-D__PACKED_UNION=union __attribute__((packed))'
