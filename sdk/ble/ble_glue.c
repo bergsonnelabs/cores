@@ -168,6 +168,7 @@ void HW_RNG_Get(uint8_t n, uint32_t *val)
 
 void ll_sys_init(void)
 {
+    LINKLAYER_PLAT_ClockInit();
 }
 
 void ll_sys_delay_us(uint32_t delay)
@@ -188,24 +189,17 @@ void ll_sys_assert(uint8_t condition)
 
 void ll_sys_get_rng(uint8_t *ptr_rnd, uint32_t len)
 {
-    extern volatile uint32_t _systick_ticks;
-    uint32_t seed = _systick_ticks;
-    for (uint32_t i = 0; i < len; i++)
-    {
-        seed ^= seed << 13;
-        seed ^= seed >> 17;
-        seed ^= seed << 5;
-        ptr_rnd[i] = (uint8_t)(seed & 0xFF);
-    }
+    LINKLAYER_PLAT_GetRNG(ptr_rnd, len);
 }
 
 void ll_sys_radio_ack_ctrl(uint8_t enable)
 {
-    (void)enable;
+    LINKLAYER_PLAT_AclkCtrl(enable);
 }
 
 void ll_sys_radio_wait_for_busclkrdy(void)
 {
+    LINKLAYER_PLAT_WaitHclkRdy();
 }
 
 void ll_sys_setup_radio_intr(void (*intr_cb)())
@@ -233,12 +227,20 @@ void ll_sys_radio_sw_low_intr_trigger(uint8_t priority)
 
 void ll_sys_radio_evt_not(uint8_t start)
 {
-    (void)start;
+    if (start) {
+        LINKLAYER_PLAT_StartRadioEvt();
+    } else {
+        LINKLAYER_PLAT_StopRadioEvt();
+    }
 }
 
 void ll_sys_rco_clbr_not(uint8_t start)
 {
-    (void)start;
+    if (start) {
+        LINKLAYER_PLAT_RCOStartClbr();
+    } else {
+        LINKLAYER_PLAT_RCOStopClbr();
+    }
 }
 
 void ll_sys_request_temperature(void)
@@ -252,29 +254,43 @@ void ll_sys_schldr_timing_update_not(void *p_evnt_timing)
 
 void ll_sys_bg_process(void)
 {
-    /* Link layer background processing — called from sequencer */
+    /* Link layer background processing — drain all pending radio events
+     * and forward them to the host stack. This is THE critical function
+     * that connects radio interrupts to actual BLE operation. */
+    extern uint8_t emngr_can_mcu_sleep(void);
+    extern void emngr_handle_all_events(void);
+    extern void HostStack_Process(void);
+
+    if (emngr_can_mcu_sleep() == 0)
+    {
+        ll_sys_dp_slp_exit();
+        emngr_handle_all_events();
+        HostStack_Process();
+    }
+    if (emngr_can_mcu_sleep() == 0)
+    {
+        ll_sys_schedule_bg_process();
+    }
 }
 
 void ll_sys_enable_irq(void)
 {
-    __asm volatile ("cpsie i" ::: "memory");
+    LINKLAYER_PLAT_EnableIRQ();
 }
 
 void ll_sys_disable_irq(void)
 {
-    __asm volatile ("cpsid i" ::: "memory");
+    LINKLAYER_PLAT_DisableIRQ();
 }
 
 void ll_sys_enable_specific_irq(uint8_t isr_type)
 {
-    (void)isr_type;
-    ll_sys_enable_irq();
+    LINKLAYER_PLAT_EnableSpecificIRQ(isr_type);
 }
 
 void ll_sys_disable_specific_irq(uint8_t isr_type)
 {
-    (void)isr_type;
-    ll_sys_disable_irq();
+    LINKLAYER_PLAT_DisableSpecificIRQ(isr_type);
 }
 
 void ll_sys_enable_os_context_switch(void)

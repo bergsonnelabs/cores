@@ -122,13 +122,27 @@ void hal_ble_init(void)
     ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
     SET_BITS(PWR_VOSR_REG, (1UL << 13));  /* RADIOSCEN */
 
+    /* Select HSI as RNG clock source (default is LSE which isn't running) */
+    /* RCC_CCIPR2 offset 0x0E4, RNGSEL bits [13:12]: 10 = HSI */
+    MOD_BITS(REG32(RCC_BASE + 0x0E4UL), 0x3UL << 12, 0x2UL << 12);
+
     /* Enable hardware RNG */
-    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 18));  /* RNG clock */
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 18));  /* RNG clock enable */
     (void)REG32(RCC_BASE);
     #define RNG_BASE_WBA  0x420C0800UL
     #define RNG_CR_REG    REG32(RNG_BASE_WBA + 0x00UL)
+    #define RNG_SR_REG    REG32(RNG_BASE_WBA + 0x04UL)
     #define RNG_DR_REG    REG32(RNG_BASE_WBA + 0x08UL)
-    RNG_CR_REG = (1UL << 2);  /* RNGEN */
+    /* RNG init: NIST config + CED disable + CONDRST (bit 30) */
+    #define RNG_CR_NIST_VALUE  0x00F02D00UL
+    #define RNG_CR_CONDRST     (1UL << 30)
+    #define RNG_CR_CED         (1UL << 5)
+    #define RNG_CR_RNGEN       (1UL << 2)
+    /* Step 1: Write NIST config with CONDRST set */
+    RNG_CR_REG = RNG_CR_NIST_VALUE | RNG_CR_CONDRST | RNG_CR_CED;
+    /* Step 2: Clear CONDRST and enable RNG */
+    RNG_CR_REG = RNG_CR_NIST_VALUE | RNG_CR_CED | RNG_CR_RNGEN;
+    /* Don't wait for DRDY here — HW_RNG_Get will poll when needed */
 
     /* Configure RADIO and HASH interrupt priorities */
     hal_nvic_set_priority(HAL_IRQ_RADIO, 0);
@@ -244,20 +258,34 @@ hal_status_t hal_ble_advertise(const char *name)
     extern tBleStatus hci_le_set_scan_response_data(uint8_t len, const uint8_t *data);
     extern tBleStatus hci_le_set_advertising_enable(uint8_t enable);
 
-    /* Set advertising parameters */
-    dbg_advertise_ret = hci_le_set_advertising_parameters(
-        0x00A0,     /* min interval: 100ms (0xA0 * 0.625ms) */
-        0x00A0,     /* max interval: 100ms */
-        0x00,       /* ADV_IND */
-        0x00,       /* public address */
-        0x00,       /* peer: public */
-        (const uint8_t *)"\x00\x00\x00\x00\x00\x00",
-        0x07,       /* all 3 advertising channels */
-        0x00        /* no filter */
-    );
-    if (dbg_advertise_ret != 0) return HAL_ERROR;
+    /* ---- Bypass host stack — call link layer directly ---- */
 
-    /* Build advertising data with flags + name */
+    /* ll_intf functions use HCI-format parameters internally */
+    extern uint8_t ll_intf_le_set_adv_params(uint16_t adv_interval_min,
+        uint16_t adv_interval_max, uint8_t adv_type,
+        uint8_t own_addr_type, uint8_t peer_addr_type,
+        const uint8_t *peer_addr, uint8_t adv_channel_map,
+        uint8_t adv_filter_policy);
+    extern uint8_t ll_intf_le_set_adv_data(uint8_t len, const uint8_t *data);
+    extern uint8_t ll_intf_le_set_adv_enable(uint8_t enable);
+    extern uint8_t ll_intf_le_set_random_addr(const uint8_t *addr);
+
+    /* Set a random static address */
+    uint8_t bd_addr[6] = {0x01, 0xEF, 0xBE, 0x00, 0x55, 0xC0 | 0xC0};
+    dbg_advertise_ret = ll_intf_le_set_random_addr(bd_addr);
+
+    /* Advertising parameters: 100ms interval, ADV_IND, random address */
+    dbg_advertise_ret = ll_intf_le_set_adv_params(
+        0x00A0, 0x00A0,  /* 100ms interval */
+        0x00,            /* ADV_IND */
+        0x01,            /* own: random */
+        0x00,            /* peer: public */
+        (const uint8_t *)"\x00\x00\x00\x00\x00\x00",
+        0x07,            /* all 3 channels */
+        0x00             /* no filter */
+    );
+
+    /* Build advertising data */
     uint8_t name_len = 0;
     while (name[name_len] && name_len < 20) name_len++;
 
@@ -265,28 +293,30 @@ hal_status_t hal_ble_advertise(const char *name)
     uint8_t pos = 0;
 
     /* Flags: General Discoverable + BR/EDR Not Supported */
-    adv_data[pos++] = 0x02;  /* length */
-    adv_data[pos++] = 0x01;  /* type: Flags */
-    adv_data[pos++] = 0x06;  /* value */
+    adv_data[pos++] = 0x02;
+    adv_data[pos++] = 0x01;
+    adv_data[pos++] = 0x06;
 
     /* Complete Local Name */
-    adv_data[pos++] = name_len + 1;  /* length */
-    adv_data[pos++] = 0x09;          /* type */
+    adv_data[pos++] = name_len + 1;
+    adv_data[pos++] = 0x09;
     for (uint8_t i = 0; i < name_len; i++)
         adv_data[pos++] = (uint8_t)name[i];
 
-    dbg_gatt_init_ret = hci_le_set_advertising_data(pos, adv_data);
+    /* Manufacturer data */
+    adv_data[pos++] = 0x05;
+    adv_data[pos++] = 0xFF;
+    adv_data[pos++] = 0x55;
+    adv_data[pos++] = 0xBE;
+    adv_data[pos++] = 0x42;
+    adv_data[pos++] = 0x4C;
 
-    /* Scan response: manufacturer data */
-    uint8_t scan_rsp[] = {
-        0x07, 0xFF, 0x55, 0xBE, 'T', 'I', 'L', 'E'
-    };
-    dbg_scan_rsp_ret = hci_le_set_scan_response_data(sizeof(scan_rsp), scan_rsp);
+    dbg_gatt_init_ret = ll_intf_le_set_adv_data(pos, adv_data);
 
-    /* Enable advertising */
-    dbg_gap_init_ret = hci_le_set_advertising_enable(0x01);
+    /* Enable advertising — direct to link layer */
+    dbg_scan_rsp_ret = ll_intf_le_set_adv_enable(0x01);
 
-    return (dbg_gap_init_ret == 0) ? HAL_OK : HAL_ERROR;
+    return (dbg_scan_rsp_ret == 0) ? HAL_OK : HAL_ERROR;
 }
 
 hal_status_t hal_ble_stop_advertise(void)

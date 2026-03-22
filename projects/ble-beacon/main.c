@@ -12,6 +12,10 @@
 #include "ll_systick.h"
 #include "hal_ble.h"
 
+volatile uint8_t dbg_bd_addr[8] = {0};  /* 6 bytes BD addr + padding */
+volatile uint32_t dbg_hci_bd_ret = 0xFF;
+volatile uint32_t dbg_adv_en_ret = 0xFF;
+
 void HardFault_Handler(void)
 {
     ll_rcc_gpio_clk_enable(LED_PORT);
@@ -61,9 +65,17 @@ int main(void)
         }
     }
 
-    LED_ON();  /* LED on = init complete, advertising started */
+    /* Test HCI transport: read BD address */
+    extern uint8_t hci_read_bd_addr(uint8_t *addr);
+    dbg_hci_bd_ret = hci_read_bd_addr((uint8_t *)dbg_bd_addr);
 
-    /* Main loop — matches reference project exactly */
+    /* Test: explicit advertising enable via raw HCI */
+    extern uint8_t hci_le_set_advertising_enable(uint8_t enable);
+    dbg_adv_en_ret = hci_le_set_advertising_enable(1);
+
+    LED_ON();  /* LED on = init complete */
+
+    /* Main loop */
     while (1) {
         extern void UTIL_SEQ_Run(uint32_t mask);
         UTIL_SEQ_Run(~0UL);
