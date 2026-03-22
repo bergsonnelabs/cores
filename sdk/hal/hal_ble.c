@@ -71,6 +71,13 @@ static uint32_t gatt_buffer[DIVC(BLE_GATT_BUF_SIZE, 4)]
  * ============================================================ */
 
 static volatile int ble_connected = 0;
+
+/* Debug: store return values for CubeProgrammer inspection */
+volatile uint32_t dbg_blestack_init_ret = 0xDEAD;
+volatile uint32_t dbg_gatt_init_ret = 0xDEAD;
+volatile uint32_t dbg_gap_init_ret = 0xDEAD;
+volatile uint32_t dbg_advertise_ret = 0xDEAD;
+volatile uint32_t dbg_scan_rsp_ret = 0xDEAD;
 static uint16_t ble_conn_handle = 0xFFFF;
 
 static uint16_t gap_service_handle;
@@ -90,6 +97,11 @@ static void _ble_host_task(void);
 
 void hal_ble_init(void)
 {
+    /* NVIC priority grouping — required for BLE interrupt management.
+       Group 4 = 4 bits preemption, 0 bits subpriority (matching HAL_Init). */
+    #define SCB_AIRCR  (*(volatile uint32_t *)0xE000ED0CUL)
+    SCB_AIRCR = (0x5FAUL << 16) | (3UL << 8);  /* PRIGROUP = 3 → 4-bit preemption */
+
     /* HSE tuning — must happen before radio PHY init.
        Default trim = 0x0C. Ideally read from OTP. */
     MOD_BITS(REG32(RCC_BASE + 0x210UL), 0x3FUL << 16, 0x0CUL << 16);
@@ -144,16 +156,8 @@ void hal_ble_init(void)
     for (uint32_t *p = &_sbss_ble; p < &_ebss_ble; p++)
         *p = 0;
 
-    /* Pre-init link layer via its intended entry point.
-       Must happen before BleStack_Init because db_reset (inside
-       ll_intf_init) reads the power table immediately. */
-    extern void hci_get_dis_tbl(const void **tbl);
-    extern void ll_intf_init(const void *hci_tbl);
-    extern void ll_intf_cmn_select_tx_power_table(uint8_t table_id);
-    const void *hci_dis_tbl = (void *)0;
-    hci_get_dis_tbl(&hci_dis_tbl);
-    ll_intf_init(hci_dis_tbl);
-    ll_intf_cmn_select_tx_power_table(0);
+    /* Power table selection is done inside ll_sys_ble_cntrl_init
+       (before ll_intf_init) — no need to do it here. */
 
     /* Initialize BLE stack */
     BleStack_init_t init_params;
@@ -174,17 +178,23 @@ void hal_ble_init(void)
     init_params.options                 = CFG_BLE_OPTIONS;
     init_params.debug                   = 0U;
 
-    BleStack_Init(&init_params);
+    dbg_blestack_init_ret = BleStack_Init(&init_params);
+
+    /* Set a random static BD address (upper 2 bits = 11, required by BLE spec) */
+    {
+        uint8_t bd_addr[6] = {0x01, 0xEF, 0xBE, 0x00, 0x55, 0xC0 | 0xC0};
+        aci_hal_write_config_data(0x2E, 6, bd_addr);  /* offset 0x2E = random address */
+    }
+
+    /* Set TX power to maximum */
+    aci_hal_set_tx_power_level(1, 0x19);
 
     /* Initialize GATT + GAP */
-    aci_gatt_init();
-    aci_gap_init(0x01, 0x00, 8,
+    dbg_gatt_init_ret = aci_gatt_init();
+    dbg_gap_init_ret = aci_gap_init(0x01, 0x00, 16,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
-
-    /* Set TX power */
-    aci_hal_set_tx_power_level(1, CFG_TX_POWER);
 
     /* Register BLE host processing as a sequencer task.
        The BLE stack triggers this via UTIL_SEQ_SetTask internally. */
@@ -225,29 +235,58 @@ void hal_ble_process(void)
 
 hal_status_t hal_ble_advertise(const char *name)
 {
-    uint8_t name_len = 0;
-    while (name[name_len] && name_len < 31)
-        name_len++;
+    extern tBleStatus hci_le_set_advertising_parameters(
+        uint16_t adv_interval_min, uint16_t adv_interval_max,
+        uint8_t adv_type, uint8_t own_addr_type,
+        uint8_t peer_addr_type, const uint8_t *peer_addr,
+        uint8_t adv_channel_map, uint8_t adv_filter_policy);
+    extern tBleStatus hci_le_set_advertising_data(uint8_t len, const uint8_t *data);
+    extern tBleStatus hci_le_set_scan_response_data(uint8_t len, const uint8_t *data);
+    extern tBleStatus hci_le_set_advertising_enable(uint8_t enable);
 
-    /* Build local name with AD type 0x09 (Complete Local Name) prepended */
-    uint8_t local_name[32];
-    local_name[0] = 0x09; /* AD type: Complete Local Name */
-    for (uint8_t i = 0; i < name_len; i++)
-        local_name[i + 1] = (uint8_t)name[i];
-
-    tBleStatus ret = aci_gap_set_discoverable(
-        0x00,       /* ADV_IND: connectable undirected */
-        0x0020,     /* min interval: 20ms */
-        0x0040,     /* max interval: 40ms */
+    /* Set advertising parameters */
+    dbg_advertise_ret = hci_le_set_advertising_parameters(
+        0x00A0,     /* min interval: 100ms (0xA0 * 0.625ms) */
+        0x00A0,     /* max interval: 100ms */
+        0x00,       /* ADV_IND */
         0x00,       /* public address */
-        0x00,       /* no filter */
-        name_len + 1,
-        local_name,
-        0, (void *)0, /* no service UUIDs */
-        0x0000, 0x0000 /* no connection interval preference */
+        0x00,       /* peer: public */
+        (const uint8_t *)"\x00\x00\x00\x00\x00\x00",
+        0x07,       /* all 3 advertising channels */
+        0x00        /* no filter */
     );
+    if (dbg_advertise_ret != 0) return HAL_ERROR;
 
-    return (ret == 0) ? HAL_OK : HAL_ERROR;
+    /* Build advertising data with flags + name */
+    uint8_t name_len = 0;
+    while (name[name_len] && name_len < 20) name_len++;
+
+    uint8_t adv_data[31];
+    uint8_t pos = 0;
+
+    /* Flags: General Discoverable + BR/EDR Not Supported */
+    adv_data[pos++] = 0x02;  /* length */
+    adv_data[pos++] = 0x01;  /* type: Flags */
+    adv_data[pos++] = 0x06;  /* value */
+
+    /* Complete Local Name */
+    adv_data[pos++] = name_len + 1;  /* length */
+    adv_data[pos++] = 0x09;          /* type */
+    for (uint8_t i = 0; i < name_len; i++)
+        adv_data[pos++] = (uint8_t)name[i];
+
+    dbg_gatt_init_ret = hci_le_set_advertising_data(pos, adv_data);
+
+    /* Scan response: manufacturer data */
+    uint8_t scan_rsp[] = {
+        0x07, 0xFF, 0x55, 0xBE, 'T', 'I', 'L', 'E'
+    };
+    dbg_scan_rsp_ret = hci_le_set_scan_response_data(sizeof(scan_rsp), scan_rsp);
+
+    /* Enable advertising */
+    dbg_gap_init_ret = hci_le_set_advertising_enable(0x01);
+
+    return (dbg_gap_init_ret == 0) ? HAL_OK : HAL_ERROR;
 }
 
 hal_status_t hal_ble_stop_advertise(void)

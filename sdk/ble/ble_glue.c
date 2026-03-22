@@ -630,13 +630,7 @@ void LINKLAYER_DEBUG_SIGNAL_TOGGLE(uint32_t signal)
     (void)signal;
 }
 
-/* ============================================================
- * ll_sys_ble_cntrl_init — BLE controller init (called by stack)
- * ============================================================ */
-
-void ll_sys_ble_cntrl_init(void)
-{
-}
+/* ll_sys_ble_cntrl_init is now in ll_sys_startup.c (ST's real implementation) */
 
 /* HAL stubs */
 void SystemInit(void)

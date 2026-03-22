@@ -48,7 +48,7 @@ int main(void)
     ll_systick_init(SYSCLK_HZ / 2);  /* Test: if LED correct, AHB is /2 */
 
     /* Blink error code if advertise fails */
-    hal_status_t adv_ret = hal_ble_advertise("Core.W");
+    hal_status_t adv_ret = hal_ble_advertise("TILETOWN");
     if (adv_ret != HAL_OK) {
         /* Blink the error count: 1=ERROR, 2=BUSY, 3=TIMEOUT, 4=NACK */
         int errc = -(int)adv_ret;
