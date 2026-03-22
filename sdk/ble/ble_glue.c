@@ -265,14 +265,21 @@ void ll_sys_schldr_timing_update_not(struct Evnt_timing_s *p_evnt_timing)
 
 void ll_sys_bg_process(void)
 {
+    /* Link layer background processing — called from sequencer */
 }
 
 void ll_sys_bg_process_init(void)
 {
+    /* Register link layer background process as sequencer task */
+    extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
+    UTIL_SEQ_RegTask(1U << 1, 0, ll_sys_bg_process);  /* CFG_TASK_LINK_LAYER = 1 */
 }
 
 void ll_sys_schedule_bg_process(void)
 {
+    /* Trigger link layer background task via sequencer */
+    extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
+    UTIL_SEQ_SetTask(1U << 1, 0);  /* CFG_TASK_LINK_LAYER = 1 */
 }
 
 void ll_sys_schedule_bg_process_isr(void)
@@ -370,45 +377,70 @@ void HostStack_Process(void)
 
 void BleStackCB_Process(void)
 {
-    /* In a task-based system this would set a task flag.
-       In our bare-metal loop, BleStack_Process() is called continuously. */
+    /* Trigger the BLE host processing task via the sequencer */
+    extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
+    UTIL_SEQ_SetTask(1U << 4, 0);  /* CFG_TASK_BLE_HOST = 4 */
 }
 
 /* ============================================================
- * UTIL_SEQ_* — Minimal task sequencer stubs
+ * UTIL_SEQ_* — Minimal cooperative task sequencer
  *
- * The reference project uses a task sequencer (UTIL_SEQ). We don't
- * need it — our main loop calls BleStack_Process() directly.
+ * The BLE stack registers tasks via RegTask and triggers them via
+ * SetTask. Our main loop calls UTIL_SEQ_Run to execute pending tasks.
  * ============================================================ */
+
+#define SEQ_MAX_TASKS  32
+
+static void (*_seq_tasks[SEQ_MAX_TASKS])(void);
+static volatile uint32_t _seq_pending = 0;
+static volatile uint32_t _seq_evt = 0;
 
 void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void))
 {
-    (void)task_id_bm; (void)flags; (void)func;
+    (void)flags;
+    for (int i = 0; i < SEQ_MAX_TASKS; i++) {
+        if (task_id_bm & (1UL << i)) {
+            _seq_tasks[i] = func;
+            break;
+        }
+    }
 }
 
 void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio)
 {
-    (void)task_id_bm; (void)prio;
+    (void)prio;
+    _seq_pending |= task_id_bm;
 }
 
 void UTIL_SEQ_Run(uint32_t mask_bm)
 {
-    (void)mask_bm;
+    uint32_t pending = _seq_pending & mask_bm;
+    while (pending) {
+        for (int i = 0; i < SEQ_MAX_TASKS; i++) {
+            if ((pending & (1UL << i)) && _seq_tasks[i]) {
+                _seq_pending &= ~(1UL << i);
+                _seq_tasks[i]();
+            }
+        }
+        pending = _seq_pending & mask_bm;
+    }
 }
 
 void UTIL_SEQ_SetEvt(uint32_t evt_id_bm)
 {
-    (void)evt_id_bm;
+    _seq_evt |= evt_id_bm;
 }
 
 void UTIL_SEQ_WaitEvt(uint32_t evt_id_bm)
 {
-    (void)evt_id_bm;
+    while (!(_seq_evt & evt_id_bm))
+        ;
+    _seq_evt &= ~evt_id_bm;
 }
 
 void UTIL_SEQ_ClrEvt(uint32_t evt_id_bm)
 {
-    (void)evt_id_bm;
+    _seq_evt &= ~evt_id_bm;
 }
 
 void UTIL_SEQ_EvtIdle(uint32_t task_id_bm, uint32_t evt_waited_bm)

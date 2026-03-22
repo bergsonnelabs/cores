@@ -80,6 +80,8 @@ static uint16_t gap_appearance_handle;
 static hal_ble_connect_cb_t    user_connect_cb = (void *)0;
 static hal_ble_disconnect_cb_t user_disconnect_cb = (void *)0;
 
+static void _ble_host_task(void);
+
 /* RCC / PWR defines handled via ll_rcc.h LL functions */
 
 /* ============================================================
@@ -183,6 +185,21 @@ void hal_ble_init(void)
 
     /* Set TX power */
     aci_hal_set_tx_power_level(1, CFG_TX_POWER);
+
+    /* Register BLE host processing as a sequencer task.
+       The BLE stack triggers this via UTIL_SEQ_SetTask internally. */
+    extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
+    extern void BleStackCB_Process(void);
+    UTIL_SEQ_RegTask(1U << 4, 0, (void (*)(void))_ble_host_task);
+}
+
+/* BLE host background task — called via sequencer */
+static void _ble_host_task(void)
+{
+    extern void BleStackCB_Process(void);
+    if (BleStack_Process() == 0) {
+        BleStackCB_Process();
+    }
 }
 
 /* ============================================================
@@ -191,7 +208,15 @@ void hal_ble_init(void)
 
 void hal_ble_process(void)
 {
-    BleStack_Process();
+    /* Process BLE host stack + callbacks (matching reference pattern) */
+    extern void BleStackCB_Process(void);
+    if (BleStack_Process() == 0) {
+        BleStackCB_Process();
+    }
+
+    /* Run pending sequencer tasks */
+    extern void UTIL_SEQ_Run(uint32_t mask);
+    UTIL_SEQ_Run(~0UL);
 }
 
 /* ============================================================

@@ -413,7 +413,7 @@ static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
   #define LL_RCC_SYSCLK_PLL    0x2UL
   #define RCC_CFGR_OFFSET      0x1CUL  /* RCC_CFGR1 */
   #define RCC_CFGR_SW_MASK     0x3UL
-  #define RCC_CFGR_SWS_SHIFT   3
+  #define RCC_CFGR_SWS_SHIFT   2      /* SWS at bits [3:2], not [4:3] */
 #elif defined(STM32H523xx)
   #define LL_RCC_SYSCLK_HSI48  0x0UL
   #define LL_RCC_SYSCLK_CSI    0x1UL

@@ -44,6 +44,9 @@ int main(void)
 
     hal_ble_init();
 
+    /* BLE init changes AHB prescaler — re-init SysTick at actual HCLK */
+    ll_systick_init(SYSCLK_HZ / 2);  /* Test: if LED correct, AHB is /2 */
+
     /* Blink error code if advertise fails */
     hal_status_t adv_ret = hal_ble_advertise("Core.W");
     if (adv_ret != HAL_OK) {
