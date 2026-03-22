@@ -116,7 +116,7 @@ static inline int ll_rcc_hse_ready(void)
 static inline void ll_rcc_hsi48_enable(void)
 {
 #if defined(STM32L422xx)
-    SET_BITS(REG32(RCC_BASE + 0x08UL), (1UL << 0));  /* CRRCR: HSI48ON */
+    SET_BITS(REG32(RCC_BASE + 0x98UL), (1UL << 0));  /* CRRCR: HSI48ON */
 #elif defined(STM32H523xx)
     SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 12));  /* CR: HSI48ON */
 #endif
@@ -125,7 +125,7 @@ static inline void ll_rcc_hsi48_enable(void)
 static inline int ll_rcc_hsi48_ready(void)
 {
 #if defined(STM32L422xx)
-    return (REG32(RCC_BASE + 0x08UL) & (1UL << 1)) != 0;  /* CRRCR: HSI48RDY */
+    return (REG32(RCC_BASE + 0x98UL) & (1UL << 1)) != 0;  /* CRRCR: HSI48RDY */
 #elif defined(STM32H523xx)
     return (REG32(RCC_BASE + 0x00UL) & (1UL << 13)) != 0;  /* CR: HSI48RDY */
 #else
@@ -528,6 +528,32 @@ static inline void ll_rcc_apb2_clk_enable(uint32_t mask)
 #endif
     (void)REG32(RCC_BASE);
 }
+
+/* ============================================================
+ * USB 48MHz clock source selection (L4 only)
+ * ============================================================ */
+
+#if defined(STM32L422xx)
+
+/**
+ * Select the 48MHz clock source for USB.
+ *   0 = HSI48 (default, crystal-less with CRS)
+ *   1 = PLL48M1CLK (PLLSAI1 Q output)
+ *   2 = PLL48M2CLK (PLL Q output)
+ *   3 = MSI
+ */
+static inline void ll_rcc_set_usb_clk_source(uint32_t src)
+{
+    /* RCC_CCIPR at offset 0x88, CLK48SEL bits [27:26] */
+    MOD_BITS(REG32(RCC_BASE + 0x88UL), 3UL << 26, (src & 3UL) << 26);
+}
+
+#define LL_RCC_USB48_HSI48      0x0UL
+#define LL_RCC_USB48_PLLSAI1Q   0x1UL
+#define LL_RCC_USB48_PLLQ       0x2UL
+#define LL_RCC_USB48_MSI        0x3UL
+
+#endif /* STM32L422xx */
 
 /* ============================================================
  * Peripheral clock enable bit masks (per family)
