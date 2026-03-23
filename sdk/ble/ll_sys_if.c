@@ -143,6 +143,16 @@ void ll_sys_reset(void)
         drift_time += DRIFT_TIME_EXTRA_LSI2;
         exec_time += EXEC_TIME_EXTRA_LSI2;
     }
+    else
+    {
+#if defined(__GNUC__)
+        /* GCC builds at -O0 execute slower — add extra timing margin
+           to prevent scheduler deadline misses. Matches working project's
+           GCC debug path. Our Makefile always uses -O0. */
+        drift_time += DRIFT_TIME_EXTRA_GCC_DEBUG;
+        exec_time += EXEC_TIME_EXTRA_GCC_DEBUG;
+#endif
+    }
 
     if ((drift_time != DRIFT_TIME_DEFAULT) || (exec_time != EXEC_TIME_DEFAULT))
     {

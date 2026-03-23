@@ -71,6 +71,9 @@ Reset_Handler:
     ldr r1, =0x08000000
     str r1, [r0]
 
+    /* Call static constructors (required by BLE stack library) */
+    bl __libc_init_array
+
     /* Call main() */
     bl main
 

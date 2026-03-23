@@ -113,11 +113,24 @@ void hal_ble_init(void)
     #define SCB_CPACR  (*(volatile uint32_t *)0xE000ED88UL)
     SCB_CPACR |= ((3UL << 20) | (3UL << 22));  /* CP10/CP11 full access */
 
+    /* Enable ALL peripheral clocks during sleep mode.
+       Without this, WFI kills the radio clock and BLE can't transmit.
+       The working project has these as 0xFFFFFFFF. */
+    #define RCC_BASE_ADDR  0x46020C00UL
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B0UL) = 0xFFFFFFFFUL;  /* AHB1SMENR */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B4UL) = 0xFFFFFFFFUL;  /* AHB2SMENR */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B8UL) = 0xFFFFFFFFUL;  /* AHB4SMENR */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C0UL) = 0xFFFFFFFFUL;  /* AHB5SMENR */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C4UL) = 0xFFFFFFFFUL;  /* APB1SMENR1 */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C8UL) = 0xFFFFFFFFUL;  /* APB1SMENR2 */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0CCUL) = 0xFFFFFFFFUL;  /* APB2SMENR */
+    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0D0UL) = 0xFFFFFFFFUL;  /* APB7SMENR */
+
     /* Enable SYSCFG clock and ensure flash is aliased at 0x00000000.
        The BLE link layer's db_reset reads through null pointers that
        land in the 0x000-0x3FF range — this is a known behavior that
        relies on the flash alias being present. */
-    #define RCC_APB7ENR   (*(volatile uint32_t *)(RCC_BASE + 0xACUL))
+    #define RCC_APB7ENR   (*(volatile uint32_t *)(RCC_BASE + 0x0A8UL))
     #define SYSCFG_BASE_WBA  0x46000400UL
     #define SYSCFG_MEMAR  (*(volatile uint32_t *)SYSCFG_BASE_WBA)
     RCC_APB7ENR |= (1UL << 0);  /* Enable SYSCFG clock */
@@ -184,13 +197,12 @@ void hal_ble_init(void)
     ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
     ll_rcc_radio_slp_tmr_clk_enable();
 
-    /* Initialize link layer platform clocks + enable baseband clock.
-       The baseband clock MUST be enabled before BleStack_Init because
-       ll_intf_init() reads radio registers immediately. */
+    /* Initialize link layer platform clocks.
+       NOTE: Do NOT pre-enable BBCLKEN (AclkCtrl) — the BLE stack
+       manages the baseband clock internally. Pre-enabling it interferes
+       with the stack's clock state machine. */
     extern void LINKLAYER_PLAT_ClockInit(void);
     LINKLAYER_PLAT_ClockInit();
-    extern void LINKLAYER_PLAT_AclkCtrl(uint8_t enable);
-    LINKLAYER_PLAT_AclkCtrl(1);
 
     /* Zero the BLE buffers in SRAM2 (startup only zeros SRAM1 BSS) */
     extern uint32_t _sbss_ble, _ebss_ble;
@@ -205,8 +217,9 @@ void hal_ble_init(void)
     extern UTIL_TIMER_Status_t UTIL_TIMER_Init(void);
     UTIL_TIMER_Init();
 
-    /* Power table selection is done inside ll_sys_ble_cntrl_init
-       (before ll_intf_init) — no need to do it here. */
+    /* Initialize async event queue + sequencer tasks BEFORE BleStack_Init.
+       The working project does this first — events may be produced during init. */
+    ble_evt_queue_init();
 
     /* Initialize BLE stack */
     BleStack_init_t init_params;
@@ -229,21 +242,14 @@ void hal_ble_init(void)
 
     dbg_blestack_init_ret = BleStack_Init(&init_params);
 
-    /* Set a random static BD address (upper 2 bits = 11, required by BLE spec) */
+    /* Set PUBLIC BD address */
     {
-        uint8_t bd_addr[6] = {0x01, 0xEF, 0xBE, 0x00, 0x55, 0xC0 | 0xC0};
-        aci_hal_write_config_data(0x2E, 6, bd_addr);  /* offset 0x2E = random address */
+        uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
+        aci_hal_write_config_data(0x00, 6, bd_addr);  /* CONFIG_DATA_PUBADDR_OFFSET */
     }
 
     /* Set TX power to maximum */
     aci_hal_set_tx_power_level(1, 0x19);
-
-    /* Initialize async event queue (MUST be before BleStack_Init) */
-    ble_evt_queue_init();
-
-    /* Initialize service controller (routes HCI/GAP/GATT events) */
-    extern void SVCCTL_Init(void);
-    SVCCTL_Init();
 
     /* Initialize GATT + GAP */
     dbg_gatt_init_ret = aci_gatt_init();
@@ -252,6 +258,10 @@ void hal_ble_init(void)
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
 
+    /* Initialize service controller AFTER BleStack_Init + GAP/GATT */
+    extern void SVCCTL_Init(void);
+    SVCCTL_Init();
+
     /* Register BLE host processing as a sequencer task.
        The BLE stack triggers this via UTIL_SEQ_SetTask internally. */
     extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
@@ -259,11 +269,13 @@ void hal_ble_init(void)
     UTIL_SEQ_RegTask(1U << CFG_TASK_BLE_HOST, 0, (void (*)(void))_ble_host_task);
 }
 
-/* BLE host background task — called via sequencer */
+/* BLE host background task — called via sequencer.
+   Matches the working project's BleStack_Process_BG exactly. */
 static void _ble_host_task(void)
 {
     extern void BleStackCB_Process(void);
-    if (BleStack_Process() == 0) {
+    if (BleStack_Process() == 0x0)
+    {
         BleStackCB_Process();
     }
 }
@@ -274,13 +286,11 @@ static void _ble_host_task(void)
 
 void hal_ble_process(void)
 {
-    /* Process BLE host stack + callbacks (matching reference pattern) */
-    extern void BleStackCB_Process(void);
-    if (BleStack_Process() == 0) {
-        BleStackCB_Process();
-    }
-
-    /* Run pending sequencer tasks */
+    /* Only run the sequencer — matching the working project's MX_APPE_Process().
+       BleStack_Process + BleStackCB_Process are called via the sequencer task
+       (BleStack_Process_BG / _ble_host_task). Calling them directly from here
+       in ADDITION to the sequencer causes double-processing that corrupts
+       the BLE stack's internal state. */
     extern void UTIL_SEQ_Run(uint32_t mask);
     UTIL_SEQ_Run(~0UL);
 }
@@ -318,17 +328,47 @@ hal_status_t hal_ble_advertise(const char *name)
     for (uint8_t i = 0; i < name_len; i++)
         local_name[i + 1] = (uint8_t)name[i];
 
+    /* Step 1: Start discoverable with no name (matching working project) */
     dbg_advertise_ret = aci_gap_set_discoverable(
         0x00,           /* ADV_IND */
         0x0080,         /* min interval: 80ms */
         0x00A0,         /* max interval: 100ms */
         0x00,           /* public address */
         0x00,           /* no filter */
-        name_len + 1,   /* local name length (includes AD type) */
-        local_name,
+        0, NULL,        /* no local name */
         0, NULL,        /* no service UUIDs */
-        0x0006, 0x0010  /* conn interval min/max */
+        0, 0            /* no conn interval hints */
     );
+
+    /* Step 2: Remove TX power level from advertising data */
+    extern tBleStatus aci_gap_delete_ad_type(uint8_t ad_type);
+    aci_gap_delete_ad_type(0x0A);  /* AD_TYPE_TX_POWER_LEVEL */
+
+    /* Step 3: Set advertising data with FLAGS + name + manufacturer data.
+       FLAGS are REQUIRED — without them, scanners ignore the device. */
+    extern tBleStatus aci_gap_update_adv_data(uint8_t len, const uint8_t *data);
+    uint8_t adv_data[31];
+    uint8_t pos = 0;
+
+    /* Flags: General Discoverable + BR/EDR Not Supported */
+    adv_data[pos++] = 2;     /* length */
+    adv_data[pos++] = 0x01;  /* AD type: Flags */
+    adv_data[pos++] = 0x06;  /* LE General Discoverable + BR/EDR Not Supported */
+
+    /* Complete Local Name */
+    adv_data[pos++] = name_len + 1;  /* length */
+    adv_data[pos++] = 0x09;          /* AD type: Complete Local Name */
+    for (uint8_t i = 0; i < name_len; i++)
+        adv_data[pos++] = (uint8_t)name[i];
+
+    /* Manufacturer Specific Data */
+    adv_data[pos++] = 3;     /* length */
+    adv_data[pos++] = 0xFF;  /* AD type: Manufacturer Specific */
+    adv_data[pos++] = 0x30;  /* Company ID low (ST) */
+    adv_data[pos++] = 0x00;  /* Company ID high */
+
+    aci_gap_update_adv_data(pos, adv_data);
+    (void)local_name;
 
     return (dbg_advertise_ret == 0) ? HAL_OK : HAL_ERROR;
 }

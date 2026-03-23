@@ -1,18 +1,17 @@
 /* Linker script for STM32WBA55HG */
-/* 1MB Flash, 128KB SRAM (split: 64K SRAM1 + 64K SRAM2) */
+/* 1MB Flash, 128KB SRAM (single region, matching working project) */
 
 MEMORY
 {
     FLASH (rx)   : ORIGIN = 0x08000000, LENGTH = 1024K
-    SRAM1 (rwx)  : ORIGIN = 0x20000000, LENGTH = 64K
-    SRAM2 (rwx)  : ORIGIN = 0x20010000, LENGTH = 64K
+    RAM   (rwx)  : ORIGIN = 0x20000000, LENGTH = 128K
 }
 
 /* Entry point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the stack — top of SRAM1 */
-_estack = ORIGIN(SRAM1) + LENGTH(SRAM1);
+/* Highest address of the stack — top of RAM */
+_estack = ORIGIN(RAM) + LENGTH(RAM);
 
 /* Minimum heap and stack sizes */
 _Min_Heap_Size  = 0x400;
@@ -64,10 +63,34 @@ SECTIONS
         __exidx_end = .;
     } >FLASH
 
+    /* C constructors/destructors — MUST be in FLASH */
+    .preinit_array :
+    {
+        PROVIDE_HIDDEN(__preinit_array_start = .);
+        KEEP(*(.preinit_array*))
+        PROVIDE_HIDDEN(__preinit_array_end = .);
+    } >FLASH
+
+    .init_array :
+    {
+        PROVIDE_HIDDEN(__init_array_start = .);
+        KEEP(*(SORT(.init_array.*)))
+        KEEP(*(.init_array*))
+        PROVIDE_HIDDEN(__init_array_end = .);
+    } >FLASH
+
+    .fini_array :
+    {
+        PROVIDE_HIDDEN(__fini_array_start = .);
+        KEEP(*(SORT(.fini_array.*)))
+        KEEP(*(.fini_array*))
+        PROVIDE_HIDDEN(__fini_array_end = .);
+    } >FLASH
+
     /* Used by startup to initialize .data */
     _sidata = LOADADDR(.data);
 
-    /* Initialized data — loaded from FLASH, lives in SRAM1 */
+    /* Initialized data — loaded from FLASH, lives in RAM */
     .data :
     {
         . = ALIGN(4);
@@ -76,9 +99,9 @@ SECTIONS
         *(.data*)
         . = ALIGN(4);
         _edata = .;
-    } >SRAM1 AT> FLASH
+    } >RAM AT> FLASH
 
-    /* Uninitialized data — zero-filled in SRAM1 */
+    /* Uninitialized data — zero-filled in RAM */
     .bss :
     {
         . = ALIGN(4);
@@ -86,11 +109,13 @@ SECTIONS
         __bss_start__ = _sbss;
         *(.bss)
         *(.bss*)
+        *(.bss_ble)
+        *(.bss_ble*)
         *(COMMON)
         . = ALIGN(4);
         _ebss = .;
         __bss_end__ = _ebss;
-    } >SRAM1
+    } >RAM
 
     /* Heap grows up, stack grows down — check they don't collide */
     ._user_heap_stack :
@@ -101,18 +126,11 @@ SECTIONS
         . = . + _Min_Heap_Size;
         . = . + _Min_Stack_Size;
         . = ALIGN(8);
-    } >SRAM1
+    } >RAM
 
-    /* BLE stack buffers — dedicated SRAM2 region */
-    .bss_ble (NOLOAD) :
-    {
-        . = ALIGN(4);
-        _sbss_ble = .;
-        *(.bss_ble)
-        *(.bss_ble*)
-        . = ALIGN(4);
-        _ebss_ble = .;
-    } >SRAM2
+    /* Provide dummy symbols for SRAM2 BSS zeroing (now in main BSS) */
+    _sbss_ble = _sbss;
+    _ebss_ble = _sbss;  /* Empty — BLE buffers are in regular BSS now */
 
     /* Discard debug sections from standard libraries */
     /DISCARD/ :

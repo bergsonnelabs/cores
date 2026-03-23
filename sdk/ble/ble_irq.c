@@ -3,11 +3,14 @@
  *
  * RADIO_IRQHandler (IRQ 66) — high-priority radio ISR
  * HASH_IRQHandler  (IRQ 61) — repurposed as software low-priority radio ISR
+ *
+ * MUST match the working project's stm32wbaxx_it.c exactly.
  */
 
 #include <stdint.h>
 #include <stddef.h>
 #include "hal_common.h"
+#include "app_conf.h"
 
 /* Callbacks installed by the link layer — defined here, extern'd elsewhere */
 void (*radio_callback)(void) = NULL;
@@ -17,6 +20,10 @@ volatile uint8_t radio_sw_low_isr_is_running_high_prio = 0;
 /* Debug counter */
 volatile uint32_t dbg_radio_irq_count = 0;
 
+/* RCC_RADIOENR register — STRADIOCLKON is bit 2 */
+#define _RCC_RADIOENR_ADDR  (*(volatile uint32_t *)(0x46020C00UL + 0x208UL))
+#define _STRADIOCLKON       (1UL << 2)
+
 void RADIO_IRQHandler(void)
 {
     dbg_radio_irq_count++;
@@ -25,22 +32,32 @@ void RADIO_IRQHandler(void)
     {
         radio_callback();
     }
+
+    /* Disable sleep timer auto-clock — CRITICAL for proper advertising timing.
+     * Without this, the auto-wakeup mechanism interferes with the radio scheduler.
+     * This matches the working project's RADIO_IRQHandler exactly. */
+    _RCC_RADIOENR_ADDR &= ~_STRADIOCLKON;
+
+    __asm volatile ("isb 0xF" ::: "memory");
 }
 
 void HASH_IRQHandler(void)
 {
-    hal_nvic_disable_irq(HAL_IRQ_HASH);
+    /* Disable SW radio low interrupt to prevent nested calls */
+    hal_nvic_disable_irq(RADIO_SW_LOW_INTR_NUM);
 
     if (low_isr_callback != NULL)
     {
         low_isr_callback();
     }
 
+    /* Check if nested SW radio low interrupt has been requested */
     if (radio_sw_low_isr_is_running_high_prio != 0)
     {
-        hal_nvic_set_priority(HAL_IRQ_HASH, 5);
+        hal_nvic_set_priority(RADIO_SW_LOW_INTR_NUM, RADIO_INTR_PRIO_LOW);
         radio_sw_low_isr_is_running_high_prio = 0;
     }
 
-    hal_nvic_enable_irq(HAL_IRQ_HASH);
+    /* Re-enable SW radio low interrupt */
+    hal_nvic_enable_irq(RADIO_SW_LOW_INTR_NUM);
 }

@@ -19,7 +19,7 @@
 
 /* SystemCoreClock — needed by DelayUs for cycle counting.
    Define it here if not provided elsewhere. */
-uint32_t SystemCoreClock = 16000000UL;  /* Default 16MHz (HSE) */
+uint32_t SystemCoreClock = 32000000UL;  /* HSE 32MHz — must match actual HCLK */
 
 /* Forward decl — provided by LinkLayer_BLE_Basic_lib.a */
 extern uint32_t ll_intf_cmn_get_slptmr_value(void);
@@ -37,8 +37,8 @@ extern void HW_RNG_Get(uint8_t n, uint32_t *val);
 #define _RADIOENR_STRADIOCLKON (1UL << 16)
 #define _RADIOENR_RADIOCLKRDY  (1UL << 17)
 
-/* RCC_AHB5SMENR at offset 0x0D8 */
-#define _RCC_AHB5SMENR         REG32(RCC_BASE + 0x0D8UL)
+/* RCC_AHB5SMENR at offset 0x0C0 (NOT 0x0D8!) */
+#define _RCC_AHB5SMENR         REG32(RCC_BASE + 0x0C0UL)
 
 /* RCC_CR at offset 0x00 — HSEON bit 16, HSERDY bit 17 */
 #define _RCC_CR                REG32(RCC_BASE + 0x00UL)

@@ -181,25 +181,26 @@ void ll_sys_radio_wait_for_busclkrdy(void)
 
 void ll_sys_setup_radio_intr(void (*intr_cb)())
 {
-    extern void (*radio_callback)(void);
-    radio_callback = intr_cb;
+    /* Delegate to LINKLAYER_PLAT_SetupRadioIT which also sets NVIC priority
+       and enables the IRQ, matching the working project. */
+    extern void LINKLAYER_PLAT_SetupRadioIT(void (*intr_cb)());
+    LINKLAYER_PLAT_SetupRadioIT(intr_cb);
 }
 
 void ll_sys_setup_radio_sw_low_intr(void (*intr_cb)())
 {
-    extern void (*low_isr_callback)(void);
-    low_isr_callback = intr_cb;
+    /* Delegate to LINKLAYER_PLAT_SetupSwLowIT which also sets NVIC priority
+       and enables the IRQ, matching the working project. */
+    extern void LINKLAYER_PLAT_SetupSwLowIT(void (*intr_cb)());
+    LINKLAYER_PLAT_SetupSwLowIT(intr_cb);
 }
 
 void ll_sys_radio_sw_low_intr_trigger(uint8_t priority)
 {
-    extern volatile uint8_t radio_sw_low_isr_is_running_high_prio;
-    if (priority == 0)
-    {
-        radio_sw_low_isr_is_running_high_prio = 1;
-        hal_nvic_set_priority(RADIO_SW_LOW_INTR_NUM, 0);
-    }
-    ll_nvic_set_pending(RADIO_SW_LOW_INTR_NUM);
+    /* Delegate to LINKLAYER_PLAT_TriggerSwLowIT which has the correct
+       logic matching the working project. */
+    extern void LINKLAYER_PLAT_TriggerSwLowIT(uint8_t priority);
+    LINKLAYER_PLAT_TriggerSwLowIT(priority);
 }
 
 void ll_sys_radio_evt_not(uint8_t start)
@@ -560,6 +561,34 @@ void LINKLAYER_DEBUG_SIGNAL_TOGGLE(uint32_t signal)
 /* HAL stubs */
 void SystemInit(void)
 {
+}
+
+/* ============================================================
+ * Sequencer idle hooks — override weak stubs in stm32_seq.c
+ *
+ * The CPU MUST enter WFI between radio events. Without WFI,
+ * the radio sleep timer wakeup mechanism doesn't work correctly.
+ * The working project uses these to enter low-power mode.
+ * ============================================================ */
+
+void UTIL_SEQ_Idle(void)
+{
+    /* NOP — don't sleep, just return and let the sequencer loop.
+       WFI can cause issues if sleep mode clocks aren't perfectly configured. */
+    __asm volatile ("nop");
+}
+
+void UTIL_SEQ_PreIdle(void)
+{
+    /* Nothing to do before idle for now */
+}
+
+void UTIL_SEQ_PostIdle(void)
+{
+    /* Re-enable radio AHB5 clock after wakeup */
+    #define _RCC_AHB5ENR  (*(volatile uint32_t *)(0x46020C00UL + 0x098UL))
+    _RCC_AHB5ENR |= (1UL << 0);  /* RADIOEN */
+    #undef _RCC_AHB5ENR
 }
 
 /* Weak _sbrk for malloc (nano.specs) */

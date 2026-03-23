@@ -652,13 +652,13 @@ static inline void ll_rcc_ahb5_clk_enable(uint32_t mask)
 
 static inline void ll_rcc_ahb5_clk_sleep_enable(void)
 {
-    /* RCC_AHB5SMENR at offset 0x0D8 — keep RADIO clock in sleep */
-    SET_BITS(REG32(RCC_BASE + 0x0D8UL), LL_AHB5_RADIO);
+    /* RCC_AHB5SMENR at offset 0x0C0 — keep RADIO clock in sleep */
+    SET_BITS(REG32(RCC_BASE + 0x0C0UL), LL_AHB5_RADIO);
 }
 
 static inline void ll_rcc_ahb5_clk_sleep_disable(void)
 {
-    CLR_BITS(REG32(RCC_BASE + 0x0D8UL), LL_AHB5_RADIO);
+    CLR_BITS(REG32(RCC_BASE + 0x0C0UL), LL_AHB5_RADIO);
 }
 
 /* ---- PWR: backup domain access ---- */

@@ -36,8 +36,8 @@ extern "C" {
  * ============================================================ */
 
 #define RADIO_INTR_PRIO_HIGH      0    /* Highest priority for radio ISR */
-#define RADIO_INTR_PRIO_LOW       4    /* Lowered priority when radio inactive */
-#define RADIO_SW_LOW_INTR_PRIO    4    /* SW low ISR default priority */
+#define RADIO_INTR_PRIO_LOW       5    /* Lowered priority when radio inactive */
+#define RADIO_SW_LOW_INTR_PRIO    15   /* SW low ISR — MUST be lowest priority */
 
 /* ============================================================
  * ISR type masks (used by LINKLAYER_PLAT_Enable/DisableSpecificIRQ)
