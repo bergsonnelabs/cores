@@ -1,7 +1,8 @@
 /**
  * ble-beacon — BLE beacon for Core.W
  *
- * Uses hal_ble.c init (proven to not hang) + real ST platform files.
+ * Uses real ST middleware (HAL, SCM, LPM, BPKA, etc.) via app_entry.c
+ * and our hal_ble.c wrapper for the BLE stack.
  */
 
 #include "tile_init.h"
@@ -33,10 +34,13 @@ void HardFault_Handler(void)
     }
 }
 
-volatile uint32_t dbg_nvic[6];
-
 int main(void)
 {
+    /* HSE tuning from OTP — must happen before clock init */
+    extern void MX_APPE_Config(void);
+    MX_APPE_Config();
+
+    /* Standard tile init (clocks, GPIO, etc.) */
     tile_init();
     ll_systick_init(SYSCLK_HZ);
     ll_rcc_gpio_clk_enable(LED_PORT);
@@ -47,10 +51,12 @@ int main(void)
     for (volatile int d = 0; d < 1000000; d++);
     LED_OFF();
 
-    hal_ble_init();
+    /* Initialize ST middleware (AMM, RNG, Flash, BPKA, SNVMA, SCM) */
+    extern uint32_t MX_APPE_Init(void *p_param);
+    MX_APPE_Init((void *)0);
 
-    /* BLE init changes AHB prescaler — re-init SysTick */
-    ll_systick_init(SYSCLK_HZ / 2);
+    /* Initialize BLE stack, GAP, GATT */
+    hal_ble_init();
 
     /* Let the sequencer run for 2 seconds before starting advertising.
        This ensures all BLE background processes are active. */
@@ -60,9 +66,7 @@ int main(void)
     uint32_t last_toggle = 0;
     while (1) {
         extern void UTIL_SEQ_Run(uint32_t mask);
-        extern void ble_timer_server_check(void);
         UTIL_SEQ_Run(~0UL);
-        ble_timer_server_check();
 
         extern uint32_t hal_tick(void);
         uint32_t now = hal_tick();

@@ -3,31 +3,13 @@
 #define STM_LIST_H
 
 #include <stdint.h>
+#include "cmsis_compiler.h"
 
 #ifndef TRUE
 #define TRUE 1
 #endif
 #ifndef FALSE
 #define FALSE 0
-#endif
-
-/* CMSIS intrinsics */
-#ifndef __get_PRIMASK
-static inline uint32_t __get_PRIMASK(void) {
-    uint32_t r;
-    __asm volatile ("mrs %0, primask" : "=r"(r));
-    return r;
-}
-#endif
-#ifndef __set_PRIMASK
-static inline void __set_PRIMASK(uint32_t v) {
-    __asm volatile ("msr primask, %0" :: "r"(v) : "memory");
-}
-#endif
-#ifndef __disable_irq
-static inline void __disable_irq(void) {
-    __asm volatile ("cpsid i" ::: "memory");
-}
 #endif
 
 typedef struct _tListNode {

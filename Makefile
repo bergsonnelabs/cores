@@ -113,14 +113,34 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 BLE_ENABLED ?= 0
 ifeq ($(BLE_ENABLED),1)
   BLE_DIR = sdk/ble
+  STM_DIR = sdk/stm
+
+  # Include paths — CMSIS/HAL headers first so real headers take precedence
+  CFLAGS += -I$(STM_DIR) -I$(STM_DIR)/include -I$(STM_DIR)/cmsis -I$(STM_DIR)/cmsis_core
   CFLAGS += -I$(BLE_DIR) -I$(BLE_DIR)/include -I$(BLE_DIR)/include/auto -I$(BLE_DIR)/link_layer/inc
+
+  # Defines
   CFLAGS += -DBASIC_FEATURES=1 -DBLE=1
+  CFLAGS += -DUSE_HAL_DRIVER -DSTM32WBA55xx -DUSE_FULL_LL_DRIVER
   CFLAGS += '-D__PACKED_STRUCT=struct __attribute__((packed))'
   CFLAGS += '-D__PACKED_UNION=union __attribute__((packed))'
   CFLAGS += '-D__STATIC_INLINE=static inline'
   CFLAGS += '-D__WEAK=__attribute__((weak))'
+
+  # Relax warnings for ST vendor code (they use different conventions)
+  STM_CFLAGS = $(CFLAGS) -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -Wno-old-style-declaration
+
+  # Linker flags
   LDFLAGS += -Wl,--no-gc-sections -L$(BLE_DIR)/lib -l:LinkLayer_BLE_Basic_lib.a -l:stm32wba_ble_stack_basic.a
+
+  # BLE glue sources (our code in sdk/ble/)
   BLE_SOURCES = $(wildcard $(BLE_DIR)/*.c) sdk/hal/hal_ble.c
+
+  # ST middleware sources (sdk/stm/) — all .c files
+  STM_SOURCES = $(wildcard $(STM_DIR)/*.c)
+
+  # ST HAL/LL driver sources (sdk/stm/hal/)
+  STM_HAL_SOURCES = $(wildcard $(STM_DIR)/hal/*.c)
 endif
 
 # ---- Object files ----
@@ -128,12 +148,23 @@ endif
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(C_SOURCES:.c=.o))
 ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(ASM_SOURCES:.s=.o))
 GEN_OBJS = $(GEN_SOURCES:.c=.o)
-HAL_SOURCES = $(filter-out sdk/hal/hal_ble.c, $(wildcard sdk/hal/*.c))
+# For BLE builds, our lightweight sdk/hal/ drivers conflict with the real
+# ST HAL (both define GPIO_TypeDef, HAL_OK, etc.). Only compile hal_ble.c
+# for BLE; the rest go through the ST HAL in sdk/stm/hal/.
+ifeq ($(BLE_ENABLED),1)
+  # Only include non-conflicting HAL sources for BLE builds
+  # hal_ble.c is already in BLE_SOURCES, don't duplicate
+  HAL_SOURCES = sdk/hal/hal_systick.c
+else
+  HAL_SOURCES = $(filter-out sdk/hal/hal_ble.c, $(wildcard sdk/hal/*.c))
+endif
 HAL_OBJS = $(addprefix $(BUILD_DIR)/, $(HAL_SOURCES:.c=.o))
 OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS) $(HAL_OBJS)
 ifeq ($(BLE_ENABLED),1)
   BLE_OBJS = $(addprefix $(BUILD_DIR)/, $(BLE_SOURCES:.c=.o))
-  OBJECTS += $(BLE_OBJS)
+  STM_OBJS = $(addprefix $(BUILD_DIR)/, $(STM_SOURCES:.c=.o))
+  STM_HAL_OBJS = $(addprefix $(BUILD_DIR)/, $(STM_HAL_SOURCES:.c=.o))
+  OBJECTS += $(BLE_OBJS) $(STM_OBJS) $(STM_HAL_OBJS)
 endif
 
 # ---- Default goal ----
@@ -178,6 +209,19 @@ $(TARGET).bin: $(TARGET).elf
 $(TARGET).hex: $(TARGET).elf
 	@echo "  HEX   $@"
 	@$(OBJCOPY) -O ihex $< $@
+
+# ST vendor sources — relaxed warnings for third-party code
+ifeq ($(BLE_ENABLED),1)
+$(BUILD_DIR)/sdk/stm/%.o: sdk/stm/%.c $(GEN_HEADERS)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(STM_CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/sdk/stm/hal/%.o: sdk/stm/hal/%.c $(GEN_HEADERS)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $<"
+	@$(CC) $(STM_CFLAGS) -c $< -o $@
+endif
 
 # C sources depend on generated headers
 $(BUILD_DIR)/%.o: %.c $(GEN_HEADERS)

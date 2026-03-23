@@ -3,6 +3,9 @@
  *
  * Wraps the ST BLE stack binary (stm32wba_ble_stack_basic.a) with
  * a clean C API. Handles stack init, GAP/GATT setup, and advertising.
+ *
+ * System initialization (HSE tuning, SCM, LPM, RNG, flash, BPKA, SNVMA)
+ * is handled by app_entry.c (sdk/stm/) via MX_APPE_Config/Init.
  */
 
 #include "hal_ble.h"
@@ -78,13 +81,6 @@ static uint32_t gatt_buffer[DIVC(BLE_GATT_BUF_SIZE, 4)]
  * ============================================================ */
 
 static volatile int ble_connected = 0;
-
-/* Debug: store return values for CubeProgrammer inspection */
-volatile uint32_t dbg_blestack_init_ret = 0xDEAD;
-volatile uint32_t dbg_gatt_init_ret = 0xDEAD;
-volatile uint32_t dbg_gap_init_ret = 0xDEAD;
-volatile uint32_t dbg_advertise_ret = 0xDEAD;
-volatile uint32_t dbg_scan_rsp_ret = 0xDEAD;
 static uint16_t ble_conn_handle = 0xFFFF;
 
 static uint16_t gap_service_handle;
@@ -96,129 +92,19 @@ static hal_ble_disconnect_cb_t user_disconnect_cb = (void *)0;
 
 static void _ble_host_task(void);
 
-/* RCC / PWR defines handled via ll_rcc.h LL functions */
-
 /* ============================================================
- * Init
+ * Init — called AFTER MX_APPE_Init has set up the system
  * ============================================================ */
 
 void hal_ble_init(void)
 {
-    /* NVIC priority grouping — required for BLE interrupt management.
-       Group 4 = 4 bits preemption, 0 bits subpriority (matching HAL_Init). */
-    #define SCB_AIRCR  (*(volatile uint32_t *)0xE000ED0CUL)
-    SCB_AIRCR = (0x5FAUL << 16) | (3UL << 8);  /* PRIGROUP = 3 → 4-bit preemption */
-
-    /* FPU enable (Cortex-M33 needs this explicitly) */
-    #define SCB_CPACR  (*(volatile uint32_t *)0xE000ED88UL)
-    SCB_CPACR |= ((3UL << 20) | (3UL << 22));  /* CP10/CP11 full access */
-
-    /* Enable ALL peripheral clocks during sleep mode.
-       Without this, WFI kills the radio clock and BLE can't transmit.
-       The working project has these as 0xFFFFFFFF. */
-    #define RCC_BASE_ADDR  0x46020C00UL
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B0UL) = 0xFFFFFFFFUL;  /* AHB1SMENR */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B4UL) = 0xFFFFFFFFUL;  /* AHB2SMENR */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0B8UL) = 0xFFFFFFFFUL;  /* AHB4SMENR */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C0UL) = 0xFFFFFFFFUL;  /* AHB5SMENR */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C4UL) = 0xFFFFFFFFUL;  /* APB1SMENR1 */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0C8UL) = 0xFFFFFFFFUL;  /* APB1SMENR2 */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0CCUL) = 0xFFFFFFFFUL;  /* APB2SMENR */
-    *(volatile uint32_t *)(RCC_BASE_ADDR + 0x0D0UL) = 0xFFFFFFFFUL;  /* APB7SMENR */
-
-    /* Enable SYSCFG clock and ensure flash is aliased at 0x00000000.
-       The BLE link layer's db_reset reads through null pointers that
-       land in the 0x000-0x3FF range — this is a known behavior that
-       relies on the flash alias being present. */
-    #define RCC_APB7ENR   (*(volatile uint32_t *)(RCC_BASE + 0x0A8UL))
-    #define SYSCFG_BASE_WBA  0x46000400UL
-    #define SYSCFG_MEMAR  (*(volatile uint32_t *)SYSCFG_BASE_WBA)
-    RCC_APB7ENR |= (1UL << 0);  /* Enable SYSCFG clock */
-    (void)RCC_APB7ENR;           /* Read-back barrier */
-    SYSCFG_MEMAR &= ~(3UL << 0); /* MEM_MODE = 0: main flash at 0x00000000 */
-
-    /* AHB5 HSE/HSI clock divider — MUST be DIV1 for correct radio timing.
-       RCC_CFGR4 at offset 0x200, HDIV5 bit 4: 0=DIV1, 1=DIV2.
-       Working project explicitly sets this to DIV1. */
-    CLR_BITS(REG32(RCC_BASE + 0x200UL), (1UL << 4));  /* HDIV5 = 0 → DIV1 */
-
-    /* HSE tuning — must happen before radio PHY init.
-       Default trim = 0x0C. Ideally read from OTP. */
-    MOD_BITS(REG32(RCC_BASE + 0x210UL), 0x3FUL << 16, 0x0CUL << 16);
-
-    /* Configure power supply as LDO (Core.W uses LDO, not SMPS).
-       PWR_CR3 at offset 0x08, REGSEL bit 1: 0=LDO, 1=SMPS.
-       Wait for REGS=0 in PWR_SVMSR (offset 0x3C) to confirm LDO active. */
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    CLR_BITS(REG32(PWR_BASE_WBA + 0x08UL), (1UL << 1));  /* CR3.REGSEL = LDO */
-    for (volatile uint32_t t = 0; t < 1000000; t++) {
-        if (!(REG32(PWR_BASE_WBA + 0x3CUL) & (1UL << 1))) break;  /* SVMSR.REGS=0 */
-    }
-
-    /* Enable AHB5 clock for RADIO peripheral */
-    ll_rcc_ahb5_clk_enable(LL_AHB5_RADIO);
-
-    /* Enable radio power supply (PWR_VOSR RADIOSCEN) */
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    SET_BITS(PWR_VOSR_REG, (1UL << 13));  /* RADIOSCEN */
-
-    /* Select HSI as RNG clock source (default is LSE which isn't running) */
-    /* RCC_CCIPR2 offset 0x0E4, RNGSEL bits [13:12]: 10 = HSI */
-    MOD_BITS(REG32(RCC_BASE + 0x0E4UL), 0x3UL << 12, 0x2UL << 12);
-
-    /* Enable hardware RNG */
-    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 18));  /* RNG clock enable */
-    (void)REG32(RCC_BASE);
-    #define RNG_BASE_WBA  0x420C0800UL
-    #define RNG_CR_REG    REG32(RNG_BASE_WBA + 0x00UL)
-    #define RNG_SR_REG    REG32(RNG_BASE_WBA + 0x04UL)
-    #define RNG_DR_REG    REG32(RNG_BASE_WBA + 0x08UL)
-    /* RNG init: NIST config + CED disable + CONDRST (bit 30) */
-    #define RNG_CR_NIST_VALUE  0x00F02D00UL
-    #define RNG_CR_CONDRST     (1UL << 30)
-    #define RNG_CR_CED         (1UL << 5)
-    #define RNG_CR_RNGEN       (1UL << 2)
-    /* Step 1: Write NIST config with CONDRST set */
-    RNG_CR_REG = RNG_CR_NIST_VALUE | RNG_CR_CONDRST | RNG_CR_CED;
-    /* Step 2: Clear CONDRST and enable RNG */
-    RNG_CR_REG = RNG_CR_NIST_VALUE | RNG_CR_CED | RNG_CR_RNGEN;
-    /* Don't wait for DRDY here — HW_RNG_Get will poll when needed */
-
-    /* Configure RADIO and HASH interrupt priorities */
-    hal_nvic_set_priority(HAL_IRQ_RADIO, 0);
-    hal_nvic_enable_irq(HAL_IRQ_RADIO);
-    hal_nvic_set_priority(HAL_IRQ_HASH, 5);
-    hal_nvic_enable_irq(HAL_IRQ_HASH);
-
-    /* Enable backup domain, start LSI, set radio sleep timer */
-    ll_pwr_enable_backup_access();
-    ll_rcc_lsi1_enable();
-    while (!ll_rcc_lsi1_ready()) ;
-    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
-    ll_rcc_radio_slp_tmr_clk_enable();
-
-    /* Initialize link layer platform clocks.
-       NOTE: Do NOT pre-enable BBCLKEN (AclkCtrl) — the BLE stack
-       manages the baseband clock internally. Pre-enabling it interferes
-       with the stack's clock state machine. */
-    extern void LINKLAYER_PLAT_ClockInit(void);
-    LINKLAYER_PLAT_ClockInit();
-
     /* Zero the BLE buffers in SRAM2 (startup only zeros SRAM1 BSS) */
     extern uint32_t _sbss_ble, _ebss_ble;
     for (uint32_t *p = &_sbss_ble; p < &_ebss_ble; p++)
         *p = 0;
 
-    /* Initialize Advanced Memory Manager (AMM) — needed by BLE timer */
-    extern void ble_amm_init(void);
-    ble_amm_init();
-
-    /* Initialize timer server — needed by BLE_TIMER via bleplat */
-    extern UTIL_TIMER_Status_t UTIL_TIMER_Init(void);
-    UTIL_TIMER_Init();
-
     /* Initialize async event queue + sequencer tasks BEFORE BleStack_Init.
-       The working project does this first — events may be produced during init. */
+       Events may be produced during init. */
     ble_evt_queue_init();
 
     /* Initialize BLE stack */
@@ -240,7 +126,7 @@ void hal_ble_init(void)
     init_params.options                 = CFG_BLE_OPTIONS;
     init_params.debug                   = 0U;
 
-    dbg_blestack_init_ret = BleStack_Init(&init_params);
+    BleStack_Init(&init_params);
 
     /* Set PUBLIC BD address */
     {
@@ -252,8 +138,8 @@ void hal_ble_init(void)
     aci_hal_set_tx_power_level(1, 0x19);
 
     /* Initialize GATT + GAP */
-    dbg_gatt_init_ret = aci_gatt_init();
-    dbg_gap_init_ret = aci_gap_init(0x01, 0x00, 16,
+    aci_gatt_init();
+    aci_gap_init(0x01, 0x00, 16,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
@@ -265,7 +151,6 @@ void hal_ble_init(void)
     /* Register BLE host processing as a sequencer task.
        The BLE stack triggers this via UTIL_SEQ_SetTask internally. */
     extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
-    extern void BleStackCB_Process(void);
     UTIL_SEQ_RegTask(1U << CFG_TASK_BLE_HOST, 0, (void (*)(void))_ble_host_task);
 }
 
@@ -301,15 +186,6 @@ void hal_ble_process(void)
 
 hal_status_t hal_ble_advertise(const char *name)
 {
-    extern tBleStatus hci_le_set_advertising_parameters(
-        uint16_t adv_interval_min, uint16_t adv_interval_max,
-        uint8_t adv_type, uint8_t own_addr_type,
-        uint8_t peer_addr_type, const uint8_t *peer_addr,
-        uint8_t adv_channel_map, uint8_t adv_filter_policy);
-    extern tBleStatus hci_le_set_advertising_data(uint8_t len, const uint8_t *data);
-    extern tBleStatus hci_le_set_scan_response_data(uint8_t len, const uint8_t *data);
-    extern tBleStatus hci_le_set_advertising_enable(uint8_t enable);
-
     /* Use GAP-level API — same as working project */
     extern tBleStatus aci_gap_set_discoverable(
         uint8_t Advertising_Type, uint16_t Advertising_Interval_Min,
@@ -328,8 +204,7 @@ hal_status_t hal_ble_advertise(const char *name)
     for (uint8_t i = 0; i < name_len; i++)
         local_name[i + 1] = (uint8_t)name[i];
 
-    /* Just start discoverable — minimal, no extra data updates */
-    dbg_advertise_ret = aci_gap_set_discoverable(
+    tBleStatus ret = aci_gap_set_discoverable(
         0x00,           /* ADV_IND */
         0x0080,         /* min interval: 80ms */
         0x00A0,         /* max interval: 100ms */
@@ -341,42 +216,11 @@ hal_status_t hal_ble_advertise(const char *name)
         0x0006, 0x0010  /* conn interval min/max */
     );
 
-    /* Skip update_adv_data — let set_discoverable handle everything */
-    (void)local_name;  /* suppress warning */
-
-#if 0  /* Disabled — testing minimal advertising */
-    extern tBleStatus aci_gap_delete_ad_type(uint8_t ad_type);
-    extern tBleStatus aci_gap_update_adv_data(uint8_t len, const uint8_t *data);
-    uint8_t adv_data[31];
-    uint8_t pos = 0;
-
-    /* Flags: General Discoverable + BR/EDR Not Supported */
-    adv_data[pos++] = 2;     /* length */
-    adv_data[pos++] = 0x01;  /* AD type: Flags */
-    adv_data[pos++] = 0x06;  /* LE General Discoverable + BR/EDR Not Supported */
-
-    /* Complete Local Name */
-    adv_data[pos++] = name_len + 1;  /* length */
-    adv_data[pos++] = 0x09;          /* AD type: Complete Local Name */
-    for (uint8_t i = 0; i < name_len; i++)
-        adv_data[pos++] = (uint8_t)name[i];
-
-    /* Manufacturer Specific Data */
-    adv_data[pos++] = 3;     /* length */
-    adv_data[pos++] = 0xFF;  /* AD type: Manufacturer Specific */
-    adv_data[pos++] = 0x30;  /* Company ID low (ST) */
-    adv_data[pos++] = 0x00;  /* Company ID high */
-
-    aci_gap_update_adv_data(pos, adv_data);
-    (void)local_name;
-#endif  /* Disabled — testing minimal advertising */
-
-    return (dbg_advertise_ret == 0) ? HAL_OK : HAL_ERROR;
+    return (ret == 0) ? HAL_OK : HAL_ERROR;
 }
 
 hal_status_t hal_ble_stop_advertise(void)
 {
-    /* aci_gap_set_non_discoverable from ble_gap_aci.h */
     extern tBleStatus aci_gap_set_non_discoverable(void);
     tBleStatus ret = aci_gap_set_non_discoverable();
     return (ret == 0) ? HAL_OK : HAL_ERROR;
@@ -439,8 +283,7 @@ typedef struct {
     } evtserial;
 } BleEvtPacket_t;
 
-/* Static event pool — simple fixed-block allocator.
- * Avoids the full AMM (717 lines) for now. */
+/* Static event pool — simple fixed-block allocator. */
 #define EVT_POOL_SIZE  8
 static BleEvtPacket_t evt_pool[EVT_POOL_SIZE];
 static uint8_t evt_pool_used[EVT_POOL_SIZE];
@@ -503,24 +346,11 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
     (void)ext_data;
     (void)ext_length;
 
-    /* Debug counters */
-    static volatile uint32_t dbg_blecb_called = 0;
-    static volatile uint32_t dbg_blecb_not_init = 0;
-    static volatile uint32_t dbg_blecb_not_hci = 0;
-    static volatile uint32_t dbg_blecb_pool_fail = 0;
-    static volatile uint32_t dbg_blecb_queued = 0;
-    static volatile uint8_t  dbg_blecb_last_type = 0;
-
-    dbg_blecb_called++;
-    dbg_blecb_last_type = data[0];
-
-    if (!ble_evt_queue_initialized) { dbg_blecb_not_init++; return 1; }
-    if (data[0] != HCI_EVENT_PKT_TYPE) { dbg_blecb_not_hci++; return 1; }
+    if (!ble_evt_queue_initialized) return 1;
+    if (data[0] != HCI_EVENT_PKT_TYPE) return 1;
 
     BleEvtPacket_t *pkt = evt_pool_alloc();
-    if (!pkt) { dbg_blecb_pool_fail++; return 1; }
-
-    dbg_blecb_queued++;
+    if (!pkt) return 1;
 
     /* Copy event data */
     pkt->evtserial.type = HCI_EVENT_PKT_TYPE;
@@ -568,7 +398,7 @@ static void Ble_UserEvtRx(void)
     /* If more events pending, re-trigger */
     if (LST_is_empty(&BleAsynchEventQueue) == FALSE) {
         extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
-        UTIL_SEQ_SetTask(1U << 5, 0);
+        UTIL_SEQ_SetTask(1U << CFG_TASK_HCI_ASYNCH_EVT_ID, 0);
     }
 
     /* Trigger BLE host processing */

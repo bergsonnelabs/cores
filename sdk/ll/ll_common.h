@@ -17,7 +17,31 @@
 #define CLR_BITS(reg, mask) ((reg) &= ~(mask))
 #define MOD_BITS(reg, mask, val) ((reg) = ((reg) & ~(mask)) | (val))
 
-/* ---- Peripheral base addresses ---- */
+/* ---- Peripheral base addresses & GPIO types ----
+ * When USE_HAL_DRIVER is defined (BLE builds), the real CMSIS headers
+ * (stm32wba55xx.h etc.) provide all of these. Only define our lightweight
+ * versions for non-HAL builds.
+ */
+
+#ifdef USE_HAL_DRIVER
+/* BLE builds use real ST CMSIS/HAL — pull in their definitions */
+#include "stm32wbaxx_hal.h"
+/* Aliases: our LL headers use these names, CMSIS uses _NS suffix */
+#ifndef PERIPH_BASE
+#define PERIPH_BASE   PERIPH_BASE_NS
+#endif
+#ifndef AHB1_BASE
+#define AHB1_BASE     AHB1PERIPH_BASE_NS
+#endif
+#ifndef AHB2_BASE
+#define AHB2_BASE     AHB2PERIPH_BASE_NS
+#endif
+#if defined(STM32WBA55xx)
+#ifndef AHB5_BASE
+#define AHB5_BASE     AHB4PERIPH_BASE_NS
+#endif
+#endif
+#else
 
 #define PERIPH_BASE         0x40000000UL
 
@@ -79,6 +103,8 @@ typedef struct {
   #define GPIOD  ((GPIO_TypeDef *)(IOPORT_BASE + 0x0C00UL))
   #define GPIOH  ((GPIO_TypeDef *)(IOPORT_BASE + 0x1C00UL))
 #endif
+
+#endif /* !USE_HAL_DRIVER */
 
 /* GPIO mode values (2 bits per pin in MODER) */
 #define LL_GPIO_MODE_INPUT      0x0UL

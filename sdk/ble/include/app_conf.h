@@ -9,6 +9,10 @@
 #ifndef APP_CONF_H
 #define APP_CONF_H
 
+#ifdef USE_HAL_DRIVER
+#include "stm32wbaxx_hal.h"
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -19,6 +23,8 @@ extern "C" {
 
 #define USE_TEMPERATURE_BASED_RADIO_CALIBRATION  0
 #define CFG_LPM_LEVEL                            0
+#define CFG_LPM_STDBY_SUPPORTED                  0
+#define CFG_LPM_STDBY_WAKEUP_TIME               1500
 #define CFG_SCM_SUPPORTED                        0
 #define CFG_DEBUGGER_LEVEL                       1
 #define CFG_RT_DEBUG                             0
@@ -124,6 +130,64 @@ enum {
  * ============================================================ */
 
 #define CFG_BLEPLAT_NVM_MAX_SIZE  ((2048/8)-4)
+
+/* ============================================================
+ * SNVMA (Simple NVM Arbiter) configuration
+ * ============================================================ */
+
+#define CFG_SNVMA_START_SECTOR_ID     ((0x100000 / 0x2000) - 2u)  /* 1MB flash, 8KB pages */
+#define CFG_SNVMA_START_ADDRESS       (0x08000000UL + (0x2000UL * CFG_SNVMA_START_SECTOR_ID))
+
+/* ============================================================
+ * Low power manager IDs
+ * ============================================================ */
+
+enum {
+    CFG_LPM_APP = 0,
+    CFG_LPM_LOG,
+    CFG_LPM_LL_DEEPSLEEP,
+    CFG_LPM_LL_HW_RCO_CLBR,
+};
+
+/* ============================================================
+ * HW_RNG configuration
+ * ============================================================ */
+
+#define CFG_HW_RNG_POOL_SIZE   32
+
+/* ============================================================
+ * RT Debug configuration
+ * ============================================================ */
+
+#define CFG_RT_DEBUG_DTB             0
+#define CFG_RT_DEBUG_GPIO_MODULE     0
+
+/* ============================================================
+ * RCC interrupt priority (for SCM)
+ * ============================================================ */
+
+#define RCC_INTR_PRIO   1
+
+/* ============================================================
+ * Error handler — provided as a function, not a macro,
+ * to avoid conflicts with main.h declarations.
+ * ============================================================ */
+
+/* ============================================================
+ * WPAN success code
+ * ============================================================ */
+
+#ifndef WPAN_SUCCESS
+#define WPAN_SUCCESS  0
+#endif
+
+/* ============================================================
+ * Default OTP index
+ * ============================================================ */
+
+#ifndef DEFAULT_OTP_IDX
+#define DEFAULT_OTP_IDX  0
+#endif
 
 #ifdef __cplusplus
 }

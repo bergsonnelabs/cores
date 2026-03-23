@@ -17,14 +17,14 @@
 #include "app_conf.h"
 #include "linklayer_plat.h"
 
-/* SystemCoreClock — needed by DelayUs for cycle counting.
-   Define it here if not provided elsewhere. */
-uint32_t SystemCoreClock = 32000000UL;  /* HSE 32MHz — must match actual HCLK */
+/* SystemCoreClock — defined in system_stm32wbaxx.c (sdk/stm/).
+   Needed by DelayUs for cycle counting. */
+extern uint32_t SystemCoreClock;
 
 /* Forward decl — provided by LinkLayer_BLE_Basic_lib.a */
 extern uint32_t ll_intf_cmn_get_slptmr_value(void);
 
-/* HW_RNG_Get — provided by ble_glue.c */
+/* HW_RNG_Get — provided by hw_rng.c (sdk/stm/) */
 extern void HW_RNG_Get(uint8_t n, uint32_t *val);
 
 #define max(a,b) ((a) > (b) ? (a) : (b))

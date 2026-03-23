@@ -14,8 +14,14 @@
 
 /* ============================================================
  * Status codes
+ *
+ * When USE_HAL_DRIVER is defined (BLE builds), the real ST HAL
+ * defines HAL_OK/HAL_ERROR/etc. with different values (0x00U, 0x01U).
+ * Guard our definitions to avoid conflicts.
  * ============================================================ */
 
+#ifndef USE_HAL_DRIVER
+/* Only define these when not using ST HAL (which defines its own HAL_OK etc.) */
 typedef enum {
     HAL_OK       =  0,
     HAL_ERROR    = -1,
@@ -23,6 +29,11 @@ typedef enum {
     HAL_TIMEOUT  = -3,
     HAL_NACK     = -4,
 } hal_status_t;
+#else
+/* ST HAL defines HAL_OK=0, HAL_ERROR=1, HAL_BUSY=2, HAL_TIMEOUT=3 */
+typedef int hal_status_t;
+#define HAL_NACK     (-4)
+#endif
 
 /* ============================================================
  * Callback type

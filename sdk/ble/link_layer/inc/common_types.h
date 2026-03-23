@@ -117,11 +117,14 @@
 
 /********************* Macros **********************************/
 
+/* SUCCESS/GENERAL_FAILURE may be enum values from stm32wbaxx.h */
+#if !defined(USE_HAL_DRIVER)
 #ifndef SUCCESS
 #define		SUCCESS				0
 #endif
 #ifndef GENERAL_FAILURE
 #define		GENERAL_FAILURE		-1
+#endif
 #endif
 #ifndef GENERAL_ERROR_STATUS
 #define		GENERAL_ERROR_STATUS		0xFF

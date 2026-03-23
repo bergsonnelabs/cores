@@ -1,0 +1,47 @@
+PASS  00_baseline   193600	   1508	  48344	 243452	  3b6fc	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/00_baseline.elf
+PASS  03_host_stack_if   193600	   1508	  48344	 243452	  3b6fc	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/03_host_stack_if.elf
+PASS  04_stm_list   193588	   1508	  48344	 243440	  3b6f0	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/04_stm_list.elf
+PASS  07_power_table   193596	   1508	  48344	 243448	  3b6f8	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/07_power_table.elf
+PASS  08_ble_timer   193600	   1508	  48336	 243444	  3b6f4	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/08_ble_timer.elf
+PASS  09_svc_ctl   193692	   1508	  48352	 243552	  3b760	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/09_svc_ctl.elf
+PASS  10_stm32_mm   193600	   1508	  48344	 243452	  3b6fc	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/10_stm32_mm.elf
+PASS  11_stm32_seq   193620	   1508	  48344	 243472	  3b710	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/11_stm32_seq.elf
+PASS  12_stm32_timer   193564	   1508	  48344	 243416	  3b6d8	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/12_stm32_timer.elf
+PASS  13_adv_memory_mgr   193556	   1508	  48336	 243400	  3b6c8	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/13_adv_memory_mgr.elf
+FAIL  20_linklayer_plat_ble_irq
+  /Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:533:(.text.scm_setup+0x9e): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:617:(.text.scm_pll_fractional_update+0x16): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:854:(.text.scm_hserdy_isr+0x5a): undefined reference to `SystemCoreClockUpdate'
+FAIL  21_ll_sys_if_with_linklayer
+  /Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:533:(.text.scm_setup+0x9e): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:617:(.text.scm_pll_fractional_update+0x16): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:854:(.text.scm_hserdy_isr+0x5a): undefined reference to `SystemCoreClockUpdate'
+FAIL  22_ll_sys_startup_host_stack
+  /Users/jonathanfiene/Documents/local/source/cores/sdk/ble/ll_sys_startup.c:37:(.text.ll_sys_event_missed_cb+0x1c): undefined reference to `missed_hci_event_flag'
+/Users/jonathanfiene/Documents/local/source/cores/sdk/ble/host_stack_if.c:43:(.text.BleStackCB_Process+0x24): undefined reference to `missed_hci_event_flag'
+PASS  23_bleplat_ble_wrap   193604	   1508	  48344	 243456	  3b700	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/23_bleplat_ble_wrap.elf
+FAIL  24_ble_glue_full
+  /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:100:(.text.main+0x12): undefined reference to `MX_APPE_Config'
+/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:128:(.text.main+0x40): undefined reference to `MX_APPE_Init'
+/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:135:(.text.main+0x44): undefined reference to `MX_APPE_Process'
+FAIL  25_ble_glue_startup_main
+  /Users/jonathanfiene/Documents/local/source/cores/projects/ble-beacon/main.c:16: multiple definition of `HardFault_Handler'; /Users/jonathanfiene/Documents/local/source/cores/test_working_build/build/stm32wbaxx_it.o:/Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/stm32wbaxx_it.c:97: first defined here
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Startup/stm32wbaxx_ResetHandler_GCC.s:82:(.text.Reset_Handler+0x4): undefined reference to `is_boot_from_standby'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Startup/stm32wbaxx_ResetHandler_GCC.s:110:(.text.Reset_Handler+0xa0): undefined reference to `backup_MSP'
+PASS  30_all_r1_passes   193620	   1508	  48336	 243464	  3b708	/Users/jonathanfiene/Documents/local/source/cores/test_working_build/hybrid_builds_r2/30_all_r1_passes.elf
+FAIL  31_r1_plus_linklayer_irq
+  /Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:533:(.text.scm_setup+0x9e): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:617:(.text.scm_pll_fractional_update+0x16): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:854:(.text.scm_hserdy_isr+0x5a): undefined reference to `SystemCoreClockUpdate'
+FAIL  32_r1_plus_linklayer_irq_ll
+  /Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:533:(.text.scm_setup+0x9e): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:617:(.text.scm_pll_fractional_update+0x16): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:854:(.text.scm_hserdy_isr+0x5a): undefined reference to `SystemCoreClockUpdate'
+FAIL  33_r1_plus_all_ble
+  /Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:533:(.text.scm_setup+0x9e): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:617:(.text.scm_pll_fractional_update+0x16): undefined reference to `SystemCoreClockUpdate'
+/Users/jonathanfiene/STM32Cube/Repository/STM32Cube_FW_WBA_V1.6.1/Projects/Common/WPAN/Modules/scm.c:854:(.text.scm_hserdy_isr+0x5a): undefined reference to `SystemCoreClockUpdate'
+FAIL  34_all_ble_plus_glue
+  /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:100:(.text.main+0x12): undefined reference to `MX_APPE_Config'
+/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:128:(.text.main+0x40): undefined reference to `MX_APPE_Init'
+/Applications/STM32CubeIDE.app/Contents/Eclipse/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.13.3.rel1.macos64_1.0.0.202411102158/tools/bin/../lib/gcc/arm-none-eabi/13.3.1/../../../../arm-none-eabi/bin/ld: /Users/jonathanfiene/Documents/STM32/Core-W Bluetooth/Core/Src/main.c:135:(.text.main+0x44): undefined reference to `MX_APPE_Process'
