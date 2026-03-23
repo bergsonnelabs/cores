@@ -129,16 +129,83 @@ void BLEPLAT_RngGet(uint8_t n, uint32_t *val)
     }
 }
 
-/* Timer */
+/* ============================================================
+ * BLEPLAT Timer — the BLE stack schedules events via this timer.
+ * Without a working timer, advertising never starts because
+ * the callback that triggers the advertising event never fires.
+ *
+ * Simple implementation: track up to 4 timers using SysTick ms.
+ * The main loop must call bleplat_timer_check() periodically.
+ * ============================================================ */
+
+#define BLEPLAT_MAX_TIMERS  4
+
+typedef struct {
+    uint32_t expire_tick;
+    uint16_t id;
+    uint8_t  active;
+} bleplat_timer_t;
+
+static bleplat_timer_t _timers[BLEPLAT_MAX_TIMERS];
+
+/* Callback into the BLE stack when timer expires */
+extern void BLEPLATCB_TimerExpiry(uint16_t id);
+
+extern uint32_t hal_tick(void);
+
+volatile uint32_t dbg_timer_start_called = 0;
+volatile uint32_t dbg_timer_last_timeout = 0;
+
 uint8_t BLEPLAT_TimerStart(uint16_t id, uint32_t timeout)
 {
-    (void)id; (void)timeout;
+    dbg_timer_start_called++;
+    dbg_timer_last_timeout = timeout;
+    /* Find a free slot or reuse same id */
+    int slot = -1;
+    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
+        if (_timers[i].active && _timers[i].id == id) {
+            slot = i;
+            break;
+        }
+        if (!_timers[i].active && slot < 0) {
+            slot = i;
+        }
+    }
+    if (slot < 0) return 1; /* no slot */
+
+    /* timeout is in units of 625/256 microseconds (radio timer units)
+     * Convert to milliseconds: timeout * 625 / 256 / 1000 ≈ timeout / 410
+     * Use a minimum of 1ms */
+    uint32_t ms = (timeout * 625UL) / (256UL * 1000UL);
+    if (ms == 0) ms = 1;
+
+    _timers[slot].id = id;
+    _timers[slot].expire_tick = hal_tick() + ms;
+    _timers[slot].active = 1;
+
     return 0;
 }
 
 void BLEPLAT_TimerStop(uint16_t id)
 {
-    (void)id;
+    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
+        if (_timers[i].active && _timers[i].id == id) {
+            _timers[i].active = 0;
+            break;
+        }
+    }
+}
+
+/* Call this from the main loop to fire expired timers */
+void bleplat_timer_check(void)
+{
+    uint32_t now = hal_tick();
+    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
+        if (_timers[i].active && (int32_t)(now - _timers[i].expire_tick) >= 0) {
+            _timers[i].active = 0;
+            BLEPLATCB_TimerExpiry(_timers[i].id);
+        }
+    }
 }
 
 /* ============================================================
@@ -252,17 +319,24 @@ void ll_sys_schldr_timing_update_not(void *p_evnt_timing)
     (void)p_evnt_timing;
 }
 
+volatile uint32_t dbg_bg_process_called = 0;
+volatile uint32_t dbg_bg_process_active = 0;
+volatile uint32_t dbg_emngr_can_sleep = 0;
+
 void ll_sys_bg_process(void)
 {
-    /* Link layer background processing — drain all pending radio events
-     * and forward them to the host stack. This is THE critical function
-     * that connects radio interrupts to actual BLE operation. */
     extern uint8_t emngr_can_mcu_sleep(void);
     extern void emngr_handle_all_events(void);
     extern void HostStack_Process(void);
 
-    if (emngr_can_mcu_sleep() == 0)
+    dbg_bg_process_called++;
+
+    uint8_t can_sleep = emngr_can_mcu_sleep();
+    dbg_emngr_can_sleep = can_sleep;
+
+    if (can_sleep == 0)
     {
+        dbg_bg_process_active++;
         ll_sys_dp_slp_exit();
         emngr_handle_all_events();
         HostStack_Process();

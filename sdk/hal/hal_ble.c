@@ -18,6 +18,7 @@
 #include "ble_defs.h"
 #include "ble_bufsize.h"
 #include "bleplat.h"
+#include "app_conf.h"
 
 /* Forward declarations */
 static void ble_evt_queue_init(void);
@@ -225,7 +226,7 @@ void hal_ble_init(void)
        The BLE stack triggers this via UTIL_SEQ_SetTask internally. */
     extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
     extern void BleStackCB_Process(void);
-    UTIL_SEQ_RegTask(1U << 4, 0, (void (*)(void))_ble_host_task);
+    UTIL_SEQ_RegTask(1U << CFG_TASK_BLE_HOST, 0, (void (*)(void))_ble_host_task);
 }
 
 /* BLE host background task — called via sequencer */
@@ -410,7 +411,7 @@ static void ble_evt_queue_init(void)
 
     /* Register the drain task with the sequencer */
     extern void UTIL_SEQ_RegTask(uint32_t task_id_bm, uint32_t flags, void (*func)(void));
-    UTIL_SEQ_RegTask(1U << 5, 0, Ble_UserEvtRx);  /* CFG_TASK_HCI_ASYNCH_EVT_ID = 5 */
+    UTIL_SEQ_RegTask(1U << CFG_TASK_HCI_ASYNCH_EVT_ID, 0, Ble_UserEvtRx);
 }
 
 /* ============================================================
@@ -430,11 +431,24 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
     (void)ext_data;
     (void)ext_length;
 
-    if (!ble_evt_queue_initialized) return 1;
-    if (data[0] != HCI_EVENT_PKT_TYPE) return 1;
+    /* Debug counters */
+    static volatile uint32_t dbg_blecb_called = 0;
+    static volatile uint32_t dbg_blecb_not_init = 0;
+    static volatile uint32_t dbg_blecb_not_hci = 0;
+    static volatile uint32_t dbg_blecb_pool_fail = 0;
+    static volatile uint32_t dbg_blecb_queued = 0;
+    static volatile uint8_t  dbg_blecb_last_type = 0;
+
+    dbg_blecb_called++;
+    dbg_blecb_last_type = data[0];
+
+    if (!ble_evt_queue_initialized) { dbg_blecb_not_init++; return 1; }
+    if (data[0] != HCI_EVENT_PKT_TYPE) { dbg_blecb_not_hci++; return 1; }
 
     BleEvtPacket_t *pkt = evt_pool_alloc();
-    if (!pkt) return 1;  /* Pool exhausted — drop event */
+    if (!pkt) { dbg_blecb_pool_fail++; return 1; }
+
+    dbg_blecb_queued++;
 
     /* Copy event data */
     pkt->evtserial.type = HCI_EVENT_PKT_TYPE;
@@ -450,7 +464,7 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
 
     /* Trigger the drain task */
     extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
-    UTIL_SEQ_SetTask(1U << 5, 0);  /* CFG_TASK_HCI_ASYNCH_EVT_ID */
+    UTIL_SEQ_SetTask(1U << CFG_TASK_HCI_ASYNCH_EVT_ID, 0);
 
     return 0;  /* BLE_STATUS_SUCCESS — event consumed */
 }
@@ -487,7 +501,7 @@ static void Ble_UserEvtRx(void)
 
     /* Trigger BLE host processing */
     extern void UTIL_SEQ_SetTask(uint32_t task_id_bm, uint32_t prio);
-    UTIL_SEQ_SetTask(1U << 4, 0);  /* CFG_TASK_BLE_HOST */
+    UTIL_SEQ_SetTask(1U << CFG_TASK_BLE_HOST, 0);
 }
 
 /* ============================================================

@@ -714,8 +714,8 @@ static inline int ll_rcc_lsi1_enable_wait(void)
 
 #define LL_RCC_RADIOSLEEPSOURCE_NONE     0x0UL
 #define LL_RCC_RADIOSLEEPSOURCE_LSE      0x1UL
-#define LL_RCC_RADIOSLEEPSOURCE_LSI      0x2UL
-#define LL_RCC_RADIOSLEEPSOURCE_HSE_DIV  0x3UL  /* HSE / 1024 */
+#define LL_RCC_RADIOSLEEPSOURCE_HSE_DIV  0x2UL  /* HSE / 1024 */
+#define LL_RCC_RADIOSLEEPSOURCE_LSI      0x3UL
 
 /** Set the radio sleep timer clock source. Requires backup domain access. */
 static inline void ll_rcc_set_radio_sleep_clk(uint32_t src)

@@ -78,6 +78,8 @@ int main(void)
     /* Main loop */
     while (1) {
         extern void UTIL_SEQ_Run(uint32_t mask);
+        extern void bleplat_timer_check(void);
         UTIL_SEQ_Run(~0UL);
+        bleplat_timer_check();
     }
 }
