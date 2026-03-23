@@ -19,6 +19,7 @@
 #include "ble_bufsize.h"
 #include "bleplat.h"
 #include "app_conf.h"
+#include "stm32_timer.h"
 
 /* Forward declarations */
 static void ble_evt_queue_init(void);
@@ -28,6 +29,7 @@ static void _ble_host_task(void);
  * Configuration
  * ============================================================ */
 
+/* Minimal config — proven to not hang aci_gap_init */
 #define CFG_BLE_NUM_LINK             1
 #define CFG_BLE_NUM_GATT_SERVICES    2
 #define CFG_BLE_NUM_GATT_ATTRIBUTES  9
@@ -38,7 +40,7 @@ static void _ble_host_task(void);
 #define CFG_BLE_COC_MPS_MAX          0
 #define CFG_BLE_COC_INITIATOR_NBR_MAX 0
 #define PREP_WRITE_LIST_SIZE         0
-#define CFG_BLE_OPTIONS              (BLE_OPTIONS_DEV_NAME_READ_ONLY)
+#define CFG_BLE_OPTIONS              0
 #define CFG_TX_POWER                 0x19  /* -0.3 dBm */
 
 #ifndef DIVC
@@ -107,6 +109,26 @@ void hal_ble_init(void)
     #define SCB_AIRCR  (*(volatile uint32_t *)0xE000ED0CUL)
     SCB_AIRCR = (0x5FAUL << 16) | (3UL << 8);  /* PRIGROUP = 3 → 4-bit preemption */
 
+    /* FPU enable (Cortex-M33 needs this explicitly) */
+    #define SCB_CPACR  (*(volatile uint32_t *)0xE000ED88UL)
+    SCB_CPACR |= ((3UL << 20) | (3UL << 22));  /* CP10/CP11 full access */
+
+    /* Enable SYSCFG clock and ensure flash is aliased at 0x00000000.
+       The BLE link layer's db_reset reads through null pointers that
+       land in the 0x000-0x3FF range — this is a known behavior that
+       relies on the flash alias being present. */
+    #define RCC_APB7ENR   (*(volatile uint32_t *)(RCC_BASE + 0xACUL))
+    #define SYSCFG_BASE_WBA  0x46000400UL
+    #define SYSCFG_MEMAR  (*(volatile uint32_t *)SYSCFG_BASE_WBA)
+    RCC_APB7ENR |= (1UL << 0);  /* Enable SYSCFG clock */
+    (void)RCC_APB7ENR;           /* Read-back barrier */
+    SYSCFG_MEMAR &= ~(3UL << 0); /* MEM_MODE = 0: main flash at 0x00000000 */
+
+    /* AHB5 HSE/HSI clock divider — MUST be DIV1 for correct radio timing.
+       RCC_CFGR4 at offset 0x200, HDIV5 bit 4: 0=DIV1, 1=DIV2.
+       Working project explicitly sets this to DIV1. */
+    CLR_BITS(REG32(RCC_BASE + 0x200UL), (1UL << 4));  /* HDIV5 = 0 → DIV1 */
+
     /* HSE tuning — must happen before radio PHY init.
        Default trim = 0x0C. Ideally read from OTP. */
     MOD_BITS(REG32(RCC_BASE + 0x210UL), 0x3FUL << 16, 0x0CUL << 16);
@@ -174,6 +196,14 @@ void hal_ble_init(void)
     extern uint32_t _sbss_ble, _ebss_ble;
     for (uint32_t *p = &_sbss_ble; p < &_ebss_ble; p++)
         *p = 0;
+
+    /* Initialize Advanced Memory Manager (AMM) — needed by BLE timer */
+    extern void ble_amm_init(void);
+    ble_amm_init();
+
+    /* Initialize timer server — needed by BLE_TIMER via bleplat */
+    extern UTIL_TIMER_Status_t UTIL_TIMER_Init(void);
+    UTIL_TIMER_Init();
 
     /* Power table selection is done inside ll_sys_ble_cntrl_init
        (before ll_intf_init) — no need to do it here. */
@@ -425,6 +455,7 @@ static void ble_evt_queue_init(void)
  * was consumed. Returning non-zero means it was dropped.
  * ============================================================ */
 
+__attribute__((weak))
 uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
                          const uint8_t *ext_data, uint16_t ext_length)
 {
@@ -509,6 +540,7 @@ static void Ble_UserEvtRx(void)
  * Called for GAP events and unhandled GATT events.
  * ============================================================ */
 
+__attribute__((weak))
 SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_pckt)
 {
     (void)p_pckt;

@@ -45,7 +45,8 @@ void ll_sys_ble_cntrl_init(hst_cbk hostCallback)
 { 
   const struct hci_dispatch_tbl* p_hci_dis_tbl = NULL;
   
-  /* Pre-init power table — db_reset inside ll_intf_init reads it */
+  /* Pre-init power table — db_reset inside ll_intf_init reads it.
+     Without this, db_reset accesses null+0x3FF which hangs on WBA55. */
   ll_tx_pwr_if_tx_power_params_init();
 
   hci_get_dis_tbl( &p_hci_dis_tbl );

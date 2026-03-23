@@ -1,17 +1,24 @@
 /**
- * ble_glue.c — Remaining stub implementations for BLE stack dependencies
+ * ble_glue.c -- Remaining stub implementations for BLE stack dependencies
  *
- * The real implementations of LINKLAYER_PLAT_*, ll_sys_if, UTIL_SEQ_*,
- * and HostStack/BleStackCB are now in their own files:
- *   linklayer_plat.c, ll_sys_if.c, stm32_seq.c, host_stack_if.c
+ * Real implementations now live in their own files:
+ *   bleplat.c       — BLEPLAT_* (BLE platform adaptation layer)
+ *   ble_timer.c     — BLE_TIMER_* (BLE timer using UTIL_TIMER + AMM)
+ *   stm32_timer.c   — UTIL_TIMER_* (timer server)
+ *   advanced_memory_manager.c — AMM_* (advanced memory manager)
+ *   stm32_mm.c      — UTIL_MM_* (basic memory manager)
+ *   linklayer_plat.c — LINKLAYER_PLAT_* functions
+ *   ll_sys_if.c     — ll_sys_bg_process_init, ll_sys_schedule_bg_process, etc.
+ *   stm32_seq.c     — UTIL_SEQ_* sequencer
+ *   host_stack_if.c — HostStack/BleStackCB
  *
  * This file provides:
- *   - BLEPLAT_* (BLE platform adaptation layer)
  *   - ll_sys_* stubs that are NOT in ll_sys_if.c
- *   - UTIL_TIMER_* timer stubs
- *   - NVM/SNVMA/AMM/LST memory stubs
- *   - SCM/OTP/Flash/BPKA/FM stubs
+ *   - NVM/SNVMA memory stubs
+ *   - BAES/BPKA/crypto stubs
+ *   - SCM/OTP/Flash/FM stubs
  *   - HW_RNG_Get (hardware RNG access)
+ *   - AMM_RegisterBasicMemoryManager / AMM_ProcessRequest (glue for AMM)
  *   - LINKLAYER_DEBUG_SIGNAL_* stubs
  *   - System stubs (_sbrk, etc.)
  */
@@ -21,192 +28,9 @@
 #include <string.h>
 #include "hal_common.h"
 #include "app_conf.h"
-
-/* ============================================================
- * BLEPLAT_* — BLE Platform Adaptation Layer
- * ============================================================ */
-
-void BLEPLAT_Init(void)
-{
-}
-
-int BLEPLAT_NvmAdd(uint8_t type, const uint8_t *data, uint16_t size,
-                   const uint8_t *extra_data, uint16_t extra_size)
-{
-    (void)type; (void)data; (void)size;
-    (void)extra_data; (void)extra_size;
-    return 0; /* BLEPLAT_OK */
-}
-
-int BLEPLAT_NvmGet(uint8_t mode, uint8_t type, uint16_t offset,
-                   uint8_t *data, uint16_t size)
-{
-    (void)mode; (void)type; (void)offset; (void)data; (void)size;
-    return -3; /* BLEPLAT_EOF */
-}
-
-int BLEPLAT_NvmCompare(uint16_t offset, const uint8_t *data, uint16_t size)
-{
-    (void)offset; (void)data; (void)size;
-    return 1; /* comparison failed (no NVM) */
-}
-
-void BLEPLAT_NvmDiscard(uint8_t mode)
-{
-    (void)mode;
-}
-
-/* PKA — stub out public key operations */
-int BLEPLAT_PkaStartP256Key(const uint32_t *local_private_key)
-{
-    (void)local_private_key;
-    return 0;
-}
-
-void BLEPLAT_PkaReadP256Key(uint32_t *local_public_key)
-{
-    (void)local_public_key;
-}
-
-int BLEPLAT_PkaStartDhKey(const uint32_t *local_private_key,
-                           const uint32_t *remote_public_key)
-{
-    (void)local_private_key; (void)remote_public_key;
-    return 0;
-}
-
-int BLEPLAT_PkaReadDhKey(uint32_t *dh_key)
-{
-    (void)dh_key;
-    return 0;
-}
-
-/* AES — stub out encryption */
-void BLEPLAT_AesEcbEncrypt(const uint8_t *key, const uint8_t *input,
-                           uint8_t *output)
-{
-    (void)key; (void)input;
-    memset(output, 0, 16);
-}
-
-void BLEPLAT_AesCmacSetKey(const uint8_t *key)
-{
-    (void)key;
-}
-
-void BLEPLAT_AesCmacCompute(const uint8_t *input, uint32_t input_length,
-                            uint8_t *output_tag)
-{
-    (void)input; (void)input_length;
-    if (output_tag)
-        memset(output_tag, 0, 16);
-}
-
-int BLEPLAT_AesCcmCrypt(uint8_t mode, const uint8_t *key,
-                         uint8_t iv_length, const uint8_t *iv,
-                         uint16_t add_length, const uint8_t *add,
-                         uint32_t input_length, const uint8_t *input,
-                         uint8_t tag_length, uint8_t *tag,
-                         uint8_t *output)
-{
-    (void)mode; (void)key; (void)iv_length; (void)iv;
-    (void)add_length; (void)add; (void)input_length; (void)input;
-    (void)tag_length; (void)tag; (void)output;
-    return 0;
-}
-
-/* RNG */
-void BLEPLAT_RngGet(uint8_t n, uint32_t *val)
-{
-    extern volatile uint32_t _systick_ticks;
-    uint32_t seed = _systick_ticks;
-    for (uint8_t i = 0; i < n; i++)
-    {
-        seed ^= seed << 13;
-        seed ^= seed >> 17;
-        seed ^= seed << 5;
-        val[i] = seed;
-    }
-}
-
-/* ============================================================
- * BLEPLAT Timer — the BLE stack schedules events via this timer.
- * Without a working timer, advertising never starts because
- * the callback that triggers the advertising event never fires.
- *
- * Simple implementation: track up to 4 timers using SysTick ms.
- * The main loop must call bleplat_timer_check() periodically.
- * ============================================================ */
-
-#define BLEPLAT_MAX_TIMERS  4
-
-typedef struct {
-    uint32_t expire_tick;
-    uint16_t id;
-    uint8_t  active;
-} bleplat_timer_t;
-
-static bleplat_timer_t _timers[BLEPLAT_MAX_TIMERS];
-
-/* Callback into the BLE stack when timer expires */
-extern void BLEPLATCB_TimerExpiry(uint16_t id);
-
-extern uint32_t hal_tick(void);
-
-volatile uint32_t dbg_timer_start_called = 0;
-volatile uint32_t dbg_timer_last_timeout = 0;
-
-uint8_t BLEPLAT_TimerStart(uint16_t id, uint32_t timeout)
-{
-    dbg_timer_start_called++;
-    dbg_timer_last_timeout = timeout;
-    /* Find a free slot or reuse same id */
-    int slot = -1;
-    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
-        if (_timers[i].active && _timers[i].id == id) {
-            slot = i;
-            break;
-        }
-        if (!_timers[i].active && slot < 0) {
-            slot = i;
-        }
-    }
-    if (slot < 0) return 1; /* no slot */
-
-    /* timeout is in units of 625/256 microseconds (radio timer units)
-     * Convert to milliseconds: timeout * 625 / 256 / 1000 ≈ timeout / 410
-     * Use a minimum of 1ms */
-    uint32_t ms = (timeout * 625UL) / (256UL * 1000UL);
-    if (ms == 0) ms = 1;
-
-    _timers[slot].id = id;
-    _timers[slot].expire_tick = hal_tick() + ms;
-    _timers[slot].active = 1;
-
-    return 0;
-}
-
-void BLEPLAT_TimerStop(uint16_t id)
-{
-    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
-        if (_timers[i].active && _timers[i].id == id) {
-            _timers[i].active = 0;
-            break;
-        }
-    }
-}
-
-/* Call this from the main loop to fire expired timers */
-void bleplat_timer_check(void)
-{
-    uint32_t now = hal_tick();
-    for (int i = 0; i < BLEPLAT_MAX_TIMERS; i++) {
-        if (_timers[i].active && (int32_t)(now - _timers[i].expire_tick) >= 0) {
-            _timers[i].active = 0;
-            BLEPLATCB_TimerExpiry(_timers[i].id);
-        }
-    }
-}
+#include "stm32_mm.h"
+#include "advanced_memory_manager.h"
+#include "stm32_seq.h"
 
 /* ============================================================
  * HW_RNG_Get — Hardware RNG access for linklayer_plat.c
@@ -223,6 +47,92 @@ void HW_RNG_Get(uint8_t n, uint32_t *val)
         while (!(_RNG_SR & 0x01)) ;  /* Wait for DRDY */
         val[i] = _RNG_DR;
     }
+}
+
+/* ============================================================
+ * BAES — BLE AES stubs (fine for advertising)
+ * ============================================================ */
+
+void BAES_Reset(void)
+{
+}
+
+void BAES_EcbCrypt(const uint8_t *key, const uint8_t *input,
+                   uint8_t *output, int encrypt)
+{
+    (void)key; (void)input; (void)encrypt;
+    memset(output, 0, 16);
+}
+
+void BAES_CmacSetKey(const uint8_t *key)
+{
+    (void)key;
+}
+
+void BAES_CmacCompute(const uint8_t *input, uint32_t input_length,
+                      uint8_t *output_tag)
+{
+    (void)input; (void)input_length;
+    if (output_tag)
+        memset(output_tag, 0, 16);
+}
+
+int BAES_CcmCrypt(uint8_t mode, const uint8_t *key,
+                   uint8_t iv_length, const uint8_t *iv,
+                   uint16_t add_length, const uint8_t *add,
+                   uint32_t input_length, const uint8_t *input,
+                   uint8_t tag_length, uint8_t *tag,
+                   uint8_t *output)
+{
+    (void)mode; (void)key; (void)iv_length; (void)iv;
+    (void)add_length; (void)add; (void)input_length; (void)input;
+    (void)tag_length; (void)tag; (void)output;
+    return 0;
+}
+
+/* ============================================================
+ * BPKA — BLE PKA stubs (fine for advertising)
+ * ============================================================ */
+
+void BPKA_Init(void)
+{
+}
+
+int BPKA_IsReady(void)
+{
+    return 1;
+}
+
+void BPKA_Reset(void)
+{
+}
+
+void BPKA_BG_Process(void)
+{
+}
+
+int BPKA_StartP256Key(const uint32_t *local_private_key)
+{
+    (void)local_private_key;
+    return 0;
+}
+
+void BPKA_ReadP256Key(uint32_t *local_public_key)
+{
+    (void)local_public_key;
+}
+
+int BPKA_StartDhKey(const uint32_t *local_private_key,
+                     const uint32_t *remote_public_key)
+{
+    (void)local_private_key; (void)remote_public_key;
+    return 0;
+}
+
+int BPKA_ReadDhKey(uint32_t *dh_key)
+{
+    (void)dh_key;
+    return 0;
 }
 
 /* ============================================================
@@ -408,53 +318,6 @@ uint8_t ll_sys_get_concurrent_state_machines_num(void)
 }
 
 /* ============================================================
- * UTIL_TIMER_* — Timer management stubs
- * ============================================================ */
-
-int UTIL_TIMER_Create(void *timer, uint32_t period, int mode,
-                      void (*callback)(void *), void *arg)
-{
-    (void)timer; (void)period; (void)mode; (void)callback; (void)arg;
-    return 0;
-}
-
-int UTIL_TIMER_Start(void *timer)
-{
-    (void)timer;
-    return 0;
-}
-
-int UTIL_TIMER_StartWithPeriod(void *timer, uint32_t period)
-{
-    (void)timer; (void)period;
-    return 0;
-}
-
-int UTIL_TIMER_Stop(void *timer)
-{
-    (void)timer;
-    return 0;
-}
-
-int UTIL_TIMER_SetPeriod(void *timer, uint32_t period)
-{
-    (void)timer; (void)period;
-    return 0;
-}
-
-uint32_t UTIL_TIMER_GetCurrentTime(void)
-{
-    extern volatile uint32_t _systick_ticks;
-    return _systick_ticks;
-}
-
-uint32_t UTIL_TIMER_GetElapsedTime(uint32_t past)
-{
-    extern volatile uint32_t _systick_ticks;
-    return _systick_ticks - past;
-}
-
-/* ============================================================
  * NVM / SNVMA — Non-volatile memory stubs
  * ============================================================ */
 
@@ -464,11 +327,25 @@ int NVM_Init(void *buf, uint32_t offset, uint32_t size)
     return 0;
 }
 
+int NVM_Add(uint8_t type, const uint8_t *data, uint16_t size,
+            const uint8_t *extra_data, uint16_t extra_size)
+{
+    (void)type; (void)data; (void)size;
+    (void)extra_data; (void)extra_size;
+    return 0;
+}
+
 int NVM_Get(int mode, uint8_t type, uint16_t offset,
             uint8_t *data, uint16_t size)
 {
     (void)mode; (void)type; (void)offset; (void)data; (void)size;
     return -1; /* EOF */
+}
+
+int NVM_Compare(uint16_t offset, const uint8_t *data, uint16_t size)
+{
+    (void)offset; (void)data; (void)size;
+    return 1; /* comparison failed (no NVM) */
 }
 
 void NVM_Discard(int mode)
@@ -494,35 +371,69 @@ int SNVMA_Write(uint32_t id, void *cb)
 }
 
 /* ============================================================
- * AMM — Advanced Memory Manager stubs
- * NOTE: BLECB_Indication now uses our own static pool allocator
- * in hal_ble.c instead of AMM. These stubs remain for any other
- * code that references AMM.
+ * AMM glue — AMM_RegisterBasicMemoryManager / AMM_ProcessRequest
+ *
+ * These are called by advanced_memory_manager.c. We wire them
+ * to UTIL_MM (stm32_mm.c) and UTIL_SEQ (stm32_seq.c).
  * ============================================================ */
 
-int AMM_Init(void *cfg)
+static void AMM_WrapperInit(uint32_t * const p_PoolAddr, const uint32_t PoolSize)
 {
-    (void)cfg;
-    return 0;
+    UTIL_MM_Init((uint8_t *)p_PoolAddr, ((size_t)PoolSize * sizeof(uint32_t)));
 }
 
-int AMM_Alloc(uint32_t id, uint32_t size, uint32_t **ptr, void *cb)
+static uint32_t * AMM_WrapperAllocate(const uint32_t BufferSize)
 {
-    (void)id; (void)size; (void)ptr; (void)cb;
-    return -1; /* Not used — hal_ble.c has its own pool */
+    return (uint32_t *)UTIL_MM_GetBuffer(((size_t)BufferSize * sizeof(uint32_t)));
 }
 
-void AMM_Free(uint32_t *ptr)
+static void AMM_WrapperFree(uint32_t * const p_BufferAddr)
 {
-    (void)ptr;
+    UTIL_MM_ReleaseBuffer((void *)p_BufferAddr);
 }
 
-int AMM_BackgroundProcess(void)
+void AMM_RegisterBasicMemoryManager(AMM_BasicMemoryManagerFunctions_t * const p_BasicMemoryManagerFunctions)
 {
-    return 0;
+    p_BasicMemoryManagerFunctions->Init = AMM_WrapperInit;
+    p_BasicMemoryManagerFunctions->Allocate = AMM_WrapperAllocate;
+    p_BasicMemoryManagerFunctions->Free = AMM_WrapperFree;
 }
 
-/* Linked list is now in stm_list.c (doubly-linked, ported from ST) */
+void AMM_ProcessRequest(void)
+{
+    UTIL_SEQ_SetTask(1U << CFG_TASK_AMM, CFG_SEQ_PRIO_0);
+}
+
+/* ============================================================
+ * AMM initialization — called from hal_ble.c or startup
+ * ============================================================ */
+
+static uint32_t AMM_Pool[CFG_AMM_POOL_SIZE];
+static AMM_VirtualMemoryConfig_t vmConfig[CFG_AMM_VIRTUAL_MEMORY_NUMBER] =
+{
+    {
+        .Id = CFG_AMM_VIRTUAL_STACK_BLE,
+        .BufferSize = CFG_AMM_VIRTUAL_STACK_BLE_BUFFER_SIZE
+    },
+    {
+        .Id = CFG_AMM_VIRTUAL_APP_BLE,
+        .BufferSize = CFG_AMM_VIRTUAL_APP_BLE_BUFFER_SIZE
+    },
+};
+
+static AMM_InitParameters_t ammInitConfig =
+{
+    .p_PoolAddr = AMM_Pool,
+    .PoolSize = CFG_AMM_POOL_SIZE,
+    .VirtualMemoryNumber = CFG_AMM_VIRTUAL_MEMORY_NUMBER,
+    .p_VirtualMemoryConfigList = vmConfig
+};
+
+void ble_amm_init(void)
+{
+    AMM_Init(&ammInitConfig);
+    UTIL_SEQ_RegTask(1U << CFG_TASK_AMM, UTIL_SEQ_RFU, AMM_BackgroundProcess);
+}
 
 /* ============================================================
  * SCM — System Clock Manager stubs
@@ -588,23 +499,6 @@ int FD_EraseSectors(uint32_t first_sector, uint32_t n_sectors)
 {
     (void)first_sector; (void)n_sectors;
     return 0;
-}
-
-/* ============================================================
- * BPKA — BLE PKA stubs
- * ============================================================ */
-
-void BPKA_Init(void)
-{
-}
-
-int BPKA_IsReady(void)
-{
-    return 1;
-}
-
-void BPKA_Reset(void)
-{
 }
 
 /* Flash manager */

@@ -97,6 +97,34 @@ enum {
 #define CFG_LOG_TRACE_BUF_SIZE    256
 #define CFG_LOG_TRACE_FIFO_SIZE   512
 
+/* ============================================================
+ * Advanced Memory Manager (AMM) configuration
+ *
+ * Pool size in 32-bit words, virtual memory IDs and sizes
+ * matching the working ST project.
+ * ============================================================ */
+
+/* Forward-declare the element size macro (depends on AMM header) */
+#ifndef AMM_VIRTUAL_INFO_ELEMENT_SIZE
+/* Approximate -- will be overridden by advanced_memory_manager.h */
+#define AMM_VIRTUAL_INFO_ELEMENT_SIZE  4
+#endif
+
+#define CFG_MM_POOL_SIZE                          (4000U)  /* bytes */
+#define CFG_AMM_VIRTUAL_MEMORY_NUMBER             (2U)
+#define CFG_AMM_VIRTUAL_STACK_BLE                 (1U)
+#define CFG_AMM_VIRTUAL_STACK_BLE_BUFFER_SIZE     (400U)  /* words (32-bit) */
+#define CFG_AMM_VIRTUAL_APP_BLE                   (2U)
+#define CFG_AMM_VIRTUAL_APP_BLE_BUFFER_SIZE       (200U)  /* words (32-bit) */
+#define CFG_AMM_POOL_SIZE                         (((CFG_MM_POOL_SIZE + sizeof(uint32_t) - 1) / sizeof(uint32_t)) \
+                                                   + (AMM_VIRTUAL_INFO_ELEMENT_SIZE * CFG_AMM_VIRTUAL_MEMORY_NUMBER))
+
+/* ============================================================
+ * BLEPLAT NVM config
+ * ============================================================ */
+
+#define CFG_BLEPLAT_NVM_MAX_SIZE  ((2048/8)-4)
+
 #ifdef __cplusplus
 }
 #endif
