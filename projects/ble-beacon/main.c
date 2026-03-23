@@ -33,6 +33,8 @@ void HardFault_Handler(void)
     }
 }
 
+volatile uint32_t dbg_nvic[6];
+
 int main(void)
 {
     tile_init();
@@ -50,7 +52,9 @@ int main(void)
     /* BLE init changes AHB prescaler — re-init SysTick */
     ll_systick_init(SYSCLK_HZ / 2);
 
-    hal_ble_advertise("TILETOWN");
+    /* Let the sequencer run for 2 seconds before starting advertising.
+       This ensures all BLE background processes are active. */
+    uint8_t adv_started = 0;
 
     /* Main loop with heartbeat */
     uint32_t last_toggle = 0;
@@ -62,6 +66,13 @@ int main(void)
 
         extern uint32_t hal_tick(void);
         uint32_t now = hal_tick();
+
+        /* Start advertising after 2 seconds of sequencer running */
+        if (!adv_started && now > 2000) {
+            hal_ble_advertise("TILETOWN");
+            adv_started = 1;
+        }
+
         if ((now - last_toggle) >= 500) {
             last_toggle = now;
             LED_TOGGLE();

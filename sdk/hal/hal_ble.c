@@ -328,24 +328,24 @@ hal_status_t hal_ble_advertise(const char *name)
     for (uint8_t i = 0; i < name_len; i++)
         local_name[i + 1] = (uint8_t)name[i];
 
-    /* Step 1: Start discoverable with no name (matching working project) */
+    /* Just start discoverable — minimal, no extra data updates */
     dbg_advertise_ret = aci_gap_set_discoverable(
         0x00,           /* ADV_IND */
         0x0080,         /* min interval: 80ms */
         0x00A0,         /* max interval: 100ms */
         0x00,           /* public address */
         0x00,           /* no filter */
-        0, NULL,        /* no local name */
+        name_len + 1,   /* local name length (includes AD type) */
+        local_name,     /* name with 0x09 prefix */
         0, NULL,        /* no service UUIDs */
-        0, 0            /* no conn interval hints */
+        0x0006, 0x0010  /* conn interval min/max */
     );
 
-    /* Step 2: Remove TX power level from advertising data */
-    extern tBleStatus aci_gap_delete_ad_type(uint8_t ad_type);
-    aci_gap_delete_ad_type(0x0A);  /* AD_TYPE_TX_POWER_LEVEL */
+    /* Skip update_adv_data — let set_discoverable handle everything */
+    (void)local_name;  /* suppress warning */
 
-    /* Step 3: Set advertising data with FLAGS + name + manufacturer data.
-       FLAGS are REQUIRED — without them, scanners ignore the device. */
+#if 0  /* Disabled — testing minimal advertising */
+    extern tBleStatus aci_gap_delete_ad_type(uint8_t ad_type);
     extern tBleStatus aci_gap_update_adv_data(uint8_t len, const uint8_t *data);
     uint8_t adv_data[31];
     uint8_t pos = 0;
@@ -369,6 +369,7 @@ hal_status_t hal_ble_advertise(const char *name)
 
     aci_gap_update_adv_data(pos, adv_data);
     (void)local_name;
+#endif  /* Disabled — testing minimal advertising */
 
     return (dbg_advertise_ret == 0) ? HAL_OK : HAL_ERROR;
 }

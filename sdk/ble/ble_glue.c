@@ -573,9 +573,16 @@ void SystemInit(void)
 
 void UTIL_SEQ_Idle(void)
 {
-    /* NOP — don't sleep, just return and let the sequencer loop.
-       WFI can cause issues if sleep mode clocks aren't perfectly configured. */
-    __asm volatile ("nop");
+    /* Enter SLEEP mode (not STOP) — clocks keep running, CPU waits.
+       SLEEPDEEP must be CLEAR for regular sleep (not STOP/STANDBY). */
+    #define SCB_SCR_ADDR (*(volatile uint32_t *)0xE000ED10UL)
+    SCB_SCR_ADDR &= ~(1UL << 2);  /* Ensure SLEEPDEEP is clear */
+
+    /* Enable debug during sleep */
+    #define DBGMCU_CR_ADDR (*(volatile uint32_t *)0xE0042004UL)
+    DBGMCU_CR_ADDR |= 0x07;  /* DBG_SLEEP | DBG_STOP | DBG_STANDBY */
+
+    __asm volatile ("wfi" ::: "memory");
 }
 
 void UTIL_SEQ_PreIdle(void)
