@@ -51,23 +51,29 @@ hal_status_t hal_i2c_read(hal_i2c_t *h, uint8_t addr,
 
 /* ---- Register-level helpers (most common I2C pattern) ---- */
 
-/** Write to a register on an I2C device */
+/**
+ * Write to a register on an I2C device.
+ * reg is 8-bit or 16-bit: if > 0xFF, two address bytes are sent (MSB first).
+ */
 hal_status_t hal_i2c_write_reg(hal_i2c_t *h, uint8_t addr,
-                               uint8_t reg, const uint8_t *data, uint32_t len);
+                               uint16_t reg, const uint8_t *data, uint32_t len);
 
-/** Read from a register on an I2C device */
+/**
+ * Read from a register on an I2C device.
+ * reg is 8-bit or 16-bit: if > 0xFF, two address bytes are sent (MSB first).
+ */
 hal_status_t hal_i2c_read_reg(hal_i2c_t *h, uint8_t addr,
-                              uint8_t reg, uint8_t *buf, uint32_t len);
+                              uint16_t reg, uint8_t *buf, uint32_t len);
 
 /* ---- Single-byte convenience ---- */
 
-/** Write a single byte to a register */
+/** Write a single byte to a register (8-bit or 16-bit reg) */
 hal_status_t hal_i2c_write_byte(hal_i2c_t *h, uint8_t addr,
-                                uint8_t reg, uint8_t value);
+                                uint16_t reg, uint8_t value);
 
-/** Read a single byte from a register */
+/** Read a single byte from a register (8-bit or 16-bit reg) */
 hal_status_t hal_i2c_read_byte(hal_i2c_t *h, uint8_t addr,
-                               uint8_t reg, uint8_t *value);
+                               uint16_t reg, uint8_t *value);
 
 /* ---- Bus utilities ---- */
 

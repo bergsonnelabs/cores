@@ -262,31 +262,41 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
 /**
  * Write to a register on an I2C device.
  *   addr:  7-bit slave address
- *   reg:   register address
+ *   reg:   register address (8-bit or 16-bit; if > 0xFF, sends MSB first)
  *   data:  pointer to data bytes
  *   len:   number of data bytes
  */
 static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
-                                   uint8_t reg, const uint8_t *data, uint32_t len)
+                                   uint16_t reg, const uint8_t *data, uint32_t len)
 {
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
 
-    /* Total bytes = 1 (register) + len (data) */
-    uint32_t total = 1 + len;
+    /* Register address is 1 byte if <= 0xFF, 2 bytes otherwise */
+    uint32_t reg_len = (reg > 0xFF) ? 2 : 1;
+    uint32_t total = reg_len + len;
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
              | (total << LL_I2C_CR2_NBYTES_SHIFT)
              | LL_I2C_CR2_AUTOEND
              | LL_I2C_CR2_START;
 
-    /* Send register address first */
+    /* Send register address (MSB first if 16-bit) */
+    if (reg > 0xFF) {
+        while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
+            if (i2c->ISR & LL_I2C_ISR_NACKF) {
+                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+                return LL_I2C_NACK;
+            }
+        }
+        i2c->TXDR = (uint8_t)(reg >> 8);
+    }
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
         if (i2c->ISR & LL_I2C_ISR_NACKF) {
             i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
     }
-    i2c->TXDR = reg;
+    i2c->TXDR = (uint8_t)(reg & 0xFF);
 
     /* Send data */
     for (uint32_t i = 0; i < len; i++) {
@@ -309,12 +319,12 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
 /**
  * Read from a register on an I2C device (write reg addr, then read).
  *   addr:  7-bit slave address
- *   reg:   register address
+ *   reg:   register address (8-bit or 16-bit; if > 0xFF, sends MSB first)
  *   buf:   buffer for received data
  *   len:   number of bytes to read
  */
 static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
-                                  uint8_t reg, uint8_t *buf, uint32_t len)
+                                  uint16_t reg, uint8_t *buf, uint32_t len)
 {
     int ret;
 
@@ -322,17 +332,27 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
 
     /* Phase 1: Write register address (no AUTOEND — we need a restart) */
+    uint32_t reg_len = (reg > 0xFF) ? 2 : 1;
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
-             | (1UL << LL_I2C_CR2_NBYTES_SHIFT)
+             | (reg_len << LL_I2C_CR2_NBYTES_SHIFT)
              | LL_I2C_CR2_START;
 
+    if (reg > 0xFF) {
+        while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
+            if (i2c->ISR & LL_I2C_ISR_NACKF) {
+                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+                return LL_I2C_NACK;
+            }
+        }
+        i2c->TXDR = (uint8_t)(reg >> 8);
+    }
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
         if (i2c->ISR & LL_I2C_ISR_NACKF) {
             i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
     }
-    i2c->TXDR = reg;
+    i2c->TXDR = (uint8_t)(reg & 0xFF);
 
     /* Wait for transfer complete (TC, not TCR since no RELOAD) */
     while (!(i2c->ISR & LL_I2C_ISR_TC))

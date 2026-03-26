@@ -79,25 +79,25 @@ hal_status_t hal_i2c_read(hal_i2c_t *h, uint8_t addr,
  * ============================================================ */
 
 hal_status_t hal_i2c_write_reg(hal_i2c_t *h, uint8_t addr,
-                               uint8_t reg, const uint8_t *data, uint32_t len)
+                               uint16_t reg, const uint8_t *data, uint32_t len)
 {
     return _convert_status(ll_i2c_write_reg(h->instance, addr, reg, data, len));
 }
 
 hal_status_t hal_i2c_read_reg(hal_i2c_t *h, uint8_t addr,
-                              uint8_t reg, uint8_t *buf, uint32_t len)
+                              uint16_t reg, uint8_t *buf, uint32_t len)
 {
     return _convert_status(ll_i2c_read_reg(h->instance, addr, reg, buf, len));
 }
 
 hal_status_t hal_i2c_write_byte(hal_i2c_t *h, uint8_t addr,
-                                uint8_t reg, uint8_t value)
+                                uint16_t reg, uint8_t value)
 {
     return hal_i2c_write_reg(h, addr, reg, &value, 1);
 }
 
 hal_status_t hal_i2c_read_byte(hal_i2c_t *h, uint8_t addr,
-                               uint8_t reg, uint8_t *value)
+                               uint16_t reg, uint8_t *value)
 {
     return hal_i2c_read_reg(h, addr, reg, value, 1);
 }
