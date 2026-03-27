@@ -5,9 +5,9 @@
  * Connect an oscilloscope to Pad 7 to verify.
  */
 
-#include "tile_init.h"
-#include "tile_config.h"
-#include "tile_pins.h"
+#include "core_init.h"
+#include "core_config.h"
+#include "core_pads.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_tim.h"
@@ -15,7 +15,7 @@
 int main(void)
 {
     /* Clock tree: HSI16 → PLL → 80MHz */
-    tile_init();
+    core_init();
 
     /* Enable TIM2 peripheral clock (APB1) */
     ll_rcc_apb1_clk_enable(LL_APB1_TIM2);

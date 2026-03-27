@@ -15,14 +15,14 @@ volatile int16_t dbg_gyro[3];
 int main(void)
 {
     /* Clock + LED first so we can see driver init status */
-    tile_clock_init();
+    core_clock_init();
     ll_systick_init(SYSCLK_HZ);
     led_init();
     led_blink(1, 200, 300);
 
     /* Pins + I2C + tile drivers */
-    tile_pin_init();
-    tile_drivers_init();
+    core_pin_init();
+    core_drivers_init();
     led_blink(1, 200, 300);
 
     if (!tile_is_ready(&tile_sense_i_9_0))

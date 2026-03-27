@@ -6,7 +6,7 @@
  * Cortex-M cores (M0+, M4, M33).
  *
  * Call ll_systick_init() once at startup with the SYSCLK frequency.
- * The SYSCLK_HZ define from tile_config.h works perfectly here.
+ * The SYSCLK_HZ define from core_config.h works perfectly here.
  */
 
 #ifndef LL_SYSTICK_H

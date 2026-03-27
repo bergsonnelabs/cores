@@ -12,8 +12,8 @@
  * Scope on Pad 7 should show ~1.234kHz square wave.
  */
 
-#include "tile_init.h"
-#include "tile_config.h"
+#include "core_init.h"
+#include "core_config.h"
 #include "hal_timer.h"
 #include "hal_gpio.h"
 #include "ll_rcc.h"
@@ -26,7 +26,7 @@ static void tick_callback(void *ctx)
 
 int main(void)
 {
-    tile_init();
+    core_init();
 
     /* Configure Pad 7 as GPIO output (not AF/timer — just plain GPIO) */
     hal_pad_output(7);

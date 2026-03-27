@@ -11,9 +11,9 @@
  * in the terminal where you ran `make swo`.
  */
 
-#include "tile_init.h"
-#include "tile_config.h"
-#include "tile_board.h"
+#include "core_init.h"
+#include "core_config.h"
+#include "core_board.h"
 #include "hal_debug.h"
 #include "hal_gpio.h"
 #include "ll_rcc.h"
@@ -21,7 +21,7 @@
 
 int main(void)
 {
-    tile_init();
+    core_init();
     ll_systick_init(SYSCLK_HZ);
 
     /* Initialize SWO debug output */

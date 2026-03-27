@@ -3,7 +3,7 @@
  *
  * Provides GPIO operations using tile pad numbers instead of
  * raw port/pin. Uses the PAD_n_PORT / PAD_n_PIN defines from
- * tile_pins.h for compile-time pad→GPIO resolution.
+ * core_pads.h for compile-time pad→GPIO resolution.
  *
  * Usage:
  *   hal_pad_output(7);          // Configure pad 7 as output
@@ -18,7 +18,7 @@
 #include "ll_common.h"
 #include "ll_gpio.h"
 #include "ll_rcc.h"
-#include "tile_pins.h"
+#include "core_pads.h"
 
 /* ============================================================
  * Pad-to-GPIO lookup

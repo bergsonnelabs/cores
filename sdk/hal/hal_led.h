@@ -1,19 +1,19 @@
 /**
  * hal_led.h — LED pattern helpers
  *
- * Uses LED_ON/OFF/TOGGLE from tile_board.h and ll_delay_ms
+ * Uses LED_ON/OFF/TOGGLE from core_board.h and ll_delay_ms
  * from ll_systick.h. Header-only — no .c file needed.
  */
 
 #ifndef HAL_LED_H
 #define HAL_LED_H
 
-#include "tile_board.h"
+#include "core_board.h"
 #include "ll_systick.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 
-/** Initialize the onboard LED GPIO. Call once after tile_clock_init(). */
+/** Initialize the onboard LED GPIO. Call once after core_clock_init(). */
 static inline void led_init(void)
 {
     ll_rcc_gpio_clk_enable(LED_PORT);

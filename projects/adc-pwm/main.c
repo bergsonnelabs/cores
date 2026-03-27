@@ -8,9 +8,9 @@
  * Duty is clamped 10%–90% so the PWM signal is always visible.
  */
 
-#include "tile_init.h"
-#include "tile_config.h"
-#include "tile_board.h"
+#include "core_init.h"
+#include "core_config.h"
+#include "core_board.h"
 #include "hal_timer.h"
 #include "hal_gpio.h"
 #include "hal_adc.h"
@@ -19,7 +19,7 @@
 
 int main(void)
 {
-    tile_init();
+    core_init();
     ll_systick_init(SYSCLK_HZ);
 
     /* ADC on Pad 8 (PA0, channel 5) */

@@ -6,9 +6,9 @@
  * all USB enumeration and data transfer.
  */
 
-#include "tile_init.h"
-#include "tile_board.h"
-#include "tile_config.h"
+#include "core_init.h"
+#include "core_board.h"
+#include "core_config.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
@@ -23,7 +23,7 @@ void on_rx(const uint8_t *data, uint16_t len)
 
 int main(void)
 {
-    tile_init();
+    core_init();
     ll_systick_init(SYSCLK_HZ);
     ll_rcc_gpio_clk_enable(LED_PORT);
     ll_gpio_config_output(LED_PORT, LED_PIN);
