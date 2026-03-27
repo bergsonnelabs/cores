@@ -112,6 +112,7 @@ typedef struct {
 
 /* Fast mode (400kHz) from various peripheral clocks */
 #define LL_I2C_TIMING_400K_16MHZ    0x00300617UL
+#define LL_I2C_TIMING_400K_32MHZ    0x00701737UL
 #define LL_I2C_TIMING_400K_48MHZ    0x00B01A4BUL
 #define LL_I2C_TIMING_400K_80MHZ    0x00B01B59UL
 

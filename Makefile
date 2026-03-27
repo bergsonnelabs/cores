@@ -100,6 +100,18 @@ CFLAGS += -Isdk/ll
 CFLAGS += -Isdk/hal
 CFLAGS += -Og -g3
 
+# ---- Kiln driver support (optional) ----
+KILN_DIR ?= Kiln
+KILN_ENABLED ?= 0
+ifeq ($(KILN_ENABLED),1)
+  CFLAGS += -I"$(KILN_DIR)/inc" -I"$(KILN_DIR)/HAL" -I"$(KILN_DIR)/Templates"
+  KILN_SOURCES = $(KILN_DIR)/HAL/tiles_hal_core.c
+  # Add specific driver sources as needed via KILN_DRIVERS
+  ifdef KILN_DRIVERS
+    KILN_SOURCES += $(foreach drv,$(KILN_DRIVERS),$(KILN_DIR)/Src/$(drv).c)
+  endif
+endif
+
 ASFLAGS = $(CPU_FLAGS) -Wall
 
 LDFLAGS  = $(CPU_FLAGS)
@@ -116,6 +128,12 @@ GEN_OBJS = $(GEN_SOURCES:.c=.o)
 HAL_SOURCES = $(wildcard sdk/hal/*.c)
 HAL_OBJS = $(addprefix $(BUILD_DIR)/, $(HAL_SOURCES:.c=.o))
 OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(GEN_OBJS) $(HAL_OBJS)
+
+# Kiln driver objects (when KILN_ENABLED=1)
+ifeq ($(KILN_ENABLED),1)
+  KILN_OBJS = $(addprefix $(BUILD_DIR)/kiln/, $(notdir $(KILN_SOURCES:.c=.o)))
+  OBJECTS += $(KILN_OBJS)
+endif
 
 # ---- Default goal ----
 
@@ -176,6 +194,19 @@ $(BUILD_DIR)/%.o: %.s
 	@mkdir -p $(dir $@)
 	@echo "  AS    $<"
 	@$(AS) $(ASFLAGS) -c $< -o $@
+
+# Kiln driver sources (compiled from external directory)
+ifeq ($(KILN_ENABLED),1)
+$(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/HAL/%.c $(GEN_HEADERS)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $(notdir $<)"
+	@$(CC) $(CFLAGS) -c "$<" -o $@
+
+$(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/Src/%.c $(GEN_HEADERS)
+	@mkdir -p $(dir $@)
+	@echo "  CC    $(notdir $<)"
+	@$(CC) $(CFLAGS) -c "$<" -o $@
+endif
 
 size: $(TARGET).elf
 	@echo ""

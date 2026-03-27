@@ -21,7 +21,7 @@ typedef struct {
     uint8_t  cpha;          /* LL_SPI_CPHA_1EDGE or _2EDGE */
 } hal_spi_config_t;
 
-typedef struct {
+typedef struct hal_spi {
     SPI_TypeDef  *instance;
 
     /* CS pin (optional — NULL means no CS management) */

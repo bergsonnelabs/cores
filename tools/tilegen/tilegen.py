@@ -524,8 +524,8 @@ def generate(tile_path, output_dir, project_path=None):
         proj_tile = project.get("project", {}).get("tile", "")
         tile_file_stem = os.path.basename(tile_path).replace(".json", "")
         if proj_tile and proj_tile != tile_file_stem:
-            print(f"ERROR: project.json targets '{proj_tile}' but tile is '{tile_file_stem}'")
-            sys.exit(1)
+            print(f"  NOTE: project.json targets '{proj_tile}', building for '{tile_file_stem}' (TILE= override)")
+            # Allow override — this is the multi-tile portability path
 
         # Validate pin/interface/clock assignments
         warnings, errors = validate_project_config(project, tile, pad_map)

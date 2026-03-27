@@ -1,0 +1,19 @@
+{
+  "project": {
+    "name": "ring-test",
+    "tile": "Core-W-b",
+    "description": "Ring assembly I2C driver integration test"
+  },
+
+  "clock": {
+    "source": "hse",
+    "sysclk_mhz": 32
+  },
+
+  "pins": {
+    "10": "I2C1.CLK",
+    "11": "I2C1.DAT",
+    "4":  "I2C3.CLK",
+    "5":  "I2C3.DAT"
+  }
+}

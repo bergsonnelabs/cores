@@ -15,7 +15,7 @@
  * Types
  * ============================================================ */
 
-typedef struct {
+typedef struct hal_i2c {
     I2C_TypeDef *instance;
     uint32_t timeout_ms;    /* Default: 100 */
 } hal_i2c_t;
