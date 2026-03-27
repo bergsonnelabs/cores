@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "blink-w",
-    "tile": "Core-W-b",
+    "core": "Core-W-b",
     "description": "LED blink for Core.W"
   },
   "clock": {

@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "ring-test",
-    "tile": "Core-W-b",
+    "core": "Core-W-b",
     "description": "Ring assembly I2C driver integration test"
   },
 
@@ -22,6 +22,6 @@
   },
 
   "tiles": [
-    { "type": "Sense.I.9", "bus": "I2C3", "instance": 0 }
+    { "tile": "Sense.I.9", "bus": "I2C3", "instance": 0 }
   ]
 }

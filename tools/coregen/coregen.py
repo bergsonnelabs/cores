@@ -605,15 +605,15 @@ def build_tiles_config(config, i2c_buses):
     seen_drivers = set()
 
     for tile_entry in tiles_list:
-        tile_type = tile_entry["type"]
+        tile_type = tile_entry.get("tile", tile_entry.get("type", ""))
         bus_name = tile_entry["bus"]
         instance = tile_entry.get("instance", 0)
 
         # Look up driver info
         driver = TILE_DRIVER_MAP.get(tile_type)
         if driver is None:
-            print(f"  ERROR: Unknown tile type '{tile_type}'. "
-                  f"Known types: {', '.join(sorted(TILE_DRIVER_MAP.keys()))}")
+            print(f"  ERROR: Unknown tile '{tile_type}'. "
+                  f"Known tiles: {', '.join(sorted(TILE_DRIVER_MAP.keys()))}")
             sys.exit(1)
 
         # Validate bus exists in project config
@@ -704,11 +704,12 @@ def generate(tile_path, output_dir, project_path=None):
         with open(project_path) as f:
             project = json.load(f)
 
-        # Validate tile matches
-        proj_tile = project.get("project", {}).get("tile", "")
+        # Validate core matches ("core" preferred, "tile" accepted for compat)
+        proj_meta = project.get("project", {})
+        proj_core = proj_meta.get("core", proj_meta.get("tile", ""))
         tile_file_stem = os.path.basename(tile_path).replace(".json", "")
-        if proj_tile and proj_tile != tile_file_stem:
-            print(f"  NOTE: project.json targets '{proj_tile}', building for '{tile_file_stem}' (TILE= override)")
+        if proj_core and proj_core != tile_file_stem:
+            print(f"  NOTE: project.json targets '{proj_core}', building for '{tile_file_stem}' (TILE= override)")
             # Allow override — this is the multi-tile portability path
 
         # Validate pin/interface/clock assignments

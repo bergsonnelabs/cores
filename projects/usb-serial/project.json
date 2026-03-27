@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "usb-serial",
-    "tile": "Core-U-2-a",
+    "core": "Core-U-2-a",
     "description": "USB CDC virtual serial port demo"
   },
 

@@ -1,7 +1,7 @@
 {
   "project": {
     "name": "blink",
-    "tile": "Core-U-2-a",
+    "core": "Core-U-2-a",
     "description": "LED blink demo — minimal project config"
   },
 
