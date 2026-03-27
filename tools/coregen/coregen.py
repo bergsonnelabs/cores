@@ -570,6 +570,91 @@ def build_i2c_config(config, mcu, clock_config):
     return i2c_buses
 
 
+# ---- Tile peripheral driver mapping ----
+
+TILE_DRIVER_MAP = {
+    "Sense.I.9":  {"header": "tile_sense_i_9.h",  "source": "tile_sense_i_9",  "prefix": "tile_sense_i_9"},
+    "Sense.I.6P": {"header": "tile_sense_i_6p.h", "source": "tile_sense_i_6p", "prefix": "tile_sense_i_6p"},
+    "Sense.I.6D": {"header": "tile_sense_i_6d.h", "source": "tile_sense_i_6d", "prefix": "tile_sense_i_6d"},
+    "Drive.P":    {"header": "tile_drive_p.h",     "source": "tile_drive_p",    "prefix": "tile_drive_p"},
+    "Drive.H":    {"header": "tile_drive_h.h",     "source": "tile_drive_h",    "prefix": "tile_drive_h"},
+    "Drive.A.2":  {"header": "tile_drive_a_2.h",   "source": "tile_drive_a_2",  "prefix": "tile_drive_a_2"},
+    "Power.L.1":  {"header": "tile_power_l_1.h",   "source": "tile_power_l_1",  "prefix": "tile_power_l_1"},
+}
+
+
+def build_tiles_config(config, i2c_buses):
+    """Build tile peripheral config from 'tiles' list in project config.
+
+    For each declared tile, looks up driver info, validates the bus assignment,
+    and generates handle names. Returns (tiles_config, tile_hal_buses, tile_driver_sources).
+
+    tiles_config: list of dicts with per-tile info for template rendering
+    tile_hal_buses: list of dicts for unique buses needing tiles_hal_t handles
+    tile_driver_sources: list of unique driver source names (for Makefile)
+    """
+    tiles_list = config.get("tiles", [])
+    if not tiles_list:
+        return [], [], []
+
+    # Build lookup of configured I2C buses by name (e.g., "I2C3")
+    i2c_lookup = {bus["instance"]: bus for bus in i2c_buses}
+
+    tiles_config = []
+    seen_buses = {}      # bus_name -> hal handle name
+    seen_drivers = set()
+
+    for tile_entry in tiles_list:
+        tile_type = tile_entry["type"]
+        bus_name = tile_entry["bus"]
+        instance = tile_entry.get("instance", 0)
+
+        # Look up driver info
+        driver = TILE_DRIVER_MAP.get(tile_type)
+        if driver is None:
+            print(f"  ERROR: Unknown tile type '{tile_type}'. "
+                  f"Known types: {', '.join(sorted(TILE_DRIVER_MAP.keys()))}")
+            sys.exit(1)
+
+        # Validate bus exists in project config
+        if bus_name not in i2c_lookup:
+            configured = ", ".join(sorted(i2c_lookup.keys())) if i2c_lookup else "(none)"
+            print(f"  ERROR: Tile '{tile_type}' references bus '{bus_name}' "
+                  f"which is not configured. Configured I2C buses: {configured}")
+            sys.exit(1)
+
+        # Generate handle name: prefix_instance (e.g., tile_sense_i_9_0)
+        handle = f"{driver['prefix']}_{instance}"
+
+        # Track unique buses for HAL handle generation
+        if bus_name not in seen_buses:
+            i2c_bus = i2c_lookup[bus_name]
+            hal_handle = f"kiln_hal_{bus_name.lower()}"
+            seen_buses[bus_name] = {
+                "bus_name": bus_name,
+                "hal_handle": hal_handle,
+                "i2c_handle": i2c_bus["handle"],
+            }
+
+        seen_drivers.add(driver["source"])
+
+        tiles_config.append({
+            "type": tile_type,
+            "bus_name": bus_name,
+            "instance": instance,
+            "handle": handle,
+            "header": driver["header"],
+            "source": driver["source"],
+            "prefix": driver["prefix"],
+            "hal_handle": seen_buses[bus_name]["hal_handle"],
+        })
+
+    tile_hal_buses = list(seen_buses.values())
+    tile_driver_sources = sorted(seen_drivers)
+
+    return tiles_config, tile_hal_buses, tile_driver_sources
+
+
 # ---- Generation ----
 
 def generate(tile_path, output_dir, project_path=None):
@@ -644,6 +729,21 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
 
+        # Build tile peripheral driver config
+        tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(
+            project, ctx["i2c_buses"]
+        )
+        ctx["tiles_config"] = tiles_config
+        ctx["tile_hal_buses"] = tile_hal_buses
+        ctx["tile_driver_sources"] = tile_driver_sources
+
+        # Collect unique driver headers for includes
+        seen_headers = []
+        for tc in tiles_config:
+            if tc["header"] not in seen_headers:
+                seen_headers.append(tc["header"])
+        ctx["tile_driver_headers"] = seen_headers
+
         templates.append("tile_config.h.j2")
         templates.append("tile_init.h.j2")
         templates.append("tile_init.c.j2")
@@ -668,6 +768,14 @@ def generate(tile_path, output_dir, project_path=None):
         with open(out_path, "w") as f:
             f.write(output)
         print(f"  {out_name}")
+
+    # Generate tile_drivers.mk if tiles are declared
+    if ctx.get("tile_driver_sources"):
+        mk_path = os.path.join(output_dir, "tile_drivers.mk")
+        with open(mk_path, "w") as f:
+            f.write("# AUTO-GENERATED by coregen — do not edit\n")
+            f.write("KILN_DRIVERS = " + " ".join(ctx["tile_driver_sources"]) + "\n")
+        print(f"  tile_drivers.mk")
 
     print(f"  -> {output_dir}/")
 

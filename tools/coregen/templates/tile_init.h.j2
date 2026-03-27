@@ -18,9 +18,29 @@
 extern hal_i2c_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
+{% if tiles_config %}
+
+/* ---- Tile driver includes ---- */
+#include "tiles_hal.h"
+#include "tiles_hal_core.h"
+{% for header in tile_driver_headers %}
+#include "{{ header }}"
+{% endfor %}
+
+/* ---- Kiln HAL handles (one per bus used by tiles) ---- */
+{% for bus in tile_hal_buses %}
+extern tiles_hal_t {{ bus.hal_handle }};
+{% endfor %}
+
+/* ---- Tile instance handles ---- */
+{% for tile in tiles_config %}
+extern tile_t {{ tile.handle }};
+{% endfor %}
+{% endif %}
 
 /**
- * Initialize the tile: clock tree, flash latency, and configured pins.
+ * Initialize the tile: clock tree, flash latency, configured pins,
+ * and tile peripheral drivers (if declared).
  * Call this at the top of main() before using any peripherals.
  */
 void tile_init(void);

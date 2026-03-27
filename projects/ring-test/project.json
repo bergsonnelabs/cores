@@ -19,5 +19,9 @@
   "interfaces": {
     "I2C1": { "speed": 100000, "pullups": true },
     "I2C3": { "speed": 100000, "pullups": true }
-  }
+  },
+
+  "tiles": [
+    { "type": "Sense.I.9", "bus": "I2C3", "instance": 0 }
+  ]
 }
