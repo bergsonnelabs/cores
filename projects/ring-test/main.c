@@ -48,14 +48,19 @@ static void sos(void)
 
 int main(void)
 {
-    tile_init();
+    /* LED first so we can see what happens during driver init */
+    tile_clock_init();
     ll_systick_init(SYSCLK_HZ);
-
-    /* LED */
     ll_rcc_gpio_clk_enable(LED_PORT);
     ll_gpio_config_output(LED_PORT, LED_PIN);
 
-    blink_n(1, 200, 300);  /* startup */
+    blink_n(1, 200, 300);  /* clock + LED working */
+
+    /* Pins + I2C + tile drivers */
+    tile_pin_init();
+    tile_drivers_init();
+
+    blink_n(1, 200, 300);  /* I2C + drivers done */
 
     if (!tile_is_ready(&tile_sense_i_9_0)) {
         sos();

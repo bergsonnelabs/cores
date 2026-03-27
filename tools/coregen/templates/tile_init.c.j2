@@ -158,7 +158,7 @@ void tile_pin_init(void)
 }
 {% if tiles_config %}
 
-static void tile_drivers_init(void)
+void tile_drivers_init(void)
 {
     /* ---- Initialize Kiln HAL bridges (one per bus) ---- */
 {% for bus in tile_hal_buses %}

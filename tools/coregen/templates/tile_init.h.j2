@@ -58,5 +58,15 @@ void tile_clock_init(void);
  * assigned in project.json.
  */
 void tile_pin_init(void);
+{% if tiles_config %}
+
+/**
+ * Initialize tile peripheral drivers.
+ * Sets up Kiln HAL bridges and calls find/init for each declared tile.
+ * Called automatically by tile_init(), or call separately after
+ * tile_clock_init() + tile_pin_init() if you need LED before drivers.
+ */
+void tile_drivers_init(void);
+{% endif %}
 
 #endif /* TILE_INIT_H */
