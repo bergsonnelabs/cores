@@ -19,7 +19,7 @@
 #elif defined(STM32L422xx)
   #define RCC_BASE          (AHB1_BASE + 0x1000UL)
 #elif defined(STM32WBA55xx)
-  #define RCC_BASE          (AHB1_BASE + 0x0C00UL)
+  #define RCC_BASE          (AHB4_BASE + 0x0C00UL)
 #elif defined(STM32H523xx)
   #define RCC_BASE          (AHB1_BASE + 0x0C00UL)
 #endif
@@ -31,7 +31,7 @@
 #elif defined(STM32L422xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32WBA55xx)
-  #define FLASH_BASE        (PERIPH_BASE + 0x04022000UL)
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32H523xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x08022000UL)
 #endif
