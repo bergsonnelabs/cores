@@ -15,6 +15,16 @@
 #include "tile_pins.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
+{% if i2c_buses %}
+#include "hal_i2c.h"
+{% endif %}
+
+{% if i2c_buses %}
+/* ---- I2C handles ---- */
+{% for bus in i2c_buses %}
+hal_i2c_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
 
 void tile_clock_init(void)
 {
@@ -120,6 +130,17 @@ void tile_pin_init(void)
 {% endfor %}
 {% else %}
     /* No pins configured in project.json */
+{% endif %}
+{% if i2c_buses %}
+
+    /* ---- I2C peripheral init ---- */
+{% for bus in i2c_buses %}
+    {{ bus.clk_func }}({{ bus.clk_mask }});
+    {
+        hal_i2c_config_t _{{ bus.handle }}_cfg = { .timing = {{ bus.timing }}, .timeout_ms = 100 };
+        hal_i2c_init(&{{ bus.handle }}, {{ bus.instance }}, &_{{ bus.handle }}_cfg);
+    }
+{% endfor %}
 {% endif %}
 }
 

@@ -547,6 +547,17 @@ static inline void ll_rcc_ahb4_clk_enable(uint32_t mask)
 
 #endif /* STM32WBA55xx */
 
+#if defined(STM32H523xx)
+
+/** Enable APB3 peripheral clocks (H5 only: I2C3, SPI3, LPUART1). */
+static inline void ll_rcc_apb3_clk_enable(uint32_t mask)
+{
+    SET_BITS(REG32(RCC_BASE + 0xA8UL), mask);  /* APB3ENR */
+    (void)REG32(RCC_BASE);
+}
+
+#endif /* STM32H523xx */
+
 /** Enable AHB2 peripheral clocks. */
 static inline void ll_rcc_ahb2_clk_enable(uint32_t mask)
 {

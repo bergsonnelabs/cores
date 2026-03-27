@@ -471,6 +471,80 @@ def build_clock_config(config, tile, mcu):
     }
 
 
+# ---- I2C bus clock mapping per family ----
+
+# Maps (family_define, bus_number) -> (clk_enable_func, clk_mask_define)
+I2C_CLK_MAP = {
+    # L0: I2C1 on APB1
+    ("STM32L011xx", 1): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C1"),
+    # L4: I2C1/I2C3 on APB1
+    ("STM32L422xx", 1): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C1"),
+    ("STM32L422xx", 3): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C3"),
+    # WBA: I2C1 on APB1, I2C3 on APB7
+    ("STM32WBA55xx", 1): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C1"),
+    ("STM32WBA55xx", 3): ("ll_rcc_apb7_clk_enable", "LL_APB7_I2C3"),
+    # H5: I2C1/I2C2 on APB1, I2C3 on APB3
+    ("STM32H523xx", 1): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C1"),
+    ("STM32H523xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_I2C2"),
+    ("STM32H523xx", 3): ("ll_rcc_apb3_clk_enable", "LL_APB3_I2C3"),
+}
+
+# Maps sysclk_mhz -> timing constant define (400kHz Fast Mode)
+I2C_TIMING_MAP = {
+    16: "LL_I2C_TIMING_400K_16MHZ",
+    32: "LL_I2C_TIMING_400K_32MHZ",
+    48: "LL_I2C_TIMING_400K_48MHZ",
+    80: "LL_I2C_TIMING_400K_80MHZ",
+}
+
+
+def build_i2c_config(config, mcu, clock_config):
+    """Detect I2C buses from pin assignments and build I2C config list.
+
+    Scans pins for patterns like 'I2C1.CLK', 'I2C3.DAT' and returns a list
+    of dicts with bus configuration for template rendering.
+    """
+    family_define = mcu["define"]
+    sysclk_mhz = clock_config["sysclk_mhz"]
+
+    # Detect which I2C buses are referenced in pin assignments
+    bus_numbers = set()
+    pins = config.get("pins", {})
+    for pad_num, func in pins.items():
+        m = re.match(r'^I2C(\d+)\.(CLK|DAT)$', func)
+        if m:
+            bus_numbers.add(int(m.group(1)))
+
+    if not bus_numbers:
+        return []
+
+    # Look up timing constant
+    timing = I2C_TIMING_MAP.get(sysclk_mhz)
+    if timing is None:
+        print(f"  WARNING: No pre-computed I2C 400kHz timing for {sysclk_mhz}MHz — I2C init will not be generated")
+        return []
+
+    i2c_buses = []
+    for bus_num in sorted(bus_numbers):
+        key = (family_define, bus_num)
+        clk_info = I2C_CLK_MAP.get(key)
+        if clk_info is None:
+            print(f"  ERROR: I2C{bus_num} clock enable not defined for {family_define}")
+            sys.exit(1)
+
+        clk_func, clk_mask = clk_info
+        i2c_buses.append({
+            "num": bus_num,
+            "instance": f"I2C{bus_num}",
+            "handle": f"tile_i2c{bus_num}",
+            "clk_func": clk_func,
+            "clk_mask": clk_mask,
+            "timing": timing,
+        })
+
+    return i2c_buses
+
+
 # ---- Generation ----
 
 def generate(tile_path, output_dir, project_path=None):
@@ -542,6 +616,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["clock_config"] = build_clock_config(project, tile, mcu)
         ctx["iface_config"] = project.get("interfaces", {})
         ctx["project_file"] = os.path.basename(project_path)
+        ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
 
         templates.append("tile_config.h.j2")
         templates.append("tile_init.h.j2")

@@ -18,9 +18,7 @@
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
-#include "ll_i2c.h"
 #include "hal_common.h"
-#include "hal_i2c.h"
 
 /* Kiln driver includes */
 #include "tiles_hal.h"
@@ -61,9 +59,6 @@ static void sos(void)
 
 /* ---- Main ---- */
 
-static hal_i2c_t i2c1_handle;
-static hal_i2c_t i2c3_handle;
-
 int main(void)
 {
     tile_init();
@@ -74,42 +69,17 @@ int main(void)
     ll_gpio_config_output(LED_PORT, LED_PIN);
     LED_OFF();
 
-    /* ============================================================
-     * Step 1: Init I2C1
-     * ============================================================ */
+    /* I2C1/I2C3 are auto-initialized by tile_init() via tilegen */
 
-    /* I2C1 clock */
-    ll_rcc_apb1_clk_enable(LL_APB1_I2C1);
-
-    /* I2C1 pins: PA15=SCL, PB3=SDA — both AF4, open-drain, pull-up */
-    ll_rcc_gpio_clk_enable(GPIOA);
-    ll_rcc_gpio_clk_enable(GPIOB);
-    ll_gpio_config_af(GPIOA, 15, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-    ll_gpio_config_af(GPIOB,  3, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-
-    hal_i2c_config_t i2c_cfg = {
-        .timing = LL_I2C_TIMING_100K_16MHZ,
-        .timeout_ms = 100,
-    };
-    if (hal_i2c_init(&i2c1_handle, I2C1, &i2c_cfg) != HAL_OK) sos();
-
-    /* I2C3 clock (APB7 on WBA55) + pins */
-#if defined(STM32WBA55xx)
-    SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB7_I2C3);
-#endif
-    ll_gpio_config_af(GPIOA, 6, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-    ll_gpio_config_af(GPIOA, 7, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-    if (hal_i2c_init(&i2c3_handle, I2C3, &i2c_cfg) != HAL_OK) sos();
-
-    /* Set up Kiln HAL bridge */
+    /* Set up Kiln HAL bridge for I2C1 */
     tiles_hal_t kiln_hal;
     tiles_hal_core_cfg_t kiln_cfg = {
-        .i2c = &i2c1_handle,
+        .i2c = &tile_i2c1,
         .buses = TILES_BUS_I2C,
     };
     tiles_hal_core_init(&kiln_hal, &kiln_cfg);
 
-    blink_n(1, 300, 500);  /* 1 blink = I2C1 init OK */
+    blink_n(1, 300, 500);  /* 1 blink = I2C init OK */
     ll_delay_ms(1000);
 
     /* ============================================================
@@ -126,7 +96,7 @@ int main(void)
      * I2C3: Sense.I.9 (0x69), Power.L.1T, Drive.P (0x44) */
 
     /* Probe I2C1: Drive.P */
-    dbg_probe_44 = hal_i2c_probe(&i2c1_handle, 0x44);
+    dbg_probe_44 = hal_i2c_probe(&tile_i2c1, 0x44);
     if (dbg_probe_44 == HAL_OK) {
         dbg_probe_result |= 0x01;
         blink_n(1, 300, 500);
@@ -134,7 +104,7 @@ int main(void)
     ll_delay_ms(1000);
 
     /* Probe I2C3: IMU */
-    dbg_probe_69 = hal_i2c_probe(&i2c3_handle, 0x69);
+    dbg_probe_69 = hal_i2c_probe(&tile_i2c3, 0x69);
     if (dbg_probe_69 == HAL_OK) {
         dbg_probe_result |= 0x04;
         blink_n(1, 300, 500);
@@ -143,7 +113,7 @@ int main(void)
 
     if (!(dbg_probe_result & 0x04)) {
         /* Try alt address */
-        dbg_probe_68 = hal_i2c_probe(&i2c3_handle, 0x68);
+        dbg_probe_68 = hal_i2c_probe(&tile_i2c3, 0x68);
         if (dbg_probe_68 == HAL_OK) {
             dbg_probe_result |= 0x02;
             blink_n(1, 300, 500);
@@ -156,7 +126,7 @@ int main(void)
                        (dbg_probe_result & 0x02) ? 0x68 : 0;
     if (imu_addr) {
         uint8_t who = 0;
-        hal_i2c_read_byte(&i2c3_handle, imu_addr, 0x00, &who);
+        hal_i2c_read_byte(&tile_i2c3, imu_addr, 0x00, &who);
         dbg_whoami = who;
         blink_n(2, 300, 500);  /* 2 blinks = WHO_AM_I read */
     }
@@ -170,11 +140,13 @@ int main(void)
 
     /* Kiln HAL for I2C3 (where the IMU lives) */
     tiles_hal_t kiln_hal_i2c3;
-    tiles_hal_core_cfg_t kiln_cfg_i2c3 = {
-        .i2c = &i2c3_handle,
-        .buses = TILES_BUS_I2C,
-    };
-    tiles_hal_core_init(&kiln_hal_i2c3, &kiln_cfg_i2c3);
+    {
+        tiles_hal_core_cfg_t cfg = {
+            .i2c = &tile_i2c3,
+            .buses = TILES_BUS_I2C,
+        };
+        tiles_hal_core_init(&kiln_hal_i2c3, &cfg);
+    }
 
     tile_t imu;
     {

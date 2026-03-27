@@ -43,6 +43,7 @@ typedef struct {
 #elif defined(STM32H523xx)
   #define I2C1      ((I2C_TypeDef *)0x40005400UL)
   #define I2C2      ((I2C_TypeDef *)0x40005800UL)
+  #define I2C3      ((I2C_TypeDef *)0x44002800UL)
 #endif
 
 /* ---- CR1 bit definitions ---- */
@@ -236,7 +237,7 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
 
     /* Clear any pending flags */
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
-             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
+             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
     /* Configure transfer: 7-bit addr, write, NBYTES, AUTOEND, START */
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
@@ -253,8 +254,8 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
                 i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
-            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO)) {
-                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_STOPCF;
+            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_ERROR;
             }
             if (isr & LL_I2C_ISR_TXIS)
@@ -295,7 +296,7 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
     volatile uint32_t timeout;
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
-             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
+             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
     /* Configure transfer: 7-bit addr, READ, NBYTES, AUTOEND, START */
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
@@ -312,8 +313,8 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
                 i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
-            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO)) {
-                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_STOPCF;
+            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_ERROR;
             }
             if (isr & LL_I2C_ISR_RXNE)
@@ -354,7 +355,7 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
     volatile uint32_t timeout;
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
-             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
+             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
     /* Register address is 1 byte if <= 0xFF, 2 bytes otherwise */
     uint32_t reg_len = (reg > 0xFF) ? 2 : 1;
@@ -428,7 +429,7 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
     volatile uint32_t timeout;
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
-             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
+             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
     /* Phase 1: Write register address (no AUTOEND — we need a restart) */
     uint32_t reg_len = (reg > 0xFF) ? 2 : 1;
@@ -481,7 +482,7 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
 static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
 {
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
-             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
+             | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
     /* Wait for any previous transaction to complete */
     volatile uint32_t timeout = 10000;
@@ -513,7 +514,7 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
 
     int result = (i2c->ISR & LL_I2C_ISR_NACKF) ? LL_I2C_NACK : LL_I2C_OK;
 
-    i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+    i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF | LL_I2C_ICR_OVRCF;
 
     return result;
 }

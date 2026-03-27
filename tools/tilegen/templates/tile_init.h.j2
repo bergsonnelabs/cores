@@ -9,6 +9,15 @@
 
 #ifndef TILE_INIT_H
 #define TILE_INIT_H
+{% if i2c_buses %}
+
+#include "hal_i2c.h"
+
+/* ---- Auto-generated I2C handles ---- */
+{% for bus in i2c_buses %}
+extern hal_i2c_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
 
 /**
  * Initialize the tile: clock tree, flash latency, and configured pins.

@@ -14,9 +14,10 @@ static void _i2c_clk_enable(I2C_TypeDef *instance)
 #if defined(STM32L422xx)
     if (instance == I2C3) ll_rcc_apb1_clk_enable(LL_APB1_I2C3);
 #elif defined(STM32WBA55xx)
-    if (instance == I2C3) SET_BITS(REG32(RCC_BASE + 0xACUL), LL_APB7_I2C3);
+    if (instance == I2C3) ll_rcc_apb7_clk_enable(LL_APB7_I2C3);
 #elif defined(STM32H523xx)
     if (instance == I2C2) ll_rcc_apb1_clk_enable(LL_APB1_I2C2);
+    if (instance == I2C3) ll_rcc_apb3_clk_enable(LL_APB3_I2C3);
 #endif
     (void)REG32(RCC_BASE);
 }
@@ -54,6 +55,7 @@ static hal_status_t _convert_status(int ll_result)
     switch (ll_result) {
     case LL_I2C_OK:      return HAL_OK;
     case LL_I2C_NACK:    return HAL_NACK;
+    case LL_I2C_TIMEOUT: return HAL_TIMEOUT;
     default:             return HAL_ERROR;
     }
 }
