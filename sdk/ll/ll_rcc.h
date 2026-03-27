@@ -240,15 +240,23 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
 
 #elif defined(STM32WBA55xx)
     /* WBA: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
-       CFGR: [1:0] PLL1SRC, [5:4] PLL1M-1, [16] PLL1REN
+       CFGR: [1:0] PLL1SRC, [3:2] PLL1RGE, [10:8] PLL1M-1, [18] PLL1REN
        DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
-    uint32_t cfgr = src
-                  | ((m - 1) << 4)
-                  | (1UL << 16);  /* PLL1REN */
-    uint32_t divr = ((n - 1) << 0)
-                  | ((r - 1) << 24);
-    REG32(RCC_BASE + 0x28UL) = cfgr;
-    REG32(RCC_BASE + 0x34UL) = divr;
+    {
+        /* Compute PLL VCO input frequency range (PLL1RGE):
+           VCO input = source / M.  RGE=0 for 4-8MHz, RGE=1 for 8-16MHz */
+        uint32_t rge = (src == LL_RCC_PLLSRC_HSE) ?
+                       ((32 / m > 8) ? 1UL : 0UL) :   /* HSE = 32MHz */
+                       ((16 / m > 8) ? 1UL : 0UL);     /* HSI16 = 16MHz */
+        uint32_t cfgr = src
+                      | (rge << 2)           /* PLL1RGE */
+                      | ((m - 1) << 8)       /* PLL1M */
+                      | (1UL << 18);         /* PLL1REN */
+        uint32_t divr = ((n - 1) << 0)
+                      | ((r - 1) << 24);
+        REG32(RCC_BASE + 0x28UL) = cfgr;
+        REG32(RCC_BASE + 0x34UL) = divr;
+    }
 
 #elif defined(STM32H523xx)
     /* H5: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
@@ -646,6 +654,7 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   #define LL_APB7_I2C3      (1UL << 7)   /* I2C3EN */
   #define LL_APB7_LPTIM1    (1UL << 11)  /* LPTIM1EN */
   /* AHB4 (register offset 0x94) */
+  #define LL_AHB4_PWR       (1UL << 2)   /* PWREN */
   #define LL_AHB4_ADC4      (1UL << 5)   /* ADC4EN */
 
 #elif defined(STM32H523xx)
@@ -669,5 +678,78 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   /* AHB2 */
   #define LL_AHB2_ADC       (1UL << 10)
 #endif
+
+/* ============================================================
+ * Voltage Output Scaling (VOS) — WBA55 only
+ * ============================================================ */
+
+#if defined(STM32WBA55xx)
+
+/* PWR base address: AHB4_BASE + 0x0800 */
+#define PWR_BASE          (AHB4_BASE + 0x0800UL)
+
+/**
+ * Set voltage scaling range.  Must be called BEFORE increasing SYSCLK
+ * above Range 2 limits (16MHz).
+ *
+ *   range: 1 = Range 1 / high performance (up to 100MHz)
+ *          2 = Range 2 / low power (up to 16MHz, default after reset)
+ *
+ * PWR clock must be enabled (ll_rcc_ahb4_clk_enable(LL_AHB4_PWR)) before
+ * calling this function.
+ *
+ * PWR_VOSR (offset 0x0C):
+ *   bit 16  VOS:    0 = Range 2,  1 = Range 1
+ *   bit 15  VOSRDY: 1 when voltage scaling output is ready
+ */
+static inline void ll_pwr_set_vos(uint32_t range)
+{
+    if (range == 1) {
+        SET_BITS(REG32(PWR_BASE + 0x0CUL), (1UL << 16));   /* VOS = 1 → Range 1 */
+    } else {
+        CLR_BITS(REG32(PWR_BASE + 0x0CUL), (1UL << 16));   /* VOS = 0 → Range 2 */
+    }
+    /* Wait for VOSRDY */
+    while (!(REG32(PWR_BASE + 0x0CUL) & (1UL << 15)))
+        ;
+}
+
+#endif /* STM32WBA55xx VOS */
+
+/* ============================================================
+ * I2C kernel clock source selection — WBA55 only
+ * ============================================================ */
+
+#if defined(STM32WBA55xx)
+
+/* I2C kernel clock source values:
+ *   00 = PCLK  (APB clock, varies with SYSCLK)
+ *   01 = SYSCLK
+ *   10 = HSI16 (16MHz, independent of SYSCLK — preferred for stable timing)
+ *   11 = reserved
+ */
+#define LL_RCC_I2C_CLK_PCLK     0x0UL
+#define LL_RCC_I2C_CLK_SYSCLK   0x1UL
+#define LL_RCC_I2C_CLK_HSI16    0x2UL
+
+/**
+ * Set the kernel clock source for an I2C peripheral.
+ *
+ *   i2c_num: 1 or 3
+ *   source:  LL_RCC_I2C_CLK_PCLK / LL_RCC_I2C_CLK_SYSCLK / LL_RCC_I2C_CLK_HSI16
+ *
+ * I2C1: RCC_CCIPR1 (offset 0xE0) bits [11:10]
+ * I2C3: RCC_CCIPR3 (offset 0xE8) bits [7:6]
+ */
+static inline void ll_rcc_set_i2c_clk_source(uint32_t i2c_num, uint32_t source)
+{
+    if (i2c_num == 1) {
+        MOD_BITS(REG32(RCC_BASE + 0xE0UL), 0x3UL << 10, (source & 0x3UL) << 10);
+    } else if (i2c_num == 3) {
+        MOD_BITS(REG32(RCC_BASE + 0xE8UL), 0x3UL << 6, (source & 0x3UL) << 6);
+    }
+}
+
+#endif /* STM32WBA55xx I2C clock source */
 
 #endif /* LL_RCC_H */

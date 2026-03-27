@@ -41,6 +41,12 @@ tile_t {{ tile.handle }};
 void tile_clock_init(void)
 {
 {% if clock_config.pll %}
+{% if clock_config.needs_vos %}
+    /* ---- Voltage scaling: Range 1 for >16MHz on WBA55 ---- */
+    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
+    ll_pwr_set_vos(1);
+{% endif %}
+
     /* ---- Enable clock source: {{ clock_config.source }} ---- */
 {% if clock_config.source == "hsi16" %}
     ll_rcc_hsi16_enable();
@@ -77,6 +83,11 @@ void tile_clock_init(void)
 
 {% else %}
     /* ---- No PLL — run directly from {{ clock_config.source }} at {{ clock_config.sysclk_mhz }}MHz ---- */
+{% if clock_config.needs_vos %}
+    /* Voltage scaling: Range 1 for >16MHz on WBA55 */
+    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
+    ll_pwr_set_vos(1);
+{% endif %}
 {% if clock_config.source == "hsi16" %}
     ll_rcc_hsi16_enable();
     while (!ll_rcc_hsi16_ready())
@@ -145,6 +156,13 @@ void tile_pin_init(void)
     /* No pins configured in project.json */
 {% endif %}
 {% if i2c_buses %}
+{% if i2c_kernel_clk == "hsi16" %}
+
+    /* ---- I2C kernel clock: HSI16 (independent of SYSCLK) ---- */
+{% for bus in i2c_buses %}
+    ll_rcc_set_i2c_clk_source({{ bus.num }}, LL_RCC_I2C_CLK_HSI16);
+{% endfor %}
+{% endif %}
 
     /* ---- I2C peripheral init ---- */
 {% for bus in i2c_buses %}

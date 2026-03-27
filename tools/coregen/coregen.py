@@ -460,6 +460,9 @@ def build_clock_config(config, tile, mcu):
         vco = source_mhz / m * n
         print(f"  PLL: {source_mhz}MHz ÷{m} ×{n} ÷{r} = {target_mhz}MHz (VCO={vco:.0f}MHz)")
 
+    # WBA55 needs VOS Range 1 for SYSCLK > 16MHz
+    needs_vos = (mcu["define"] == "STM32WBA55xx" and target_mhz > 16)
+
     return {
         "source": source,
         "source_mhz": source_mhz,
@@ -468,6 +471,7 @@ def build_clock_config(config, tile, mcu):
         "ahb_div": clock.get("ahb_div", 1),
         "apb1_div": clock.get("apb1_div", 1),
         "apb2_div": clock.get("apb2_div", 1),
+        "needs_vos": needs_vos,
     }
 
 
@@ -515,10 +519,16 @@ def build_i2c_config(config, mcu, clock_config):
 
     Per-bus speed and pullup settings come from the 'interfaces' section
     of project.json.  Defaults: speed=400000 (400kHz), pullups=true.
+
+    On WBA55, I2C kernel clock is routed to HSI16 (16MHz) so timing is
+    always computed for 16MHz regardless of SYSCLK.
     """
     family_define = mcu["define"]
     sysclk_mhz = clock_config["sysclk_mhz"]
     iface_cfg = config.get("interfaces", {})
+
+    # On WBA55, I2C uses HSI16 as kernel clock (independent of SYSCLK)
+    i2c_clk_mhz = 16 if family_define == "STM32WBA55xx" else sysclk_mhz
 
     # Detect which I2C buses are referenced in pad assignments
     bus_numbers = set()
@@ -543,11 +553,11 @@ def build_i2c_config(config, mcu, clock_config):
             print(f"  ERROR: I2C{bus_num} speed {speed} not supported (use 100000, 400000, or 1000000)")
             sys.exit(1)
 
-        # Look up timing constant for this speed + sysclk combo
-        timing = I2C_TIMING_MAP.get((speed, sysclk_mhz))
+        # Look up timing constant for this speed + I2C kernel clock combo
+        timing = I2C_TIMING_MAP.get((speed, i2c_clk_mhz))
         if timing is None:
             speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
-            print(f"  WARNING: No pre-computed I2C {speed_label} timing for {sysclk_mhz}MHz — I2C{bus_num} init will not be generated")
+            print(f"  WARNING: No pre-computed I2C {speed_label} timing for {i2c_clk_mhz}MHz — I2C{bus_num} init will not be generated")
             continue
 
         key = (family_define, bus_num)
@@ -729,6 +739,8 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["project_file"] = os.path.basename(project_path)
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
+        # On WBA55, route I2C kernel clock to HSI16 for SYSCLK-independent timing
+        ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] == "STM32WBA55xx" else None
 
         # Build tile peripheral driver config
         tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(
@@ -748,6 +760,7 @@ def generate(tile_path, output_dir, project_path=None):
         templates.append("tile_config.h.j2")
         templates.append("tile_init.h.j2")
         templates.append("tile_init.c.j2")
+        templates.append("core.h.j2")
 
     # Set up Jinja2
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")

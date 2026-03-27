@@ -4,24 +4,31 @@
     "core": "Core-W-b",
     "description": "Ring assembly I2C driver integration test"
   },
-
   "clock": {
     "source": "hsi16",
     "sysclk_mhz": 16
   },
-
   "pads": {
     "10": "I2C1.CLK",
     "11": "I2C1.DAT",
-    "4":  "I2C3.CLK",
-    "5":  "I2C3.DAT"
+    "4": "I2C3.CLK",
+    "5": "I2C3.DAT"
   },
   "interfaces": {
-    "I2C1": { "speed": 100000, "pullups": true },
-    "I2C3": { "speed": 100000, "pullups": true }
+    "I2C1": {
+      "speed": 100000,
+      "pullups": true
+    },
+    "I2C3": {
+      "speed": 100000,
+      "pullups": true
+    }
   },
-
   "tiles": [
-    { "tile": "Sense.I.9", "bus": "I2C3", "instance": 0 }
+    {
+      "tile": "Sense.I.9",
+      "bus": "I2C3",
+      "instance": 0
+    }
   ]
 }
