@@ -15,6 +15,7 @@
 #include "core_pads.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
+#include "ll_systick.h"
 {% if i2c_buses %}
 #include "hal_i2c.h"
 {% endif %}
@@ -119,6 +120,9 @@ void core_clock_init(void)
     ll_rcc_set_ahb_div({{ clock_config.ahb_div }});
     ll_rcc_set_apb1_div({{ clock_config.apb1_div }});
     ll_rcc_set_apb2_div({{ clock_config.apb2_div }});
+
+    /* ---- SysTick (1ms tick for ll_delay_ms) ---- */
+    ll_systick_init(SYSCLK_HZ);
 }
 
 void core_pin_init(void)

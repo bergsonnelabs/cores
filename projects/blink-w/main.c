@@ -5,17 +5,10 @@
  * and the LL layer for GPIO and timing. Portable across all Core tiles.
  */
 
-#include "core_init.h"
-#include "core_board.h"
-#include "core_config.h"
-#include "ll_rcc.h"
-#include "ll_gpio.h"
-#include "ll_systick.h"
 
 int main(void)
 {
     core_init();
-    ll_systick_init(SYSCLK_HZ);
     ll_rcc_gpio_clk_enable(LED_PORT);
     ll_gpio_config_output(LED_PORT, LED_PIN);
 

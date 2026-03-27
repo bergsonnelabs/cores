@@ -16,19 +16,18 @@ int main(void)
 {
     /* Clock + LED first so we can see driver init status */
     core_clock_init();
-    ll_systick_init(SYSCLK_HZ);
-    led_init();
-    led_blink(1, 200, 300);
+    core_led_init();
+    core_led_blink(1, 200, 300);
 
     /* Pins + I2C + tile drivers */
     core_pin_init();
     core_drivers_init();
-    led_blink(1, 200, 300);
+    core_led_blink(1, 200, 300);
 
     if (!tile_is_ready(&tile_sense_i_9_0))
-        led_sos();
+        core_led_sos();
 
-    led_blink(3, 200, 300);
+    core_led_blink(3, 200, 300);
 
     /* Live data loop */
     while (1) {
@@ -43,6 +42,6 @@ int main(void)
                     + (int32_t)accel[1]*accel[1]
                     + (int32_t)accel[2]*accel[2];
 
-        led_heartbeat(mag > 300000000 ? 50 : 500);
+        core_led_heartbeat(mag > 300000000 ? 50 : 500);
     }
 }

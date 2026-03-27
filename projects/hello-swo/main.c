@@ -11,18 +11,12 @@
  * in the terminal where you ran `make swo`.
  */
 
-#include "core_init.h"
-#include "core_config.h"
-#include "core_board.h"
 #include "hal_debug.h"
 #include "hal_gpio.h"
-#include "ll_rcc.h"
-#include "ll_systick.h"
 
 int main(void)
 {
     core_init();
-    ll_systick_init(SYSCLK_HZ);
 
     /* Initialize SWO debug output */
     hal_debug_init(SYSCLK_HZ);

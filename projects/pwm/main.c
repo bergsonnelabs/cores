@@ -5,11 +5,7 @@
  * Connect an oscilloscope to Pad 7 to verify.
  */
 
-#include "core_init.h"
-#include "core_config.h"
 #include "core_pads.h"
-#include "ll_rcc.h"
-#include "ll_gpio.h"
 #include "ll_tim.h"
 
 int main(void)

@@ -12,11 +12,8 @@
  * Scope on Pad 7 should show ~1.234kHz square wave.
  */
 
-#include "core_init.h"
-#include "core_config.h"
 #include "hal_timer.h"
 #include "hal_gpio.h"
-#include "ll_rcc.h"
 
 static void tick_callback(void *ctx)
 {

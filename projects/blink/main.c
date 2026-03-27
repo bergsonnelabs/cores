@@ -1,23 +1,16 @@
 /**
- * Blink — LED blink at full speed
+ * Blink — LED blink demo
  *
- * Uses core_init() to configure the clock tree (HSI16 → PLL → 80MHz)
- * and the LL layer for GPIO and timing. Portable across all Core tiles.
+ * Simplest possible project. Uses core_init() for clock + SysTick,
+ * core_led for the onboard LED.
  */
 
-#include "core_init.h"
-#include "core_board.h"
-#include "core_config.h"
-#include "ll_rcc.h"
-#include "ll_gpio.h"
-#include "ll_systick.h"
+#include "core.h"
 
 int main(void)
 {
     core_init();
-    ll_systick_init(SYSCLK_HZ);
-    ll_rcc_gpio_clk_enable(LED_PORT);
-    ll_gpio_config_output(LED_PORT, LED_PIN);
+    core_led_init();
 
     while (1) {
         LED_ON();

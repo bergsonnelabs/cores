@@ -11,7 +11,6 @@
 #include "core_config.h"
 #include "ll_rcc.h"
 #include "ll_gpio.h"
-#include "ll_systick.h"
 #include "hal_usb_cdc.h"
 
 static uint32_t tick = 0;
@@ -24,7 +23,6 @@ void on_rx(const uint8_t *data, uint16_t len)
 int main(void)
 {
     core_init();
-    ll_systick_init(SYSCLK_HZ);
     ll_rcc_gpio_clk_enable(LED_PORT);
     ll_gpio_config_output(LED_PORT, LED_PIN);
 

@@ -10,18 +10,12 @@
  * hal_gpio for the onboard LED as a heartbeat.
  */
 
-#include "core_init.h"
-#include "core_config.h"
-#include "core_board.h"
 #include "hal_timer.h"
 #include "hal_gpio.h"
-#include "ll_rcc.h"
-#include "ll_systick.h"
 
 int main(void)
 {
     core_init();
-    ll_systick_init(SYSCLK_HZ);
 
     /* Set up TIM2 for 1kHz PWM */
     ll_rcc_apb1_clk_enable(LL_APB1_TIM2);
