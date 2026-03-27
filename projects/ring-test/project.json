@@ -6,8 +6,8 @@
   },
 
   "clock": {
-    "source": "hse",
-    "sysclk_mhz": 32
+    "source": "hsi16",
+    "sysclk_mhz": 16
   },
 
   "pins": {

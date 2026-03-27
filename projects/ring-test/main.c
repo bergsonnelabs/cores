@@ -1,16 +1,15 @@
 /**
- * Ring Test — Multi-level I2C driver integration test
+ * Ring Test — Sense.I.9 driver validation
  *
- * Uses the Ring assembly (Core.W + Sense.I.9 + Power.L.1T + dual Drive.P)
- * to test the full Cores SDK → HAL → Kiln driver stack.
+ * Focused test: find the ICM-20948 at 0x69 on I2C1, read WHO_AM_I,
+ * init the Kiln driver, read live data.
  *
- * LED patterns (PB12):
- *   Level 1: 1 blink per I2C1 device found (expect 3), pause,
- *            1 blink per I2C3 device found (expect 1)
- *   Level 2: 3 fast blinks = WHO_AM_I verified (0xEA)
- *   Level 3: Steady 500ms blink = Kiln Sense.I.9 driver initialized
- *   Level 4: LED tracks motion (fast blink = moving, slow = still)
- *   SOS: bus error or driver failure
+ * LED:
+ *   1 blink  = I2C1 init OK
+ *   2 blinks = WHO_AM_I = 0xEA (correct)
+ *   3 blinks = Kiln driver READY
+ *   Heartbeat = reading live data (fast = motion, slow = still)
+ *   SOS = error
  */
 
 #include "tile_init.h"
@@ -30,12 +29,12 @@
 
 /* ---- Debug variables (readable via SWD) ---- */
 
-volatile uint8_t  dbg_i2c1_found[16];   /* I2C1 device addresses found */
-volatile uint8_t  dbg_i2c1_count = 0;
-volatile uint8_t  dbg_i2c3_found[16];
-volatile uint8_t  dbg_i2c3_count = 0;
 volatile uint8_t  dbg_whoami = 0;
-volatile uint8_t  dbg_level = 0;
+volatile uint8_t  dbg_probe_result = 0xFF;
+volatile uint8_t  dbg_read_result = 0xFF;
+volatile int      dbg_probe_44 = -99;
+volatile int      dbg_probe_68 = -99;
+volatile int      dbg_probe_69 = -99;
 volatile uint8_t  dbg_driver_state = 0;
 volatile int16_t  dbg_accel[3];
 volatile int16_t  dbg_gyro[3];
@@ -60,12 +59,10 @@ static void sos(void)
     }
 }
 
-/* ---- I2C bus instances ---- */
+/* ---- Main ---- */
 
 static hal_i2c_t i2c1_handle;
 static hal_i2c_t i2c3_handle;
-
-/* ---- Main ---- */
 
 int main(void)
 {
@@ -77,80 +74,34 @@ int main(void)
     ll_gpio_config_output(LED_PORT, LED_PIN);
     LED_OFF();
 
-    /* Brief startup flash */
-    blink_n(2, 50, 50);
-    ll_delay_ms(500);
-
     /* ============================================================
-     * Level 1: I2C Bus Alive
+     * Step 1: Init I2C1
      * ============================================================ */
-    dbg_level = 1;
 
-    /* Enable I2C peripheral clocks */
-#if defined(STM32WBA55xx)
+    /* I2C1 clock */
     ll_rcc_apb1_clk_enable(LL_APB1_I2C1);
-    /* I2C3 is on APB7 for WBA55 */
-    SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB7_I2C3);  /* APB7ENR */
-#endif
 
-    /* Configure I2C pins (AF4 for I2C1 on WBA55) */
+    /* I2C1 pins: PA15=SCL, PB3=SDA — both AF4, open-drain, pull-up */
     ll_rcc_gpio_clk_enable(GPIOA);
     ll_rcc_gpio_clk_enable(GPIOB);
-
-    /* I2C1: PA15=SCL (AF4), PB3=SDA (AF4) */
     ll_gpio_config_af(GPIOA, 15, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
     ll_gpio_config_af(GPIOB,  3, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
 
-    /* I2C3: PA6=SCL (AF4), PA7=SDA (AF4) */
-    ll_gpio_config_af(GPIOA, 6, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-    ll_gpio_config_af(GPIOA, 7, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
-
-    /* Init I2C HAL */
     hal_i2c_config_t i2c_cfg = {
-        .timing = LL_I2C_TIMING_400K_32MHZ,
+        .timing = LL_I2C_TIMING_100K_16MHZ,
         .timeout_ms = 100,
     };
     if (hal_i2c_init(&i2c1_handle, I2C1, &i2c_cfg) != HAL_OK) sos();
+
+    /* I2C3 clock (APB7 on WBA55) + pins */
+#if defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB7_I2C3);
+#endif
+    ll_gpio_config_af(GPIOA, 6, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
+    ll_gpio_config_af(GPIOA, 7, 4, LL_GPIO_OTYPE_OD, LL_GPIO_SPEED_VHIGH, LL_GPIO_PULL_UP);
     if (hal_i2c_init(&i2c3_handle, I2C3, &i2c_cfg) != HAL_OK) sos();
 
-    /* Scan I2C1 */
-    hal_i2c_scan(&i2c1_handle, (uint8_t *)dbg_i2c1_found, (uint8_t *)&dbg_i2c1_count, 16);
-    /* Scan I2C3 */
-    hal_i2c_scan(&i2c3_handle, (uint8_t *)dbg_i2c3_found, (uint8_t *)&dbg_i2c3_count, 16);
-
-    /* LED: blink count = I2C1 devices, pause, I2C3 devices */
-    blink_n(dbg_i2c1_count, 300, 200);
-    ll_delay_ms(1000);
-    blink_n(dbg_i2c3_count, 300, 200);
-    ll_delay_ms(1000);
-
-    if (dbg_i2c1_count == 0) sos();  /* No devices = bus problem */
-
-    /* ============================================================
-     * Level 2: WHO_AM_I verification
-     * ============================================================ */
-    dbg_level = 2;
-
-    uint8_t who = 0;
-    if (hal_i2c_read_byte(&i2c1_handle, 0x69, 0x00, &who) != HAL_OK) {
-        blink_n(1, 1000, 1000);  /* 1 long = read failed */
-        sos();
-    }
-    dbg_whoami = who;
-
-    if (who == 0xEA) {
-        blink_n(3, 100, 100);  /* 3 fast = WHO_AM_I correct! */
-    } else {
-        blink_n(5, 500, 500);  /* 5 slow = wrong ID */
-    }
-    ll_delay_ms(1000);
-
-    /* ============================================================
-     * Level 3: Kiln Driver Init
-     * ============================================================ */
-    dbg_level = 3;
-
-    /* Set up Kiln HAL bridge for I2C1 */
+    /* Set up Kiln HAL bridge */
     tiles_hal_t kiln_hal;
     tiles_hal_core_cfg_t kiln_cfg = {
         .i2c = &i2c1_handle,
@@ -158,23 +109,91 @@ int main(void)
     };
     tiles_hal_core_init(&kiln_hal, &kiln_cfg);
 
-    /* Initialize Sense.I.9 driver */
-    tile_t imu;
-    tile_sense_i_9_init(&kiln_hal, 0, &imu);
-    dbg_driver_state = imu.state;
-
-    if (imu.state == TILE_STATE_READY) {
-        blink_n(4, 100, 100);  /* 4 fast = driver ready! */
-    } else {
-        blink_n(2, 1000, 500);  /* 2 long = driver failed */
-        sos();
-    }
+    blink_n(1, 300, 500);  /* 1 blink = I2C1 init OK */
     ll_delay_ms(1000);
 
     /* ============================================================
-     * Level 4: Live Data
+     * Step 2: Probe specific addresses — blink per ACK
+     *   0x44 = Drive.P (control)
+     *   0x68 = IMU (AD0 low)
+     *   0x69 = IMU (AD0 high/float)
+     * LED: 1 blink per address that ACKs, long pause between
      * ============================================================ */
-    dbg_level = 4;
+
+    dbg_probe_result = 0;
+
+    /* I2C1: Drive.P (0x44)
+     * I2C3: Sense.I.9 (0x69), Power.L.1T, Drive.P (0x44) */
+
+    /* Probe I2C1: Drive.P */
+    dbg_probe_44 = hal_i2c_probe(&i2c1_handle, 0x44);
+    if (dbg_probe_44 == HAL_OK) {
+        dbg_probe_result |= 0x01;
+        blink_n(1, 300, 500);
+    }
+    ll_delay_ms(1000);
+
+    /* Probe I2C3: IMU */
+    dbg_probe_69 = hal_i2c_probe(&i2c3_handle, 0x69);
+    if (dbg_probe_69 == HAL_OK) {
+        dbg_probe_result |= 0x04;
+        blink_n(1, 300, 500);
+    }
+    ll_delay_ms(1000);
+
+    if (!(dbg_probe_result & 0x04)) {
+        /* Try alt address */
+        dbg_probe_68 = hal_i2c_probe(&i2c3_handle, 0x68);
+        if (dbg_probe_68 == HAL_OK) {
+            dbg_probe_result |= 0x02;
+            blink_n(1, 300, 500);
+        }
+        ll_delay_ms(1000);
+    }
+
+    /* Read WHO_AM_I from IMU on I2C3 */
+    uint8_t imu_addr = (dbg_probe_result & 0x04) ? 0x69 :
+                       (dbg_probe_result & 0x02) ? 0x68 : 0;
+    if (imu_addr) {
+        uint8_t who = 0;
+        hal_i2c_read_byte(&i2c3_handle, imu_addr, 0x00, &who);
+        dbg_whoami = who;
+        blink_n(2, 300, 500);  /* 2 blinks = WHO_AM_I read */
+    }
+    ll_delay_ms(1000);
+
+    if (imu_addr == 0) sos();
+
+    /* ============================================================
+     * Step 3: Kiln driver init on I2C3
+     * ============================================================ */
+
+    /* Kiln HAL for I2C3 (where the IMU lives) */
+    tiles_hal_t kiln_hal_i2c3;
+    tiles_hal_core_cfg_t kiln_cfg_i2c3 = {
+        .i2c = &i2c3_handle,
+        .buses = TILES_BUS_I2C,
+    };
+    tiles_hal_core_init(&kiln_hal_i2c3, &kiln_cfg_i2c3);
+
+    tile_t imu;
+    {
+        uint8_t instance = (imu_addr == 0x69) ? 0 : 1;
+        tile_sense_i_9_init(&kiln_hal_i2c3, instance, &imu);
+        dbg_driver_state = imu.state;
+
+        if (imu.state == TILE_STATE_READY) {
+            blink_n(3, 300, 500);  /* 3 blinks = driver ready! */
+        } else {
+            blink_n(6, 100, 100);  /* 6 fast = driver failed */
+            sos();
+        }
+    }
+    ll_delay_ms(500);
+
+    /* ============================================================
+     * Step 4: Live data — LED tracks motion
+     * ============================================================ */
 
     while (1) {
         int16_t accel[3], gyro[3];
@@ -188,17 +207,14 @@ int main(void)
         dbg_gyro[1] = gyro[1];
         dbg_gyro[2] = gyro[2];
 
-        /* Motion detection: magnitude of accel vector */
         int32_t mag = (int32_t)accel[0] * accel[0]
                     + (int32_t)accel[1] * accel[1]
                     + (int32_t)accel[2] * accel[2];
 
         if (mag > 300000000) {
-            /* Strong motion — fast blink */
             LED_TOGGLE();
             ll_delay_ms(50);
         } else {
-            /* Mostly still — slow blink */
             LED_TOGGLE();
             ll_delay_ms(500);
         }
