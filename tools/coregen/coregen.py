@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-tilegen — Generate C headers from Mosaic tile JSON definitions.
+coregen — Generate C headers from Mosaic tile JSON definitions.
 
 Usage:
-    python3 tilegen.py <tile.json> [output_dir] [--project project.json]
+    python3 coregen.py <tile.json> [output_dir] [--project project.json]
 
 Reads a tile JSON file and produces:
     tile_pins.h        Pad-to-GPIO mapping defines
@@ -315,7 +315,7 @@ def validate_project_config(config, tile, pad_map):
     pad_lookup = {p["number"]: p for p in pad_map}
 
     # Validate pin assignments
-    pins = config.get("pins", {})
+    pins = config.get("pads", config.get("pins", {}))
     for pad_num, assigned_func in pins.items():
         if pad_num not in pad_lookup:
             errors.append(f"Pad {pad_num}: does not exist on this tile (has {len(pad_lookup)} pads)")
@@ -383,7 +383,7 @@ def build_pin_config(config, pad_map):
     pad_lookup = {p["number"]: p for p in pad_map}
     pin_configs = []
 
-    for pad_num, assigned_func in config.get("pins", {}).items():
+    for pad_num, assigned_func in config.get("pads", config.get("pins", {})).items():
         pad_info = pad_lookup.get(pad_num)
         if pad_info is None:
             continue
@@ -489,28 +489,41 @@ I2C_CLK_MAP = {
     ("STM32H523xx", 3): ("ll_rcc_apb3_clk_enable", "LL_APB3_I2C3"),
 }
 
-# Maps sysclk_mhz -> timing constant define (400kHz Fast Mode)
+# Maps (speed_hz, sysclk_mhz) -> timing constant define
+# Speeds: 100kHz (Standard), 400kHz (Fast Mode), 1MHz (Fast Mode Plus)
 I2C_TIMING_MAP = {
-    16: "LL_I2C_TIMING_400K_16MHZ",
-    32: "LL_I2C_TIMING_400K_32MHZ",
-    48: "LL_I2C_TIMING_400K_48MHZ",
-    80: "LL_I2C_TIMING_400K_80MHZ",
+    (100000, 16): "LL_I2C_TIMING_100K_16MHZ",
+    (100000, 32): "LL_I2C_TIMING_100K_32MHZ",
+    (100000, 48): "LL_I2C_TIMING_100K_48MHZ",
+    (100000, 80): "LL_I2C_TIMING_100K_80MHZ",
+    (400000, 16): "LL_I2C_TIMING_400K_16MHZ",
+    (400000, 32): "LL_I2C_TIMING_400K_32MHZ",
+    (400000, 48): "LL_I2C_TIMING_400K_48MHZ",
+    (400000, 80): "LL_I2C_TIMING_400K_80MHZ",
+    (1000000, 16): "LL_I2C_TIMING_1M_16MHZ",
+    (1000000, 32): "LL_I2C_TIMING_1M_32MHZ",
+    (1000000, 48): "LL_I2C_TIMING_1M_48MHZ",
+    (1000000, 80): "LL_I2C_TIMING_1M_80MHZ",
 }
 
 
 def build_i2c_config(config, mcu, clock_config):
     """Detect I2C buses from pin assignments and build I2C config list.
 
-    Scans pins for patterns like 'I2C1.CLK', 'I2C3.DAT' and returns a list
+    Scans pads for patterns like 'I2C1.CLK', 'I2C3.DAT' and returns a list
     of dicts with bus configuration for template rendering.
+
+    Per-bus speed and pullup settings come from the 'interfaces' section
+    of project.json.  Defaults: speed=400000 (400kHz), pullups=true.
     """
     family_define = mcu["define"]
     sysclk_mhz = clock_config["sysclk_mhz"]
+    iface_cfg = config.get("interfaces", {})
 
-    # Detect which I2C buses are referenced in pin assignments
+    # Detect which I2C buses are referenced in pad assignments
     bus_numbers = set()
-    pins = config.get("pins", {})
-    for pad_num, func in pins.items():
+    pads = config.get("pads", config.get("pins", {}))
+    for pad_num, func in pads.items():
         m = re.match(r'^I2C(\d+)\.(CLK|DAT)$', func)
         if m:
             bus_numbers.add(int(m.group(1)))
@@ -518,14 +531,25 @@ def build_i2c_config(config, mcu, clock_config):
     if not bus_numbers:
         return []
 
-    # Look up timing constant
-    timing = I2C_TIMING_MAP.get(sysclk_mhz)
-    if timing is None:
-        print(f"  WARNING: No pre-computed I2C 400kHz timing for {sysclk_mhz}MHz — I2C init will not be generated")
-        return []
-
     i2c_buses = []
     for bus_num in sorted(bus_numbers):
+        bus_name = f"I2C{bus_num}"
+        bus_cfg = iface_cfg.get(bus_name, {})
+        speed = bus_cfg.get("speed", 400000)
+        pullups = bus_cfg.get("pullups", True)
+
+        # Validate speed
+        if speed not in (100000, 400000, 1000000):
+            print(f"  ERROR: I2C{bus_num} speed {speed} not supported (use 100000, 400000, or 1000000)")
+            sys.exit(1)
+
+        # Look up timing constant for this speed + sysclk combo
+        timing = I2C_TIMING_MAP.get((speed, sysclk_mhz))
+        if timing is None:
+            speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
+            print(f"  WARNING: No pre-computed I2C {speed_label} timing for {sysclk_mhz}MHz — I2C{bus_num} init will not be generated")
+            continue
+
         key = (family_define, bus_num)
         clk_info = I2C_CLK_MAP.get(key)
         if clk_info is None:
@@ -535,11 +559,12 @@ def build_i2c_config(config, mcu, clock_config):
         clk_func, clk_mask = clk_info
         i2c_buses.append({
             "num": bus_num,
-            "instance": f"I2C{bus_num}",
+            "instance": bus_name,
             "handle": f"tile_i2c{bus_num}",
             "clk_func": clk_func,
             "clk_mask": clk_mask,
             "timing": timing,
+            "pullups": pullups,
         })
 
     return i2c_buses
@@ -556,7 +581,7 @@ def generate(tile_path, output_dir, project_path=None):
     part = tile["components"][0]["part"]
     mcu = MCU_DB.get(part)
     if mcu is None:
-        print(f"ERROR: Unknown MCU part '{part}'. Add it to MCU_DB in tilegen.py.")
+        print(f"ERROR: Unknown MCU part '{part}'. Add it to MCU_DB in coregen.py.")
         sys.exit(1)
 
     # Build template context
@@ -617,6 +642,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["iface_config"] = project.get("interfaces", {})
         ctx["project_file"] = os.path.basename(project_path)
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
+        ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
 
         templates.append("tile_config.h.j2")
         templates.append("tile_init.h.j2")
@@ -667,7 +693,7 @@ def main():
         sys.exit(1)
 
     tile_name = os.path.basename(args.tile_json).replace(".json", "")
-    print(f"tilegen: {tile_name}")
+    print(f"coregen: {tile_name}")
     generate(args.tile_json, args.output_dir, args.project)
 
 

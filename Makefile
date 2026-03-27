@@ -4,7 +4,7 @@
 #   make                    # Build blink for Core.U.2 (default)
 #   make TILE=Core-U-2-a PROJECT=blink
 #   make flash              # Flash via USB DFU
-#   make generate           # Run tilegen only (no compile)
+#   make generate           # Run coregen only (no compile)
 #   make clean
 
 # ---- Configuration ----
@@ -21,14 +21,14 @@ OBJDUMP = $(PREFIX)objdump
 SIZE    = $(PREFIX)size
 GDB     = $(PREFIX)gdb
 
-# Tilegen
-TILEGEN = python3 tools/tilegen/tilegen.py
+# Coregen
+COREGEN = python3 tools/coregen/coregen.py
 TILE_JSON = tiles/$(TILE).json
 PROJECT_JSON = projects/$(PROJECT)/project.json
 GEN_DIR = build/generated/$(TILE)
 
 # ---- Tile → MCU mapping ----
-# tilegen generates the headers; the Makefile still needs to know
+# coregen generates the headers; the Makefile still needs to know
 # CPU architecture and linker script for compiler flags.
 
 ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
@@ -139,7 +139,7 @@ endif
 
 .DEFAULT_GOAL := all
 
-# ---- Generated headers (tilegen) ----
+# ---- Generated headers (coregen) ----
 
 GEN_HEADERS = $(GEN_DIR)/tile_pins.h $(GEN_DIR)/tile_board.h $(GEN_DIR)/tile_interfaces.h
 
@@ -147,15 +147,15 @@ GEN_HEADERS = $(GEN_DIR)/tile_pins.h $(GEN_DIR)/tile_board.h $(GEN_DIR)/tile_int
 ifneq ($(wildcard $(PROJECT_JSON)),)
   GEN_HEADERS += $(GEN_DIR)/tile_config.h $(GEN_DIR)/tile_init.h
   GEN_SOURCES = $(GEN_DIR)/tile_init.c
-  TILEGEN_FLAGS = --project $(PROJECT_JSON)
+  COREGEN_FLAGS = --project $(PROJECT_JSON)
 else
   GEN_SOURCES =
-  TILEGEN_FLAGS =
+  COREGEN_FLAGS =
 endif
 
-$(GEN_HEADERS): $(TILE_JSON) $(wildcard $(PROJECT_JSON)) tools/tilegen/tilegen.py tools/tilegen/templates/*.j2
+$(GEN_HEADERS): $(TILE_JSON) $(wildcard $(PROJECT_JSON)) tools/coregen/coregen.py tools/coregen/templates/*.j2
 	@echo "  GEN   $(TILE)"
-	@$(TILEGEN) $(TILE_JSON) $(GEN_DIR) $(TILEGEN_FLAGS)
+	@$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS)
 
 .PHONY: generate
 generate: $(GEN_HEADERS)
@@ -185,7 +185,7 @@ $(BUILD_DIR)/%.o: %.c $(GEN_HEADERS)
 	@$(CC) $(CFLAGS) -c $< -o $@
 
 # Generated C sources (tile_init.c etc.)
-# These are produced by tilegen alongside the headers
+# These are produced by coregen alongside the headers
 $(GEN_DIR)/tile_init.o: $(GEN_DIR)/tile_init.c $(GEN_HEADERS)
 	@echo "  CC    $<"
 	@$(CC) $(CFLAGS) -c $< -o $@

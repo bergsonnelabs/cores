@@ -127,7 +127,7 @@ hal_status_t hal_spi_xfer_dma(hal_spi_t *h, const uint8_t *tx, uint8_t *rx,
 {
     (void)h; (void)tx; (void)rx; (void)len; (void)cb; (void)ctx;
     /* DMA SPI not yet implemented — requires DMA channel assignment
-       from tilegen (tile_dma.h) and per-family DMA setup. */
+       from coregen (tile_dma.h) and per-family DMA setup. */
     return HAL_ERROR;
 }
 

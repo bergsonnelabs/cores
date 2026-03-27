@@ -10,6 +10,6 @@
     "sysclk_mhz": 80
   },
 
-  "pins": {
+  "pads": {
   }
 }

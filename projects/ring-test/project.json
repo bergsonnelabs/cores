@@ -10,10 +10,14 @@
     "sysclk_mhz": 16
   },
 
-  "pins": {
+  "pads": {
     "10": "I2C1.CLK",
     "11": "I2C1.DAT",
     "4":  "I2C3.CLK",
     "5":  "I2C3.DAT"
+  },
+  "interfaces": {
+    "I2C1": { "speed": 100000, "pullups": true },
+    "I2C3": { "speed": 100000, "pullups": true }
   }
 }

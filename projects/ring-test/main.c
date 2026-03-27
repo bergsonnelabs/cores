@@ -69,7 +69,7 @@ int main(void)
     ll_gpio_config_output(LED_PORT, LED_PIN);
     LED_OFF();
 
-    /* I2C1/I2C3 are auto-initialized by tile_init() via tilegen */
+    /* I2C1/I2C3 are auto-initialized by tile_init() via coregen */
 
     /* Set up Kiln HAL bridge for I2C1 */
     tiles_hal_t kiln_hal;

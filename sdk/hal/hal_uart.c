@@ -320,7 +320,7 @@ hal_status_t hal_uart_tx_dma(hal_uart_t *h, const uint8_t *data, uint32_t len,
 {
     (void)h; (void)data; (void)len; (void)cb; (void)ctx;
     /* DMA TX not yet implemented — requires DMA channel assignment
-       from tilegen (tile_dma.h) and per-family DMA setup. */
+       from coregen (tile_dma.h) and per-family DMA setup. */
     return HAL_ERROR;
 }
 

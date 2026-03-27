@@ -5,7 +5,7 @@
     "source": "hsi16",
     "sysclk_mhz": 80
   },
-  "pins": {
+  "pads": {
     "7": "TIM2.3"
   }
 }

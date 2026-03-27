@@ -5,5 +5,5 @@
     "source": "hsi16",
     "sysclk_mhz": 80
   },
-  "pins": {}
+  "pads": {}
 }
