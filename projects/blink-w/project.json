@@ -1,0 +1,12 @@
+{
+  "project": {
+    "name": "blink-w",
+    "tile": "Core-W-b",
+    "description": "LED blink for Core.W"
+  },
+  "clock": {
+    "source": "hsi16",
+    "sysclk_mhz": 16
+  },
+  "pins": {}
+}
