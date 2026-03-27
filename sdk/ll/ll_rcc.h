@@ -352,7 +352,7 @@ static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
   #define LL_RCC_SYSCLK_PLL    0x2UL
   #define RCC_CFGR_OFFSET      0x1CUL  /* RCC_CFGR1 */
   #define RCC_CFGR_SW_MASK     0x3UL
-  #define RCC_CFGR_SWS_SHIFT   3
+  #define RCC_CFGR_SWS_SHIFT   2      /* RCC_CFGR1_SWS_Pos = 2 */
 #elif defined(STM32H523xx)
   #define LL_RCC_SYSCLK_HSI48  0x0UL
   #define LL_RCC_SYSCLK_CSI    0x1UL
@@ -529,6 +529,37 @@ static inline void ll_rcc_apb2_clk_enable(uint32_t mask)
     (void)REG32(RCC_BASE);
 }
 
+#if defined(STM32WBA55xx)
+
+/** Enable APB7 peripheral clocks (WBA only: I2C3, LPTIM1, SPI3, LPUART1). */
+static inline void ll_rcc_apb7_clk_enable(uint32_t mask)
+{
+    SET_BITS(REG32(RCC_BASE + 0xA8UL), mask);  /* APB7ENR */
+    (void)REG32(RCC_BASE);
+}
+
+/** Enable AHB4 peripheral clocks (WBA only: ADC4). */
+static inline void ll_rcc_ahb4_clk_enable(uint32_t mask)
+{
+    SET_BITS(REG32(RCC_BASE + 0x94UL), mask);  /* AHB4ENR */
+    (void)REG32(RCC_BASE);
+}
+
+#endif /* STM32WBA55xx */
+
+/** Enable AHB2 peripheral clocks. */
+static inline void ll_rcc_ahb2_clk_enable(uint32_t mask)
+{
+#if defined(STM32L422xx)
+    SET_BITS(REG32(RCC_BASE + 0x4CUL), mask);
+#elif defined(STM32WBA55xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), mask);  /* AHB2ENR */
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), mask);
+#endif
+    (void)REG32(RCC_BASE);
+}
+
 /* ============================================================
  * USB 48MHz clock source selection (L4 only)
  * ============================================================ */
@@ -597,13 +628,14 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   #define LL_APB2_USART1    (1UL << 14)
   #define LL_APB2_TIM16     (1UL << 17)
   #define LL_APB2_TIM17     (1UL << 18)
-  /* APB7 (WBA-specific) */
-  #define LL_APB7_I2C3      (1UL << 2)
-  #define LL_APB7_LPTIM1    (1UL << 0)
-  #define LL_APB7_SPI3      (1UL << 3)
-  #define LL_APB7_LPUART1   (1UL << 6)
-  /* AHB2 */
-  #define LL_AHB2_ADC4      (1UL << 10)
+  /* APB7 (WBA-specific, register offset 0xA8) */
+  #define LL_APB7_SYSCFG    (1UL << 1)   /* SYSCFGEN */
+  #define LL_APB7_SPI3      (1UL << 5)   /* SPI3EN */
+  #define LL_APB7_LPUART1   (1UL << 6)   /* LPUART1EN */
+  #define LL_APB7_I2C3      (1UL << 7)   /* I2C3EN */
+  #define LL_APB7_LPTIM1    (1UL << 11)  /* LPTIM1EN */
+  /* AHB4 (register offset 0x94) */
+  #define LL_AHB4_ADC4      (1UL << 5)   /* ADC4EN */
 
 #elif defined(STM32H523xx)
   /* APB1 */

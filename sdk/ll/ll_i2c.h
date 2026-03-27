@@ -99,26 +99,81 @@ typedef struct {
 /* ============================================================
  * Pre-computed TIMINGR values
  *
- * TIMINGR is a 32-bit register packing PRESC, SCLDEL, SDADEL,
- * SCLH, SCLL. These values are pre-calculated for common
- * configurations. Use STM32CubeMX I2C timing tool or the
- * AN4235 spreadsheet for other combinations.
+ * The I2C TIMINGR register is a 32-bit value that controls SCL
+ * timing. Its fields are:
+ *
+ *   [31:28] PRESC   — prescaler (divides the I2C kernel clock)
+ *   [23:20] SCLDEL  — data setup time (in prescaled ticks)
+ *   [19:16] SDADEL  — data hold time (in prescaled ticks)
+ *   [15:8]  SCLH    — SCL high period (in prescaled ticks)
+ *   [7:0]   SCLL    — SCL low period (in prescaled ticks)
+ *
+ * The I2C kernel clock is NOT necessarily SYSCLK — it depends
+ * on the RCC_CCIPR mux for each I2C instance:
+ *
+ *   STM32WBA55:
+ *     I2C1 kernel clock = PCLK1 (APB1 clock) by default
+ *     I2C3 kernel clock = PCLK7 (APB7 clock) by default
+ *     Both default to SYSCLK when APB prescaler = 1
+ *     Can be switched to HSI16 via RCC_CCIPR1[13:12] / [15:14]
+ *
+ *   STM32L422:
+ *     I2C1/I2C3 kernel clock = PCLK1 by default
+ *
+ * Choose the timing constant that matches your actual I2C
+ * kernel clock, NOT your SYSCLK (unless APB prescaler = 1).
+ *
+ * To generate values for other frequencies, use CubeMX or the
+ * AN4235 "I2C timing configuration tool" spreadsheet.
  * ============================================================ */
 
 /* Standard mode (100kHz) from various peripheral clocks */
 #define LL_I2C_TIMING_100K_16MHZ    0x00503D5AUL
+#define LL_I2C_TIMING_100K_32MHZ    0x10707DBFUL  /* 32MHz kernel clock */
 #define LL_I2C_TIMING_100K_48MHZ    0x20602938UL
 #define LL_I2C_TIMING_100K_80MHZ    0x30A0A7FBUL
 
 /* Fast mode (400kHz) from various peripheral clocks */
 #define LL_I2C_TIMING_400K_16MHZ    0x00300617UL
-#define LL_I2C_TIMING_400K_32MHZ    0x00701737UL
+#define LL_I2C_TIMING_400K_32MHZ    0x00701737UL  /* Verified: Ring Demo @ HSE 32MHz */
 #define LL_I2C_TIMING_400K_48MHZ    0x00B01A4BUL
 #define LL_I2C_TIMING_400K_80MHZ    0x00B01B59UL
 
 /* Fast mode plus (1MHz) from various peripheral clocks */
 #define LL_I2C_TIMING_1M_48MHZ     0x00300B29UL
 #define LL_I2C_TIMING_1M_80MHZ     0x00300F33UL
+
+/**
+ * Select appropriate timing constant based on kernel clock MHz.
+ * Returns a 100kHz (standard mode) timing value.
+ * Returns 0 if no pre-computed value exists for the given frequency.
+ */
+static inline uint32_t ll_i2c_timing_100k(uint32_t kernel_mhz)
+{
+    switch (kernel_mhz) {
+        case 16: return LL_I2C_TIMING_100K_16MHZ;
+        case 32: return LL_I2C_TIMING_100K_32MHZ;
+        case 48: return LL_I2C_TIMING_100K_48MHZ;
+        case 80: return LL_I2C_TIMING_100K_80MHZ;
+        default: return 0;
+    }
+}
+
+/**
+ * Select appropriate timing constant based on kernel clock MHz.
+ * Returns a 400kHz (fast mode) timing value.
+ * Returns 0 if no pre-computed value exists for the given frequency.
+ */
+static inline uint32_t ll_i2c_timing_400k(uint32_t kernel_mhz)
+{
+    switch (kernel_mhz) {
+        case 16: return LL_I2C_TIMING_400K_16MHZ;
+        case 32: return LL_I2C_TIMING_400K_32MHZ;
+        case 48: return LL_I2C_TIMING_400K_48MHZ;
+        case 80: return LL_I2C_TIMING_400K_80MHZ;
+        default: return 0;
+    }
+}
 
 /* ============================================================
  * Configuration
@@ -160,17 +215,25 @@ static inline void ll_i2c_init(I2C_TypeDef *i2c, uint32_t timing)
 #define LL_I2C_ERROR    -2
 #define LL_I2C_TIMEOUT  -3
 
+/* Default timeout for I2C wait loops (~100k iterations at typical clock) */
+#ifndef LL_I2C_DEFAULT_TIMEOUT
+#define LL_I2C_DEFAULT_TIMEOUT  100000UL
+#endif
+
 /**
  * Master write to a 7-bit address device.
  *   addr:  7-bit slave address (unshifted, e.g. 0x68 for MPU6050)
  *   data:  pointer to bytes to send
  *   len:   number of bytes
  *
- * Returns LL_I2C_OK on success, LL_I2C_NACK or LL_I2C_ERROR on failure.
+ * Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or
+ * LL_I2C_TIMEOUT on failure.
  */
 static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
                                const uint8_t *data, uint32_t len)
 {
+    volatile uint32_t timeout;
+
     /* Clear any pending flags */
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
@@ -183,6 +246,7 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
 
     for (uint32_t i = 0; i < len; i++) {
         /* Wait for TXIS or error */
+        timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (1) {
             uint32_t isr = i2c->ISR;
             if (isr & LL_I2C_ISR_NACKF) {
@@ -195,13 +259,18 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
             }
             if (isr & LL_I2C_ISR_TXIS)
                 break;
+            if (--timeout == 0)
+                return LL_I2C_TIMEOUT;
         }
         i2c->TXDR = data[i];
     }
 
     /* Wait for STOP (AUTOEND generates it after last byte) */
-    while (!(i2c->ISR & LL_I2C_ISR_STOPF))
-        ;
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (!(i2c->ISR & LL_I2C_ISR_STOPF)) {
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
+    }
     i2c->ICR = LL_I2C_ICR_STOPCF;
 
     return LL_I2C_OK;
@@ -217,11 +286,14 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
  *   buf:   buffer to store received bytes
  *   len:   number of bytes to read
  *
- * Returns LL_I2C_OK on success, LL_I2C_NACK or LL_I2C_ERROR on failure.
+ * Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or
+ * LL_I2C_TIMEOUT on failure.
  */
 static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
                               uint8_t *buf, uint32_t len)
 {
+    volatile uint32_t timeout;
+
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
 
@@ -233,6 +305,7 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
              | LL_I2C_CR2_START;
 
     for (uint32_t i = 0; i < len; i++) {
+        timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (1) {
             uint32_t isr = i2c->ISR;
             if (isr & LL_I2C_ISR_NACKF) {
@@ -245,12 +318,17 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
             }
             if (isr & LL_I2C_ISR_RXNE)
                 break;
+            if (--timeout == 0)
+                return LL_I2C_TIMEOUT;
         }
         buf[i] = (uint8_t)i2c->RXDR;
     }
 
-    while (!(i2c->ISR & LL_I2C_ISR_STOPF))
-        ;
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (!(i2c->ISR & LL_I2C_ISR_STOPF)) {
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
+    }
     i2c->ICR = LL_I2C_ICR_STOPCF;
 
     return LL_I2C_OK;
@@ -266,10 +344,15 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
  *   reg:   register address (8-bit or 16-bit; if > 0xFF, sends MSB first)
  *   data:  pointer to data bytes
  *   len:   number of data bytes
+ *
+ * Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or
+ * LL_I2C_TIMEOUT on failure.
  */
 static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
                                    uint16_t reg, const uint8_t *data, uint32_t len)
 {
+    volatile uint32_t timeout;
+
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
 
@@ -283,35 +366,47 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
 
     /* Send register address (MSB first if 16-bit) */
     if (reg > 0xFF) {
+        timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
             if (i2c->ISR & LL_I2C_ISR_NACKF) {
                 i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
+            if (--timeout == 0)
+                return LL_I2C_TIMEOUT;
         }
         i2c->TXDR = (uint8_t)(reg >> 8);
     }
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
         if (i2c->ISR & LL_I2C_ISR_NACKF) {
             i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
     }
     i2c->TXDR = (uint8_t)(reg & 0xFF);
 
     /* Send data */
     for (uint32_t i = 0; i < len; i++) {
+        timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
             if (i2c->ISR & LL_I2C_ISR_NACKF) {
                 i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
+            if (--timeout == 0)
+                return LL_I2C_TIMEOUT;
         }
         i2c->TXDR = data[i];
     }
 
-    while (!(i2c->ISR & LL_I2C_ISR_STOPF))
-        ;
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (!(i2c->ISR & LL_I2C_ISR_STOPF)) {
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
+    }
     i2c->ICR = LL_I2C_ICR_STOPCF;
 
     return LL_I2C_OK;
@@ -323,11 +418,14 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
  *   reg:   register address (8-bit or 16-bit; if > 0xFF, sends MSB first)
  *   buf:   buffer for received data
  *   len:   number of bytes to read
+ *
+ * Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or
+ * LL_I2C_TIMEOUT on failure.
  */
 static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
                                   uint16_t reg, uint8_t *buf, uint32_t len)
 {
-    int ret;
+    volatile uint32_t timeout;
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
@@ -339,30 +437,37 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
              | LL_I2C_CR2_START;
 
     if (reg > 0xFF) {
+        timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
             if (i2c->ISR & LL_I2C_ISR_NACKF) {
                 i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
+            if (--timeout == 0)
+                return LL_I2C_TIMEOUT;
         }
         i2c->TXDR = (uint8_t)(reg >> 8);
     }
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
         if (i2c->ISR & LL_I2C_ISR_NACKF) {
             i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
     }
     i2c->TXDR = (uint8_t)(reg & 0xFF);
 
     /* Wait for transfer complete (TC, not TCR since no RELOAD) */
-    while (!(i2c->ISR & LL_I2C_ISR_TC))
-        ;
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (!(i2c->ISR & LL_I2C_ISR_TC)) {
+        if (--timeout == 0)
+            return LL_I2C_TIMEOUT;
+    }
 
     /* Phase 2: Read data with repeated START */
-    ret = ll_i2c_read(i2c, addr, buf, len);
-
-    return ret;
+    return ll_i2c_read(i2c, addr, buf, len);
 }
 
 /* ============================================================
@@ -378,15 +483,33 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF;
 
+    /* Wait for any previous transaction to complete */
+    volatile uint32_t timeout = 10000;
+    while (i2c->ISR & LL_I2C_ISR_BUSY) {
+        if (--timeout == 0) {
+            i2c->CR1 = 0;
+            for (volatile int d = 0; d < 100; d++);
+            i2c->CR1 = LL_I2C_CR1_PE;
+            return LL_I2C_TIMEOUT;
+        }
+    }
+
     /* Send START + address with 0 bytes, AUTOEND */
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
              | (0UL << LL_I2C_CR2_NBYTES_SHIFT)
              | LL_I2C_CR2_AUTOEND
              | LL_I2C_CR2_START;
 
-    /* Wait for STOP (AUTOEND) */
-    while (!(i2c->ISR & LL_I2C_ISR_STOPF))
-        ;
+    /* Wait for STOP (AUTOEND) with timeout */
+    timeout = 100000;
+    while (!(i2c->ISR & LL_I2C_ISR_STOPF)) {
+        if (--timeout == 0) {
+            i2c->CR1 = 0;
+            for (volatile int d = 0; d < 100; d++);
+            i2c->CR1 = LL_I2C_CR1_PE;
+            return LL_I2C_TIMEOUT;
+        }
+    }
 
     int result = (i2c->ISR & LL_I2C_ISR_NACKF) ? LL_I2C_NACK : LL_I2C_OK;
 
