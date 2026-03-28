@@ -7,6 +7,7 @@
  */
 
 #include "core.h"
+#include "tiles.h"
 
 /* Debug variables (readable via SWD) */
 volatile int16_t dbg_accel[3];
@@ -19,10 +20,19 @@ int main(void)
     core_led_init();
     core_led_blink(1, 200, 300);
 
-    /* Pins + I2C + tile drivers */
-    core_pin_init();
-    core_drivers_init();
+    /* Pads + I2C */
+    core_pads_init();
     core_led_blink(1, 200, 300);
+
+    /* Bridge I2C3 to tile driver layer */
+    tiles_hal_core_cfg_t core_hal_i2c3_cfg = {
+        .i2c = &core_i2c3,
+        .buses = TILES_BUS_I2C,
+    };
+    tiles_hal_core_init(&core_hal_i2c3, &core_hal_i2c3_cfg);
+
+    /* Find and initialize Sense.I.9 */
+    tile_sense_i_9_init(&core_hal_i2c3, 0, &tile_sense_i_9_0);
 
     if (!tile_is_ready(&tile_sense_i_9_0))
         core_led_sos();

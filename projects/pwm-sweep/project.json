@@ -1,10 +1,7 @@
 {
   "name": "pwm-sweep",
   "core": "Core-U-2-a",
-  "clock": {
-    "source": "hsi16",
-    "sysclk_mhz": 80
-  },
+  "clock": "max",
   "pads": {
     "7": "TIM2.3"
   }

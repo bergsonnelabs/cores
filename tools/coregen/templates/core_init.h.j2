@@ -18,29 +18,9 @@
 extern hal_i2c_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
-{% if tiles_config %}
-
-/* ---- Tile driver includes ---- */
-#include "tiles_hal.h"
-#include "tiles_hal_core.h"
-{% for header in tile_driver_headers %}
-#include "{{ header }}"
-{% endfor %}
-
-/* ---- Kiln HAL handles (one per bus used by tiles) ---- */
-{% for bus in tile_hal_buses %}
-extern tiles_hal_t {{ bus.hal_handle }};
-{% endfor %}
-
-/* ---- Tile instance handles ---- */
-{% for tile in tiles_config %}
-extern tile_t {{ tile.handle }};
-{% endfor %}
-{% endif %}
 
 /**
- * Initialize the core: clock tree, flash latency, configured pins,
- * and tile peripheral drivers (if declared).
+ * Initialize the core: clock tree, flash latency, and configured pads.
  * Call this at the top of main() before using any peripherals.
  */
 void core_init(void);
@@ -53,20 +33,33 @@ void core_init(void);
 void core_clock_init(void);
 
 /**
- * Initialize the configured GPIO pins only.
- * Enables GPIO port clocks and sets pin modes/AF for all pins
+ * Initialize the configured pads.
+ * Enables GPIO port clocks and sets modes/AF for all pads
  * assigned in project.json.
  */
-void core_pin_init(void);
+void core_pads_init(void);
 {% if tiles_config %}
 
-/**
- * Initialize tile peripheral drivers.
- * Sets up Kiln HAL bridges and calls find/init for each declared tile.
- * Called automatically by core_init(), or call separately after
- * core_clock_init() + core_pin_init() if you need LED before drivers.
+/* ---- Tile driver init recipe ----
+ *
+ * Tile handles are declared in tiles.h. Driver initialization belongs
+ * in main.c where you control the sequence and error handling.
+ * Copy and adapt the following into your main():
+ *
+ *   // Bridge each bus to the tile driver layer
+{% for bus in tile_hal_buses %}
+ *   tiles_hal_core_cfg_t {{ bus.hal_handle }}_cfg = {
+ *       .i2c = &{{ bus.i2c_handle }},
+ *       .buses = TILES_BUS_I2C,
+ *   };
+ *   tiles_hal_core_init(&{{ bus.hal_handle }}, &{{ bus.hal_handle }}_cfg);
+{% endfor %}
+ *
+ *   // Find and initialize each tile
+{% for tile in tiles_config %}
+ *   {{ tile.prefix }}_init(&{{ tile.hal_handle }}, {{ tile.instance }}, &{{ tile.handle }});
+{% endfor %}
  */
-void core_drivers_init(void);
 {% endif %}
 
 #endif /* CORE_INIT_H */

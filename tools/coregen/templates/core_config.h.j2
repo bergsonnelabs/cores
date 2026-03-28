@@ -33,16 +33,16 @@
 #define PCLK1_HZ          (HCLK_HZ / APB1_DIV)
 #define PCLK2_HZ          (HCLK_HZ / APB2_DIV)
 
-{% if pin_config %}
-/* ---- Pin assignments ---- */
+{% if pad_config %}
+/* ---- Pad assignments ---- */
 /*
- * Each assigned pin gets:
+ * Each assigned pad gets:
  *   PIN_PAD<n>_FUNC    — the assigned function name
  *   PIN_PAD<n>_MODE    — "output", "input", or "af"
  *   PIN_PAD<n>_AF      — AF number (only for mode "af")
  */
 
-{% for pin in pin_config %}
+{% for pin in pad_config %}
 /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → {{ pin.function }} */
 #define PIN_PAD{{ pin.pad }}_FUNC     "{{ pin.function }}"
 {% if pin.mode == "output" %}

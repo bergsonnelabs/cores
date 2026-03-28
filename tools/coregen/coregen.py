@@ -314,7 +314,7 @@ def validate_project_config(config, tile, pad_map):
     # Build lookup of available functions per pad
     pad_lookup = {p["number"]: p for p in pad_map}
 
-    # Validate pin assignments
+    # Validate pad assignments
     pins = config.get("pads", config.get("pins", {}))
     for pad_num, assigned_func in pins.items():
         if pad_num not in pad_lookup:
@@ -360,28 +360,28 @@ def validate_project_config(config, tile, pad_map):
             f"Interface '{iface}' configured but no pins assigned to it"
         )
 
-    # Validate clock source against tile (not chip — tile may have crystals)
-    clock = config.get("clock", {})
+    # Validate clock performance level
+    clock = config.get("clock", "default")
     if clock:
         tile_clocks = tile.get("clock", {})
-        available = [s["type"] for s in tile_clocks.get("sources", [])]
-        source = clock.get("source", "")
-        if source and available and source not in available:
+        configs = {c["name"]: c for c in tile_clocks.get("configurations", [])}
+        if clock not in configs:
+            available = ", ".join(sorted(configs.keys())) if configs else "(none defined)"
             errors.append(
-                f"Clock source '{source}' not available on this tile. "
-                f"Options: {', '.join(available)}"
+                f"Clock level '{clock}' not available on this tile. "
+                f"Options: {available}"
             )
 
     return warnings, errors
 
 
-def build_pin_config(config, pad_map):
-    """Build the resolved pin configuration from project config.
+def build_pad_config(config, pad_map):
+    """Build the resolved pad configuration from project config.
 
-    For each assigned pin, resolves the GPIO port/pin and AF number.
+    For each assigned pad, resolves the GPIO port/pin and AF number.
     """
     pad_lookup = {p["number"]: p for p in pad_map}
-    pin_configs = []
+    pad_configs = []
 
     for pad_num, assigned_func in config.get("pads", config.get("pins", {})).items():
         pad_info = pad_lookup.get(pad_num)
@@ -410,33 +410,42 @@ def build_pin_config(config, pad_map):
                     entry["af"] = af_func["af"]
                     break
 
-        pin_configs.append(entry)
+        pad_configs.append(entry)
 
-    return pin_configs
+    return pad_configs
 
 
 def build_clock_config(config, tile, mcu):
-    """Build resolved clock configuration with defaults from tile JSON.
+    """Build resolved clock configuration from a performance level.
 
-    Auto-calculates PLL M/N/R if sysclk_mhz requires it and no explicit
-    PLL config is provided.
+    Accepts a performance level string ("low", "default", "high", "max")
+    which is resolved from the tile JSON's clock.configurations array.
+
+    Auto-calculates PLL M/N/R if the target frequency requires it.
     """
-    clock = config.get("clock", {})
+    level = config.get("clock", "default")
     tile_clock = tile.get("clock", {})
 
-    # Default source from tile definition
-    default_source = tile_clock.get("default", "hsi16")
+    # Resolve performance level to clock config
+    configs = {c["name"]: c for c in tile_clock.get("configurations", [])}
+    if level not in configs:
+        available = ", ".join(sorted(configs.keys())) if configs else "(none defined)"
+        print(f"  ERROR: Clock level '{level}' not available. Options: {available}")
+        sys.exit(1)
+
+    resolved = configs[level]
+    source = resolved["source"]
+    target_mhz = resolved["sysclk_mhz"]
+    print(f"  Clock: {level} → {source} @ {target_mhz}MHz")
 
     # Find frequency for the selected source
-    source = clock.get("source", default_source)
     source_mhz = 16
     for src in tile_clock.get("sources", []):
         if src["type"] == source:
             source_mhz = src["frequency_mhz"]
             break
 
-    target_mhz = clock.get("sysclk_mhz", source_mhz)
-    pll_config = clock.get("pll")
+    pll_config = None
 
     # Auto-calculate PLL if needed
     if target_mhz != source_mhz and pll_config is None:
@@ -468,9 +477,9 @@ def build_clock_config(config, tile, mcu):
         "source_mhz": source_mhz,
         "sysclk_mhz": target_mhz,
         "pll": pll_config,
-        "ahb_div": clock.get("ahb_div", 1),
-        "apb1_div": clock.get("apb1_div", 1),
-        "apb2_div": clock.get("apb2_div", 1),
+        "ahb_div": 1,
+        "apb1_div": 1,
+        "apb2_div": 1,
         "needs_vos": needs_vos,
     }
 
@@ -583,13 +592,17 @@ def build_i2c_config(config, mcu, clock_config):
 # ---- Tile peripheral driver mapping ----
 
 TILE_DRIVER_MAP = {
-    "Sense.I.9":  {"header": "tile_sense_i_9.h",  "source": "tile_sense_i_9",  "prefix": "tile_sense_i_9"},
-    "Sense.I.6P": {"header": "tile_sense_i_6p.h", "source": "tile_sense_i_6p", "prefix": "tile_sense_i_6p"},
-    "Sense.I.6D": {"header": "tile_sense_i_6d.h", "source": "tile_sense_i_6d", "prefix": "tile_sense_i_6d"},
-    "Drive.P":    {"header": "tile_drive_p.h",     "source": "tile_drive_p",    "prefix": "tile_drive_p"},
-    "Drive.H":    {"header": "tile_drive_h.h",     "source": "tile_drive_h",    "prefix": "tile_drive_h"},
-    "Drive.A.2":  {"header": "tile_drive_a_2.h",   "source": "tile_drive_a_2",  "prefix": "tile_drive_a_2"},
-    "Power.L.1":  {"header": "tile_power_l_1.h",   "source": "tile_power_l_1",  "prefix": "tile_power_l_1"},
+    "Sense.I.9":   {"header": "tile_sense_i_9.h",    "source": "tile_sense_i_9",    "prefix": "tile_sense_i_9"},
+    "Sense.I.6P8": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
+    "Sense.I.6P6": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
+    "Sense.I.6D":  {"header": "tile_sense_i_6d.h",   "source": "tile_sense_i_6d",   "prefix": "tile_sense_i_6d"},
+    "Drive.P":     {"header": "tile_drive_p.h",      "source": "tile_drive_p",      "prefix": "tile_drive_p"},
+    "Drive.H":     {"header": "tile_drive_h.h",      "source": "tile_drive_h",      "prefix": "tile_drive_h"},
+    "Drive.A.2":   {"header": "tile_drive_a_2.h",    "source": "tile_drive_a_2",    "prefix": "tile_drive_a_2"},
+    "Drive.DC.H":  {"header": "tile_drive_dc_h.h",   "source": "tile_drive_dc_h",   "prefix": "tile_drive_dc_h"},
+    "Power.L.1N":  {"header": "tile_power_l_1n.h",   "source": "tile_power_l_1n",   "prefix": "tile_power_l_1n"},
+    "Power.L.1T":  {"header": "tile_power_l_1t.h",   "source": "tile_power_l_1t",   "prefix": "tile_power_l_1t"},
+    "Power.P.N":   {"header": "tile_power_p_n.h",    "source": "tile_power_p_n",    "prefix": "tile_power_p_n"},
 }
 
 
@@ -639,7 +652,7 @@ def build_tiles_config(config, i2c_buses):
         # Track unique buses for HAL handle generation
         if bus_name not in seen_buses:
             i2c_bus = i2c_lookup[bus_name]
-            hal_handle = f"kiln_hal_{bus_name.lower()}"
+            hal_handle = f"core_hal_{bus_name.lower()}"
             seen_buses[bus_name] = {
                 "bus_name": bus_name,
                 "hal_handle": hal_handle,
@@ -663,6 +676,69 @@ def build_tiles_config(config, i2c_buses):
     tile_driver_sources = sorted(seen_drivers)
 
     return tiles_config, tile_hal_buses, tile_driver_sources
+
+
+# ---- Smart tiles.h generation ----
+
+COREGEN_BEGIN = "/* ---- coregen:begin ---- */"
+COREGEN_END   = "/* ---- coregen:end ---- */"
+
+
+def _extract_managed_block(text):
+    """Extract the content between coregen markers, or None if not found."""
+    begin = text.find(COREGEN_BEGIN)
+    end = text.find(COREGEN_END)
+    if begin < 0 or end < 0 or end <= begin:
+        return None
+    return text[begin:end + len(COREGEN_END)]
+
+
+def generate_tiles_h(env, ctx, project_dir):
+    """Generate or update tiles.h in the project directory.
+
+    - If tiles.h doesn't exist: write it fresh.
+    - If it exists and the managed block matches: update the managed block.
+    - If it exists but the managed block has been modified: warn and skip.
+    """
+    tiles_path = os.path.join(project_dir, "tiles.h")
+    template = env.get_template("tiles.h.j2")
+    fresh = template.render(**ctx)
+
+    new_block = _extract_managed_block(fresh)
+    if new_block is None:
+        # Template didn't produce markers — shouldn't happen
+        print(f"  WARNING: tiles.h template missing coregen markers, skipping")
+        return
+
+    if not os.path.exists(tiles_path):
+        # First generation — write the whole file
+        with open(tiles_path, "w") as f:
+            f.write(fresh)
+        print(f"  tiles.h (new)")
+        return
+
+    # File exists — check the managed block
+    with open(tiles_path) as f:
+        existing = f.read()
+
+    old_block = _extract_managed_block(existing)
+
+    if old_block is None:
+        # Markers were removed — user fully owns the file now
+        print(f"  tiles.h (skipped — coregen markers removed, file is user-managed)")
+        return
+
+    if old_block == new_block:
+        # Already up to date
+        print(f"  tiles.h (up to date)")
+        return
+
+    # Block differs — update the managed section, preserving anything
+    # the user added outside the markers.
+    updated = existing.replace(old_block, new_block)
+    with open(tiles_path, "w") as f:
+        f.write(updated)
+    print(f"  tiles.h (updated)")
 
 
 # ---- Generation ----
@@ -733,7 +809,7 @@ def generate(tile_path, output_dir, project_path=None):
 
         # Build resolved configs
         ctx["project"] = project.get("project", {})
-        ctx["pin_config"] = build_pin_config(project, pad_map)
+        ctx["pad_config"] = build_pad_config(project, pad_map)
         ctx["clock_config"] = build_clock_config(project, tile, mcu)
         ctx["iface_config"] = project.get("interfaces", {})
         ctx["project_file"] = os.path.basename(project_path)
@@ -796,6 +872,31 @@ def generate(tile_path, output_dir, project_path=None):
             f.write("# AUTO-GENERATED by coregen — do not edit\n")
             f.write("KILN_DRIVERS = " + " ".join(ctx["tile_driver_sources"]) + "\n")
         print(f"  core_drivers.mk")
+
+    # Generate or update tiles.h (smart merge) in the project directory
+    if project_path and ctx.get("tiles_config"):
+        project_dir = os.path.dirname(project_path)
+        generate_tiles_h(env, ctx, project_dir)
+
+    # Generate project Makefile (once — skip if already exists)
+    if project_path:
+        project_dir = os.path.dirname(project_path)
+        makefile_path = os.path.join(project_dir, "Makefile")
+        if not os.path.exists(makefile_path):
+            tile_stem = os.path.basename(tile_path).replace(".json", "")
+            kiln_line = "KILN_ENABLED := 1\n" if ctx.get("tiles_config") else ""
+            with open(makefile_path, "w") as f:
+                f.write(f"# Project Makefile — run make from inside the project folder\n")
+                f.write(f"TILE         := {tile_stem}\n")
+                f.write(f"{kiln_line}")
+                f.write(f"PROJECT      := $(notdir $(CURDIR))\n")
+                f.write(f"ROOT         := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))../..)\n\n")
+                f.write(f".PHONY: all clean clean-all distclean flash size\n")
+                f.write(f"all clean clean-all distclean flash size:\n")
+                f.write(f"\t$(MAKE) -C $(ROOT) TILE=$(TILE) PROJECT=$(PROJECT) KILN_ENABLED=$(KILN_ENABLED) $@\n")
+            print(f"  Makefile")
+        else:
+            print(f"  Makefile (exists, skipped)")
 
     print(f"  -> {output_dir}/")
 

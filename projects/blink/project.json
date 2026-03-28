@@ -5,10 +5,7 @@
     "description": "LED blink demo — minimal project config"
   },
 
-  "clock": {
-    "source": "hsi16",
-    "sysclk_mhz": 80
-  },
+  "clock": "max",
 
   "pads": {
   }

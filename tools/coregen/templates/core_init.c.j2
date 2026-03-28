@@ -5,7 +5,7 @@
  * Project: {{ project.name }}
  *
  * Clock: {{ clock_config.source }} → {{ clock_config.sysclk_mhz }}MHz
- * {% if clock_config.pll %}PLL: ÷{{ clock_config.pll.m }} ×{{ clock_config.pll.n }} ÷{{ clock_config.pll.r }} (VCO={{ clock_config.source_mhz // clock_config.pll.m * clock_config.pll.n }}MHz){% else %}No PLL{% endif %}
+ * {{ "PLL: ÷%d ×%d ÷%d (VCO=%dMHz)" | format(clock_config.pll.m, clock_config.pll.n, clock_config.pll.r, clock_config.source_mhz // clock_config.pll.m * clock_config.pll.n) if clock_config.pll else "No PLL" }}
  *
  * DO NOT EDIT — regenerate by rebuilding the project.
  */
@@ -24,18 +24,6 @@
 /* ---- I2C handles ---- */
 {% for bus in i2c_buses %}
 hal_i2c_t {{ bus.handle }};
-{% endfor %}
-{% endif %}
-{% if tiles_config %}
-
-/* ---- Kiln HAL handles ---- */
-{% for bus in tile_hal_buses %}
-tiles_hal_t {{ bus.hal_handle }};
-{% endfor %}
-
-/* ---- Tile instance handles ---- */
-{% for tile in tiles_config %}
-tile_t {{ tile.handle }};
 {% endfor %}
 {% endif %}
 
@@ -125,20 +113,20 @@ void core_clock_init(void)
     ll_systick_init(SYSCLK_HZ);
 }
 
-void core_pin_init(void)
+void core_pads_init(void)
 {
-{% if pin_config %}
-    /* Enable GPIO port clocks for all configured pins */
+{% if pad_config %}
+    /* Enable GPIO port clocks for all configured pads */
 {% set enabled_ports = [] %}
-{% for pin in pin_config %}
+{% for pin in pad_config %}
 {% if pin.port and pin.port not in enabled_ports %}
 {% if enabled_ports.append(pin.port) %}{% endif %}
     ll_rcc_gpio_clk_enable(GPIO{{ pin.port }});
 {% endif %}
 {% endfor %}
 
-    /* Configure each assigned pin */
-{% for pin in pin_config %}
+    /* Configure each assigned pad */
+{% for pin in pad_config %}
 {% if pin.mode == "output" %}
     /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO output */
     ll_gpio_config_output(GPIO{{ pin.port }}, {{ pin.pin }});
@@ -157,7 +145,7 @@ void core_pin_init(void)
 {% endif %}
 {% endfor %}
 {% else %}
-    /* No pins configured in project.json */
+    /* No pads configured in project.json */
 {% endif %}
 {% if i2c_buses %}
 {% if i2c_kernel_clk == "hsi16" %}
@@ -178,33 +166,9 @@ void core_pin_init(void)
 {% endfor %}
 {% endif %}
 }
-{% if tiles_config %}
-
-void core_drivers_init(void)
-{
-    /* ---- Initialize Kiln HAL bridges (one per bus) ---- */
-{% for bus in tile_hal_buses %}
-    {
-        tiles_hal_core_cfg_t cfg = {
-            .i2c = &{{ bus.i2c_handle }},
-            .buses = TILES_BUS_I2C,
-        };
-        tiles_hal_core_init(&{{ bus.hal_handle }}, &cfg);
-    }
-{% endfor %}
-
-    /* ---- Find and initialize tile drivers ---- */
-{% for tile in tiles_config %}
-    {{ tile.prefix }}_init(&{{ tile.hal_handle }}, {{ tile.instance }}, &{{ tile.handle }});
-{% endfor %}
-}
-{% endif %}
 
 void core_init(void)
 {
     core_clock_init();
-    core_pin_init();
-{% if tiles_config %}
-    core_drivers_init();
-{% endif %}
+    core_pads_init();
 }

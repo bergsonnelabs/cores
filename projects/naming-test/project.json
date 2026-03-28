@@ -1,13 +1,10 @@
 {
   "project": {
-    "name": "ring-test",
+    "name": "naming-test",
     "core": "Core-W-b",
-    "description": "Ring assembly I2C driver integration test"
+    "description": "Multi-tile naming convention test"
   },
-  "clock": {
-    "source": "hsi16",
-    "sysclk_mhz": 16
-  },
+  "clock": "low",
   "pads": {
     "10": "I2C1.CLK",
     "11": "I2C1.DAT",
@@ -29,6 +26,21 @@
       "tile": "Sense.I.9",
       "bus": "I2C3",
       "instance": 0
+    },
+    {
+      "tile": "Power.L.1T",
+      "bus": "I2C3",
+      "instance": 0
+    },
+    {
+      "tile": "Drive.P",
+      "bus": "I2C1",
+      "instance": 0
+    },
+    {
+      "tile": "Drive.P",
+      "bus": "I2C3",
+      "instance": 1
     }
   ]
 }

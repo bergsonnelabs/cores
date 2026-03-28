@@ -1,0 +1,23 @@
+{
+    "configurations": [
+        {
+            "name": "Cores SDK",
+            "includePath": [
+                "${workspaceFolder}/sdk/ll",
+                "${workspaceFolder}/sdk/hal",
+                "${workspaceFolder}/kiln",
+                "${workspaceFolder}/kiln/drivers",
+                "${workspaceFolder}/kiln/hal",
+                "${workspaceFolder}/projects/*/coregen",
+                "${workspaceFolder}/projects/*"
+            ],
+            "defines": [
+                "STM32WBA55xx"
+            ],
+            "compilerPath": "",
+            "cStandard": "c17",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}
