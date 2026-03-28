@@ -2,7 +2,3 @@
 	path = kiln
 	url = https://github.com/bergsonnelabs/kiln.git
 	branch = main
-[submodule "kiln-prerelease"]
-	path = kiln-prerelease
-	url = https://github.com/bergsonnelabs/kiln-prerelease.git
-	branch = main
