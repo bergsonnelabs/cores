@@ -164,6 +164,9 @@ void core_pads_init(void)
 {% elif pin.mode == "input" %}
     /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO input */
     ll_gpio_config_input(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_PULL_NONE);
+{% elif pin.mode == "analog" %}
+    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → {{ pin.function }} (analog) */
+    ll_gpio_config_analog(GPIO{{ pin.port }}, {{ pin.pin }});
 {% elif pin.af is not none %}
     /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → {{ pin.function }} (AF{{ pin.af }}) */
     ll_gpio_config_af(GPIO{{ pin.port }}, {{ pin.pin }}, {{ pin.af }},

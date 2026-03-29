@@ -408,6 +408,11 @@ def build_pad_config(config, pad_map):
             # not as hardware NSS alternate function.
             entry["mode"] = "output"
             entry["af"] = None
+        elif re.match(r'^ADC_?(?:IN)?\d+', assigned_func):
+            # ADC input pads: set to analog mode (MODER=11).
+            # No AF needed — analog functions bypass the AF mux entirely.
+            entry["mode"] = "analog"
+            entry["af"] = None
         else:
             # Find AF for this function
             for af_func in pad_info["af_functions"]:
