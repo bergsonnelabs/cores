@@ -207,6 +207,9 @@ void core_pads_init(void)
     }
 {% if bus.cs_pad %}
     hal_spi_set_cs(&{{ bus.handle }}, GPIO{{ bus.cs_port }}, {{ bus.cs_pin }});
+{% if not bus.cs_active_low %}
+    {{ bus.handle }}.cs_active_low = 0;  /* active-high CS */
+{% endif %}
 {% endif %}
 {% endfor %}
 {% endif %}

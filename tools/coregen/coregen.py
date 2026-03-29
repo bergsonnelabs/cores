@@ -722,6 +722,9 @@ def build_spi_config(config, mcu, pad_map):
             cs_port = pad_info.get("port")
             cs_pin = pad_info.get("pin")
 
+        cs_polarity = bus_cfg.get("cs_polarity", "active-low")
+        cs_active_low = (cs_polarity != "active-high")
+
         spi_buses.append({
             "num": bus_num,
             "instance": bus_name,
@@ -734,6 +737,7 @@ def build_spi_config(config, mcu, pad_map):
             "cs_pad": cs_pad_num,
             "cs_port": cs_port,
             "cs_pin": cs_pin,
+            "cs_active_low": cs_active_low,
         })
 
     return spi_buses
