@@ -22,11 +22,20 @@
 {% if i2c_buses %}
 #include "hal_i2c.h"
 {% endif %}
+{% if spi_buses %}
+#include "hal_spi.h"
+{% endif %}
 
 {% if i2c_buses %}
 /* ---- I2C handles ---- */
 {% for bus in i2c_buses %}
 hal_i2c_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
+{% if spi_buses %}
+/* ---- SPI handles ---- */
+{% for bus in spi_buses %}
+hal_spi_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
 
@@ -185,6 +194,20 @@ void core_pads_init(void)
         hal_i2c_config_t _{{ bus.handle }}_cfg = { .timing = {{ bus.timing }}, .timeout_ms = 100 };
         hal_i2c_init(&{{ bus.handle }}, {{ bus.instance }}, &_{{ bus.handle }}_cfg);
     }
+{% endfor %}
+{% endif %}
+{% if spi_buses %}
+
+    /* ---- SPI peripheral init ---- */
+{% for bus in spi_buses %}
+    {{ bus.clk_func }}({{ bus.clk_mask }});
+    {
+        hal_spi_config_t _{{ bus.handle }}_cfg = { .prescaler = {{ bus.prescaler }}, .cpol = {{ bus.cpol }}, .cpha = {{ bus.cpha }} };
+        hal_spi_init(&{{ bus.handle }}, {{ bus.instance }}, &_{{ bus.handle }}_cfg);
+    }
+{% if bus.cs_pad %}
+    hal_spi_set_cs(&{{ bus.handle }}, GPIO{{ bus.cs_port }}, {{ bus.cs_pin }});
+{% endif %}
 {% endfor %}
 {% endif %}
 }

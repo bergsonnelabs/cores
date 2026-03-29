@@ -18,6 +18,15 @@
 extern hal_i2c_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
+{% if spi_buses %}
+
+#include "hal_spi.h"
+
+/* ---- Auto-generated SPI handles ---- */
+{% for bus in spi_buses %}
+extern hal_spi_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
 
 /**
  * Initialize the core: clock tree, flash latency, and configured pads.

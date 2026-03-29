@@ -403,6 +403,11 @@ def build_pad_config(config, pad_map):
         elif assigned_func == "GPIO.IN":
             entry["mode"] = "input"
             entry["af"] = None
+        elif re.match(r'^SPI\d+\.CS$', assigned_func):
+            # SPI CS pins are managed as GPIO output via hal_spi_set_cs(),
+            # not as hardware NSS alternate function.
+            entry["mode"] = "output"
+            entry["af"] = None
         else:
             # Find AF for this function
             for af_func in pad_info["af_functions"]:
@@ -623,6 +628,115 @@ def build_i2c_config(config, mcu, clock_config):
         })
 
     return i2c_buses
+
+
+# ---- SPI bus clock mapping per family ----
+
+SPI_CLK_MAP = {
+    # L0: SPI1 on APB2
+    ("STM32L011xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_SPI1"),
+    # L4: SPI1 on APB2
+    ("STM32L422xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_SPI1"),
+    # WBA: SPI1 on APB2, SPI3 on APB7
+    ("STM32WBA55xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_SPI1"),
+    ("STM32WBA55xx", 3): ("ll_rcc_apb7_clk_enable", "LL_APB7_SPI3"),
+    # H5: SPI1 on APB2, SPI3 on APB3
+    ("STM32H523xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_SPI1"),
+    ("STM32H523xx", 3): ("ll_rcc_apb3_clk_enable", "LL_APB3_SPI3"),
+}
+
+SPI_PRESCALER_MAP = {
+    2:   "LL_SPI_PRESCALER_2",   4:   "LL_SPI_PRESCALER_4",
+    8:   "LL_SPI_PRESCALER_8",   16:  "LL_SPI_PRESCALER_16",
+    32:  "LL_SPI_PRESCALER_32",  64:  "LL_SPI_PRESCALER_64",
+    128: "LL_SPI_PRESCALER_128", 256: "LL_SPI_PRESCALER_256",
+}
+
+
+def build_spi_config(config, mcu, pad_map):
+    """Detect SPI buses from pin assignments and build SPI config list.
+
+    Scans pads for patterns like 'SPI1.CLK', 'SPI1.MOSI', 'SPI1.MISO', 'SPI1.CS'
+    and returns a list of dicts with bus configuration for template rendering.
+
+    Per-bus mode and prescaler settings come from the 'interfaces' section
+    of project.json.  Defaults: mode=0 (CPOL=0/CPHA=0), prescaler=8 (÷8).
+
+    SPI1.CS pads are configured as GPIO output (software CS management via
+    hal_spi_set_cs) rather than the hardware NSS alternate function.
+    """
+    family_define = mcu["define"]
+    iface_cfg = config.get("interfaces", {})
+    pads = config.get("pads", config.get("pins", {}))
+    pad_lookup = {p["number"]: p for p in pad_map}
+
+    # Detect SPI buses and CS pad assignments from pad assignments
+    bus_numbers = set()
+    cs_pads = {}   # bus_num -> pad_num string
+    for pad_num, func in pads.items():
+        m = re.match(r'^SPI(\d+)\.(CLK|MOSI|MISO|CS)$', func)
+        if m:
+            bus_num = int(m.group(1))
+            bus_numbers.add(bus_num)
+            if m.group(2) == "CS":
+                cs_pads[bus_num] = pad_num
+
+    if not bus_numbers:
+        return []
+
+    spi_buses = []
+    for bus_num in sorted(bus_numbers):
+        bus_name = f"SPI{bus_num}"
+        bus_cfg = iface_cfg.get(bus_name, {})
+        mode = bus_cfg.get("mode", 0)
+        prescaler = bus_cfg.get("prescaler", 8)
+
+        if mode not in (0, 1, 2, 3):
+            print(f"  ERROR: SPI{bus_num} mode {mode} not valid (use 0-3)")
+            sys.exit(1)
+
+        prescaler_define = SPI_PRESCALER_MAP.get(prescaler)
+        if prescaler_define is None:
+            print(f"  ERROR: SPI{bus_num} prescaler {prescaler} not valid "
+                  f"(use 2, 4, 8, 16, 32, 64, 128, or 256)")
+            sys.exit(1)
+
+        key = (family_define, bus_num)
+        clk_info = SPI_CLK_MAP.get(key)
+        if clk_info is None:
+            print(f"  ERROR: SPI{bus_num} clock enable not defined for {family_define}")
+            sys.exit(1)
+
+        clk_func, clk_mask = clk_info
+        cpol = mode >> 1   # CPOL: bit 1 of mode
+        cpha = mode & 1    # CPHA: bit 0 of mode
+        cpol_define = "LL_SPI_CPOL_HIGH" if cpol else "LL_SPI_CPOL_LOW"
+        cpha_define = "LL_SPI_CPHA_2EDGE" if cpha else "LL_SPI_CPHA_1EDGE"
+
+        # Resolve CS pad GPIO port/pin for hal_spi_set_cs()
+        cs_pad_num = cs_pads.get(bus_num)
+        cs_port = None
+        cs_pin = None
+        if cs_pad_num:
+            pad_info = pad_lookup.get(cs_pad_num, {})
+            cs_port = pad_info.get("port")
+            cs_pin = pad_info.get("pin")
+
+        spi_buses.append({
+            "num": bus_num,
+            "instance": bus_name,
+            "handle": f"core_spi{bus_num}",
+            "clk_func": clk_func,
+            "clk_mask": clk_mask,
+            "prescaler": prescaler_define,
+            "cpol": cpol_define,
+            "cpha": cpha_define,
+            "cs_pad": cs_pad_num,
+            "cs_port": cs_port,
+            "cs_pin": cs_pin,
+        })
+
+    return spi_buses
 
 
 # ---- Tile peripheral driver mapping ----
@@ -857,6 +971,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["project_file"] = os.path.basename(project_path)
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
+        ctx["spi_buses"] = build_spi_config(project, mcu, pad_map)
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
         _hsi16_i2c_parts = {"STM32WBA55xx"}
