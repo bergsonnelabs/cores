@@ -33,7 +33,7 @@
     "coregen.i2c":    "verified",
     "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
 
-    "conn.usb_cdc": { "status": "wip", "note": "Core.U-2-a only" },
+    "conn.usb_cdc": "verified",
     "conn.dfu":     "verified",
     "conn.ble":     "na",
     "conn.ble_adv": "na",
