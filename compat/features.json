@@ -18,7 +18,6 @@
         { "id": "clocks.hse", "name": "HSE (external crystal)"      },
         { "id": "clocks.msi", "name": "low-power clocks (MSI/MSIS)" },
         { "id": "clocks.pll", "name": "PLL (high-speed)"            },
-        { "id": "clocks.rtc", "name": "RTC clock (LSE / LSI)"       },
         { "id": "clocks.mco", "name": "clock output (MCO)"          }
       ]
     },
@@ -156,7 +155,6 @@
       "features": [
         { "id": "adv.i3c_ctrl",   "name": "I3C controller"            },
         { "id": "adv.i3c_target", "name": "I3C target"                },
-        { "id": "adv.rtc",        "name": "RTC (calendar / alarm)"    },
         { "id": "adv.comp",       "name": "COMP (analog comparator)"  },
         { "id": "adv.dac",        "name": "DAC"                       }
       ]
