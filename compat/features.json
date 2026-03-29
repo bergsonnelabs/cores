@@ -16,9 +16,9 @@
       "features": [
         { "id": "clocks.hsi", "name": "HSI (internal RC)"           },
         { "id": "clocks.hse", "name": "HSE (external crystal)"      },
-        { "id": "clocks.msi", "name": "low-power clocks (MSI/MSIS)" },
-        { "id": "clocks.pll", "name": "PLL (high-speed)"            },
-        { "id": "clocks.mco", "name": "clock output (MCO)"          }
+        { "id": "clocks.msi", "name": "MSI / MSIS (low-power)"        },
+        { "id": "clocks.pll", "name": "PLL (high-speed)"             },
+        { "id": "clocks.mco", "name": "MCO (clock output)"           }
       ]
     },
     {
