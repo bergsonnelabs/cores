@@ -1,0 +1,49 @@
+{
+  "id": "Core.U",
+  "mcu": "STM32L422",
+  "freq": "80 MHz",
+  "arch": "M4",
+  "features": {
+    "system.init": "verified",
+    "system.led":  "verified",
+
+    "clocks.hsi":  "verified",
+    "clocks.hse":  "compile",
+    "clocks.msi":  "compile",
+    "clocks.pll":  "compile",
+
+    "gpio.digital": "verified",
+    "gpio.exti":    "compile",
+    "gpio.af":      "verified",
+
+    "uart.polling": "compile",
+
+    "i2c.std":  "verified",
+    "i2c.fast": "verified",
+    "i2c.fmp":  "compile",
+
+    "spi.master": "compile",
+
+    "adc.raw":  "compile",
+    "adc.mv":   "compile",
+    "adc.temp": "compile",
+
+    "tal.adc":        "compile",
+    "coregen.gpio":   "verified",
+    "coregen.i2c":    "verified",
+    "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
+
+    "conn.usb_cdc": { "status": "wip", "note": "Core.U-2-a only" },
+    "conn.dfu":     "verified",
+    "conn.ble":     "na",
+    "conn.ble_adv": "na",
+    "conn.ble_gatt":"na",
+    "conn.fdcan":   "na",
+
+    "security.pka": "na",
+
+    "spi.octo":       "na",
+    "adv.i3c_ctrl":   "na",
+    "adv.i3c_target": "na"
+  }
+}

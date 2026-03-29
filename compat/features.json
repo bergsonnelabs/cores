@@ -1,0 +1,165 @@
+{
+  "groups": [
+    {
+      "id": "system",
+      "name": "System",
+      "features": [
+        { "id": "system.init",  "name": "core initialization"      },
+        { "id": "system.led",   "name": "LED (core_led)"            },
+        { "id": "system.tick",  "name": "system tick (SysTick)"     },
+        { "id": "system.fault", "name": "fault / error handlers"    }
+      ]
+    },
+    {
+      "id": "clocks",
+      "name": "Clocks",
+      "features": [
+        { "id": "clocks.hsi", "name": "HSI (internal RC)"           },
+        { "id": "clocks.hse", "name": "HSE (external crystal)"      },
+        { "id": "clocks.msi", "name": "low-power clocks (MSI/MSIS)" },
+        { "id": "clocks.pll", "name": "PLL (high-speed)"            },
+        { "id": "clocks.rtc", "name": "RTC clock (LSE / LSI)"       },
+        { "id": "clocks.mco", "name": "clock output (MCO)"          }
+      ]
+    },
+    {
+      "id": "gpio",
+      "name": "GPIO",
+      "features": [
+        { "id": "gpio.digital",  "name": "digital I/O (read / write)" },
+        { "id": "gpio.exti",     "name": "external interrupts (EXTI)"  },
+        { "id": "gpio.af",       "name": "alternate function config"    },
+        { "id": "gpio.od_pull",  "name": "open-drain / pull config"     }
+      ]
+    },
+    {
+      "id": "uart",
+      "name": "UART",
+      "features": [
+        { "id": "uart.polling", "name": "TX / RX (polling)"        },
+        { "id": "uart.irq",     "name": "interrupt-driven"          },
+        { "id": "uart.dma",     "name": "DMA"                       },
+        { "id": "uart.flow",    "name": "hardware flow control"     },
+        { "id": "uart.lp",      "name": "LPUART (low-power)"        }
+      ]
+    },
+    {
+      "id": "i2c",
+      "name": "I2C",
+      "features": [
+        { "id": "i2c.std",   "name": "standard mode (100 kHz)"  },
+        { "id": "i2c.fast",  "name": "fast mode (400 kHz)"       },
+        { "id": "i2c.fmp",   "name": "fast-mode plus (1 MHz)"    },
+        { "id": "i2c.irq",   "name": "interrupt-driven"          },
+        { "id": "i2c.dma",   "name": "DMA"                       },
+        { "id": "i2c.10bit", "name": "10-bit addressing"          },
+        { "id": "i2c.smbus", "name": "SMBus mode"                 }
+      ]
+    },
+    {
+      "id": "spi",
+      "name": "SPI",
+      "features": [
+        { "id": "spi.master", "name": "master TX / RX (polling)" },
+        { "id": "spi.irq",    "name": "interrupt-driven"          },
+        { "id": "spi.dma",    "name": "DMA"                       },
+        { "id": "spi.slave",  "name": "slave mode"                },
+        { "id": "spi.octo",   "name": "OctoSPI / QSPI"            }
+      ]
+    },
+    {
+      "id": "timers",
+      "name": "Timers",
+      "features": [
+        { "id": "timer.pwm",      "name": "PWM output"                },
+        { "id": "timer.capture",  "name": "input capture"             },
+        { "id": "timer.oneshot",  "name": "one-shot pulse"            },
+        { "id": "timer.encoder",  "name": "encoder mode"              },
+        { "id": "timer.lptim",    "name": "LPTIM (low-power timer)"   },
+        { "id": "timer.wdog",     "name": "IWDG (watchdog)"           }
+      ]
+    },
+    {
+      "id": "adc",
+      "name": "ADC",
+      "features": [
+        { "id": "adc.raw",      "name": "single-shot raw read"     },
+        { "id": "adc.mv",       "name": "millivolt read (VREFINT)"  },
+        { "id": "adc.temp",     "name": "temperature sensor"        },
+        { "id": "adc.cont",     "name": "continuous / scan mode"   },
+        { "id": "adc.watchdog", "name": "analog watchdog"           },
+        { "id": "adc.oversamp", "name": "oversampling / burst"      },
+        { "id": "adc.dma",      "name": "DMA"                       }
+      ]
+    },
+    {
+      "id": "tal",
+      "name": "TAL — Tile Abstraction Layer",
+      "features": [
+        { "id": "tal.adc",  "name": "ADC (pad-centric API)"  },
+        { "id": "tal.gpio", "name": "GPIO (pad-centric API)" },
+        { "id": "tal.uart", "name": "UART (pad-centric API)" },
+        { "id": "tal.spi",  "name": "SPI (pad-centric API)"  },
+        { "id": "tal.pwm",  "name": "PWM (pad-centric API)"  }
+      ]
+    },
+    {
+      "id": "coregen",
+      "name": "Project Generation (Coregen)",
+      "features": [
+        { "id": "coregen.gpio",  "name": "GPIO pad auto-init"     },
+        { "id": "coregen.i2c",   "name": "I2C auto-init"          },
+        { "id": "coregen.analog","name": "analog pad init"        },
+        { "id": "coregen.spi",   "name": "SPI auto-init"          },
+        { "id": "coregen.uart",  "name": "UART auto-init"         },
+        { "id": "coregen.timer", "name": "timer / PWM auto-init"  }
+      ]
+    },
+    {
+      "id": "power",
+      "name": "Power Management",
+      "features": [
+        { "id": "power.sleep",     "name": "sleep mode"         },
+        { "id": "power.stop",      "name": "STOP mode"          },
+        { "id": "power.standby",   "name": "standby / shutdown" },
+        { "id": "power.rtc_wake",  "name": "RTC wakeup"         },
+        { "id": "power.exti_wake", "name": "EXTI wakeup"        }
+      ]
+    },
+    {
+      "id": "security",
+      "name": "Security",
+      "features": [
+        { "id": "security.rng",  "name": "hardware RNG"    },
+        { "id": "security.aes",  "name": "AES (hardware)"  },
+        { "id": "security.pka",  "name": "PKA / ECC"       },
+        { "id": "security.hash", "name": "HASH (SHA-256)"  }
+      ]
+    },
+    {
+      "id": "conn",
+      "name": "Connectivity",
+      "features": [
+        { "id": "conn.usb_cdc",  "name": "USB CDC serial"       },
+        { "id": "conn.usb_hid",  "name": "USB HID"              },
+        { "id": "conn.usb_msc",  "name": "USB MSC"              },
+        { "id": "conn.dfu",      "name": "ROM DFU bootloader"   },
+        { "id": "conn.ble",      "name": "BLE radio"            },
+        { "id": "conn.ble_adv",  "name": "BLE advertising"      },
+        { "id": "conn.ble_gatt", "name": "BLE GATT server"      },
+        { "id": "conn.fdcan",    "name": "FDCAN"                }
+      ]
+    },
+    {
+      "id": "adv",
+      "name": "Advanced",
+      "features": [
+        { "id": "adv.i3c_ctrl",   "name": "I3C controller"            },
+        { "id": "adv.i3c_target", "name": "I3C target"                },
+        { "id": "adv.rtc",        "name": "RTC (calendar / alarm)"    },
+        { "id": "adv.comp",       "name": "COMP (analog comparator)"  },
+        { "id": "adv.dac",        "name": "DAC"                       }
+      ]
+    }
+  ]
+}

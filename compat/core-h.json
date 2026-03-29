@@ -1,0 +1,44 @@
+{
+  "id": "Core.H",
+  "mcu": "STM32H523",
+  "freq": "250 MHz",
+  "arch": "M33",
+  "features": {
+    "system.init": "compile",
+    "system.led":  "compile",
+
+    "clocks.hsi":  "compile",
+    "clocks.hse":  "compile",
+    "clocks.msi":  "compile",
+    "clocks.pll":  "compile",
+
+    "gpio.digital": "compile",
+    "gpio.exti":    "compile",
+    "gpio.af":      "compile",
+
+    "uart.polling": "compile",
+
+    "i2c.std":  "compile",
+    "i2c.fast": "compile",
+    "i2c.fmp":  "compile",
+
+    "spi.master": "compile",
+
+    "adc.raw":  "compile",
+    "adc.mv":   "compile",
+    "adc.temp": "compile",
+
+    "tal.adc":        "compile",
+    "coregen.gpio":   "verified",
+    "coregen.i2c":    "verified",
+    "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
+
+    "conn.ble":     "na",
+    "conn.ble_adv": "na",
+    "conn.ble_gatt":"na",
+
+    "security.pka": "na",
+
+    "adv.i3c_ctrl": "compile"
+  }
+}

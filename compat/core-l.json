@@ -1,0 +1,55 @@
+{
+  "id": "Core.L",
+  "mcu": "STM32L011",
+  "freq": "32 MHz",
+  "arch": "M0+",
+  "features": {
+    "system.init":  "compile",
+    "system.led":   "compile",
+
+    "clocks.hsi":   "compile",
+    "clocks.hse":   "compile",
+    "clocks.msi":   "compile",
+    "clocks.pll":   "compile",
+
+    "gpio.digital": "compile",
+    "gpio.exti":    "compile",
+    "gpio.af":      "compile",
+
+    "uart.polling": "compile",
+
+    "i2c.std":      "compile",
+    "i2c.fast":     "compile",
+    "i2c.fmp":      "na",
+
+    "spi.master":   "compile",
+
+    "adc.raw":  { "status": "compile", "note": "CHSELR fix applied; not yet hw-tested" },
+    "adc.mv":   "compile",
+    "adc.temp": "compile",
+
+    "tal.adc":       "compile",
+    "coregen.gpio":  "compile",
+    "coregen.i2c":   "compile",
+    "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
+
+    "conn.usb_cdc":  "na",
+    "conn.usb_hid":  "na",
+    "conn.usb_msc":  "na",
+    "conn.dfu":      "na",
+    "conn.ble":      "na",
+    "conn.ble_adv":  "na",
+    "conn.ble_gatt": "na",
+    "conn.fdcan":    "na",
+
+    "security.rng":  "na",
+    "security.aes":  "na",
+    "security.pka":  "na",
+    "security.hash": "na",
+
+    "spi.octo":       "na",
+    "adv.i3c_ctrl":   "na",
+    "adv.i3c_target": "na",
+    "adv.dac":        "na"
+  }
+}

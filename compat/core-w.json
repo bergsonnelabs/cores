@@ -1,0 +1,48 @@
+{
+  "id": "Core.W",
+  "mcu": "STM32WBA55",
+  "freq": "100 MHz",
+  "arch": "M33",
+  "features": {
+    "system.init": "verified",
+    "system.led":  "verified",
+
+    "clocks.hsi":  "verified",
+    "clocks.hse":  "verified",
+    "clocks.msi":  "na",
+    "clocks.pll":  "verified",
+
+    "gpio.digital": "verified",
+    "gpio.exti":    "compile",
+    "gpio.af":      "verified",
+
+    "uart.polling": "compile",
+
+    "i2c.std":  "verified",
+    "i2c.fast": "verified",
+    "i2c.fmp":  { "status": "compile", "note": "Fixed 16 MHz kernel clock" },
+
+    "spi.master": "compile",
+
+    "adc.raw":  "verified",
+    "adc.mv":   { "status": "partial", "note": "Fixed 3.3 V; VREFINT cal pending" },
+    "adc.temp": "compile",
+
+    "tal.adc":        "verified",
+    "coregen.gpio":   "verified",
+    "coregen.i2c":    "verified",
+    "coregen.analog": "verified",
+
+    "conn.usb_cdc":  "na",
+    "conn.usb_hid":  "na",
+    "conn.usb_msc":  "na",
+    "conn.dfu":      "na",
+    "conn.ble":      "wip",
+    "conn.fdcan":    "na",
+
+    "spi.octo":       "na",
+    "adv.i3c_ctrl":   "na",
+    "adv.i3c_target": "na",
+    "adv.dac":        "na"
+  }
+}
