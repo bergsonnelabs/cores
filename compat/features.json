@@ -4,21 +4,21 @@
       "id": "system",
       "name": "System",
       "features": [
-        { "id": "system.init",  "name": "core initialization"      },
-        { "id": "system.led",   "name": "LED (core_led)"            },
-        { "id": "system.tick",  "name": "system tick (SysTick)"     },
-        { "id": "system.fault", "name": "fault / error handlers"    }
+        { "id": "system.init",  "name": "core initialization" },
+        { "id": "system.led",   "name": "LED (core_led)"       },
+        { "id": "system.tick",  "name": "SysTick",             "desc": "Cortex-M core timer — ISR-driven ms tick for non-blocking delays and RTOS scheduling. SDK currently uses a busy-wait loop." },
+        { "id": "system.fault", "name": "fault handlers",      "desc": "HardFault / BusFault / UsageFault handlers with register-dump diagnostics." }
       ]
     },
     {
       "id": "clocks",
       "name": "Clocks",
       "features": [
-        { "id": "clocks.hsi", "name": "HSI (internal RC)"           },
-        { "id": "clocks.hse", "name": "HSE (external crystal)"      },
-        { "id": "clocks.msi", "name": "MSI / MSIS (low-power)"        },
-        { "id": "clocks.pll", "name": "PLL (high-speed)"             },
-        { "id": "clocks.mco", "name": "MCO (clock output)"           }
+        { "id": "clocks.hsi", "name": "HSI (internal RC)"    },
+        { "id": "clocks.hse", "name": "HSE (external crystal)" },
+        { "id": "clocks.msi", "name": "MSI / MSIS (low-power)", "desc": "Multi-Speed Internal oscillator — variable-frequency RC used as the default boot clock and in low-power modes." },
+        { "id": "clocks.pll", "name": "PLL (high-speed)"     },
+        { "id": "clocks.mco", "name": "MCO (clock output)",   "desc": "Master Clock Output — routes an internal clock to a GPIO pin for external measurement or as a clock source to another IC." }
       ]
     },
     {
@@ -26,33 +26,33 @@
       "name": "GPIO",
       "features": [
         { "id": "gpio.digital",  "name": "digital I/O (read / write)" },
-        { "id": "gpio.exti",     "name": "external interrupts (EXTI)"  },
-        { "id": "gpio.af",       "name": "alternate function config"    },
-        { "id": "gpio.od_pull",  "name": "open-drain / pull config"     }
+        { "id": "gpio.exti",     "name": "EXTI (external interrupts)", "desc": "Triggers a callback on rising, falling, or both edges of a GPIO pin without polling." },
+        { "id": "gpio.af",       "name": "alternate function config",  "desc": "Routes a pin to a peripheral (UART TX, I2C SDA, SPI CLK, etc.) rather than software-controlled GPIO." },
+        { "id": "gpio.od_pull",  "name": "open-drain / pull config",   "desc": "Open-drain output mode and internal pull-up / pull-down resistor configuration." }
       ]
     },
     {
       "id": "uart",
       "name": "UART",
       "features": [
-        { "id": "uart.polling", "name": "TX / RX (polling)"        },
-        { "id": "uart.irq",     "name": "interrupt-driven"          },
-        { "id": "uart.dma",     "name": "DMA"                       },
-        { "id": "uart.flow",    "name": "hardware flow control"     },
-        { "id": "uart.lp",      "name": "LPUART (low-power)"        }
+        { "id": "uart.polling", "name": "TX / RX (polling)"    },
+        { "id": "uart.irq",     "name": "interrupt-driven"      },
+        { "id": "uart.dma",     "name": "DMA"                   },
+        { "id": "uart.flow",    "name": "hardware flow control", "desc": "RTS / CTS handshaking — prevents buffer overruns on high-speed or high-latency links." },
+        { "id": "uart.lp",      "name": "LPUART (low-power)",   "desc": "Low-power UART variant that keeps running in STOP mode and can wake the MCU on incoming data." }
       ]
     },
     {
       "id": "i2c",
       "name": "I2C",
       "features": [
-        { "id": "i2c.std",   "name": "standard mode (100 kHz)"  },
-        { "id": "i2c.fast",  "name": "fast mode (400 kHz)"       },
-        { "id": "i2c.fmp",   "name": "fast-mode plus (1 MHz)"    },
-        { "id": "i2c.irq",   "name": "interrupt-driven"          },
-        { "id": "i2c.dma",   "name": "DMA"                       },
-        { "id": "i2c.10bit", "name": "10-bit addressing"          },
-        { "id": "i2c.smbus", "name": "SMBus mode"                 }
+        { "id": "i2c.std",   "name": "standard mode (100 kHz)" },
+        { "id": "i2c.fast",  "name": "fast mode (400 kHz)"      },
+        { "id": "i2c.fmp",   "name": "fast-mode plus (1 MHz)",  "desc": "Requires stronger 20 mA GPIO drivers and a compatible kernel clock. Not all cores support it." },
+        { "id": "i2c.irq",   "name": "interrupt-driven"         },
+        { "id": "i2c.dma",   "name": "DMA"                      },
+        { "id": "i2c.10bit", "name": "10-bit addressing",        "desc": "Extends the I2C address space from 128 to 1024 devices on a single bus." },
+        { "id": "i2c.smbus", "name": "SMBus mode",               "desc": "I2C superset used by PMICs and fuel gauges — adds PEC error checking and bus timeout requirements." }
       ]
     },
     {
@@ -62,20 +62,20 @@
         { "id": "spi.master", "name": "master TX / RX (polling)" },
         { "id": "spi.irq",    "name": "interrupt-driven"          },
         { "id": "spi.dma",    "name": "DMA"                       },
-        { "id": "spi.slave",  "name": "slave mode"                },
-        { "id": "spi.octo",   "name": "OctoSPI / QSPI"            }
+        { "id": "spi.slave",  "name": "slave mode",               "desc": "Core acts as the secondary SPI device, clocked and selected by an external master." },
+        { "id": "spi.octo",   "name": "OctoSPI / QSPI",           "desc": "High-speed memory interface with 4 or 8 parallel data lines — used for NOR flash and PSRAM tile access." }
       ]
     },
     {
       "id": "timers",
       "name": "Timers",
       "features": [
-        { "id": "timer.pwm",      "name": "PWM output"                },
-        { "id": "timer.capture",  "name": "input capture"             },
-        { "id": "timer.oneshot",  "name": "one-shot pulse"            },
-        { "id": "timer.encoder",  "name": "encoder mode"              },
-        { "id": "timer.lptim",    "name": "LPTIM (low-power timer)"   },
-        { "id": "timer.wdog",     "name": "IWDG (watchdog)"           }
+        { "id": "timer.pwm",     "name": "PWM output"              },
+        { "id": "timer.capture", "name": "input capture",          "desc": "Measures timing of external signals — pulse width, frequency, or phase of an incoming waveform." },
+        { "id": "timer.oneshot", "name": "one-shot pulse",         "desc": "Generates a single precisely-timed pulse on a GPIO pin, triggered by software or a hardware event." },
+        { "id": "timer.encoder", "name": "encoder mode",           "desc": "Counts quadrature encoder pulses directly in hardware for position or velocity measurement." },
+        { "id": "timer.lptim",   "name": "LPTIM (low-power timer)","desc": "Continues running in STOP mode — used for periodic wakeup and low-power event scheduling." },
+        { "id": "timer.wdog",    "name": "IWDG (watchdog)",        "desc": "Independent Watchdog — resets the MCU if firmware stops refreshing it, guarding against hangs." }
       ]
     },
     {
@@ -83,11 +83,11 @@
       "name": "ADC",
       "features": [
         { "id": "adc.raw",      "name": "single-shot raw read"     },
-        { "id": "adc.mv",       "name": "millivolt read (VREFINT)"  },
-        { "id": "adc.temp",     "name": "temperature sensor"        },
-        { "id": "adc.cont",     "name": "continuous / scan mode"   },
-        { "id": "adc.watchdog", "name": "analog watchdog"           },
-        { "id": "adc.oversamp", "name": "oversampling / burst"      },
+        { "id": "adc.mv",       "name": "millivolt read (VREFINT)", "desc": "Converts raw counts to millivolts using the factory-calibrated VREFINT reference." },
+        { "id": "adc.temp",     "name": "temperature sensor",       "desc": "Reads the on-die temperature sensor channel using the factory calibration points." },
+        { "id": "adc.cont",     "name": "continuous / scan mode",   "desc": "ADC free-runs through a sequence of channels, continuously updating results in a buffer." },
+        { "id": "adc.watchdog", "name": "analog watchdog",          "desc": "Triggers an interrupt when a conversion result crosses a configured high or low voltage threshold." },
+        { "id": "adc.oversamp", "name": "oversampling / burst",     "desc": "Averages multiple conversions in hardware to increase effective resolution and reduce noise." },
         { "id": "adc.dma",      "name": "DMA"                       }
       ]
     },
@@ -95,20 +95,20 @@
       "id": "tal",
       "name": "TAL — Tile Abstraction Layer",
       "features": [
-        { "id": "tal.adc",  "name": "ADC (pad-centric API)"  },
-        { "id": "tal.gpio", "name": "GPIO (pad-centric API)" },
-        { "id": "tal.uart", "name": "UART (pad-centric API)" },
-        { "id": "tal.spi",  "name": "SPI (pad-centric API)"  },
-        { "id": "tal.pwm",  "name": "PWM (pad-centric API)"  }
+        { "id": "tal.adc",  "name": "ADC (pad-centric API)",  "desc": "Use pad numbers from project.json directly — channel mapping is resolved automatically from the board definition." },
+        { "id": "tal.gpio", "name": "GPIO (pad-centric API)", "desc": "Read / write pads by number rather than port + pin; direction and AF resolved from the project." },
+        { "id": "tal.uart", "name": "UART (pad-centric API)", "desc": "Open a UART by specifying TX/RX pad numbers; peripheral and AF resolved automatically." },
+        { "id": "tal.spi",  "name": "SPI (pad-centric API)",  "desc": "Configure SPI by pad numbers; peripheral selection and CS management handled by the TAL." },
+        { "id": "tal.pwm",  "name": "PWM (pad-centric API)",  "desc": "Output PWM on any timer-capable pad by number; timer and channel resolved from the board definition." }
       ]
     },
     {
       "id": "coregen",
       "name": "Project Generation (Coregen)",
       "features": [
-        { "id": "coregen.gpio",  "name": "GPIO pad auto-init"     },
-        { "id": "coregen.i2c",   "name": "I2C auto-init"          },
-        { "id": "coregen.analog","name": "analog pad init"        },
+        { "id": "coregen.gpio",  "name": "GPIO pad auto-init",    "desc": "Generates GPIO init code in core_init.c for all pads assigned in project.json." },
+        { "id": "coregen.i2c",   "name": "I2C auto-init",         "desc": "Generates I2C peripheral init, kernel clock selection, and pull-up config from project.json." },
+        { "id": "coregen.analog","name": "analog pad init",       "desc": "Sets ADC-assigned pads to analog input mode (MODER=11) to prevent digital noise on ADC inputs." },
         { "id": "coregen.spi",   "name": "SPI auto-init"          },
         { "id": "coregen.uart",  "name": "UART auto-init"         },
         { "id": "coregen.timer", "name": "timer / PWM auto-init"  }
@@ -118,45 +118,45 @@
       "id": "power",
       "name": "Power Management",
       "features": [
-        { "id": "power.sleep",     "name": "sleep mode"         },
-        { "id": "power.stop",      "name": "STOP mode"          },
-        { "id": "power.standby",   "name": "standby / shutdown" },
-        { "id": "power.rtc_wake",  "name": "RTC wakeup"         },
-        { "id": "power.exti_wake", "name": "EXTI wakeup"        }
+        { "id": "power.sleep",     "name": "sleep mode",         "desc": "CPU halted, peripherals running — lowest-latency wakeup (~1 µs). Ideal for interrupt-driven designs." },
+        { "id": "power.stop",      "name": "STOP mode",          "desc": "CPU and most clocks halted, RAM retained — wakeup from EXTI or timer (~5 µs)." },
+        { "id": "power.standby",   "name": "standby / shutdown", "desc": "Near-zero power draw — RAM is lost and wakeup triggers a full reset." },
+        { "id": "power.rtc_wake",  "name": "RTC wakeup",         "desc": "Wake from STOP or Standby on a timed RTC alarm." },
+        { "id": "power.exti_wake", "name": "EXTI wakeup",        "desc": "Wake from STOP or Standby on a GPIO edge — e.g. button press or tile interrupt line." }
       ]
     },
     {
       "id": "security",
       "name": "Security",
       "features": [
-        { "id": "security.rng",  "name": "hardware RNG"    },
-        { "id": "security.aes",  "name": "AES (hardware)"  },
-        { "id": "security.pka",  "name": "PKA / ECC"       },
-        { "id": "security.hash", "name": "HASH (SHA-256)"  }
+        { "id": "security.rng",  "name": "hardware RNG",    "desc": "True Random Number Generator — hardware entropy source for cryptographic keys and nonces." },
+        { "id": "security.aes",  "name": "AES (hardware)",  "desc": "Hardware AES-128/256 accelerator — faster and more power-efficient than software crypto." },
+        { "id": "security.pka",  "name": "PKA / ECC",       "desc": "Public Key Accelerator — hardware elliptic-curve math for BLE pairing (ECDH) and certificate operations." },
+        { "id": "security.hash", "name": "HASH (SHA-256)",  "desc": "Hardware SHA-256 / HMAC accelerator for message authentication and integrity checks." }
       ]
     },
     {
       "id": "conn",
       "name": "Connectivity",
       "features": [
-        { "id": "conn.usb_cdc",  "name": "USB CDC serial"       },
-        { "id": "conn.usb_hid",  "name": "USB HID"              },
-        { "id": "conn.usb_msc",  "name": "USB MSC"              },
-        { "id": "conn.dfu",      "name": "ROM DFU bootloader"   },
-        { "id": "conn.ble",      "name": "BLE radio"            },
-        { "id": "conn.ble_adv",  "name": "BLE advertising"      },
-        { "id": "conn.ble_gatt", "name": "BLE GATT server"      },
-        { "id": "conn.fdcan",    "name": "FDCAN"                }
+        { "id": "conn.usb_cdc",  "name": "USB CDC serial",     "desc": "Emulates a virtual COM port over USB — appears as a serial device on the host OS." },
+        { "id": "conn.usb_hid",  "name": "USB HID",            "desc": "Human Interface Device class — used for custom input devices, sensor streams, and control panels." },
+        { "id": "conn.usb_msc",  "name": "USB MSC",            "desc": "Mass Storage Class — Core appears as a USB drive; useful for datalogging and drag-and-drop firmware updates." },
+        { "id": "conn.dfu",      "name": "ROM DFU bootloader", "desc": "Uses the STM32 factory ROM bootloader to flash firmware over USB without a hardware debugger." },
+        { "id": "conn.ble",      "name": "BLE radio"           },
+        { "id": "conn.ble_adv",  "name": "BLE advertising",    "desc": "Broadcasts BLE advertisement packets — device discovery, beaconing, and connectionless data." },
+        { "id": "conn.ble_gatt", "name": "BLE GATT server",    "desc": "Hosts a GATT service with characteristics that a central (phone, hub) can read, write, or subscribe to." },
+        { "id": "conn.fdcan",    "name": "FDCAN",              "desc": "CAN FD bus interface — industrial and automotive multi-device bus with up to 8 Mbit/s data rate." }
       ]
     },
     {
       "id": "adv",
       "name": "Advanced",
       "features": [
-        { "id": "adv.i3c_ctrl",   "name": "I3C controller"            },
-        { "id": "adv.i3c_target", "name": "I3C target"                },
-        { "id": "adv.comp",       "name": "COMP (analog comparator)"  },
-        { "id": "adv.dac",        "name": "DAC"                       }
+        { "id": "adv.i3c_ctrl",   "name": "I3C controller",           "desc": "Next-gen sensor bus — I2C-compatible with higher speed, in-band interrupts, and dynamic addressing." },
+        { "id": "adv.i3c_target", "name": "I3C target",               "desc": "Core acts as an I3C secondary device, addressable by an external I3C controller." },
+        { "id": "adv.comp",       "name": "COMP (analog comparator)", "desc": "Compares two voltages and outputs a digital signal or interrupt — threshold detection without ADC overhead." },
+        { "id": "adv.dac",        "name": "DAC",                      "desc": "Digital-to-Analog Converter — generates a continuous analog voltage from a digital value." }
       ]
     }
   ]
