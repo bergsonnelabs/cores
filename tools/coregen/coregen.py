@@ -760,7 +760,7 @@ TILE_DRIVER_MAP = {
 }
 
 
-def build_tiles_config(config, i2c_buses):
+def build_tiles_config(config, i2c_buses, spi_buses=None):
     """Build tile peripheral config from 'tiles' list in project config.
 
     For each declared tile, looks up driver info, validates the bus assignment,
@@ -774,11 +774,13 @@ def build_tiles_config(config, i2c_buses):
     if not tiles_list:
         return [], [], []
 
-    # Build lookup of configured I2C buses by name (e.g., "I2C3")
+    # Build lookup of configured buses by name
     i2c_lookup = {bus["instance"]: bus for bus in i2c_buses}
+    spi_lookup = {bus["instance"]: bus for bus in (spi_buses or [])}
+    all_bus_names = set(i2c_lookup) | set(spi_lookup)
 
     tiles_config = []
-    seen_buses = {}      # bus_name -> hal handle name
+    seen_buses = {}      # bus_name -> hal handle dict
     seen_drivers = set()
 
     for tile_entry in tiles_list:
@@ -794,26 +796,35 @@ def build_tiles_config(config, i2c_buses):
             sys.exit(1)
 
         # Validate bus exists in project config
-        if bus_name not in i2c_lookup:
-            configured = ", ".join(sorted(i2c_lookup.keys())) if i2c_lookup else "(none)"
+        if bus_name not in all_bus_names:
+            configured = ", ".join(sorted(all_bus_names)) if all_bus_names else "(none)"
             print(f"  ERROR: Tile '{tile_type}' references bus '{bus_name}' "
-                  f"which is not configured. Configured I2C buses: {configured}")
+                  f"which is not configured. Configured buses: {configured}")
             sys.exit(1)
 
         # Generate handle name: prefix_bus_instance (e.g., tile_sense_i_9_i2c1_0)
-        # Encoding the bus in the name makes handles unique across buses and
-        # self-documenting — no separate global counter needed.
         handle = f"{driver['prefix']}_{bus_name.lower()}_{instance}"
 
         # Track unique buses for HAL handle generation
         if bus_name not in seen_buses:
-            i2c_bus = i2c_lookup[bus_name]
             hal_handle = f"core_hal_{bus_name.lower()}"
-            seen_buses[bus_name] = {
-                "bus_name": bus_name,
-                "hal_handle": hal_handle,
-                "i2c_handle": i2c_bus["handle"],
-            }
+            is_spi = bus_name in spi_lookup
+            if is_spi:
+                spi_bus = spi_lookup[bus_name]
+                seen_buses[bus_name] = {
+                    "bus_name": bus_name,
+                    "hal_handle": hal_handle,
+                    "spi_handle": spi_bus["handle"],
+                    "bus_type": "spi",
+                }
+            else:
+                i2c_bus = i2c_lookup[bus_name]
+                seen_buses[bus_name] = {
+                    "bus_name": bus_name,
+                    "hal_handle": hal_handle,
+                    "i2c_handle": i2c_bus["handle"],
+                    "bus_type": "i2c",
+                }
 
         seen_drivers.add(driver["source"])
 
@@ -984,7 +995,7 @@ def generate(tile_path, output_dir, project_path=None):
 
         # Build tile peripheral driver config
         tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(
-            project, ctx["i2c_buses"]
+            project, ctx["i2c_buses"], ctx["spi_buses"]
         )
         ctx["tiles_config"] = tiles_config
         ctx["tile_hal_buses"] = tile_hal_buses
