@@ -1,7 +1,18 @@
 /**
- * hal_adc.h — ADC HAL driver
+ * hal_adc.h — ADC HAL driver (Tier 1)
  *
- * Single-shot reads, averaged reads, pad-based convenience.
+ * Supports all four Core families: L0 (Core.L), L4 (Core.U),
+ * WBA (Core.W), H5 (Core.H).
+ *
+ * Features:
+ *   - Configurable resolution (6/8/10/12-bit; 14-bit H5 only)
+ *   - Per-channel sampling time
+ *   - Hardware oversampling (up to 256×, 1024× on H5)
+ *   - Single-shot blocking reads
+ *   - VREFINT-based millivolt conversion (supply-independent)
+ *   - Die temperature via factory TS_CAL calibration
+ *   - DMA circular buffer mode with half/complete callback
+ *   - hal_adc_read_all() convenience burst
  */
 
 #ifndef HAL_ADC_H
@@ -9,58 +20,203 @@
 
 #include "hal_common.h"
 #include "ll_adc.h"
+#include <stdbool.h>
 
 /* ============================================================
- * Types
+ * Enums
+ * ============================================================ */
+
+/**
+ * ADC resolution.
+ * HAL_ADC_RES_14BIT is H5 only — hal_adc_init() returns HAL_ERROR
+ * if requested on another family.
+ */
+typedef enum {
+    HAL_ADC_RES_6BIT   = 6,
+    HAL_ADC_RES_8BIT   = 8,
+    HAL_ADC_RES_10BIT  = 10,
+    HAL_ADC_RES_12BIT  = 12,
+    HAL_ADC_RES_14BIT  = 14,   /* H5 only */
+} hal_adc_res_t;
+
+/**
+ * Sampling time presets (approximate ADC clock cycles).
+ * Exact cycle count varies by family — see implementation.
+ *
+ *   FAST:      ~2–4 cycles   — op-amp outputs, DAC, low-impedance
+ *   MED:       ~28–48 cycles — general purpose
+ *   SLOW:      ~160 cycles   — resistive dividers, NTCs
+ *   VERY_SLOW: ~247–640 cycles — high-Z sources, max accuracy
+ */
+typedef enum {
+    HAL_ADC_SAMP_FAST,
+    HAL_ADC_SAMP_MED,
+    HAL_ADC_SAMP_SLOW,
+    HAL_ADC_SAMP_VERY_SLOW,
+} hal_adc_samp_t;
+
+/**
+ * Oversampling ratio.
+ * Each doubling of the ratio adds ~0.5 effective bits.
+ * The right-shift is automatically set to keep the output
+ * at the selected resolution (not extended).
+ *
+ * HAL_ADC_OVERSAMPLE_1024X is H5 only.
+ */
+typedef enum {
+    HAL_ADC_OVERSAMPLE_1X    = 0,
+    HAL_ADC_OVERSAMPLE_4X    = 2,    /* +1 effective bit */
+    HAL_ADC_OVERSAMPLE_16X   = 4,    /* +2 effective bits */
+    HAL_ADC_OVERSAMPLE_64X   = 6,    /* +3 effective bits */
+    HAL_ADC_OVERSAMPLE_256X  = 8,    /* +4 effective bits */
+    HAL_ADC_OVERSAMPLE_1024X = 10,   /* +5 effective bits — H5 only */
+} hal_adc_oversample_t;
+
+/* ============================================================
+ * Channel descriptor
  * ============================================================ */
 
 typedef struct {
-    ADC_TypeDef *instance;
-    uint32_t     vref_mv;       /* Reference voltage in mV (default 3300) */
+    uint8_t        channel;   /* ADC channel number (0–18) */
+    hal_adc_samp_t samp;
+    bool           enabled;
+} hal_adc_channel_t;
+
+#define HAL_ADC_MAX_CHANNELS 16
+
+/* ============================================================
+ * Main handle
+ * ============================================================ */
+
+typedef struct {
+    ADC_TypeDef          *instance;
+    hal_adc_res_t         resolution;
+    hal_adc_oversample_t  oversample;
+    hal_adc_channel_t     channels[HAL_ADC_MAX_CHANNELS];
+    uint8_t               n_channels;
+    uint32_t              sysclk_hz;
+
+    /* DMA circular buffer */
+    uint16_t             *dma_buf;
+    uint16_t              dma_len;
+    void                (*dma_callback)(void);  /* called on HT and TC */
+    bool                  dma_active;
+
+    /* VREFINT calibration cache — computed lazily on first read_mv call */
+    uint32_t              vdda_mv;   /* 0 = not yet measured */
 } hal_adc_t;
 
 /* ============================================================
- * API declarations (implemented in hal_adc.c)
+ * API
  * ============================================================ */
 
 /**
- * Initialize ADC with calibration.
- * The peripheral clock is auto-enabled. ADC pins must be
- * configured as analog (hal_pad_analog or ll_gpio_config_analog).
+ * Initialise an ADC instance.
+ *
+ * Enables the peripheral clock, exits deep power-down (L4/H5),
+ * runs self-calibration, and enables the ADC.
+ *
+ * Must be called before add_channel or read.
+ * ADC input pins must already be configured analog (hal_pad_analog).
+ *
+ * @param adc       Handle to zero or uninitialised memory
+ * @param instance  ADC peripheral (ADC1, ADC4, …)
+ * @param sysclk_hz System clock in Hz (used to choose ADC clock divisor)
+ * @param res       Conversion resolution
+ * @return HAL_OK, or HAL_ERROR if resolution is unsupported on this family
  */
-hal_status_t hal_adc_init(hal_adc_t *h, ADC_TypeDef *instance);
-
-void hal_adc_deinit(hal_adc_t *h);
-
-/** Set reference voltage (default 3300mV) */
-void hal_adc_set_vref(hal_adc_t *h, uint32_t vref_mv);
-
-/* ---- Single-shot reads ---- */
-
-/** Read a single ADC channel. Returns raw 12-bit value (0–4095). */
-uint16_t hal_adc_read(hal_adc_t *h, uint8_t channel);
-
-/** Read and convert to millivolts. */
-uint32_t hal_adc_read_mv(hal_adc_t *h, uint8_t channel);
-
-/** Read with averaging (multiple samples). */
-uint16_t hal_adc_read_avg(hal_adc_t *h, uint8_t channel, uint8_t samples);
-
-/** Read averaged and convert to millivolts. */
-uint32_t hal_adc_read_avg_mv(hal_adc_t *h, uint8_t channel, uint8_t samples);
-
-/* ---- Pad-based convenience ---- */
+hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
+                          uint32_t sysclk_hz, hal_adc_res_t res);
 
 /**
- * Read an ADC value by pad number.
- * Automatically looks up the ADC channel for the given pad.
- * Returns raw 12-bit value, or 0 if the pad has no ADC channel.
- *
- * Note: The pad must be configured as analog first (hal_pad_analog).
+ * Add a channel to the conversion sequence.
+ * Channels are converted in the order they are added.
+ * Call after hal_adc_init, before hal_adc_read or hal_adc_start_dma.
  */
-uint16_t hal_adc_read_pad(hal_adc_t *h, uint8_t pad);
+hal_status_t hal_adc_add_channel(hal_adc_t *adc, uint8_t channel,
+                                 hal_adc_samp_t samp);
 
-/** Read pad and convert to millivolts. */
-uint32_t hal_adc_read_pad_mv(hal_adc_t *h, uint8_t pad);
+/**
+ * Set hardware oversampling ratio (applies to all channels).
+ * Can be called after init. Takes effect on the next conversion.
+ */
+hal_status_t hal_adc_set_oversample(hal_adc_t *adc, hal_adc_oversample_t ratio);
+
+/**
+ * Single-shot blocking read of one channel.
+ * Returns the raw ADC count (range depends on resolution).
+ *
+ * The channel must have been added via hal_adc_add_channel.
+ */
+uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel);
+
+/**
+ * Read a channel and convert to millivolts.
+ *
+ * Uses the VREFINT factory calibration to derive the actual VDDA
+ * supply voltage, so the result is correct even when VDD ≠ 3.3 V.
+ * The VDDA measurement is cached after the first call.
+ */
+uint32_t hal_adc_read_mv(hal_adc_t *adc, uint8_t channel);
+
+/**
+ * Read die temperature in tenths of a degree C.
+ * Example: returns 253 for 25.3 °C.
+ *
+ * Uses TS_CAL1 / TS_CAL2 factory calibration values.
+ * Automatically adds the internal temperature sensor channel on first call.
+ */
+int32_t hal_adc_read_temp_decidegc(hal_adc_t *adc);
+
+/**
+ * Read the actual VDD supply voltage in millivolts via VREFINT.
+ * Result is accurate regardless of nominal supply.
+ */
+uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc);
+
+/**
+ * Read all configured channels into buf[].
+ * Buffer order matches the order channels were added via hal_adc_add_channel.
+ * buf must be at least adc->n_channels elements.
+ */
+void hal_adc_read_all(hal_adc_t *adc, uint16_t *buf);
+
+/**
+ * Start continuous ADC conversion with DMA circular buffer.
+ *
+ * callback is invoked at both half-complete and complete events,
+ * supporting a double-buffered processing pattern:
+ *   - At half-complete: process buf[0 .. len/2 - 1]
+ *   - At complete:      process buf[len/2 .. len - 1]
+ *
+ * Channels must already be configured via hal_adc_add_channel.
+ * DMA and ADC peripheral clocks are enabled automatically.
+ *
+ * @param adc      Handle
+ * @param buf      uint16_t buffer for DMA destination (must stay valid)
+ * @param len      Number of uint16_t elements (multiple of n_channels)
+ * @param callback Called on HT and TC interrupts (may be NULL)
+ */
+hal_status_t hal_adc_start_dma(hal_adc_t *adc, uint16_t *buf, uint16_t len,
+                                void (*callback)(void));
+
+/**
+ * Stop DMA conversion and disable the DMA channel.
+ */
+void hal_adc_stop_dma(hal_adc_t *adc);
+
+/* ---- Legacy / compatibility shims (deprecated) ---- */
+
+/** @deprecated Use hal_adc_init(adc, instance, sysclk_hz, HAL_ADC_RES_12BIT) */
+static inline hal_status_t hal_adc_init_simple(hal_adc_t *adc, ADC_TypeDef *instance)
+{
+    return hal_adc_init(adc, instance, 80000000UL, HAL_ADC_RES_12BIT);
+}
+
+/** @deprecated Pad-based read; use hal_pad_analog + hal_adc_add_channel + hal_adc_read */
+uint16_t hal_adc_read_pad(hal_adc_t *adc, uint8_t pad);
+
+/** @deprecated */
+uint32_t hal_adc_read_pad_mv(hal_adc_t *adc, uint8_t pad);
 
 #endif /* HAL_ADC_H */
