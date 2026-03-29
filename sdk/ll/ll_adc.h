@@ -70,6 +70,7 @@ typedef struct {
 #define LL_ADC_CR_ADEN          (1UL << 0)    /* ADC enable */
 #define LL_ADC_CR_ADDIS         (1UL << 1)    /* ADC disable */
 #define LL_ADC_CR_ADSTART       (1UL << 2)    /* Start conversion */
+#define LL_ADC_CR_ADSTP         (1UL << 4)    /* Stop conversion */
 #define LL_ADC_CR_ADCAL         (1UL << 31)   /* Calibration */
 
 /* ---- CFGR1 bit definitions ---- */

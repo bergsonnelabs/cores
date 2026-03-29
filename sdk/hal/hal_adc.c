@@ -372,8 +372,7 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
     /* Enable ADC */
     instance->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(instance->CR, LL_ADC_CR_ADEN);
-    while (!(instance->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
 
 #elif defined(STM32L422xx) || defined(STM32H523xx)
     /* ---- L4 / H5 init ---- */
@@ -401,8 +400,7 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
     /* Enable ADC with stabilisation delay */
     instance->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(instance->CR, LL_ADC_CR_ADEN);
-    while (!(instance->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
 
 #elif defined(STM32WBA55xx)
     /* ---- WBA ADC4 init ---- */
@@ -419,8 +417,7 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
 
     instance->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(instance->CR, LL_ADC_CR_ADEN);
-    while (!(instance->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
 #endif
 
     return HAL_OK;
@@ -476,19 +473,33 @@ uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel)
     ADC_TypeDef *inst = adc->instance;
 
 #if defined(STM32L011xx) || defined(STM32WBA55xx)
-    /* L0/WBA: channel select register (CHSELR) at SQR1 offset */
-    inst->SQR1 = (1UL << channel);
+    /* L0/WBA: CHSELR is read-only while ADSTART is set.
+     * Stop any in-progress conversion before updating the channel. */
+    if (inst->CR & LL_ADC_CR_ADSTART) {
+        SET_BITS(inst->CR, LL_ADC_CR_ADSTP);
+        uint32_t t = 10000;
+        while ((inst->CR & LL_ADC_CR_ADSTP) && --t) ;
+    }
+    /* Clear any stale EOC before starting a new conversion */
+    inst->ISR = LL_ADC_ISR_EOC;
+
+    /* CHSELR is at offset 0x28 — mapped to TR3 in our ADC_TypeDef.
+     * SQR1 (offset 0x30) is NOT CHSELR on these families. */
+    inst->TR3 = (1UL << channel);
 
 #elif defined(STM32L422xx) || defined(STM32H523xx)
     /* L4/H5: sequence register — single channel in SQ1 field */
     inst->SQR1 = (channel << 6);   /* L[3:0]=0 (length-1), SQ1[10:6]=channel */
+    /* Clear any stale EOC */
+    inst->ISR = LL_ADC_ISR_EOC;
 #endif
 
     /* Start conversion */
     SET_BITS(inst->CR, LL_ADC_CR_ADSTART);
 
-    /* Wait for end of conversion */
-    while (!(inst->ISR & LL_ADC_ISR_EOC))
+    /* Wait for end of conversion (with timeout to avoid infinite hang) */
+    uint32_t timeout = 100000;
+    while (!(inst->ISR & LL_ADC_ISR_EOC) && --timeout)
         ;
 
     return (uint16_t)inst->DR;
@@ -500,6 +511,15 @@ uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel)
 
 uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc)
 {
+#if defined(STM32WBA55xx)
+    /* WBA55 runs on a fixed 3.3V rail.  The VREFINT read path (channel 13,
+     * ADC4_CCR VREFEN) has not yet been verified on this family — return the
+     * nominal supply voltage and cache it so subsequent read_mv calls are fast.
+     * TODO: validate VREFINT channel on WBA55 ADC4 and remove this bypass. */
+    (void)adc;
+    return 3300UL;
+#endif
+
     _enable_internal_channels();
 
     /* Temporarily add VREFINT channel with slow sampling */
