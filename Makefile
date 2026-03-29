@@ -130,6 +130,7 @@ CFLAGS += -I$(GEN_DIR)
 CFLAGS += -I$(PROJECT_DIR)
 CFLAGS += -I$(SDK_DIR)sdk/ll
 CFLAGS += -I$(SDK_DIR)sdk/hal
+CFLAGS += -I$(SDK_DIR)sdk/tal
 CFLAGS += -Og -g3
 
 # ---- Kiln driver support (optional) ----
