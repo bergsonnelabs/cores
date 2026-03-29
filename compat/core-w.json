@@ -20,7 +20,7 @@
 
     "i2c.std":  "verified",
     "i2c.fast": "verified",
-    "i2c.fmp":  { "status": "compile", "note": "Fixed 16 MHz kernel clock" },
+    "i2c.fmp":  "na",
 
     "spi.master": "compile",
 
