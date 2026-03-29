@@ -79,6 +79,62 @@ static inline int ll_rcc_hsi16_ready(void)
 
 #endif /* HSI16 */
 
+/* ---- MSI (Multi-Speed Internal, L0/L4) ---- */
+
+#if defined(STM32L422xx)
+
+/* MSIRANGE values for STM32L4 (4-bit field in RCC_CR[7:4]).
+ * Set MSIRGSEL (CR[3]=1) to use this field instead of the CSR range. */
+#define LL_RCC_MSI_RANGE_1MHZ    0x4UL
+#define LL_RCC_MSI_RANGE_2MHZ    0x5UL
+#define LL_RCC_MSI_RANGE_4MHZ    0x6UL   /* reset default */
+#define LL_RCC_MSI_RANGE_8MHZ    0x7UL
+#define LL_RCC_MSI_RANGE_16MHZ   0x8UL
+#define LL_RCC_MSI_RANGE_24MHZ   0x9UL
+#define LL_RCC_MSI_RANGE_32MHZ   0xAUL
+#define LL_RCC_MSI_RANGE_48MHZ   0xBUL
+
+/** Configure the MSI range and select it via CR (not CSR). */
+static inline void ll_rcc_msi_set_range(uint32_t range)
+{
+    uint32_t cr = REG32(RCC_BASE + 0x00UL);
+    cr &= ~(0xFUL << 4);   /* clear MSIRANGE[7:4] */
+    cr |= (range << 4);    /* set new range */
+    cr |= (1UL << 3);      /* MSIRGSEL=1: use CR MSIRANGE (not CSR) */
+    REG32(RCC_BASE + 0x00UL) = cr;
+}
+
+/** Poll until MSI oscillator is stable. */
+static inline int ll_rcc_msi_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 1)) != 0;  /* CR: MSIRDY */
+}
+
+#elif defined(STM32L011xx)
+
+/* MSIRANGE for STM32L0 (3-bit field in RCC_ICSCR[15:13]).
+ * Range values: 0=65kHz, 1=131kHz, 2=262kHz, 3=524kHz,
+ *               4=1.048MHz, 5=2.097MHz, 6=4.194MHz */
+#define LL_RCC_MSI_RANGE_1MHZ    0x4UL   /* 1.048576 MHz */
+#define LL_RCC_MSI_RANGE_4MHZ    0x6UL   /* 4.194304 MHz */
+
+/** Configure MSI range on STM32L0 (RCC_ICSCR[15:13]). */
+static inline void ll_rcc_msi_set_range(uint32_t range)
+{
+    uint32_t icscr = REG32(RCC_BASE + 0x04UL);
+    icscr &= ~(0x7UL << 13);
+    icscr |= (range << 13);
+    REG32(RCC_BASE + 0x04UL) = icscr;
+}
+
+/** Poll until MSI is stable (CR: MSIRDY, bit 1). */
+static inline int ll_rcc_msi_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 1)) != 0;
+}
+
+#endif /* MSI */
+
 /* ---- HSE (external oscillator) ---- */
 
 static inline void ll_rcc_hse_enable(void)
@@ -223,10 +279,29 @@ static inline uint32_t ll_flash_latency_for_mhz(uint32_t mhz)
 static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint32_t r)
 {
 #if defined(STM32L011xx)
-    /* L0: RCC_CFGR bits [21:18]=PLLMUL, [16]=PLLSRC, no PLLM/PLLR
-       This is a simpler PLL — output = src × MUL / DIV
-       We'll handle this differently in the generated code */
-    (void)src; (void)m; (void)n; (void)r;
+    /* L0: RCC_CFGR bits [21:18]=PLLMUL, [23:22]=PLLDIV, [16]=PLLSRC.
+       m is ignored (no input divider). n = multiplier (3,4,6,8,12,16,24,32,48).
+       r = output divider (2,3,4). PLLDIV encoding: 01=÷2, 10=÷3, 11=÷4. */
+    {
+        (void)m;
+        uint32_t mul_enc;
+        switch (n) {
+            case  3: mul_enc = 0x0UL; break;
+            case  4: mul_enc = 0x1UL; break;
+            case  6: mul_enc = 0x2UL; break;
+            case  8: mul_enc = 0x3UL; break;
+            case 12: mul_enc = 0x4UL; break;
+            case 16: mul_enc = 0x5UL; break;
+            case 24: mul_enc = 0x6UL; break;
+            case 32: mul_enc = 0x7UL; break;
+            default: mul_enc = 0x8UL; break; /* 48× */
+        }
+        uint32_t div_enc = (uint32_t)(r - 1);  /* ÷2→1, ÷3→2, ÷4→3 */
+        uint32_t cfgr = REG32(RCC_BASE + 0x0CUL);
+        cfgr &= ~((0xFUL << 18) | (0x3UL << 22) | (0x1UL << 16));
+        cfgr |= (mul_enc << 18) | (div_enc << 22) | (src << 16);
+        REG32(RCC_BASE + 0x0CUL) = cfgr;
+    }
 
 #elif defined(STM32L422xx)
     /* L4: RCC_PLLCFGR at offset 0x0C

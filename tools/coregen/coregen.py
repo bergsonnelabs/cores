@@ -438,16 +438,18 @@ def build_clock_config(config, tile, mcu):
     target_mhz = resolved["sysclk_mhz"]
     print(f"  Clock: {level} → {source} @ {target_mhz}MHz")
 
-    # Find frequency for the selected source
-    source_mhz = 16
+    # Find frequency for the selected source.
+    # For MSI, the tile JSON records the reset-default frequency (4MHz) but the
+    # oscillator can be tuned to any range value — treat target_mhz as the MSI freq.
+    source_mhz = target_mhz if source == "msi" else 16
     for src in tile_clock.get("sources", []):
-        if src["type"] == source:
+        if src["type"] == source and source != "msi":
             source_mhz = src["frequency_mhz"]
             break
 
     pll_config = None
 
-    # Auto-calculate PLL if needed
+    # Auto-calculate PLL if needed (MSI without PLL: target == source, skip)
     if target_mhz != source_mhz and pll_config is None:
         max_mhz = mcu.get("max_sysclk_mhz", 80)
         if target_mhz > max_mhz:
@@ -469,14 +471,31 @@ def build_clock_config(config, tile, mcu):
         vco = source_mhz / m * n
         print(f"  PLL: {source_mhz}MHz ÷{m} ×{n} ÷{r} = {target_mhz}MHz (VCO={vco:.0f}MHz)")
 
+    # LP Run mode (STM32L0 only): ultra-low-power run at MSI ≤ 1MHz
+    lp_run = resolved.get("lp_run", False)
+
     # WBA55 needs VOS Range 1 for SYSCLK > 16MHz
     needs_vos = (mcu["define"] == "STM32WBA55xx" and target_mhz > 16)
+
+    # MSI range define (STM32L0/L4)
+    _msi_range_map = {
+        1: "LL_RCC_MSI_RANGE_1MHZ",  2: "LL_RCC_MSI_RANGE_2MHZ",
+        4: "LL_RCC_MSI_RANGE_4MHZ",  8: "LL_RCC_MSI_RANGE_8MHZ",
+        16: "LL_RCC_MSI_RANGE_16MHZ", 24: "LL_RCC_MSI_RANGE_24MHZ",
+        32: "LL_RCC_MSI_RANGE_32MHZ", 48: "LL_RCC_MSI_RANGE_48MHZ",
+    }
+    msi_range = _msi_range_map.get(target_mhz) if source == "msi" else None
+    if source == "msi" and msi_range is None:
+        print(f"  ERROR: No MSI range constant for {target_mhz}MHz")
+        sys.exit(1)
 
     return {
         "source": source,
         "source_mhz": source_mhz,
         "sysclk_mhz": target_mhz,
         "pll": pll_config,
+        "msi_range": msi_range,
+        "lp_run": lp_run,
         "ahb_div": 1,
         "apb1_div": 1,
         "apb2_div": 1,
@@ -502,21 +521,32 @@ I2C_CLK_MAP = {
     ("STM32H523xx", 3): ("ll_rcc_apb3_clk_enable", "LL_APB3_I2C3"),
 }
 
-# Maps (speed_hz, sysclk_mhz) -> timing constant define
+# Maps (speed_hz, kernel_clk_mhz) -> timing constant define
 # Speeds: 100kHz (Standard), 400kHz (Fast Mode), 1MHz (Fast Mode Plus)
+# 1MHz entries only exist for kernel clocks >= 48MHz (16/32MHz don't have
+# sufficient timing margin and no LL_I2C_TIMING_1M_16/32MHZ constants exist).
 I2C_TIMING_MAP = {
-    (100000, 16): "LL_I2C_TIMING_100K_16MHZ",
-    (100000, 32): "LL_I2C_TIMING_100K_32MHZ",
-    (100000, 48): "LL_I2C_TIMING_100K_48MHZ",
-    (100000, 80): "LL_I2C_TIMING_100K_80MHZ",
-    (400000, 16): "LL_I2C_TIMING_400K_16MHZ",
-    (400000, 32): "LL_I2C_TIMING_400K_32MHZ",
-    (400000, 48): "LL_I2C_TIMING_400K_48MHZ",
-    (400000, 80): "LL_I2C_TIMING_400K_80MHZ",
-    (1000000, 16): "LL_I2C_TIMING_1M_16MHZ",
-    (1000000, 32): "LL_I2C_TIMING_1M_32MHZ",
-    (1000000, 48): "LL_I2C_TIMING_1M_48MHZ",
-    (1000000, 80): "LL_I2C_TIMING_1M_80MHZ",
+    (100000,   1): "LL_I2C_TIMING_100K_1MHZ",
+    (100000,   4): "LL_I2C_TIMING_100K_4MHZ",
+    (100000,   8): "LL_I2C_TIMING_100K_8MHZ",
+    (100000,  16): "LL_I2C_TIMING_100K_16MHZ",
+    (100000,  32): "LL_I2C_TIMING_100K_32MHZ",
+    (100000,  48): "LL_I2C_TIMING_100K_48MHZ",
+    (100000,  80): "LL_I2C_TIMING_100K_80MHZ",
+    (100000, 144): "LL_I2C_TIMING_100K_144MHZ",
+    (100000, 240): "LL_I2C_TIMING_100K_240MHZ",
+    (400000,   4): "LL_I2C_TIMING_400K_4MHZ",
+    (400000,   8): "LL_I2C_TIMING_400K_8MHZ",
+    (400000,  16): "LL_I2C_TIMING_400K_16MHZ",
+    (400000,  32): "LL_I2C_TIMING_400K_32MHZ",
+    (400000,  48): "LL_I2C_TIMING_400K_48MHZ",
+    (400000,  80): "LL_I2C_TIMING_400K_80MHZ",
+    (400000, 144): "LL_I2C_TIMING_400K_144MHZ",
+    (400000, 240): "LL_I2C_TIMING_400K_240MHZ",
+    (1000000,  48): "LL_I2C_TIMING_1M_48MHZ",
+    (1000000,  80): "LL_I2C_TIMING_1M_80MHZ",
+    (1000000, 144): "LL_I2C_TIMING_1M_144MHZ",
+    (1000000, 240): "LL_I2C_TIMING_1M_240MHZ",
 }
 
 
@@ -536,8 +566,10 @@ def build_i2c_config(config, mcu, clock_config):
     sysclk_mhz = clock_config["sysclk_mhz"]
     iface_cfg = config.get("interfaces", {})
 
-    # On WBA55, I2C uses HSI16 as kernel clock (independent of SYSCLK)
-    i2c_clk_mhz = 16 if family_define == "STM32WBA55xx" else sysclk_mhz
+    # On WBA55, I2C kernel clock is hardware-routed to HSI16 (16MHz) regardless of SYSCLK.
+    # H523 uses SYSCLK as I2C kernel clock — TIMINGR constants now exist for 144/240MHz.
+    _hsi16_i2c_parts = {"STM32WBA55xx"}
+    i2c_clk_mhz = 16 if family_define in _hsi16_i2c_parts else sysclk_mhz
 
     # Detect which I2C buses are referenced in pad assignments
     bus_numbers = set()
@@ -566,8 +598,12 @@ def build_i2c_config(config, mcu, clock_config):
         timing = I2C_TIMING_MAP.get((speed, i2c_clk_mhz))
         if timing is None:
             speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
-            print(f"  WARNING: No pre-computed I2C {speed_label} timing for {i2c_clk_mhz}MHz — I2C{bus_num} init will not be generated")
-            continue
+            print(f"  ERROR: I2C{bus_num} {speed_label} is not supported with a {i2c_clk_mhz}MHz I2C kernel clock.")
+            if family_define == "STM32WBA55xx" and speed == 1000000:
+                print(f"         Core.W routes I2C to HSI16 (16MHz); maximum supported speed is 400kHz.")
+            else:
+                print(f"         No pre-computed TIMINGR for {speed_label} @ {i2c_clk_mhz}MHz — add it to I2C_TIMING_MAP or use a lower speed.")
+            sys.exit(1)
 
         key = (family_define, bus_num)
         clk_info = I2C_CLK_MAP.get(key)
@@ -646,8 +682,10 @@ def build_tiles_config(config, i2c_buses):
                   f"which is not configured. Configured I2C buses: {configured}")
             sys.exit(1)
 
-        # Generate handle name: prefix_instance (e.g., tile_sense_i_9_0)
-        handle = f"{driver['prefix']}_{instance}"
+        # Generate handle name: prefix_bus_instance (e.g., tile_sense_i_9_i2c1_0)
+        # Encoding the bus in the name makes handles unique across buses and
+        # self-documenting — no separate global counter needed.
+        handle = f"{driver['prefix']}_{bus_name.lower()}_{instance}"
 
         # Track unique buses for HAL handle generation
         if bus_name not in seen_buses:
@@ -694,27 +732,31 @@ def _extract_managed_block(text):
 
 
 def generate_tiles_h(env, ctx, project_dir):
-    """Generate or update tiles.h in the project directory.
+    """Generate or update tile_handles.h in the project directory.
 
-    - If tiles.h doesn't exist: write it fresh.
+    Named tile_handles.h (not tiles.h) to avoid shadowing kiln/tiles.h in
+    the compiler include path, which would prevent driver headers from
+    finding the framework tile_t / TILES_CHECK_VERSION definitions.
+
+    - If tile_handles.h doesn't exist: write it fresh.
     - If it exists and the managed block matches: update the managed block.
-    - If it exists but the managed block has been modified: warn and skip.
+    - If it exists but the managed block has been removed: skip (user-managed).
     """
-    tiles_path = os.path.join(project_dir, "tiles.h")
+    tiles_path = os.path.join(project_dir, "tile_handles.h")
     template = env.get_template("tiles.h.j2")
     fresh = template.render(**ctx)
 
     new_block = _extract_managed_block(fresh)
     if new_block is None:
         # Template didn't produce markers — shouldn't happen
-        print(f"  WARNING: tiles.h template missing coregen markers, skipping")
+        print(f"  WARNING: tile_handles.h template missing coregen markers, skipping")
         return
 
     if not os.path.exists(tiles_path):
         # First generation — write the whole file
         with open(tiles_path, "w") as f:
             f.write(fresh)
-        print(f"  tiles.h (new)")
+        print(f"  tile_handles.h (new)")
         return
 
     # File exists — check the managed block
@@ -725,12 +767,12 @@ def generate_tiles_h(env, ctx, project_dir):
 
     if old_block is None:
         # Markers were removed — user fully owns the file now
-        print(f"  tiles.h (skipped — coregen markers removed, file is user-managed)")
+        print(f"  tile_handles.h (skipped — coregen markers removed, file is user-managed)")
         return
 
     if old_block == new_block:
         # Already up to date
-        print(f"  tiles.h (up to date)")
+        print(f"  tile_handles.h (up to date)")
         return
 
     # Block differs — update the managed section, preserving anything
@@ -738,7 +780,7 @@ def generate_tiles_h(env, ctx, project_dir):
     updated = existing.replace(old_block, new_block)
     with open(tiles_path, "w") as f:
         f.write(updated)
-    print(f"  tiles.h (updated)")
+    print(f"  tile_handles.h (updated)")
 
 
 # ---- Generation ----
@@ -815,8 +857,11 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["project_file"] = os.path.basename(project_path)
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
-        # On WBA55, route I2C kernel clock to HSI16 for SYSCLK-independent timing
-        ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] == "STM32WBA55xx" else None
+        # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
+        # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
+        _hsi16_i2c_parts = {"STM32WBA55xx"}
+        ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
+        ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
 
         # Build tile peripheral driver config
         tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(

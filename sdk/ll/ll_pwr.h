@@ -190,6 +190,22 @@ static inline void ll_pwr_standby(void)
  * Wakeup flags
  * ============================================================ */
 
+/* ============================================================
+ * Low-Power Run mode (STM32L0 only)
+ * ============================================================ */
+
+/**
+ * Enter Low-Power Run mode on STM32L0.
+ * Call AFTER switching SYSCLK to MSI ≤ 1.048MHz.
+ * Lowers Vcore to the low-power regulator; active current ~8µA.
+ */
+static inline void ll_pwr_lp_run_enable(void)
+{
+#if defined(STM32L011xx)
+    SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 14));  /* CR: LPRUN */
+#endif
+}
+
 /** Check if we woke from standby */
 static inline int ll_pwr_woke_from_standby(void)
 {

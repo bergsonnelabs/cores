@@ -7,7 +7,7 @@
  */
 
 #include "core.h"
-#include "tiles.h"
+#include "tile_handles.h"
 
 /* Debug variables (readable via SWD) */
 volatile int16_t dbg_accel[3];
@@ -32,9 +32,9 @@ int main(void)
     tiles_hal_core_init(&core_hal_i2c3, &core_hal_i2c3_cfg);
 
     /* Find and initialize Sense.I.9 */
-    tile_sense_i_9_init(&core_hal_i2c3, 0, &tile_sense_i_9_0);
+    tile_sense_i_9_init(&core_hal_i2c3, 0, &tile_sense_i_9_i2c3_0);
 
-    if (!tile_is_ready(&tile_sense_i_9_0))
+    if (!tile_is_ready(&tile_sense_i_9_i2c3_0))
         core_led_sos();
 
     core_led_blink(3, 200, 300);
@@ -42,8 +42,8 @@ int main(void)
     /* Live data loop */
     while (1) {
         int16_t accel[3], gyro[3];
-        tile_sense_i_9_get_raw_accels(&tile_sense_i_9_0, accel);
-        tile_sense_i_9_get_raw_gyros(&tile_sense_i_9_0, gyro);
+        tile_sense_i_9_get_raw_accels(&tile_sense_i_9_i2c3_0, accel);
+        tile_sense_i_9_get_raw_gyros(&tile_sense_i_9_i2c3_0, gyro);
 
         dbg_accel[0] = accel[0]; dbg_accel[1] = accel[1]; dbg_accel[2] = accel[2];
         dbg_gyro[0] = gyro[0]; dbg_gyro[1] = gyro[1]; dbg_gyro[2] = gyro[2];

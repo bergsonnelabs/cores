@@ -16,6 +16,9 @@
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
+{% if clock_config.lp_run %}
+#include "ll_pwr.h"
+{% endif %}
 {% if i2c_buses %}
 #include "hal_i2c.h"
 {% endif %}
@@ -92,8 +95,18 @@ void core_clock_init(void)
     ll_rcc_set_sysclk(LL_RCC_SYSCLK_HSE);
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_HSE);
 {% elif clock_config.source == "msi" %}
-    /* MSI is the default clock after reset — nothing to enable */
+    /* Configure MSI to {{ clock_config.sysclk_mhz }}MHz */
+    ll_rcc_msi_set_range({{ clock_config.msi_range }});
+    while (!ll_rcc_msi_ready())
+        ;
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
+    ll_rcc_set_sysclk(LL_RCC_SYSCLK_MSI);
+    ll_rcc_wait_sysclk(LL_RCC_SYSCLK_MSI);
+{% if clock_config.lp_run %}
+    /* Enter Low-Power Run mode (Vcore low-power regulator, ~8µA active) */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_lp_run_enable();
+{% endif %}
 {% elif clock_config.source == "hsi48" %}
     ll_rcc_hsi48_enable();
     while (!ll_rcc_hsi48_ready())
@@ -111,6 +124,15 @@ void core_clock_init(void)
 
     /* ---- SysTick (1ms tick for ll_delay_ms) ---- */
     ll_systick_init(SYSCLK_HZ);
+{% if usb_enabled %}
+
+    /* ---- USB 48MHz clock (HSI48, crystal-less via CRS) ---- */
+    ll_rcc_hsi48_enable();
+    while (!ll_rcc_hsi48_ready())
+        ;
+    ll_rcc_set_usb_clk_source(LL_RCC_USB48_HSI48);
+    ll_rcc_apb1_clk_enable(LL_APB1_USB);
+{% endif %}
 }
 
 void core_pads_init(void)

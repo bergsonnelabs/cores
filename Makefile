@@ -17,6 +17,20 @@
 
 SDK_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# ---- Verbosity ----
+# Default: quiet (shows GEN, LD, BIN/HEX, size). Use V=1 for full output.
+
+V     ?= 0
+ifeq ($(V),0)
+  Q              := @
+  LOG            := @:
+  COREGEN_QUIET  := > /dev/null
+else
+  Q              :=
+  LOG            := @echo
+  COREGEN_QUIET  :=
+endif
+
 # ---- Configuration ----
 
 TILE    ?= Core-U-2-a
@@ -141,10 +155,11 @@ LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 # ---- Object files ----
 
 C_OBJS   = $(addprefix $(BUILD_DIR)/, $(notdir $(C_SOURCES:.c=.o)))
-ASM_OBJS = $(addprefix $(BUILD_DIR)/, $(notdir $(ASM_SOURCES:.s=.o)))
+ASM_OBJS = $(patsubst $(SDK_DIR)%.s, $(BUILD_DIR)/%.o, $(ASM_SOURCES))
 HAL_SOURCES = $(wildcard $(SDK_DIR)sdk/hal/*.c)
 HAL_OBJS = $(addprefix $(BUILD_DIR)/sdk/hal/, $(notdir $(HAL_SOURCES:.c=.o)))
-OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS)
+GEN_OBJS = $(GEN_SOURCES:.c=.o)
+OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(GEN_OBJS)
 
 ifeq ($(KILN_ENABLED),1)
   KILN_OBJS = $(addprefix $(BUILD_DIR)/kiln/, $(notdir $(KILN_SOURCES:.c=.o)))
@@ -168,12 +183,22 @@ else
   COREGEN_FLAGS =
 endif
 
-$(GEN_HEADERS) $(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(PROJECT_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
+# core_drivers.mk is an included makefile — it must have its own recipe so
+# GNU Make detects it was remade and restarts (picking up KILN_DRIVERS).
+$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(PROJECT_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
+	@mkdir -p $(GEN_DIR)
 	@echo "  GEN   $(TILE)"
-	@$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS)
+	$(Q)$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS) $(COREGEN_QUIET)
+
+# Stamp prevents re-running coregen for each header file target.
+GEN_STAMP = $(GEN_DIR)/.coregen.stamp
+$(GEN_STAMP): $(GEN_DIR)/core_drivers.mk
+	$(Q)touch $(GEN_STAMP)
+
+$(GEN_HEADERS): $(GEN_STAMP)
 
 .PHONY: generate
-generate: $(GEN_HEADERS)
+generate: $(GEN_STAMP)
 
 # ---- Rules ----
 
@@ -182,55 +207,55 @@ generate: $(GEN_HEADERS)
 all: $(TARGET).bin $(TARGET).hex size
 
 $(TARGET).elf: $(OBJECTS) $(LDSCRIPT)
-	@echo "  LD    $@"
-	@$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+	@echo "  LD    $(notdir $@)"
+	$(Q)$(CC) $(OBJECTS) $(LDFLAGS) -o $@
 
 $(TARGET).bin: $(TARGET).elf
-	@echo "  BIN   $@"
-	@$(OBJCOPY) -O binary $< $@
+	@echo "  BIN   $(notdir $@)"
+	$(Q)$(OBJCOPY) -O binary $< $@
 
 $(TARGET).hex: $(TARGET).elf
-	@echo "  HEX   $@"
-	@$(OBJCOPY) -O ihex $< $@
+	@echo "  HEX   $(notdir $@)"
+	$(Q)$(OBJCOPY) -O ihex $< $@
 
 # C sources depend on generated headers
 $(BUILD_DIR)/%.o: $(PROJECT_DIR)/%.c $(GEN_HEADERS)
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 # Generated C sources (core_init.c etc.)
 $(GEN_DIR)/core_init.o: $(GEN_DIR)/core_init.c $(GEN_HEADERS)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(LOG) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 # HAL sources
 $(BUILD_DIR)/sdk/hal/%.o: $(SDK_DIR)sdk/hal/%.c $(GEN_HEADERS)
-	@mkdir -p $(dir $@)
-	@echo "  CC    $<"
-	@$(CC) $(CFLAGS) -c $< -o $@
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
-$(BUILD_DIR)/%.o: $(SDK_DIR)sdk/device/%.s
-	@mkdir -p $(dir $@)
-	@echo "  AS    $<"
-	@$(AS) $(ASFLAGS) -c $< -o $@
+$(BUILD_DIR)/sdk/device/%.o: $(SDK_DIR)sdk/device/%.s
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  AS    $(notdir $<)"
+	$(Q)$(AS) $(ASFLAGS) -c $< -o $@
 
 # Kiln driver sources
 ifeq ($(KILN_ENABLED),1)
 $(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/hal/%.c $(GEN_HEADERS)
-	@mkdir -p $(dir $@)
-	@echo "  CC    $(notdir $<)"
-	@$(CC) $(CFLAGS) -c "$<" -o $@
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $(notdir $<)"
+	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
 
 $(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/drivers/%.c $(GEN_HEADERS)
-	@mkdir -p $(dir $@)
-	@echo "  CC    $(notdir $<)"
-	@$(CC) $(CFLAGS) -c "$<" -o $@
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $(notdir $<)"
+	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
 endif
 
 size: $(TARGET).elf
 	@echo ""
-	@$(SIZE) $<
+	$(Q)$(SIZE) $<
 	@echo ""
 
 clean:

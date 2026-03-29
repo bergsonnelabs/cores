@@ -1,5 +1,5 @@
 #include "core.h"
-#include "tiles.h"
+#include "tile_handles.h"
 
 int main(void)
 {
@@ -20,10 +20,10 @@ int main(void)
     tiles_hal_core_init(&core_hal_i2c3, &core_hal_i2c3_cfg);
 
     /* Find and initialize tiles */
-    tile_sense_i_9_init(&core_hal_i2c3, 0, &tile_sense_i_9_0);
-    tile_power_l_1t_init(&core_hal_i2c3, 0, &tile_power_l_1t_0);
-    tile_drive_p_init(&core_hal_i2c1, 0, &tile_drive_p_0);
-    tile_drive_p_init(&core_hal_i2c3, 1, &tile_drive_p_1);
+    tile_sense_i_9_init(&core_hal_i2c3, 0, &tile_sense_i_9_i2c3_0);
+    tile_power_l_1t_init(&core_hal_i2c3, 0, &tile_power_l_1t_i2c3_0);
+    tile_drive_p_init(&core_hal_i2c1, 0, &tile_drive_p_i2c1_0);
+    tile_drive_p_init(&core_hal_i2c3, 1, &tile_drive_p_i2c3_1);
 
     while (1) {
     }
