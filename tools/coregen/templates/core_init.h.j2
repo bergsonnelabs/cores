@@ -61,6 +61,15 @@ void core_pads_init(void);
  *   tiles_hal_core_cfg_t {{ bus.hal_handle }}_cfg = {
  *       .spi = &{{ bus.spi_handle }},
  *       .buses = TILES_BUS_SPI,
+{% if bus.cs_entries %}
+ *       .cs = {
+{% for cs in bus.cs_entries %}
+{% if cs.has_cs %}
+ *           [{{ cs.instance }}] = { .port = (tiles_gpio_t *)GPIO{{ cs.port }}, .pin = {{ cs.pin }} },
+{% endif %}
+{% endfor %}
+ *       },
+{% endif %}
  *   };
 {% else %}
  *   tiles_hal_core_cfg_t {{ bus.hal_handle }}_cfg = {
