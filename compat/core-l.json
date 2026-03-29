@@ -8,7 +8,7 @@
     "system.led":   "compile",
 
     "clocks.hsi":   "compile",
-    "clocks.hse":   "compile",
+    "clocks.hse":   "na",
     "clocks.msi":   "compile",
     "clocks.pll":   "compile",
 

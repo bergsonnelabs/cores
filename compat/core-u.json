@@ -8,7 +8,7 @@
     "system.led":  "verified",
 
     "clocks.hsi":  "verified",
-    "clocks.hse":  "compile",
+    "clocks.hse":  "na",
     "clocks.msi":  "compile",
     "clocks.pll":  "compile",
 
