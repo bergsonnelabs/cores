@@ -10,6 +10,9 @@
 /* Global tick counter — declared extern in ll_systick.h and hal_common.h */
 volatile uint32_t _systick_ticks;
 
+/* Ticks per microsecond — set by ll_systick_init(), declared extern in ll_systick.h */
+uint32_t _systick_us_ticks;
+
 void SysTick_Handler(void)
 {
     _systick_ticks++;

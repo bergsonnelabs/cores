@@ -114,8 +114,8 @@ static inline void ll_adc_calibrate(ADC_TypeDef *adc)
     SET_BITS(adc->CR, LL_ADC_CR_ADCAL);
 
     /* Wait for calibration to complete */
-    while (adc->CR & LL_ADC_CR_ADCAL)
-        ;
+    { uint32_t timeout = 100000;
+      while ((adc->CR & LL_ADC_CR_ADCAL) && --timeout) ; }
 }
 
 /* ============================================================
@@ -146,8 +146,8 @@ static inline void ll_adc_init(ADC_TypeDef *adc, uint32_t smpr)
     /* Enable */
     adc->ISR = LL_ADC_ISR_ADRDY;           /* Clear ready flag */
     SET_BITS(adc->CR, LL_ADC_CR_ADEN);
-    while (!(adc->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(adc->ISR & LL_ADC_ISR_ADRDY) && --timeout) ; }
 
 #elif defined(STM32L422xx) || defined(STM32H523xx)
     /* L4/H5: ADC with per-channel sampling time in SMPR1/SMPR2 */
@@ -178,8 +178,8 @@ static inline void ll_adc_init(ADC_TypeDef *adc, uint32_t smpr)
     /* Enable */
     adc->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(adc->CR, LL_ADC_CR_ADEN);
-    while (!(adc->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(adc->ISR & LL_ADC_ISR_ADRDY) && --timeout) ; }
 
 #elif defined(STM32WBA55xx)
     /* WBA: ADC4 uses channel-select register like L0 */
@@ -193,8 +193,8 @@ static inline void ll_adc_init(ADC_TypeDef *adc, uint32_t smpr)
 
     adc->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(adc->CR, LL_ADC_CR_ADEN);
-    while (!(adc->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(adc->ISR & LL_ADC_ISR_ADRDY) && --timeout) ; }
 #endif
 }
 
@@ -251,8 +251,8 @@ static inline void ll_adc_enable(ADC_TypeDef *adc)
 {
     adc->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(adc->CR, LL_ADC_CR_ADEN);
-    while (!(adc->ISR & LL_ADC_ISR_ADRDY))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(adc->ISR & LL_ADC_ISR_ADRDY) && --timeout) ; }
 }
 
 static inline void ll_adc_disable(ADC_TypeDef *adc)

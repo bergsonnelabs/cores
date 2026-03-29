@@ -102,4 +102,41 @@ typedef struct {
 #define LL_GPIO_PULL_UP         0x1UL
 #define LL_GPIO_PULL_DOWN       0x2UL
 
+/* ============================================================
+ * NVIC helpers (ARM Cortex-M core, not peripheral-specific)
+ * ============================================================ */
+
+#define LL_NVIC_ISER_BASE   0xE000E100UL   /* Interrupt Set Enable */
+#define LL_NVIC_ICER_BASE   0xE000E180UL   /* Interrupt Clear Enable */
+#define LL_NVIC_ISPR_BASE   0xE000E200UL   /* Interrupt Set Pending */
+#define LL_NVIC_ICPR_BASE   0xE000E280UL   /* Interrupt Clear Pending */
+#define LL_NVIC_IPR_BASE    0xE000E400UL   /* Interrupt Priority */
+
+static inline void ll_nvic_enable_irq(uint32_t irq)
+{
+    REG32(LL_NVIC_ISER_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
+}
+
+static inline void ll_nvic_disable_irq(uint32_t irq)
+{
+    REG32(LL_NVIC_ICER_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
+}
+
+/** Set IRQ priority (0 = highest). Upper 4 bits are implemented on Cortex-M. */
+static inline void ll_nvic_set_priority(uint32_t irq, uint8_t priority)
+{
+    volatile uint8_t *ipr = (volatile uint8_t *)(LL_NVIC_IPR_BASE + irq);
+    *ipr = priority << 4;
+}
+
+static inline void ll_nvic_clear_pending(uint32_t irq)
+{
+    REG32(LL_NVIC_ICPR_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
+}
+
+static inline void ll_nvic_set_pending(uint32_t irq)
+{
+    REG32(LL_NVIC_ISPR_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
+}
+
 #endif /* LL_COMMON_H */
