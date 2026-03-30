@@ -24,10 +24,13 @@
  *   hal_adc_add_channel(&adc, PAD_5_ADC_CH, HAL_ADC_SAMP_MED);  // need channel number
  *   uint32_t mv = hal_adc_read_mv(&adc, PAD_5_ADC_CH);
  *
- * Oversampling, DMA, and burst reads are not wrapped — call hal_adc directly:
+ * DMA / continuous mode — also pad-centric:
+ *   tal_adc_start_dma(&adc, buf, len, callback);
+ *   uint16_t v = tal_adc_dma_read_pad(&adc, 5);  // index looked up automatically
+ *   tal_adc_stop_dma(&adc);
+ *
+ * Oversampling applies globally — call hal_adc directly:
  *   hal_adc_set_oversample(&adc, HAL_ADC_OVERSAMPLE_64X);
- *   hal_adc_read_all(&adc, buf);
- *   hal_adc_start_dma(&adc, buf, len, callback);
  */
 
 #ifndef TAL_ADC_H
@@ -156,6 +159,68 @@ static inline int32_t tal_adc_read_temp_decidegc(hal_adc_t *adc)
 static inline uint32_t tal_adc_read_vdda_mv(hal_adc_t *adc)
 {
     return hal_adc_read_vdda_mv(adc);
+}
+
+/* ============================================================
+ * DMA / continuous mode
+ *
+ * tal_adc_start_dma / tal_adc_stop_dma are thin pass-throughs —
+ * channel setup has already been done via tal_adc_add_pad so there
+ * is nothing extra to resolve.
+ *
+ * tal_adc_dma_read_pad provides the pad-number abstraction:
+ * it looks up which slot in the DMA buffer corresponds to the
+ * requested pad, matching the order channels were registered.
+ * ============================================================ */
+
+/**
+ * Start continuous ADC conversion with DMA circular buffer.
+ *
+ * Channels must already be registered via tal_adc_add_pad.
+ * The buffer must be at least adc->n_channels entries long for
+ * one complete scan; typically a multiple of n_channels so the
+ * callback fires every N complete scans.
+ *
+ * @param adc       Initialised handle
+ * @param buf       Destination buffer (uint16_t[], DMA-accessible)
+ * @param len       Buffer length in samples
+ * @param callback  Called on half-transfer and full-transfer; may be NULL
+ */
+static inline hal_status_t tal_adc_start_dma(hal_adc_t *adc, uint16_t *buf,
+                                              uint16_t len, void (*callback)(void))
+{
+    return hal_adc_start_dma(adc, buf, len, callback);
+}
+
+/**
+ * Stop continuous DMA conversion and release the DMA channel.
+ */
+static inline void tal_adc_stop_dma(hal_adc_t *adc)
+{
+    hal_adc_stop_dma(adc);
+}
+
+/**
+ * Read the most recent DMA conversion result for a pad.
+ *
+ * Finds the buffer slot that corresponds to pad by matching its ADC
+ * channel number against the registered channel list (i.e. the order
+ * tal_adc_add_pad was called).  Returns 0 if the pad was not registered
+ * or DMA is not active.
+ *
+ * @param adc  Initialised handle with active DMA
+ * @param pad  Pad number (must have been added via tal_adc_add_pad)
+ * @return     Most recent raw ADC count for that pad
+ */
+static inline uint16_t tal_adc_dma_read_pad(hal_adc_t *adc, uint8_t pad)
+{
+    int ch = core_pad_adc_channel(pad);
+    if (ch < 0 || !adc->dma_buf) return 0;
+    for (uint8_t i = 0; i < adc->n_channels; i++) {
+        if (adc->channels[i].channel == (uint8_t)ch)
+            return adc->dma_buf[i];
+    }
+    return 0;
 }
 
 #endif /* TAL_ADC_H */

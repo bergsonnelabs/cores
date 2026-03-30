@@ -81,14 +81,15 @@
     {
       "id": "adc",
       "name": "ADC",
+      "page": "/docs/sdk/adc",
       "features": [
         { "id": "adc.raw",      "layer": "TAL", "name": "single-shot raw read"     },
         { "id": "adc.mv",       "layer": "TAL", "name": "millivolt read (VREFINT)", "desc": "Converts raw counts to millivolts using the factory-calibrated VREFINT reference." },
         { "id": "adc.temp",     "layer": "HAL", "name": "temperature sensor",       "desc": "Reads the on-die temperature sensor channel using the factory calibration points." },
-        { "id": "adc.cont",     "layer": "HAL", "name": "continuous / scan mode",   "desc": "ADC free-runs through a sequence of channels, continuously updating results in a buffer." },
-        { "id": "adc.watchdog",                 "name": "analog watchdog",          "desc": "Triggers an interrupt when a conversion result crosses a configured high or low voltage threshold." },
         { "id": "adc.oversamp", "layer": "HAL", "name": "oversampling / burst",     "desc": "Averages multiple conversions in hardware to increase effective resolution and reduce noise." },
-        { "id": "adc.dma",      "layer": "HAL", "name": "DMA"                       }
+        { "id": "adc.dma",      "layer": "TAL", "name": "DMA"                       },
+        { "id": "adc.cont",     "layer": "TAL", "name": "continuous / scan mode",   "desc": "ADC free-runs through a sequence of channels, continuously updating results in a buffer." },
+        { "id": "adc.watchdog",                 "name": "analog watchdog",          "desc": "Triggers an interrupt when a conversion result crosses a configured high or low voltage threshold." }
       ]
     },
     {
