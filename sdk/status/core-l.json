@@ -3,35 +3,46 @@
   "mcu": "STM32L011",
   "freq": "32 MHz",
   "arch": "M0+",
+  "bootloaders": ["uart", "i2c", "spi"],
   "features": {
     "system.init":  "compile",
     "system.led":   "compile",
+    "system.tick":  "compile",
+    "system.delay": "compile",
+    "system.fault": "compile",
 
     "clocks.hsi":   "compile",
     "clocks.hse":   "na",
     "clocks.msi":   "compile",
     "clocks.pll":   "compile",
 
-    "gpio.digital": "compile",
-    "gpio.exti":    "compile",
-    "gpio.af":      "compile",
+    "gpio.digital":  "compile",
+    "gpio.exti":     "compile",
+    "gpio.af":       "compile",
+    "gpio.od_pull":  "compile",
 
     "uart.polling": "compile",
+    "uart.irq":     "compile",
+    "uart.lp":      "compile",
 
     "i2c.std":      "compile",
     "i2c.fast":     "compile",
     "i2c.fmp":      "na",
 
-    "spi.master":   "compile",
+    "spi.master":   "na",
+    "spi.irq":      "na",
+    "spi.dma":      "na",
+    "spi.slave":    "na",
 
     "adc.raw":  { "status": "compile", "note": "CHSELR fix applied; not yet hw-tested" },
     "adc.mv":   "compile",
     "adc.temp": "compile",
 
-    "tal.adc":       "compile",
-    "coregen.gpio":  "compile",
-    "coregen.i2c":   "compile",
+    "coregen.gpio":   "compile",
+    "coregen.i2c":    "compile",
     "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
+    "coregen.spi":    "na",
+    "coregen.uart":   "compile",
 
     "conn.usb_cdc":  "na",
     "conn.usb_hid":  "na",
@@ -50,6 +61,7 @@
     "spi.octo":       "na",
     "adv.i3c_ctrl":   "na",
     "adv.i3c_target": "na",
+    "adv.comp":       "na",
     "adv.dac":        "na"
   }
 }

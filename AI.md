@@ -51,7 +51,13 @@ cores/
 │   ├── ll/                     # Low-level register access (wraps CMSIS)
 │   ├── cmsis/                  # ARM CMSIS headers
 │   ├── device/                 # Linker scripts, startup code (per MCU)
-│   └── tal/                    # Top-level abstraction layer
+│   ├── tal/                    # Top-level abstraction layer
+│   └── status/                 # SDK implementation status per Core subfamily
+│       ├── features.json       # Canonical feature manifest (groups, IDs, layer, desc)
+│       ├── core-l.json         # Core.L (STM32L011) feature statuses
+│       ├── core-u.json         # Core.U (STM32L422) feature statuses
+│       ├── core-w.json         # Core.W (STM32WBA55) feature statuses
+│       └── core-h.json         # Core.H (STM32H523) feature statuses
 ├── kiln/                       # Tile driver framework (git submodule)
 │   ├── tiles.h                 # Framework entry point — include this
 │   ├── tiles_hal.h             # Platform abstraction interface
@@ -439,7 +445,8 @@ int main(void) {
 4. **project.json is the source of truth.** Never hand-edit generated files inside `coregen:begin/coregen:end` markers.
 5. **CS lines are per-tile, not per-bus.** Each tile on an SPI bus gets its own GPIO CS line.
 6. **`kiln/definitions/` is canonical.** Tile JSON lives there (synced from GitHub). Do not duplicate.
-7. **Update this file** before pushing any change that affects build, project.json schema, HAL API, or tile driver conventions.
+7. **`sdk/status/` is the source of truth for SDK implementation status.** The Tiletown web app and project builder read from copies of these files. Update `features.json` when adding a feature row, and the relevant `core-*.json` when implementation status changes. The Tiletown web app copies are synced manually via `tiletown/tools/sync_tile_json.py`.
+8. **Update this file** before pushing any change that affects build, project.json schema, HAL API, tile driver conventions, or status JSON format.
 
 ---
 
@@ -465,6 +472,44 @@ int main(void) {
 3. Add `SPI_CLK_MAP` entries for the new MCU's APB assignments
 4. Add the tile JSON to `kiln/definitions/`
 5. Update `TILE` → MCU mapping in `Makefile`
+6. Add a `sdk/status/core-<x>.json` with the new Core's feature statuses (see below)
+
+### Update SDK implementation status
+
+Status files live in `sdk/status/`. `features.json` is the canonical feature manifest; `core-*.json` files hold per-subfamily statuses.
+
+**Status values:**
+- `"verified"` — hardware-tested and confirmed working
+- `"compile"` — builds cleanly, not yet hardware-validated
+- `"partial"` — partially working; a `note` field explains the limitation
+- `"wip"` — actively in development
+- `"none"` — not yet implemented (omitting a key is equivalent)
+- `"na"` — not applicable for this Core (hide from display)
+
+**`features.json` entry format:**
+```json
+{ "id": "uart.polling", "layer": "LL", "name": "TX / RX (polling)" }
+{ "id": "system.tick",  "layer": "LL", "name": "SysTick", "desc": "Tooltip shown in the web table." }
+```
+Layer values: `"LL"`, `"HAL"`, `"TAL"`, `"Core"` — implies all layers below are also available.
+
+**`core-*.json` entry format:**
+```json
+{
+  "id": "Core.W",
+  "mcu": "STM32WBA55",
+  "freq": "100 MHz",
+  "arch": "M33",
+  "bootloaders": ["uart", "i2c", "spi"],
+  "features": {
+    "uart.polling": "verified",
+    "adc.mv": { "status": "partial", "note": "VREFINT bypassed on WBA55; hardcoded 3300 mV" },
+    "conn.usb_cdc": "na"
+  }
+}
+```
+
+After editing, sync to the Tiletown web app by running `tiletown/tools/sync_tile_json.py` (that script handles tile JSONs; status files are copied manually to `apps/public/app/docs/sdk/cores/data/`).
 
 ### Debug a coregen issue
 
