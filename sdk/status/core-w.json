@@ -34,6 +34,7 @@
     "adc.raw":      "verified",
     "adc.mv":       "verified",
     "adc.temp":     { "status": "partial", "note": "Reads hardware sensor; OTP cal (0x0BFA07xx) not bus-accessible on WBA55 — uses datasheet typical constants, ~±15°C accuracy" },
+    "adc.res":      { "status": "partial", "note": "12-bit hw-verified; 8 / 10-bit compile only" },
     "adc.oversamp": "verified",
     "adc.cont":     "verified",
     "adc.dma":      "verified",

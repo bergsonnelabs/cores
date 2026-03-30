@@ -37,6 +37,7 @@
     "adc.raw":      { "status": "compile", "note": "CHSELR fix applied; not yet hw-tested" },
     "adc.mv":       "compile",
     "adc.temp":     "compile",
+    "adc.res":      "compile",
     "adc.oversamp": "compile",
     "adc.cont":     "compile",
     "adc.dma":      "compile",

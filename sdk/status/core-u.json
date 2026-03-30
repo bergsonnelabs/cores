@@ -34,6 +34,7 @@
     "adc.raw":      "compile",
     "adc.mv":       "compile",
     "adc.temp":     "compile",
+    "adc.res":      "compile",
     "adc.oversamp": "compile",
     "adc.cont":     "compile",
     "adc.dma":      "compile",

@@ -86,6 +86,7 @@
         { "id": "adc.raw",      "layer": "TAL", "name": "single-shot raw read"     },
         { "id": "adc.mv",       "layer": "TAL", "name": "millivolt read (VREFINT)", "desc": "Converts raw counts to millivolts using the factory-calibrated VREFINT reference." },
         { "id": "adc.temp",     "layer": "HAL", "name": "temperature sensor",       "desc": "Reads the on-die temperature sensor channel using the factory calibration points." },
+        { "id": "adc.res",      "layer": "HAL", "name": "resolution (8 / 10 / 12-bit)", "desc": "Selects the SAR conversion depth. Lower resolution converts faster and reduces power; 12-bit gives the finest granularity." },
         { "id": "adc.oversamp", "layer": "HAL", "name": "oversampling / burst",     "desc": "Averages multiple conversions in hardware to increase effective resolution and reduce noise." },
         { "id": "adc.dma",      "layer": "TAL", "name": "DMA"                       },
         { "id": "adc.cont",     "layer": "TAL", "name": "continuous / scan mode",   "desc": "ADC free-runs through a sequence of channels, continuously updating results in a buffer." },

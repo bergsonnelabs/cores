@@ -83,6 +83,7 @@ else ifeq ($(TILE),Core-W-b)
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32wba55hg.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32wbaxx/startup_stm32wba55xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32wba.cfg
+  FLASH_TOOL  = cubeprog
 else ifeq ($(TILE),Core-H-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
@@ -100,6 +101,13 @@ endif
 
 BUILD_DIR = $(PROJECT_DIR)/build
 TARGET    = $(BUILD_DIR)/$(PROJECT)
+
+# STM32CubeProgrammer CLI — used for tiles where OpenOCD lacks support (Core.W / WBA55).
+# Override on the command line if installed elsewhere.
+STM32_PROG_CLI ?= /Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI
+
+# Default flash tool is openocd; Core.W overrides to cubeprog above.
+FLASH_TOOL ?= openocd
 
 # ---- Extract SYSCLK for SWO baud rate calc ----
 SYSCLK_MHZ = $(shell python3 -c "\
@@ -270,12 +278,16 @@ distclean: clean
 # ---- Flash via OpenOCD (ST-Link) ----
 
 flash: $(TARGET).elf
+ifeq ($(FLASH_TOOL),cubeprog)
+	$(STM32_PROG_CLI) -c port=SWD mode=UR -w $< -v -rst
+else
 	openocd -f $(OPENOCD_CFG) \
 		-c "init" \
 		-c "reset halt" \
 		-c "program $< verify" \
 		-c "reset run" \
 		-c "exit"
+endif
 
 # ---- Flash via USB DFU (Core.U/H with USB bootloader) ----
 
