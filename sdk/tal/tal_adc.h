@@ -30,7 +30,8 @@
  *   tal_adc_stop_dma(&adc);
  *
  * Oversampling applies globally — call hal_adc directly:
- *   hal_adc_set_oversample(&adc, HAL_ADC_OVERSAMPLE_64X);
+ *   hal_adc_set_oversample(&adc, HAL_ADC_OVERSAMPLE_64X);       // noise reduction
+ *   hal_adc_set_oversample_ex(&adc, HAL_ADC_OVERSAMPLE_256X, 4); // → 16-bit effective
  */
 
 #ifndef TAL_ADC_H

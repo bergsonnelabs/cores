@@ -213,7 +213,9 @@ static void _adc_clk_enable(ADC_TypeDef *instance)
  * keeps the output at the configured resolution instead of extending it.
  * E.g. 16× oversample → shift 4 → output remains 12-bit.
  */
-static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio)
+/* shift_bits: explicit right-shift (0–ratio/2).  Callers compute this. */
+static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio,
+                               uint8_t shift_bits)
 {
     if (ratio == HAL_ADC_OVERSAMPLE_1X) {
         /* Disable oversampling */
@@ -222,10 +224,9 @@ static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio)
     }
 
     /* ratio encodes log2(N): e.g. 4× → 2, 16× → 4, …
-       OVS register value = log2(N) - 1 per RM (0=2×, 1=4×, …)
-       Shift = ratio/2 to preserve output resolution. */
-    uint32_t ovsr  = (uint32_t)(ratio / 2) - 1;  /* 0-based encoding */
-    uint32_t shift = (uint32_t)(ratio / 2);       /* right-shift amount */
+       OVS register value = log2(N) - 1 per RM (0=2×, 1=4×, …) */
+    uint32_t ovsr  = (uint32_t)(ratio / 2) - 1;
+    uint32_t shift = (uint32_t)shift_bits;
 
 #if defined(STM32L011xx)
     /* L0: CFGR2[4:2]=OVSR, CFGR2[8:5]=OVSS, CFGR2[0]=OVSE */
@@ -346,10 +347,11 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
                           uint32_t sysclk_hz, hal_adc_res_t res)
 {
     memset(adc, 0, sizeof(*adc));
-    adc->instance   = instance;
-    adc->resolution = res;
-    adc->oversample = HAL_ADC_OVERSAMPLE_1X;
-    adc->sysclk_hz  = sysclk_hz;
+    adc->instance       = instance;
+    adc->resolution     = res;
+    adc->oversample     = HAL_ADC_OVERSAMPLE_1X;
+    adc->sysclk_hz      = sysclk_hz;
+    adc->effective_bits = (uint8_t)res;   /* matches resolution until _ex is used */
 
     /* Validate resolution for this family */
     if (_res_encode(res) == 0xFFUL) {
@@ -459,8 +461,25 @@ hal_status_t hal_adc_set_oversample(hal_adc_t *adc, hal_adc_oversample_t ratio)
 #if !defined(STM32H523xx)
     if (ratio == HAL_ADC_OVERSAMPLE_1024X) return HAL_ERROR;
 #endif
-    adc->oversample = ratio;
-    _apply_oversample(adc->instance, ratio);
+    adc->oversample     = ratio;
+    adc->effective_bits = (uint8_t)adc->resolution;  /* noise reduction: no bit-depth change */
+    _apply_oversample(adc->instance, ratio, (uint8_t)(ratio / 2));
+    return HAL_OK;
+}
+
+hal_status_t hal_adc_set_oversample_ex(hal_adc_t *adc, hal_adc_oversample_t ratio,
+                                        uint8_t shift)
+{
+#if !defined(STM32H523xx)
+    if (ratio == HAL_ADC_OVERSAMPLE_1024X) return HAL_ERROR;
+#endif
+    uint8_t max_shift = (uint8_t)(ratio / 2);
+    if (shift > max_shift) shift = max_shift;   /* clamp */
+
+    adc->oversample     = ratio;
+    /* Extra bits retained = log2(N) - shift  (= max_shift - shift) */
+    adc->effective_bits = (uint8_t)adc->resolution + (max_shift - shift);
+    _apply_oversample(adc->instance, ratio, shift);
     return HAL_OK;
 }
 
@@ -568,7 +587,7 @@ uint32_t hal_adc_read_mv(hal_adc_t *adc, uint8_t channel)
         adc->vdda_mv = hal_adc_read_vdda_mv(adc);
     }
     uint16_t raw = hal_adc_read(adc, channel);
-    uint32_t max_count = (1UL << (uint32_t)adc->resolution) - 1UL;
+    uint32_t max_count = (1UL << (uint32_t)adc->effective_bits) - 1UL;
     return ((uint32_t)raw * adc->vdda_mv) / max_count;
 }
 

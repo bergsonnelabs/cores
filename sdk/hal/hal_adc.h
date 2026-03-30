@@ -103,7 +103,12 @@ typedef struct {
     bool                  dma_active;
 
     /* VREFINT calibration cache — computed lazily on first read_mv call */
-    uint32_t              vdda_mv;   /* 0 = not yet measured */
+    uint32_t              vdda_mv;       /* 0 = not yet measured */
+
+    /* Effective output bit depth — equals resolution bits normally, but
+     * increases when hal_adc_set_oversample_ex is used with shift < log2(N).
+     * hal_adc_read_mv uses this as the full-scale denominator. */
+    uint8_t               effective_bits;
 } hal_adc_t;
 
 /* ============================================================
@@ -137,10 +142,32 @@ hal_status_t hal_adc_add_channel(hal_adc_t *adc, uint8_t channel,
                                  hal_adc_samp_t samp);
 
 /**
- * Set hardware oversampling ratio (applies to all channels).
- * Can be called after init. Takes effect on the next conversion.
+ * Set hardware oversampling ratio for noise reduction (applies to all channels).
+ * The right-shift equals log2(N), so the output word stays at the configured
+ * resolution. Can be called after init; takes effect on the next conversion.
  */
 hal_status_t hal_adc_set_oversample(hal_adc_t *adc, hal_adc_oversample_t ratio);
+
+/**
+ * Set hardware oversampling with explicit right-shift for resolution extension.
+ *
+ * shift controls how many bits the hardware divides the accumulator by before
+ * writing to DR.  Valid range: 0 – log2(N) where N is the oversampling ratio.
+ *
+ *   shift = log2(N)      → same as hal_adc_set_oversample (noise reduction only)
+ *   shift < log2(N)      → output word is wider; effective_bits increases
+ *   shift = 0            → raw accumulator in DR; max bit depth
+ *
+ * Example — 12-bit ADC, 256× oversampling, shift = 4:
+ *   accumulator = up to 20 bits; DR = accumulator >> 4 = 16-bit result
+ *   effective_bits = 16; hal_adc_read_mv scales against 65535 automatically.
+ *
+ * @param adc    Initialised handle
+ * @param ratio  Oversampling ratio (HAL_ADC_OVERSAMPLE_4X … _256X)
+ * @param shift  Right-shift applied by hardware (0 = none, ratio/2 = full)
+ */
+hal_status_t hal_adc_set_oversample_ex(hal_adc_t *adc, hal_adc_oversample_t ratio,
+                                        uint8_t shift);
 
 /**
  * Single-shot blocking read of one channel.
