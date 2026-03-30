@@ -144,7 +144,13 @@ static inline void ll_rcc_hse_enable(void)
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
 #elif defined(STM32WBA55xx)
-    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
+    /* WBA55 has HSEPRE (bit 20): divides HSE by 2 for SYSCLK if set.
+     * Explicitly clear HSEPRE (HSE/1) and set HSEON together, matching
+     * the HAL __HAL_RCC_HSE_CONFIG(RCC_HSE_ON | RCC_HSE_DIV1) pattern.
+     * HSEPRE may be set by option bytes from prior BLE firmware. */
+    MOD_BITS(REG32(RCC_BASE + 0x00UL),
+             (1UL << 16) | (1UL << 20),   /* mask: HSEON | HSEPRE */
+             (1UL << 16));                 /* value: HSEON=1, HSEPRE=0 */
 #elif defined(STM32H523xx)
     SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 16));  /* CR: HSEON */
 #endif
@@ -209,7 +215,8 @@ static inline void ll_flash_set_latency(uint32_t wait_states)
 {
     MOD_BITS(FLASH_ACR, 0xFUL, wait_states);
     /* Wait until the new latency is effective */
-    while ((FLASH_ACR & 0xFUL) != wait_states)
+    uint32_t timeout = 100000;
+    while ((FLASH_ACR & 0xFUL) != wait_states && --timeout)
         ;
 }
 
@@ -316,17 +323,16 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
 #elif defined(STM32WBA55xx)
     /* WBA: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
        CFGR: [1:0] PLL1SRC, [3:2] PLL1RGE, [10:8] PLL1M-1, [18] PLL1REN
-       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
+       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1
+       (PLL1M_Pos=8, PLL1REN_Pos=18, PLL1RGE_Pos=2 per stm32wba55xx.h CMSIS header) */
     {
-        /* Compute PLL VCO input frequency range (PLL1RGE):
-           VCO input = source / M.  RGE=0 for 4-8MHz, RGE=1 for 8-16MHz */
-        uint32_t rge = (src == LL_RCC_PLLSRC_HSE) ?
-                       ((32 / m > 8) ? 1UL : 0UL) :   /* HSE = 32MHz */
-                       ((16 / m > 8) ? 1UL : 0UL);     /* HSI16 = 16MHz */
+        /* PLL1RGE: VCO input frequency range. RGE=0b00→4-8MHz, 0b01→8-16MHz, 0b10→16-32MHz */
+        uint32_t vco_mhz = (src == LL_RCC_PLLSRC_HSE) ? (32 / m) : (16 / m);
+        uint32_t rge = (vco_mhz > 16) ? 0x2UL : (vco_mhz > 8) ? 0x1UL : 0x0UL;
         uint32_t cfgr = src
-                      | (rge << 2)           /* PLL1RGE */
-                      | ((m - 1) << 8)       /* PLL1M */
-                      | (1UL << 18);         /* PLL1REN */
+                      | (rge << 2)         /* PLL1RGE */
+                      | ((m - 1) << 8)     /* PLL1M */
+                      | (1UL << 18);       /* PLL1REN: enable R output */
         uint32_t divr = ((n - 1) << 0)
                       | ((r - 1) << 24);
         REG32(RCC_BASE + 0x28UL) = cfgr;
@@ -344,6 +350,30 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
                   | ((r - 1) << 24);
     REG32(RCC_BASE + 0x28UL) = cfgr;
     REG32(RCC_BASE + 0x34UL) = divr;
+#endif
+}
+
+/**
+ * Set PLL VCO input frequency range.
+ * Must be called after ll_rcc_pll_config() and before ll_rcc_pll_enable().
+ *   vco_input_mhz: VCO input = source_mhz / M
+ *
+ * WBA55 PLL1CFGR[12:11] PLL1RGE: 00 = 4–8 MHz, 10 = 8–16 MHz
+ * H5    PLL1CFGR[4:3]   PLL1RGE: 00 = 1–2 MHz, 01 = 2–4 MHz, 10 = 4–8 MHz, 11 = 8–16 MHz
+ */
+static inline void ll_rcc_pll_set_input_range(uint32_t vco_input_mhz)
+{
+#if defined(STM32WBA55xx)
+    /* PLL1CFGR[3:2] = PLL1RGE: 00→4-8MHz, 01→8-16MHz, 10→16-32MHz
+     * (PLL1RGE_Pos=2 per stm32wba55xx.h CMSIS header) */
+    uint32_t rge = (vco_input_mhz > 16) ? 0x2UL : (vco_input_mhz > 8) ? 0x1UL : 0x0UL;
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 2, rge << 2);
+#elif defined(STM32H523xx)
+    uint32_t rge = (vco_input_mhz > 8) ? 0x3UL : (vco_input_mhz > 4) ? 0x2UL :
+                   (vco_input_mhz > 2) ? 0x1UL : 0x0UL;
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 3, rge << 3);
+#else
+    (void)vco_input_mhz;
 #endif
 }
 
@@ -430,9 +460,12 @@ static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
   #define RCC_CFGR_SW_MASK     0x3UL
   #define RCC_CFGR_SWS_SHIFT   2
 #elif defined(STM32WBA55xx)
+  /* WBA55 CFGR1 SW[1:0]: 00=HSI16, 10=HSE, 11=PLL1 (01=reserved)
+   * Per HAL: RCC_SYSCLKSOURCE_HSE = RCC_CFGR1_SW_1 = 0x2,
+   *          RCC_SYSCLKSOURCE_PLLCLK = SW_1|SW_0 = 0x3              */
   #define LL_RCC_SYSCLK_HSI16  0x0UL
-  #define LL_RCC_SYSCLK_HSE    0x1UL
-  #define LL_RCC_SYSCLK_PLL    0x2UL
+  #define LL_RCC_SYSCLK_HSE    0x2UL
+  #define LL_RCC_SYSCLK_PLL    0x3UL
   #define RCC_CFGR_OFFSET      0x1CUL  /* RCC_CFGR1 */
   #define RCC_CFGR_SW_MASK     0x3UL
   #define RCC_CFGR_SWS_SHIFT   2      /* RCC_CFGR1_SWS_Pos = 2 */
@@ -457,7 +490,8 @@ static inline void ll_rcc_wait_sysclk(uint32_t source)
 {
     uint32_t sws_mask = RCC_CFGR_SW_MASK << RCC_CFGR_SWS_SHIFT;
     uint32_t sws_val = source << RCC_CFGR_SWS_SHIFT;
-    while ((REG32(RCC_BASE + RCC_CFGR_OFFSET) & sws_mask) != sws_val)
+    uint32_t timeout = 100000;
+    while ((REG32(RCC_BASE + RCC_CFGR_OFFSET) & sws_mask) != sws_val && --timeout)
         ;
 }
 
@@ -621,11 +655,13 @@ static inline void ll_rcc_apb7_clk_enable(uint32_t mask)
     (void)REG32(RCC_BASE);
 }
 
-/** Enable AHB4 peripheral clocks (WBA only: ADC4). */
+/** Enable AHB4 peripheral clocks (WBA only: PWR, ADC4). */
 static inline void ll_rcc_ahb4_clk_enable(uint32_t mask)
 {
     SET_BITS(REG32(RCC_BASE + 0x94UL), mask);  /* AHB4ENR */
-    (void)REG32(RCC_BASE);
+    /* Read back AHB4ENR (not just RCC_CR) to ensure clock enable has
+     * propagated before accessing the peripheral — matches ST LL pattern. */
+    (void)REG32(RCC_BASE + 0x94UL);
 }
 
 #endif /* STM32WBA55xx */
@@ -760,8 +796,8 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
 
 #if defined(STM32WBA55xx)
 
-/* PWR base address: AHB4_BASE + 0x0800 */
-#define PWR_BASE          (AHB4_BASE + 0x0800UL)
+/* PWR base address: AHB5_BASE + 0x0800 (= 0x46020800) */
+#define PWR_BASE          (AHB5_BASE + 0x0800UL)
 
 /**
  * Set voltage scaling range.  Must be called BEFORE increasing SYSCLK
@@ -773,9 +809,10 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
  * PWR clock must be enabled (ll_rcc_ahb4_clk_enable(LL_AHB4_PWR)) before
  * calling this function.
  *
- * PWR_VOSR (offset 0x0C):
- *   bit 16  VOS:    0 = Range 2,  1 = Range 1
- *   bit 15  VOSRDY: 1 when voltage scaling output is ready
+ * PWR_VOSR (offset 0x0C) for WBA55:
+ *   bit  [16]   VOS:    0 = Range 2 (up to 16MHz),  1 = Range 1 (up to 100MHz)
+ *   bit  [15]   VOSRDY: 1 when voltage scaling output is ready
+ * (PWR_VOSR_VOS_Pos=16, PWR_VOSR_VOSRDY_Pos=15 per stm32wba55xx.h CMSIS header)
  */
 static inline void ll_pwr_set_vos(uint32_t range)
 {
@@ -784,8 +821,9 @@ static inline void ll_pwr_set_vos(uint32_t range)
     } else {
         CLR_BITS(REG32(PWR_BASE + 0x0CUL), (1UL << 16));   /* VOS = 0 → Range 2 */
     }
-    /* Wait for VOSRDY */
-    while (!(REG32(PWR_BASE + 0x0CUL) & (1UL << 15)))
+    /* Wait for VOSRDY (bit 15) */
+    uint32_t timeout = 100000;
+    while (!(REG32(PWR_BASE + 0x0CUL) & (1UL << 15)) && --timeout)
         ;
 }
 

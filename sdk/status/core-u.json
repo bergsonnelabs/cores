@@ -1,0 +1,64 @@
+{
+  "id": "Core.U",
+  "mcu": "STM32L422",
+  "freq": "80 MHz",
+  "arch": "M4",
+  "bootloaders": ["uart", "i2c", "spi", "usb_dfu"],
+  "features": {
+    "system.init":  "verified",
+    "system.led":   "verified",
+    "system.tick":  "verified",
+    "system.delay": "verified",
+    "system.fault": "compile",
+
+    "clocks.hsi":  "verified",
+    "clocks.hse":  "na",
+    "clocks.msi":  "compile",
+    "clocks.pll":  "compile",
+
+    "gpio.digital":  "verified",
+    "gpio.exti":     "compile",
+    "gpio.af":       "verified",
+    "gpio.od_pull":  "verified",
+
+    "uart.polling": "compile",
+    "uart.irq":     "compile",
+    "uart.lp":      "compile",
+
+    "i2c.std":  "verified",
+    "i2c.fast": "verified",
+    "i2c.fmp":  "compile",
+
+    "spi.master": "compile",
+
+    "adc.raw":      "compile",
+    "adc.mv":       "compile",
+    "adc.temp":     "compile",
+    "adc.oversamp": "compile",
+    "adc.cont":     "compile",
+    "adc.dma":      "compile",
+
+    "coregen.gpio":   "verified",
+    "coregen.i2c":    "verified",
+    "coregen.analog": { "status": "compile", "note": "Code generic; hw-verified on Core.W" },
+    "coregen.spi":    "compile",
+    "coregen.uart":   "compile",
+
+    "conn.usb_cdc": "verified",
+    "conn.dfu":     "verified",
+    "conn.ble":     "na",
+    "conn.ble_adv": "na",
+    "conn.ble_gatt":"na",
+    "conn.fdcan":   "na",
+
+    "security.rng":  "none",
+    "security.aes":  "none",
+    "security.pka":  "na",
+    "security.hash": "na",
+
+    "spi.octo":       "na",
+    "adv.i3c_ctrl":   "na",
+    "adv.i3c_target": "na",
+    "adv.dac":        "na"
+  }
+}

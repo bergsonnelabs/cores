@@ -82,7 +82,7 @@ else ifeq ($(TILE),Core-W-b)
   FLOAT_ABI   = hard
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32wba55hg.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32wbaxx/startup_stm32wba55xx.s
-  OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32l4.cfg
+  OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32wba.cfg
 else ifeq ($(TILE),Core-H-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
@@ -91,7 +91,7 @@ else ifeq ($(TILE),Core-H-1-a)
   FLOAT_ABI   = hard
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32h523he.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32h5xx/startup_stm32h523xx.s
-  OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32l4.cfg
+  OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32h5.cfg
 else
   $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a)
 endif
@@ -130,6 +130,7 @@ CFLAGS += -I$(GEN_DIR)
 CFLAGS += -I$(PROJECT_DIR)
 CFLAGS += -I$(SDK_DIR)sdk/ll
 CFLAGS += -I$(SDK_DIR)sdk/hal
+CFLAGS += -I$(SDK_DIR)sdk/tal
 CFLAGS += -Og -g3
 
 # ---- Kiln driver support (optional) ----

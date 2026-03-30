@@ -113,8 +113,8 @@ static inline void ll_uart_init(USART_TypeDef *uart, uint32_t pclk_hz, uint32_t 
     uart->CR1 = LL_USART_CR1_UE | LL_USART_CR1_TE | LL_USART_CR1_RE;
 
     /* Wait for TE and RE to be acknowledged */
-    while (!(uart->ISR & LL_USART_ISR_TEACK))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(uart->ISR & LL_USART_ISR_TEACK) && --timeout) ; }
 }
 
 /**
@@ -132,8 +132,8 @@ static inline void ll_lpuart_init(USART_TypeDef *uart, uint32_t pclk_hz, uint32_
 
     uart->CR1 = LL_USART_CR1_UE | LL_USART_CR1_TE | LL_USART_CR1_RE;
 
-    while (!(uart->ISR & LL_USART_ISR_TEACK))
-        ;
+    { uint32_t timeout = 100000;
+      while (!(uart->ISR & LL_USART_ISR_TEACK) && --timeout) ; }
 }
 
 /* ============================================================
