@@ -223,9 +223,9 @@ static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio,
         return;
     }
 
-    /* ratio encodes log2(N): e.g. 4× → 2, 16× → 4, …
-       OVS register value = log2(N) - 1 per RM (0=2×, 1=4×, …) */
-    uint32_t ovsr  = (uint32_t)(ratio / 2) - 1;
+    /* ratio encodes log2(N): e.g. 4× → 2, 16× → 4, 256× → 8
+       OVSR register value = log2(N) - 1 per RM (0=2×, 1=4×, … 7=256×) */
+    uint32_t ovsr  = (uint32_t)ratio - 1;
     uint32_t shift = (uint32_t)shift_bits;
 
 #if defined(STM32L011xx)
@@ -466,7 +466,7 @@ hal_status_t hal_adc_set_oversample(hal_adc_t *adc, hal_adc_oversample_t ratio)
 #endif
     adc->oversample     = ratio;
     adc->effective_bits = (uint8_t)adc->resolution;  /* noise reduction: no bit-depth change */
-    _apply_oversample(adc->instance, ratio, (uint8_t)(ratio / 2));
+    _apply_oversample(adc->instance, ratio, (uint8_t)ratio);
     return HAL_OK;
 }
 
@@ -476,11 +476,11 @@ hal_status_t hal_adc_set_oversample_ex(hal_adc_t *adc, hal_adc_oversample_t rati
 #if !defined(STM32H523xx)
     if (ratio == HAL_ADC_OVERSAMPLE_1024X) return HAL_ERROR;
 #endif
-    uint8_t max_shift = (uint8_t)(ratio / 2);
+    uint8_t max_shift = (uint8_t)ratio;   /* enum value = log2(N) */
     if (shift > max_shift) shift = max_shift;   /* clamp */
 
     adc->oversample     = ratio;
-    /* Extra bits retained = log2(N) - shift  (= max_shift - shift) */
+    /* Extra bits retained = log2(N) - shift */
     adc->effective_bits = (uint8_t)adc->resolution + (max_shift - shift);
     _apply_oversample(adc->instance, ratio, shift);
     return HAL_OK;
@@ -549,6 +549,11 @@ uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc)
 
     uint16_t vref_raw = hal_adc_read(adc, ADC_CH_VREFINT);
 
+    /* Factory VREFINT_CAL was captured at 12-bit resolution.
+     * If the ADC is running at a lower resolution, scale the raw
+     * reading up to 12-bit equivalent before comparing. */
+    uint32_t vref_raw_12 = (uint32_t)vref_raw << (12 - adc->resolution);
+
 #if defined(STM32WBA55xx)
     /* WBA55: the OTP calibration region (0x0BFA07xx) is not directly
      * accessible via the AHB bus — a direct read causes a bus fault.
@@ -556,15 +561,15 @@ uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc)
      * exactly, so the calibration correction factor is 1.0 and returning
      * the nominal value is numerically equivalent.
      * TODO: investigate FLASH peripheral access path for WBA55 OTP. */
-    (void)vref_raw;   /* ADC4 VREFINT conversion succeeded — channel works */
+    (void)vref_raw_12;
     uint32_t vdda = 3300UL;
 #else
     uint16_t vref_cal = *VREFINT_CAL_ADDR;
 
-    if (vref_raw == 0 || vref_cal == 0) return 3300UL;
+    if (vref_raw_12 == 0 || vref_cal == 0) return 3300UL;
 
-    /* VDDA = VREFINT_CAL_VDD_MV * vref_cal / vref_raw */
-    uint32_t vdda = (VREFINT_CAL_VDD_MV * (uint32_t)vref_cal) / (uint32_t)vref_raw;
+    /* VDDA = VREFINT_CAL_VDD_MV * vref_cal / vref_raw (both at 12-bit) */
+    uint32_t vdda = (VREFINT_CAL_VDD_MV * (uint32_t)vref_cal) / vref_raw_12;
 #endif
 
     /* Remove the channel if we added it ourselves */
