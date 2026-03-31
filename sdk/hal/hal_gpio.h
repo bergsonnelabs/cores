@@ -123,6 +123,18 @@ static inline void hal_pad_output(uint8_t pad)
     ll_gpio_config_output(g.port, g.pin);
 }
 
+/** Configure a pad as open-drain output with pull selection. Enables the port clock. */
+static inline void hal_pad_output_od(uint8_t pad, uint32_t pull)
+{
+    hal_pad_gpio_t g = hal_pad_lookup(pad);
+    if (!g.port) return;
+    ll_rcc_gpio_clk_enable(g.port);
+    ll_gpio_set_mode(g.port, g.pin, LL_GPIO_MODE_OUTPUT);
+    ll_gpio_set_output_type(g.port, g.pin, LL_GPIO_OTYPE_OD);
+    ll_gpio_set_speed(g.port, g.pin, LL_GPIO_SPEED_MED);
+    ll_gpio_set_pull(g.port, g.pin, pull);
+}
+
 /** Configure a pad as input with pull selection. */
 static inline void hal_pad_input(uint8_t pad, uint32_t pull)
 {

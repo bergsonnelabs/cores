@@ -25,12 +25,24 @@
 #define PULL_UP    LL_GPIO_PULL_UP
 #define PULL_DOWN  LL_GPIO_PULL_DOWN
 
+/* ---- Output-type aliases ---- */
+
+#define PUSH_PULL   LL_GPIO_OTYPE_PP
+#define OPEN_DRAIN  LL_GPIO_OTYPE_OD
+
 /* ---- Pad GPIO API ---- */
 
-/** Configure a pad as push-pull output. */
+/** Configure a pad as push-pull output (default). */
 static inline void core_pad_output(uint8_t pad)
 {
     hal_pad_output(pad);
+}
+
+/** Configure a pad as open-drain output with optional pull resistor.
+ *  Use PULL_UP for a wired-AND / I2C-style bus, PULL_NONE for external pull. */
+static inline void core_pad_output_od(uint8_t pad, uint32_t pull)
+{
+    hal_pad_output_od(pad, pull);
 }
 
 /** Configure a pad as input with pull resistor. */
