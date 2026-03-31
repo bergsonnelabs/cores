@@ -33,6 +33,12 @@
 #define PCLK1_HZ          (HCLK_HZ / APB1_DIV)
 #define PCLK2_HZ          (HCLK_HZ / APB2_DIV)
 
+{% if i2c_kernel_clk_mhz is defined and i2c_kernel_clk_mhz %}
+#define I2C_KERNEL_CLK_MHZ  {{ i2c_kernel_clk_mhz }}
+{% else %}
+#define I2C_KERNEL_CLK_MHZ  SYSCLK_MHZ
+{% endif %}
+
 {% if pad_config %}
 /* ---- Pad assignments ---- */
 /*

@@ -1024,6 +1024,7 @@ def generate(tile_path, output_dir, project_path=None):
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
         _hsi16_i2c_parts = {"STM32WBA55xx"}
         ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
+        ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
         ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
 
         # Build tile peripheral driver config
