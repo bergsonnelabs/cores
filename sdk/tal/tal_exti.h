@@ -60,4 +60,6 @@ static inline void tal_exti_disable(uint8_t pad)
     hal_exti_disable(pad);
 }
 
+/* ---- Backward compatibility: prefer core_exti.h (core_on_change) ---- */
+
 #endif /* TAL_EXTI_H */

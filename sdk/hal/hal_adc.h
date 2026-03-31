@@ -57,19 +57,22 @@ typedef enum {
 
 /**
  * Oversampling ratio.
- * Each doubling of the ratio adds ~0.5 effective bits.
- * The right-shift is automatically set to keep the output
- * at the selected resolution (not extended).
+ * Enum value = log2(N).  Each doubling adds ~0.5 effective bits
+ * in noise-reduction mode, or +1 raw bit in extend mode.
  *
  * HAL_ADC_OVERSAMPLE_1024X is H5 only.
  */
 typedef enum {
     HAL_ADC_OVERSAMPLE_1X    = 0,
-    HAL_ADC_OVERSAMPLE_4X    = 2,    /* +1 effective bit */
-    HAL_ADC_OVERSAMPLE_16X   = 4,    /* +2 effective bits */
-    HAL_ADC_OVERSAMPLE_64X   = 6,    /* +3 effective bits */
-    HAL_ADC_OVERSAMPLE_256X  = 8,    /* +4 effective bits */
-    HAL_ADC_OVERSAMPLE_1024X = 10,   /* +5 effective bits — H5 only */
+    HAL_ADC_OVERSAMPLE_2X    = 1,
+    HAL_ADC_OVERSAMPLE_4X    = 2,
+    HAL_ADC_OVERSAMPLE_8X    = 3,
+    HAL_ADC_OVERSAMPLE_16X   = 4,
+    HAL_ADC_OVERSAMPLE_32X   = 5,
+    HAL_ADC_OVERSAMPLE_64X   = 6,
+    HAL_ADC_OVERSAMPLE_128X  = 7,
+    HAL_ADC_OVERSAMPLE_256X  = 8,
+    HAL_ADC_OVERSAMPLE_1024X = 10,   /* H5 only */
 } hal_adc_oversample_t;
 
 /* ============================================================

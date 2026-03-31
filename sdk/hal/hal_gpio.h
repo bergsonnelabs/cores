@@ -15,6 +15,7 @@
 #ifndef HAL_GPIO_H
 #define HAL_GPIO_H
 
+#include <stddef.h>
 #include "ll_common.h"
 #include "ll_gpio.h"
 #include "ll_rcc.h"
