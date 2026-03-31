@@ -20,8 +20,23 @@
     "6":  "USART2.RX",
     "8":  "GPIO.OUT",
     "9":  "ADC11",
+    "10": "GPIO.IN",
     "16": "USB.DP",
     "17": "USB.DM"
+  },
+
+  "gpio": {
+    "8": {
+      "direction": "out",
+      "output_type": "open-drain",
+      "pull": "up",
+      "default": "high"
+    },
+    "10": {
+      "direction": "in",
+      "pull": "up",
+      "exti": "falling"
+    }
   },
 
   "interfaces": {
