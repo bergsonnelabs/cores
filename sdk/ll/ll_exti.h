@@ -216,42 +216,9 @@ static inline void ll_exti_sw_trigger(uint32_t line)
 #endif
 }
 
-/* ============================================================
- * NVIC helpers (ARM Cortex-M, same across all STM32)
- * ============================================================ */
+/* NVIC helpers are in ll_common.h (included above) */
 
-#define NVIC_ISER_BASE      0xE000E100UL   /* Interrupt Set Enable */
-#define NVIC_ICER_BASE      0xE000E180UL   /* Interrupt Clear Enable */
-#define NVIC_ISPR_BASE      0xE000E200UL   /* Interrupt Set Pending */
-#define NVIC_ICPR_BASE      0xE000E280UL   /* Interrupt Clear Pending */
-#define NVIC_IPR_BASE       0xE000E400UL   /* Interrupt Priority */
-
-/** Enable an IRQ in the NVIC */
-static inline void ll_nvic_enable_irq(uint32_t irq)
-{
-    REG32(NVIC_ISER_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
-}
-
-/** Disable an IRQ in the NVIC */
-static inline void ll_nvic_disable_irq(uint32_t irq)
-{
-    REG32(NVIC_ICER_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
-}
-
-/** Set IRQ priority (0 = highest, 255 = lowest) */
-static inline void ll_nvic_set_priority(uint32_t irq, uint8_t priority)
-{
-    volatile uint8_t *ipr = (volatile uint8_t *)(NVIC_IPR_BASE + irq);
-    *ipr = priority;
-}
-
-/** Clear a pending IRQ */
-static inline void ll_nvic_clear_pending(uint32_t irq)
-{
-    REG32(NVIC_ICPR_BASE + (irq / 32) * 4) = (1UL << (irq % 32));
-}
-
-/* ---- Common EXTI IRQ numbers ---- */
+/* ---- EXTI IRQ numbers ---- */
 
 #if defined(STM32L011xx)
   #define EXTI0_1_IRQn      5
