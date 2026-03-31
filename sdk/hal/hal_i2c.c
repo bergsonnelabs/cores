@@ -34,7 +34,11 @@ hal_status_t hal_i2c_init(hal_i2c_t *h, I2C_TypeDef *instance,
     h->timeout_ms = cfg->timeout_ms ? cfg->timeout_ms : 100;
 
     _i2c_clk_enable(instance);
-    ll_i2c_init(instance, cfg->timing);
+    if (cfg->fmp) {
+        ll_i2c_init_fmp(instance, cfg->timing);
+    } else {
+        ll_i2c_init(instance, cfg->timing);
+    }
     return HAL_OK;
 }
 

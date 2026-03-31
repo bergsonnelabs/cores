@@ -23,6 +23,7 @@ typedef struct hal_i2c {
 typedef struct {
     uint32_t timing;        /* TIMINGR value (use LL_I2C_TIMING_* defines) */
     uint32_t timeout_ms;    /* 0 = use default (100ms) */
+    uint8_t  fmp;           /* Non-zero to enable Fast-mode Plus (CR1.FMP, 20 mA drive) */
 } hal_i2c_config_t;
 
 /* ============================================================

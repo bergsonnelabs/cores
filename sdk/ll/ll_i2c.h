@@ -55,6 +55,9 @@ typedef struct {
 #define LL_I2C_CR1_STOPIE       (1UL << 5)    /* STOP interrupt enable */
 #define LL_I2C_CR1_ANFOFF       (1UL << 12)   /* Analog filter off */
 #define LL_I2C_CR1_DNF_SHIFT    8             /* Digital noise filter [3:0] */
+#define LL_I2C_CR1_FMP          (1UL << 24)   /* Fast-mode plus enable (WBA55, H523) */
+#define LL_I2C_CR1_NOSTRETCH    (1UL << 17)   /* Clock stretching disable (slave mode) */
+#define LL_I2C_CR1_GCEN         (1UL << 19)   /* General call enable */
 
 /* ---- CR2 bit definitions ---- */
 
@@ -150,6 +153,8 @@ typedef struct {
 #define LL_I2C_TIMING_400K_240MHZ   0x40B01A4BUL  /* 240MHz: PRESC=4, same tick as 48MHz */
 
 /* Fast mode plus (1MHz) from various peripheral clocks */
+#define LL_I2C_TIMING_1M_16MHZ      0x00100306UL  /* 16MHz:  Fm+ — tight margins, short bus only */
+#define LL_I2C_TIMING_1M_32MHZ      0x00200B0EUL  /* 32MHz:  Fm+ */
 #define LL_I2C_TIMING_1M_48MHZ      0x00300B29UL
 #define LL_I2C_TIMING_1M_80MHZ      0x00300F33UL
 #define LL_I2C_TIMING_1M_144MHZ     0x20300B29UL  /* 144MHz: PRESC=2, same tick as 48MHz */
@@ -199,6 +204,8 @@ static inline uint32_t ll_i2c_timing_400k(uint32_t kernel_mhz)
 static inline uint32_t ll_i2c_timing_1m(uint32_t kernel_mhz)
 {
     switch (kernel_mhz) {
+        case  16: return LL_I2C_TIMING_1M_16MHZ;
+        case  32: return LL_I2C_TIMING_1M_32MHZ;
         case  48: return LL_I2C_TIMING_1M_48MHZ;
         case  80: return LL_I2C_TIMING_1M_80MHZ;
         case 144: return LL_I2C_TIMING_1M_144MHZ;
@@ -220,6 +227,15 @@ static inline uint32_t ll_i2c_timing_1m(uint32_t kernel_mhz)
  *   - Peripheral clock enabled via ll_rcc_apb1_clk_enable()
  *   - SDA/SCL pins configured for AF, open-drain, pull-up
  */
+/**
+ * Initialize I2C in master mode.
+ *   i2c:     I2C instance
+ *   timing:  TIMINGR value (use LL_I2C_TIMING_* defines)
+ *   fmp:     set non-zero to enable Fast-mode Plus (CR1.FMP bit)
+ *            Only effective on STM32WBA55 and STM32H523.
+ *            On L422, FMP is enabled via SYSCFG — see hal_i2c.c.
+ *            On L011, FMP is not supported.
+ */
 static inline void ll_i2c_init(I2C_TypeDef *i2c, uint32_t timing)
 {
     /* Disable I2C while configuring */
@@ -233,6 +249,17 @@ static inline void ll_i2c_init(I2C_TypeDef *i2c, uint32_t timing)
 
     /* Enable I2C */
     i2c->CR1 = LL_I2C_CR1_PE;
+}
+
+/**
+ * Initialize I2C in Fast-mode Plus (1 MHz).
+ * Sets the CR1.FMP bit for 20 mA output drive on WBA55 / H523.
+ */
+static inline void ll_i2c_init_fmp(I2C_TypeDef *i2c, uint32_t timing)
+{
+    i2c->CR1 = 0;
+    i2c->TIMINGR = timing;
+    i2c->CR1 = LL_I2C_CR1_PE | LL_I2C_CR1_FMP;
 }
 
 /* ============================================================
