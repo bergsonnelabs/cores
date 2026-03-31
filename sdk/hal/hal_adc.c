@@ -19,7 +19,7 @@
  *        TS_CAL2      @ 0x1FF8007E (130°C)
  *   L4:  VREFINT_CAL  @ 0x1FFF75AA (calibrated at 3.0V)
  *        TS_CAL1      @ 0x1FFF75A8 (30°C, 3.0V)
- *        TS_CAL2      @ 0x1FFF75CA (110°C, 3.0V)
+ *        TS_CAL2      @ 0x1FFF75CA (130°C, 3.0V)
  *   WBA: VREFINT_CAL  @ 0x0BFA0700 (calibrated at 3.3V)
  *        TS_CAL1      @ 0x0BFA0710 (30°C, 3.3V)
  *        TS_CAL2      @ 0x0BFA0720 (130°C, 3.3V)
@@ -73,13 +73,13 @@
   #define TS_CAL2_TEMP       130
 
 #elif defined(STM32L422xx)
-  /* L4 RM0394 §3.13 — calibrated at VDDA = 3.0V, 30°C / 110°C */
+  /* L4 DS12015 §3.13.2 — calibrated at VDDA = 3.0V, 30°C / 130°C */
   #define VREFINT_CAL_ADDR   ((volatile uint16_t *)0x1FFF75AAUL)
   #define TS_CAL1_ADDR       ((volatile uint16_t *)0x1FFF75A8UL)
   #define TS_CAL2_ADDR       ((volatile uint16_t *)0x1FFF75CAUL)
   #define VREFINT_CAL_VDD_MV 3000UL
   #define TS_CAL1_TEMP       30
-  #define TS_CAL2_TEMP       110
+  #define TS_CAL2_TEMP       130
 
 #elif defined(STM32WBA55xx)
   /* WBA55 RM0493 §3.11 — calibrated at VDDA = 3.3V, 30°C / 130°C */
@@ -335,8 +335,11 @@ static void _enable_internal_channels(void)
     /* H5: ADC_CCR VREFEN[22], VSENSESEL[23] */
     SET_BITS(ADC_CCR, (1UL << 22) | (1UL << 23));
 #endif
-    /* Stabilisation time: ~12µs per RM — spin ~2000 cycles @ 80 MHz */
-    for (volatile int i = 0; i < 2000; i++) {}
+
+    /* Temp sensor and VREFINT need stabilisation time after enable.
+     * L4: t_START ≈ 120 µs (RM0394), others similar.
+     * ~5000 iterations ≈ 150 µs @ 80 MHz — covers all families. */
+    for (volatile int i = 0; i < 5000; i++) {}
 }
 
 /* ============================================================
@@ -616,9 +619,11 @@ int32_t hal_adc_read_temp_decidegc(hal_adc_t *adc)
 
     /* Scale raw reading to the calibration voltage.
      * TS_CAL values were measured at VREFINT_CAL_VDD_MV.
-     * raw_scaled = raw * VREFINT_CAL_VDD_MV / vdda_mv
+     * At runtime VDDA is higher, so the same sensor voltage produces a
+     * lower count.  Scale UP to what the ADC would have read at the cal
+     * voltage:  raw_scaled = raw * vdda_mv / VREFINT_CAL_VDD_MV
      */
-    uint32_t raw_scaled = ((uint32_t)raw * VREFINT_CAL_VDD_MV) / adc->vdda_mv;
+    uint32_t raw_scaled = ((uint32_t)raw * adc->vdda_mv) / VREFINT_CAL_VDD_MV;
 
 #if defined(STM32WBA55xx)
     /* OTP region not bus-accessible on WBA55 (see note in hal_adc_read_vdda_mv).

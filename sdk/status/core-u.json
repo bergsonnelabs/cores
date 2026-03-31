@@ -31,9 +31,9 @@
 
     "spi.master": "compile",
 
-    "adc.raw":      "compile",
-    "adc.mv":       "compile",
-    "adc.temp":     "compile",
+    "adc.raw":      "verified",
+    "adc.mv":       "verified",
+    "adc.temp":     "verified",
     "adc.res":      "compile",
     "adc.oversamp": "compile",
     "adc.cont":     "compile",
