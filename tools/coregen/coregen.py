@@ -1099,8 +1099,8 @@ def generate(tile_path, output_dir, project_path=None):
                 f.write(f"{kiln_line}")
                 f.write(f"PROJECT      := $(notdir $(CURDIR))\n")
                 f.write(f"ROOT         := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))../..)\n\n")
-                f.write(f".PHONY: all clean clean-all distclean flash size\n")
-                f.write(f"all clean clean-all distclean flash size:\n")
+                f.write(f".PHONY: all clean clean-all distclean flash flash-dfu size generate\n")
+                f.write(f"all clean clean-all distclean flash flash-dfu size generate:\n")
                 f.write(f"\t$(MAKE) -C $(ROOT) TILE=$(TILE) PROJECT=$(PROJECT) KILN_ENABLED=$(KILN_ENABLED) $@\n")
             print(f"  Makefile")
         else:
