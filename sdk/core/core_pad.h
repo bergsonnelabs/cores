@@ -30,6 +30,13 @@
 #define PUSH_PULL   LL_GPIO_OTYPE_PP
 #define OPEN_DRAIN  LL_GPIO_OTYPE_OD
 
+/* ---- Speed aliases ---- */
+
+#define SPEED_LOW    LL_GPIO_SPEED_LOW     /* ~2 MHz  — LEDs, relays */
+#define SPEED_MED    LL_GPIO_SPEED_MED     /* ~10 MHz — general GPIO (default) */
+#define SPEED_HIGH   LL_GPIO_SPEED_HIGH    /* ~50 MHz — SPI, UART */
+#define SPEED_VHIGH  LL_GPIO_SPEED_VHIGH   /* ~100 MHz — SDMMC, high-speed */
+
 /* ---- Pad GPIO API ---- */
 
 /** Configure a pad as push-pull output (default). */
@@ -73,6 +80,16 @@ static inline void core_pad_toggle(uint8_t pad)
 static inline void core_pad_analog(uint8_t pad)
 {
     hal_pad_analog(pad);
+}
+
+/** Set the output speed (slew rate) of a pad.
+ *  Use SPEED_LOW / SPEED_MED / SPEED_HIGH / SPEED_VHIGH.
+ *  Only affects outputs — input pads ignore this setting. */
+static inline void core_pad_speed(uint8_t pad, uint32_t speed)
+{
+    hal_pad_gpio_t g = hal_pad_lookup(pad);
+    if (!g.port) return;
+    ll_gpio_set_speed(g.port, g.pin, speed);
 }
 
 #endif /* CORE_PAD_H */

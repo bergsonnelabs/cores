@@ -79,6 +79,47 @@
       "additionalProperties": false
     },
 
+    "gpio": {
+      "type": "object",
+      "description": "Per-pad GPIO configuration. Keys are pad numbers (as strings) that are assigned to GPIO.OUT or GPIO.IN in the pads section. Controls pull resistors, output type, EXTI interrupts, and default output state.",
+      "patternProperties": {
+        "^[0-9]+$": {
+          "type": "object",
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": ["in", "out"],
+              "description": "GPIO direction (informational — must match the GPIO.IN/GPIO.OUT assignment in pads)"
+            },
+            "pull": {
+              "type": "string",
+              "enum": ["none", "up", "down"],
+              "default": "none",
+              "description": "Internal pull resistor: none, up (pull-up), or down (pull-down)"
+            },
+            "output_type": {
+              "type": "string",
+              "enum": ["push-pull", "open-drain"],
+              "default": "push-pull",
+              "description": "Output driver type (only for GPIO.OUT pads)"
+            },
+            "exti": {
+              "type": "string",
+              "enum": ["rising", "falling", "both"],
+              "description": "Enable edge-triggered EXTI interrupt (only for GPIO.IN pads). Callback is NULL — set at runtime via hal_exti_enable()."
+            },
+            "default": {
+              "type": "string",
+              "enum": ["high", "low"],
+              "description": "Default output state set during init (only for GPIO.OUT pads)"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+
     "interfaces": {
       "type": "object",
       "description": "Configuration parameters for each interface used. Keys are interface names from the tile JSON (e.g., 'I2C1', 'USART2').",

@@ -379,8 +379,14 @@ def build_pad_config(config, pad_map):
     """Build the resolved pad configuration from project config.
 
     For each assigned pad, resolves the GPIO port/pin and AF number.
+    Also merges per-pad GPIO settings from the 'gpio' section:
+      pull:        "none" | "up" | "down"  (default: "none")
+      output_type: "push-pull" | "open-drain" (default: "push-pull")
+      exti:        "rising" | "falling" | "both" (default: none)
+      default:     "high" | "low" (default: none — no explicit set/clear)
     """
     pad_lookup = {p["number"]: p for p in pad_map}
+    gpio_section = config.get("gpio", {})
     pad_configs = []
 
     for pad_num, assigned_func in config.get("pads", config.get("pins", {})).items():
@@ -395,6 +401,12 @@ def build_pad_config(config, pad_map):
             "pin": pad_info["pin"],
             "af": None,
             "mode": "af",  # alternate function
+            # GPIO-specific settings (populated from gpio section below)
+            "pull": "none",
+            "output_type": "push-pull",
+            "speed": "medium",
+            "exti": None,
+            "default": None,
         }
 
         if assigned_func == "GPIO.OUT":
@@ -419,6 +431,15 @@ def build_pad_config(config, pad_map):
                 if af_func["function"] == assigned_func:
                     entry["af"] = af_func["af"]
                     break
+
+        # Merge per-pad GPIO settings from the 'gpio' section
+        gpio_cfg = gpio_section.get(str(pad_num), gpio_section.get(pad_num, {}))
+        if gpio_cfg:
+            entry["pull"] = gpio_cfg.get("pull", "none")
+            entry["output_type"] = gpio_cfg.get("output_type", "push-pull")
+            entry["speed"] = gpio_cfg.get("speed", "medium")
+            entry["exti"] = gpio_cfg.get("exti", None)
+            entry["default"] = gpio_cfg.get("default", None)
 
         pad_configs.append(entry)
 

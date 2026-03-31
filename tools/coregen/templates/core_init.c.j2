@@ -25,6 +25,9 @@
 {% if spi_buses %}
 #include "hal_spi.h"
 {% endif %}
+{% if pad_config and pad_config | selectattr("exti") | list %}
+#include "hal_exti.h"
+{% endif %}
 
 {% if i2c_buses %}
 /* ---- I2C handles ---- */
@@ -159,11 +162,32 @@ void core_pads_init(void)
     /* Configure each assigned pad */
 {% for pin in pad_config %}
 {% if pin.mode == "output" %}
-    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO output */
+{% set speed_map = {"low": "LL_GPIO_SPEED_LOW", "medium": "LL_GPIO_SPEED_MED", "high": "LL_GPIO_SPEED_HIGH", "very-high": "LL_GPIO_SPEED_VHIGH"} %}
+{% set speed_ll = speed_map.get(pin.speed, "LL_GPIO_SPEED_MED") %}
+{% if pin.output_type == "open-drain" %}
+    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO output (open-drain{{ ", pull-%s" | format(pin.pull) if pin.pull != "none" else "" }}) */
+    ll_gpio_set_mode(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_MODE_OUTPUT);
+    ll_gpio_set_output_type(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_OTYPE_OD);
+    ll_gpio_set_speed(GPIO{{ pin.port }}, {{ pin.pin }}, {{ speed_ll }});
+    ll_gpio_set_pull(GPIO{{ pin.port }}, {{ pin.pin }}, {{ "LL_GPIO_PULL_UP" if pin.pull == "up" else ("LL_GPIO_PULL_DOWN" if pin.pull == "down" else "LL_GPIO_PULL_NONE") }});
+{% elif pin.speed != "medium" %}
+    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO output (push-pull, {{ pin.speed }}) */
+    ll_gpio_set_mode(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_MODE_OUTPUT);
+    ll_gpio_set_output_type(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_OTYPE_PP);
+    ll_gpio_set_speed(GPIO{{ pin.port }}, {{ pin.pin }}, {{ speed_ll }});
+    ll_gpio_set_pull(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_PULL_NONE);
+{% else %}
+    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO output (push-pull) */
     ll_gpio_config_output(GPIO{{ pin.port }}, {{ pin.pin }});
+{% endif %}
+{% if pin.default == "high" %}
+    ll_gpio_set(GPIO{{ pin.port }}, 1UL << {{ pin.pin }});
+{% elif pin.default == "low" %}
+    ll_gpio_clear(GPIO{{ pin.port }}, 1UL << {{ pin.pin }});
+{% endif %}
 {% elif pin.mode == "input" %}
-    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO input */
-    ll_gpio_config_input(GPIO{{ pin.port }}, {{ pin.pin }}, LL_GPIO_PULL_NONE);
+    /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → GPIO input{{ " (pull-%s)" | format(pin.pull) if pin.pull != "none" else "" }} */
+    ll_gpio_config_input(GPIO{{ pin.port }}, {{ pin.pin }}, {{ "LL_GPIO_PULL_UP" if pin.pull == "up" else ("LL_GPIO_PULL_DOWN" if pin.pull == "down" else "LL_GPIO_PULL_NONE") }});
 {% elif pin.mode == "analog" %}
     /* Pad {{ pin.pad }}: P{{ pin.port }}{{ pin.pin }} → {{ pin.function }} (analog) */
     ll_gpio_config_analog(GPIO{{ pin.port }}, {{ pin.pin }});
@@ -178,6 +202,14 @@ void core_pads_init(void)
 {% endif %}
 {% endif %}
 {% endfor %}
+{% set exti_pads = pad_config | selectattr("exti") | list %}
+{% if exti_pads %}
+
+    /* ---- EXTI (external interrupt) init ---- */
+{% for pin in exti_pads %}
+    hal_exti_enable({{ pin.pad }}, {{ "HAL_EXTI_RISING" if pin.exti == "rising" else ("HAL_EXTI_FALLING" if pin.exti == "falling" else "HAL_EXTI_BOTH") }}, NULL, NULL);
+{% endfor %}
+{% endif %}
 {% else %}
     /* No pads configured in project.json */
 {% endif %}
