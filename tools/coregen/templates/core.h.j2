@@ -7,7 +7,7 @@
  *   - Clock, pad, and driver initialization (core_init)
  *   - LED and board defines (core_board)
  *   - Clock configuration (SYSCLK_HZ, etc.)
- *   - LL essentials (GPIO, RCC, SysTick, delay)
+ *   - The core_ API (pads, ADC, interrupts, timing, etc.)
  *   - Tile driver init recipe (see tiles.h for handles)
  *
  * DO NOT EDIT — regenerate by rebuilding the project.
@@ -26,5 +26,10 @@
 #include "ll_gpio.h"
 #include "ll_systick.h"
 #include "hal_led.h"
+
+/* ---- core_ API layer ---- */
+#include "core_pad.h"
+#include "core_timing.h"
+#include "core_exti.h"
 
 #endif /* CORE_H */
