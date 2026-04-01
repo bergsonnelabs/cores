@@ -104,4 +104,32 @@ static inline int core_pad_adc_channel(uint8_t pad)
     }
 }
 
+{% if timer_pads is defined and timer_pads %}
+#include "ll_tim.h"    /* TIM_TypeDef */
+
+/* ---- Timer/PWM channel mapping ---- */
+/* Maps assigned pad numbers to their timer instance and channel. */
+/* Use with core_pwm_init_pad() or the generated PAD_n_TIM_* defines. */
+
+{% for tp in timer_pads %}
+#define PAD_{{ tp.pad }}_TIM        {{ tp.timer }}
+#define PAD_{{ tp.pad }}_TIM_CH     {{ tp.channel }}
+{% endfor %}
+
+/**
+ * Pad-to-timer info (auto-generated).
+ * Populates instance and channel for a pad assigned to a TIMx.y function.
+ * Returns 0 on success, -1 if pad has no timer assignment.
+ */
+static inline int core_pad_timer_info(uint8_t pad, TIM_TypeDef **instance, uint8_t *channel)
+{
+    switch (pad) {
+{% for tp in timer_pads %}
+    case {{ tp.pad }}: *instance = {{ tp.timer }}; *channel = {{ tp.channel }}; return 0;
+{% endfor %}
+    default: return -1;
+    }
+}
+{% endif %}
+
 #endif /* CORE_PADS_H */

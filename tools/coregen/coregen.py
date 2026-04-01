@@ -200,6 +200,29 @@ def extract_adc_channel(pad):
     return None
 
 
+def extract_timer_channels(pad):
+    """Extract timer PWM channel info from a pad's timer functions.
+
+    Looks for functions like 'TIM2.3', 'TIM1.1', etc. (ignoring
+    complementary outputs like 'TIM1.2N', ETR, BKIN, and LPTIM).
+    Returns a list of dicts: [{"timer": "TIM2", "channel": 3, "af": 1}, ...].
+    """
+    channels = []
+    for func in pad.get("functions", []):
+        if func.get("type") != "timer":
+            continue
+        fname = func["function"]
+        # Match TIMx.y where y is a plain digit (no N suffix = not complementary)
+        m = re.match(r'(TIM\d+)\.(\d+)$', fname)
+        if m and "af" in func:
+            channels.append({
+                "timer": m.group(1),
+                "channel": int(m.group(2)),
+                "af": func["af"],
+            })
+    return channels
+
+
 def build_pad_map(pads):
     """Build a list of pad info dicts for template rendering."""
     pad_map = []
@@ -221,6 +244,9 @@ def build_pad_map(pads):
         # Extract ADC channel if present
         adc_channel = extract_adc_channel(pad)
 
+        # Extract timer PWM channels if present
+        timer_channels = extract_timer_channels(pad)
+
         # Classify the pad
         pad_type = "gpio"
         for func in pad.get("functions", []):
@@ -239,6 +265,7 @@ def build_pad_map(pads):
             "all_functions": all_functions,
             "af_functions": af_functions,
             "adc_channel": adc_channel,
+            "timer_channels": timer_channels,
         })
 
     return pad_map
@@ -444,6 +471,44 @@ def build_pad_config(config, pad_map):
         pad_configs.append(entry)
 
     return pad_configs
+
+
+def build_timer_config(config, pad_map):
+    """Extract timer pad assignments from project config.
+
+    Scans the assigned pads for TIMx.y patterns and returns a list of
+    dicts describing each timer PWM output:
+      [{"pad": "7", "timer": "TIM2", "channel": 3, "af": 1}, ...]
+
+    This info is used to generate PAD_n_TIM / PAD_n_TIM_CH defines
+    and the core_pad_timer_info() lookup in core_pads.h.
+    """
+    pad_lookup = {p["number"]: p for p in pad_map}
+    timer_pads = []
+
+    for pad_num, assigned_func in config.get("pads", config.get("pins", {})).items():
+        m = re.match(r'(TIM\d+)\.(\d+)$', assigned_func)
+        if not m:
+            continue
+        pad_info = pad_lookup.get(pad_num)
+        if not pad_info:
+            continue
+        timer_name = m.group(1)
+        channel = int(m.group(2))
+        # Find AF number for this specific function
+        af = None
+        for af_func in pad_info["af_functions"]:
+            if af_func["function"] == assigned_func:
+                af = af_func["af"]
+                break
+        timer_pads.append({
+            "pad": pad_num,
+            "timer": timer_name,
+            "channel": channel,
+            "af": af,
+        })
+
+    return timer_pads
 
 
 def build_clock_config(config, tile, mcu):
@@ -1047,6 +1112,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
         ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
         ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
+        ctx["timer_pads"] = build_timer_config(project, pad_map)
 
         # Build tile peripheral driver config
         tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(

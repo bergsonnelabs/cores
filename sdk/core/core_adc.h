@@ -11,6 +11,9 @@
 
 #include "tal_adc.h"
 
+/** Core-level ADC handle. Alias for hal_adc_t — use this in application code. */
+typedef hal_adc_t core_adc_t;
+
 /* ============================================================
  * Sampling speed aliases
  * ============================================================ */
@@ -35,7 +38,7 @@
  * ============================================================ */
 
 /** Initialise the ADC at the given resolution. */
-static inline hal_status_t core_adc_init(hal_adc_t *adc, uint32_t resolution)
+static inline hal_status_t core_adc_init(core_adc_t *adc, uint32_t resolution)
 {
     return tal_adc_init(adc, (hal_adc_res_t)resolution);
 }
@@ -45,7 +48,7 @@ static inline hal_status_t core_adc_init(hal_adc_t *adc, uint32_t resolution)
  * ============================================================ */
 
 /** Register a pad as an ADC input with the given sampling speed. */
-static inline hal_status_t core_adc_add(hal_adc_t *adc, uint8_t pad,
+static inline hal_status_t core_adc_add(core_adc_t *adc, uint8_t pad,
                                          uint32_t samp)
 {
     return tal_adc_add_pad(adc, pad, (hal_adc_samp_t)samp);
@@ -56,13 +59,13 @@ static inline hal_status_t core_adc_add(hal_adc_t *adc, uint8_t pad,
  * ============================================================ */
 
 /** Single-shot read — returns raw ADC count. */
-static inline uint16_t core_adc_read(hal_adc_t *adc, uint8_t pad)
+static inline uint16_t core_adc_read(core_adc_t *adc, uint8_t pad)
 {
     return tal_adc_read_pad(adc, pad);
 }
 
 /** Single-shot read — returns calibrated millivolts. */
-static inline uint32_t core_adc_read_mv(hal_adc_t *adc, uint8_t pad)
+static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
 {
     return tal_adc_read_pad_mv(adc, pad);
 }
@@ -72,13 +75,13 @@ static inline uint32_t core_adc_read_mv(hal_adc_t *adc, uint8_t pad)
  * ============================================================ */
 
 /** Die temperature in tenths of deg C (e.g. 253 = 25.3 C). */
-static inline int32_t core_adc_temp(hal_adc_t *adc)
+static inline int32_t core_adc_temp(core_adc_t *adc)
 {
     return tal_adc_read_temp_decidegc(adc);
 }
 
 /** Actual VDD supply voltage in millivolts via VREFINT. */
-static inline uint32_t core_adc_vdd(hal_adc_t *adc)
+static inline uint32_t core_adc_vdd(core_adc_t *adc)
 {
     return tal_adc_read_vdda_mv(adc);
 }
@@ -88,7 +91,7 @@ static inline uint32_t core_adc_vdd(hal_adc_t *adc)
  * ============================================================ */
 
 /** Start continuous conversion with DMA circular buffer. */
-static inline hal_status_t core_adc_start_dma(hal_adc_t *adc, uint16_t *buf,
+static inline hal_status_t core_adc_start_dma(core_adc_t *adc, uint16_t *buf,
                                                uint16_t len,
                                                void (*cb)(void))
 {
@@ -96,13 +99,13 @@ static inline hal_status_t core_adc_start_dma(hal_adc_t *adc, uint16_t *buf,
 }
 
 /** Stop continuous DMA conversion. */
-static inline void core_adc_stop_dma(hal_adc_t *adc)
+static inline void core_adc_stop_dma(core_adc_t *adc)
 {
     tal_adc_stop_dma(adc);
 }
 
 /** Read most recent DMA result for a pad. */
-static inline uint16_t core_adc_dma_read(hal_adc_t *adc, uint8_t pad)
+static inline uint16_t core_adc_dma_read(core_adc_t *adc, uint8_t pad)
 {
     return tal_adc_dma_read_pad(adc, pad);
 }

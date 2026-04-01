@@ -132,6 +132,7 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_I2C1_EV       23
   #define HAL_IRQ_SPI1          25
   #define HAL_IRQ_TIM2          15
+  #define HAL_IRQ_TIM21         20
   #define HAL_IRQ_ADC1          12
   #define HAL_IRQ_DMA1_CH1      9
   #define HAL_IRQ_DMA1_CH2_3    10

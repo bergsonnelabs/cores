@@ -92,4 +92,43 @@ static inline void core_pad_speed(uint8_t pad, uint32_t speed)
     ll_gpio_set_speed(g.port, g.pin, speed);
 }
 
+/* ---- Edge-triggered interrupts (EXTI) ---- */
+
+#include "tal_exti.h"
+
+/* Edge aliases */
+#define EDGE_RISING   HAL_EXTI_RISING
+#define EDGE_FALLING  HAL_EXTI_FALLING
+#define EDGE_BOTH     HAL_EXTI_BOTH
+
+/**
+ * Register an edge-triggered callback on a pad.
+ *
+ * The pad is automatically configured as input with a sensible
+ * pull resistor based on edge direction:
+ *   rising  → pull-down (idle low)
+ *   falling → pull-up   (idle high)
+ *   both    → no pull   (external bias expected)
+ *
+ * @param pad   Tile pad number
+ * @param edge  EDGE_RISING, EDGE_FALLING, or EDGE_BOTH
+ * @param cb    Callback (called from ISR context)
+ * @param ctx   Opaque pointer passed to cb
+ */
+static inline hal_status_t core_pad_on_change(uint8_t pad, uint32_t edge,
+                                               hal_callback_t cb, void *ctx)
+{
+    return tal_exti_enable(pad, edge, cb, ctx);
+}
+
+/** Stop the interrupt on a pad. */
+static inline void core_pad_on_change_stop(uint8_t pad)
+{
+    tal_exti_disable(pad);
+}
+
+/* ---- Backward compatibility ---- */
+#define core_on_change       core_pad_on_change
+#define core_on_change_stop  core_pad_on_change_stop
+
 #endif /* CORE_PAD_H */
