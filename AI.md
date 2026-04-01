@@ -36,22 +36,37 @@ MCU capabilities (PLL ranges, APB clocks, SPI/I2C peripheral mapping) live in `M
 ```
 cores/
 ├── Makefile                    # Top-level build orchestrator
-├── CLAUDE.md                   # ← this file
+├── AI.md                       # ← this file
 ├── sdk/
+│   ├── core/                   # User-facing API layer (core_ namespace)
+│   │   ├── core_timer.h        # Timer: init_freq/init_tick, PWM, capture, tick
+│   │   ├── core_gpio.h         # GPIO + EXTI: single include for all pad I/O
+│   │   ├── core_pad.h          # Pad read/write/toggle + core_pad_on_change()
+│   │   ├── core_adc.h          # ADC: pad-centric reads, DMA, temp sensor
+│   │   ├── core_i2c.h          # I2C: auto-timing from compile-time clock
+│   │   ├── core_pwm.h          # PWM legacy wrappers (prefer core_timer.h)
+│   │   ├── core_watchdog.h     # IWDG: start/feed/caused_reset
+│   │   ├── core_usb.h          # USB CDC serial
+│   │   ├── core_timing.h       # core_delay_ms/us, core_millis, core_timeout
+│   │   └── core_exti.h         # Backward compat shim → core_pad.h
 │   ├── hal/                    # HAL headers + implementations
 │   │   ├── hal_i2c.h/c
 │   │   ├── hal_spi.h/c
-│   │   ├── hal_gpio.h/c
+│   │   ├── hal_gpio.h
 │   │   ├── hal_timer.h/c
 │   │   ├── hal_uart.h/c
 │   │   ├── hal_usb_cdc.h/c
 │   │   ├── hal_adc.h/c
+│   │   ├── hal_exti.h/c
 │   │   ├── hal_debug.h/c
-│   │   └── hal_common.h        # Status codes, shared types
+│   │   └── hal_common.h        # Status codes, shared types, IRQ numbers
 │   ├── ll/                     # Low-level register access (wraps CMSIS)
+│   ├── tal/                    # Tile abstraction layer (pad→peripheral mapping)
+│   │   ├── tal_adc.h           # Pad → ADC channel resolution
+│   │   ├── tal_timer.h         # Pad → timer instance/channel resolution
+│   │   └── tal_exti.h          # Pad → EXTI with auto-pull
 │   ├── cmsis/                  # ARM CMSIS headers
 │   ├── device/                 # Linker scripts, startup code (per MCU)
-│   ├── tal/                    # Top-level abstraction layer
 │   └── status/                 # SDK implementation status per Core subfamily
 │       ├── features.json       # Canonical feature manifest (groups, IDs, layer, desc)
 │       ├── core-l.json         # Core.L (STM32L011) feature statuses
@@ -183,6 +198,32 @@ Every project in `projects/<name>/` has a `project.json`. It is the single sourc
 - `isp.boot0_pad` emits `#define CORE_BOOT0_PAD <n>` in `core_board.h`
 - `isp.method == "uart"` emits a `make flash-uart` hint comment in `core_board.h`
 
+**Timer / PWM / Capture:**
+```jsonc
+"pads": {
+  "7": "TIM15.1",              // Timer channel function → coregen sets AF
+  "10": "TIM2.1"               // Can be PWM output or capture input
+},
+"timers": {
+  "TIM15": { "freq": 1000, "tick": true },   // 1 kHz, also fire periodic ISR
+  "TIM2":  { "freq": 1000000 }               // 1 MHz tick for capture
+},
+"pwm": {
+  "channels": {
+    "7": { "function": "TIM15.1", "freq": 1000, "duty": 50 }
+  }
+},
+"capture": {
+  "10": { "function": "TIM2.1" }
+},
+"iwdg": { "enabled": true, "timeout": "2s" }
+```
+- Timer functions in `pads` follow `TIMx.y` format (x = peripheral, y = channel 1–4)
+- `timers` section sets per-instance frequency and optional tick
+- `pwm.channels` sets per-pad duty (0–100%)
+- `capture` maps pads to capture channels
+- `iwdg.timeout`: `"1s"` | `"2s"` | `"5s"` | `"10s"`
+
 **UART interfaces** (`USART1`, `USART2`, `LPUART1`, etc.):
 ```jsonc
 "interfaces": {
@@ -239,6 +280,8 @@ See `sdk/hal/hal_i3c.h` for the stub API.
 | `build_uart_config()` | Detects UART/USART/LPUART buses from pads; reads baud + rx_interrupt |
 | `build_i3c_config()` | Detects I3C buses; returns stub config for TODO comment in init |
 | `build_debug_isp_config()` | Extracts debug/isp keys; normalises with defaults |
+| `extract_timer_channels()` | Extracts TIMx.y PWM channel info from pad functions (excludes complementary/ETR/BKIN) |
+| `build_timer_config()` | Scans assigned pads for TIMx.y patterns; resolves AF numbers for template |
 | `build_tiles_config()` | Maps tile instances to I2C or SPI bus handles; resolves driver paths |
 | `validate_project_config()` | Checks all pads/interfaces/tiles/debug/isp are valid for the core |
 
@@ -249,6 +292,32 @@ See `sdk/hal/hal_i3c.h` for the stub API.
 - `SPI_PRESCALER_MAP` — maps divisor → LL constant string
 - Templates are Jinja2 in `tools/coregen/templates/`; context variables come from coregen.py's `ctx` dict
 - UART clock enable is handled inside `hal_uart_init()` — no `UART_CLK_MAP` needed in coregen
+
+---
+
+## Core Layer (`sdk/core/`) — User-Facing API
+
+The core_ layer is what application code uses. All functions and types use the `core_` prefix. Handle types (`core_timer_t`, `core_adc_t`, `core_i2c_t`) are typedefs for the underlying HAL handles.
+
+**Key headers:**
+
+| Header | Purpose |
+|---|---|
+| `core_timer.h` | `core_timer_init_freq()` (PWM/tick), `core_timer_init_tick()` (capture), `core_timer_pwm_set()` (0–100%), `core_timer_capture_init/read()`, `core_timer_enable_tick()` |
+| `core_gpio.h` | Single include for `core_pad_output/input/read/write/toggle()` + `core_pad_on_change()` (EXTI) |
+| `core_adc.h` | `core_adc_init()`, `core_adc_read()`, `core_adc_read_mv()`, DMA, temp sensor |
+| `core_i2c.h` | `core_i2c_setup()` with auto-timing, `core_i2c_write/read/probe/scan()` |
+| `core_watchdog.h` | `core_watchdog_start(ms)`, `core_watchdog_feed()`, `core_watchdog_caused_reset()` |
+| `core_usb.h` | `core_usb_init()`, `core_usb_write()`, `core_usb_printf`, includes `<stdio.h>` |
+| `core_timing.h` | `core_delay_ms/us()`, `core_millis()`, `core_timeout()` |
+
+**Timer init has two variants:**
+- `core_timer_init_freq(&t, TIM2, 1000)` — overflow at 1 kHz (for PWM, periodic tick)
+- `core_timer_init_tick(&t, TIM2, 1000000)` — tick at 1 MHz, free-running (for input capture)
+
+**PWM duty is 0–100 integer percent** at the core_ layer. For 0.1% resolution, use `hal_timer_pwm_set_duty()` with 0–1000.
+
+**`core.h`** (generated by coregen) includes `core_gpio.h` and `core_timing.h` automatically, so delays and GPIO are always available.
 
 ---
 
@@ -518,3 +587,37 @@ make generate TILE=Core-W-b PROJECT=my-project V=1
 # Check projects/my-project/coregen/ for generated files
 # coregen prints validation errors to stderr
 ```
+
+---
+
+## Pre-Commit Checklist
+
+Run through this before pushing changes to the SDK:
+
+### Always
+- [ ] **Build all targets** — `make TILE=Core-U-2-a`, `make TILE=Core-W-b`, `make TILE=Core-L-1-a`, `make TILE=Core-H-1-a` (at minimum with the blink example)
+- [ ] **Update AI.md** — if you changed repo structure, project.json format, HAL/core_ APIs, coregen behaviour, or tile driver conventions
+
+### If you changed core_ or HAL APIs
+- [ ] **core_ type aliases** — new handles get a `typedef hal_x_t core_x_t` in the core_ header
+- [ ] **Function naming** — core_ functions use `core_<subsystem>_<verb>()` pattern
+- [ ] **Docs consistency** — core_ API examples use `core_*_t` types; HAL examples use `hal_*_t`
+- [ ] **Tiletown docs updated** — update the relevant page in `tiletown/apps/public/app/docs/sdk/`
+- [ ] **Tiletown configurator updated** — if the generated main.c calls changed functions
+
+### If you changed coregen
+- [ ] **Regenerate test projects** — `make generate` on at least one project per affected core
+- [ ] **Template syntax** — Jinja2 templates in `tools/coregen/templates/` render without errors
+- [ ] **New context variables** — added to `ctx` dict in `generate()` function
+
+### If you changed HAL timer code
+- [ ] **MOE** — `hal_timer_pwm_init()` enables MOE unconditionally (required for TIM1/15/16/17)
+- [ ] **ISR handlers** — every timer in `_tim_index()` has a matching ISR handler function
+- [ ] **IRQ numbers** — every timer in `_tim_irq()` has a matching `HAL_IRQ_*` define in `hal_common.h`
+- [ ] **Clock enables** — every timer in `_tim_clk_enable()` enables the correct APB clock
+
+### If you changed implementation status
+- [ ] **features.json** — new feature rows added with correct `id`, `layer`, `name`, `desc`
+- [ ] **All four core-*.json** — new feature IDs present in every core status file
+- [ ] **Layer labels accurate** — reflects the highest implemented layer (Core > HAL > LL)
+- [ ] **Tiletown copies synced** — copy updated status files to `tiletown/apps/public/data/sdk-status/`
