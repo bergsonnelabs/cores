@@ -1,8 +1,0 @@
-{
-  "name": "pwm",
-  "core": "Core-U-2-a",
-  "clock": "max",
-  "pads": {
-    "7": "TIM2.3"
-  }
-}

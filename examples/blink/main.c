@@ -1,8 +1,7 @@
 /**
  * Blink — LED blink demo
  *
- * Simplest possible project. Uses core_init() for clock + SysTick,
- * core_led for the onboard LED.
+ * Simplest possible project. Blinks the onboard LED at 2 Hz.
  */
 
 #include "core.h"
@@ -13,9 +12,7 @@ int main(void)
     core_led_init();
 
     while (1) {
-        LED_ON();
-        ll_delay_ms(250);
-        LED_OFF();
-        ll_delay_ms(250);
+        LED_TOGGLE();
+        core_delay_ms(250);
     }
 }

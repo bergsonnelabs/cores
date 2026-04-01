@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "blink-w",
-    "core": "Core-W-b",
-    "description": "LED blink for Core.W"
-  },
-  "clock": "low",
-  "pads": {}
-}
