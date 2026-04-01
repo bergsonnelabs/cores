@@ -295,6 +295,37 @@ See `sdk/hal/hal_i3c.h` for the stub API.
 
 ---
 
+## Configurator Code Snippets (Tiletown)
+
+The Core Configurator's `main.c` generation uses a **prioritized snippet system**. Each subsystem (ADC, GPIO, timers, watchdog, tiles) has its own snippet builder function in `ProjectBuilder.tsx` that emits:
+
+```typescript
+interface CodeSnippet {
+  subsystem: string;
+  includes: string[];       // #include lines
+  declarations: string[];   // file-scope variables and forward declarations
+  init: CodeEntry[];        // { priority: number, lines: string[] }
+  loop: CodeEntry[];        // { priority: number, lines: string[] }
+  afterMain: string[];      // ISR callbacks, etc.
+}
+```
+
+The assembler sorts init/loop entries by priority and concatenates with section separators. Adding a new subsystem = adding one `snippetXxx()` function and registering it in the `generateMainC()` array.
+
+**Current snippets and priorities:**
+
+| Snippet | Init priority | Loop priority | What it generates |
+|---|---|---|---|
+| `snippetWatchdog` | 20 | 90 | `core_watchdog_start()` / `core_watchdog_feed()` |
+| `snippetTimers` | 30 | 70, 80 | Timer init, PWM/capture/tick, duty/capture hints |
+| `snippetGPIO` | 35 | 65 | Output defaults, input read stubs |
+| `snippetADC` | 40 | 60 | ADC init, channel registration, read stubs |
+| `snippetTiles` | 50 | — | Bus init + tile driver init |
+
+**File:** `tiletown/apps/public/app/tools/core-configurator/ProjectBuilder.tsx`
+
+---
+
 ## Core Layer (`sdk/core/`) — User-Facing API
 
 The core_ layer is what application code uses. All functions and types use the `core_` prefix. Handle types (`core_timer_t`, `core_adc_t`, `core_i2c_t`) are typedefs for the underlying HAL handles.
@@ -604,6 +635,7 @@ Run through this before pushing changes to the SDK:
 - [ ] **Docs consistency** — core_ API examples use `core_*_t` types; HAL examples use `hal_*_t`
 - [ ] **Tiletown docs updated** — update the relevant page in `tiletown/apps/public/app/docs/sdk/`
 - [ ] **Tiletown configurator updated** — if the generated main.c calls changed functions
+- [ ] **Code snippet updated** — update the relevant `snippetXxx()` function in `ProjectBuilder.tsx` to emit the new/changed API calls. If adding a new subsystem, create a new snippet builder and register it in the `generateMainC()` array.
 
 ### If you changed coregen
 - [ ] **Regenerate test projects** — `make generate` on at least one project per affected core
