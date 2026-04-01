@@ -16,7 +16,7 @@
  *
  * For manual init (no coregen):
  *
- *   hal_i2c_t bus;
+ *   core_i2c_t bus;
  *   core_i2c_setup(&bus, I2C1, I2C_400K);
  */
 
@@ -25,6 +25,9 @@
 
 #include "hal_i2c.h"
 #include "core_config.h"
+
+/** Core-level I2C handle. Alias for hal_i2c_t — use this in application code. */
+typedef hal_i2c_t core_i2c_t;
 
 /* ---- Speed constants ---- */
 
@@ -59,13 +62,13 @@ static inline uint32_t _core_i2c_timing(uint32_t speed_hz)
 /**
  * Initialize an I2C bus with automatic timing resolution.
  *
- *   hal_i2c_t bus;
+ *   core_i2c_t bus;
  *   core_i2c_setup(&bus, I2C1, I2C_400K);
  *
  * Resolves the TIMINGR value from the compile-time kernel clock.
  * Enables FMP mode automatically when speed is I2C_1M.
  */
-static inline hal_status_t core_i2c_setup(hal_i2c_t *h,
+static inline hal_status_t core_i2c_setup(core_i2c_t *h,
                                            I2C_TypeDef *instance,
                                            uint32_t speed_hz)
 {
@@ -83,7 +86,7 @@ static inline hal_status_t core_i2c_setup(hal_i2c_t *h,
  * Initialize I2C with explicit config (same as hal_i2c_init).
  * Use core_i2c_setup() for the simpler speed-based API.
  */
-static inline hal_status_t core_i2c_init(hal_i2c_t *h,
+static inline hal_status_t core_i2c_init(core_i2c_t *h,
                                           I2C_TypeDef *instance,
                                           const hal_i2c_config_t *cfg)
 {
@@ -93,14 +96,14 @@ static inline hal_status_t core_i2c_init(hal_i2c_t *h,
 /* ---- Master operations ---- */
 
 /** Write data to a 7-bit address device. */
-static inline hal_status_t core_i2c_write(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_write(core_i2c_t *h, uint8_t addr,
                                            const uint8_t *data, uint32_t len)
 {
     return hal_i2c_write(h, addr, data, len);
 }
 
 /** Read data from a 7-bit address device. */
-static inline hal_status_t core_i2c_read(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_read(core_i2c_t *h, uint8_t addr,
                                           uint8_t *buf, uint32_t len)
 {
     return hal_i2c_read(h, addr, buf, len);
@@ -109,7 +112,7 @@ static inline hal_status_t core_i2c_read(hal_i2c_t *h, uint8_t addr,
 /* ---- Register helpers ---- */
 
 /** Write to a device register (8 or 16-bit register address). */
-static inline hal_status_t core_i2c_write_reg(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_write_reg(core_i2c_t *h, uint8_t addr,
                                                uint16_t reg,
                                                const uint8_t *data,
                                                uint32_t len)
@@ -118,7 +121,7 @@ static inline hal_status_t core_i2c_write_reg(hal_i2c_t *h, uint8_t addr,
 }
 
 /** Read from a device register (repeated START). */
-static inline hal_status_t core_i2c_read_reg(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_read_reg(core_i2c_t *h, uint8_t addr,
                                               uint16_t reg, uint8_t *buf,
                                               uint32_t len)
 {
@@ -126,14 +129,14 @@ static inline hal_status_t core_i2c_read_reg(hal_i2c_t *h, uint8_t addr,
 }
 
 /** Write a single byte to a register. */
-static inline hal_status_t core_i2c_write_byte(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_write_byte(core_i2c_t *h, uint8_t addr,
                                                 uint16_t reg, uint8_t value)
 {
     return hal_i2c_write_byte(h, addr, reg, value);
 }
 
 /** Read a single byte from a register. */
-static inline hal_status_t core_i2c_read_byte(hal_i2c_t *h, uint8_t addr,
+static inline hal_status_t core_i2c_read_byte(core_i2c_t *h, uint8_t addr,
                                                uint16_t reg, uint8_t *value)
 {
     return hal_i2c_read_byte(h, addr, reg, value);
@@ -142,13 +145,13 @@ static inline hal_status_t core_i2c_read_byte(hal_i2c_t *h, uint8_t addr,
 /* ---- Bus utilities ---- */
 
 /** Check if a device responds at addr. Returns I2C_OK or I2C_NACK. */
-static inline hal_status_t core_i2c_probe(hal_i2c_t *h, uint8_t addr)
+static inline hal_status_t core_i2c_probe(core_i2c_t *h, uint8_t addr)
 {
     return hal_i2c_probe(h, addr);
 }
 
 /** Scan the I2C bus (0x08–0x77). Fills found[] with responding addresses. */
-static inline void core_i2c_scan(hal_i2c_t *h, uint8_t *found,
+static inline void core_i2c_scan(core_i2c_t *h, uint8_t *found,
                                   uint8_t *count, uint8_t max_count)
 {
     hal_i2c_scan(h, found, count, max_count);

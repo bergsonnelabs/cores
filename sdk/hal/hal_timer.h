@@ -68,4 +68,18 @@ hal_status_t hal_timer_tick_init(hal_timer_t *h, TIM_TypeDef *instance,
 void hal_timer_tick_start(hal_timer_t *h);
 void hal_timer_tick_stop(hal_timer_t *h);
 
+/**
+ * Enable periodic tick on an already-initialized timer.
+ * Does NOT touch PSC/ARR — the timer keeps its existing timebase.
+ * Use this to add a tick callback to a timer that's already set up
+ * for PWM or capture via hal_timer_pwm_init().
+ *
+ * The callback fires on each counter overflow (update event) at the
+ * timer's current frequency.
+ */
+hal_status_t hal_timer_tick_enable(hal_timer_t *h, hal_callback_t cb, void *ctx);
+
+/** Disable the tick callback (clears UIE, keeps timer running). */
+void hal_timer_tick_disable(hal_timer_t *h);
+
 #endif /* HAL_TIMER_H */

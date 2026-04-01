@@ -75,7 +75,10 @@ static int _tim_index(TIM_TypeDef *instance)
 
 static uint32_t _tim_irq(TIM_TypeDef *instance)
 {
-#if defined(STM32L422xx)
+#if defined(STM32L011xx)
+    if (instance == TIM2)  return HAL_IRQ_TIM2;
+    if (instance == TIM21) return HAL_IRQ_TIM21;
+#elif defined(STM32L422xx)
     if (instance == TIM1)  return HAL_IRQ_TIM1_UP_16;
     if (instance == TIM2)  return HAL_IRQ_TIM2;
     if (instance == TIM15) return HAL_IRQ_TIM15;
@@ -110,13 +113,59 @@ static void _tim_isr(hal_timer_t *h)
 
 /* ---- ISR handlers (strong symbols) ---- */
 
+/* ---- L011: TIM2, TIM21 ---- */
+
+#if defined(STM32L011xx)
+void TIM21_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[1]);
+}
+#endif
+
+/* ---- L422: TIM1 (shared IRQs), TIM2, TIM15, TIM16 ---- */
+
 #if defined(STM32L422xx)
 void TIM1_UP_TIM16_IRQHandler(void)
 {
     _tim_isr(_tim_handles[0]);  /* TIM1 */
     _tim_isr(_tim_handles[3]);  /* TIM16 (shared IRQ) */
 }
+
+void TIM1_BRK_TIM15_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[2]);  /* TIM15 (shared with TIM1 BRK) */
+}
 #endif
+
+/* ---- WBA55: TIM1, TIM2, TIM3, TIM16, TIM17 ---- */
+
+#if defined(STM32WBA55xx)
+void TIM1_UP_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[0]);
+}
+
+void TIM16_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[3]);
+}
+
+void TIM17_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[4]);
+}
+#endif
+
+/* ---- H523: TIM1, TIM2, TIM3 ---- */
+
+#if defined(STM32H523xx)
+void TIM1_UP_IRQHandler(void)
+{
+    _tim_isr(_tim_handles[0]);
+}
+#endif
+
+/* ---- Shared across families ---- */
 
 void TIM2_IRQHandler(void)
 {
@@ -146,15 +195,25 @@ void TIM3_IRQHandler(void)
 static void _calc_psc_arr(uint32_t pclk_hz, uint32_t freq_hz,
                            uint32_t *psc, uint32_t *arr)
 {
-    /* Target: arr around 1000 for good duty resolution */
+    /* pclk / (psc+1) / (arr+1) = freq
+       We want arr as large as possible for duty resolution,
+       but arr must fit in 16 bits (0–65535).
+       Iterate psc upward until arr fits. */
     uint32_t total = pclk_hz / freq_hz;
 
     if (total <= 65536) {
         *psc = 0;
         *arr = total - 1;
     } else {
-        *psc = (total / 65536);
-        *arr = (total / (*psc + 1)) - 1;
+        /* Start with psc that might work, then bump until arr fits */
+        uint32_t p = (total - 1) / 65536;  /* minimum psc to get arr ≤ 65535 */
+        *psc = p;
+        *arr = (total / (p + 1)) - 1;
+        /* Safety: if rounding left arr > 65535, bump psc once more */
+        if (*arr > 65535) {
+            *psc = p + 1;
+            *arr = (total / (p + 2)) - 1;
+        }
     }
 }
 
@@ -171,10 +230,11 @@ hal_status_t hal_timer_pwm_init(hal_timer_t *h, TIM_TypeDef *instance,
     _calc_psc_arr(pclk_hz, freq_hz, &psc, &arr);
     ll_tim_config(instance, psc, arr);
 
-    /* Enable MOE for advanced timers (TIM1) */
-    if (instance == TIM1) {
-        ll_tim_enable_moe(instance);
-    }
+    /* Enable MOE (Main Output Enable) unconditionally.
+       Required for TIM1/TIM15/TIM16/TIM17 which have BDTR — without
+       MOE, outputs stay tri-stated. On timers without BDTR (TIM2/3/4),
+       the write hits a reserved register offset and is harmless. */
+    ll_tim_enable_moe(instance);
 
     return HAL_OK;
 }
@@ -258,4 +318,33 @@ void hal_timer_tick_start(hal_timer_t *h)
 void hal_timer_tick_stop(hal_timer_t *h)
 {
     ll_tim_stop(h->instance);
+}
+
+/* ============================================================
+ * Enable/disable tick on an existing timer
+ * ============================================================ */
+
+hal_status_t hal_timer_tick_enable(hal_timer_t *h, hal_callback_t cb, void *ctx)
+{
+    int idx = _tim_index(h->instance);
+    if (idx < 0) return HAL_ERROR;
+
+    h->tick_cb = cb;
+    h->tick_ctx = ctx;
+
+    /* Register handle for ISR dispatch */
+    _tim_handles[idx] = h;
+
+    /* Enable update interrupt + NVIC */
+    SET_BITS(h->instance->DIER, LL_TIM_DIER_UIE);
+    hal_nvic_set_priority(_tim_irq(h->instance), 0x30);
+    hal_nvic_enable_irq(_tim_irq(h->instance));
+
+    return HAL_OK;
+}
+
+void hal_timer_tick_disable(hal_timer_t *h)
+{
+    CLR_BITS(h->instance->DIER, LL_TIM_DIER_UIE);
+    h->tick_cb = NULL;
 }

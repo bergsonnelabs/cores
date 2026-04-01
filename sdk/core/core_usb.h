@@ -9,6 +9,7 @@
 #define CORE_USB_H
 
 #include "hal_usb_cdc.h"
+#include <stdio.h>    /* snprintf, printf — commonly used with USB serial output */
 
 /** Initialize USB CDC. Device appears as /dev/tty.usbmodem* on the host. */
 static inline void core_usb_init(void)
