@@ -377,4 +377,27 @@ static inline void ll_rtc_wakeup_clear_flag(void)
 #endif
 }
 
+/* ============================================================
+ * Backup registers (BKP0R–BKP31R)
+ *
+ * Reading requires no setup (RTCAPBEN is enabled by default).
+ * Writing requires PWR clock + backup domain access:
+ *   ll_rcc_pwr_clk_enable();
+ *   ll_pwr_enable_backup_access();
+ * ============================================================ */
+
+#define RTC_BKP_BASE        (RTC_BASE + 0x50UL)
+
+/** Read backup register n (0–31). No clock setup needed. */
+static inline uint32_t ll_rtc_bkp_read(uint32_t n)
+{
+    return REG32(RTC_BKP_BASE + n * 4);
+}
+
+/** Write backup register n (0–31). Requires backup domain access. */
+static inline void ll_rtc_bkp_write(uint32_t n, uint32_t val)
+{
+    REG32(RTC_BKP_BASE + n * 4) = val;
+}
+
 #endif /* LL_RTC_H */

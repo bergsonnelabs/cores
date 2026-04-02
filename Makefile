@@ -97,6 +97,18 @@ else
   $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a)
 endif
 
+# ---- Bootloader support ----
+# Build with BOOTLOADER=1 to link the application at 0x08002000 (behind the
+# custom DFU bootloader) and set VTOR via APP_OFFSET.
+
+BOOTLOADER ?= 0
+ifeq ($(BOOTLOADER),1)
+  ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
+    LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_app.ld
+    APP_OFFSET = 0x08002000UL
+  endif
+endif
+
 # ---- Paths ----
 
 BUILD_DIR = $(PROJECT_DIR)/build
@@ -141,6 +153,10 @@ CFLAGS += -I$(SDK_DIR)sdk/hal
 CFLAGS += -I$(SDK_DIR)sdk/tal
 CFLAGS += -I$(SDK_DIR)sdk/core
 CFLAGS += -Og -g3
+
+ifdef APP_OFFSET
+  CFLAGS += -DAPP_OFFSET=$(APP_OFFSET)
+endif
 
 # ---- Kiln driver support (optional) ----
 KILN_DIR ?= $(SDK_DIR)kiln
@@ -290,10 +306,29 @@ else
 		-c "exit"
 endif
 
-# ---- Flash via USB DFU (Core.U/H with USB bootloader) ----
+# ---- Flash via USB DFU ----
+# With BOOTLOADER=1: auto-triggers DFU mode via 1200-baud touch if a CDC serial
+# port is present, then flashes via plain DFU. Falls back to direct dfu-util if
+# no serial port is found (board already in DFU or no CDC in the app).
+# Without BOOTLOADER=1: DfuSe protocol to ST ROM bootloader at 0x08000000.
 
 flash-dfu: $(TARGET).bin
+ifeq ($(BOOTLOADER),1)
+	@TTY=$$(ls /dev/tty.usbmodem* 2>/dev/null | head -1); \
+	if [ -n "$$TTY" ]; then \
+		echo "  DFU   Triggering reboot via 1200-baud touch on $$TTY..."; \
+		stty -f "$$TTY" 1200 hupcl; \
+		sleep 2; \
+	fi
+	@dfu-util -a 0 -R -D $< || true
+else
 	dfu-util -a 0 -s 0x08000000:leave -D $<
+endif
+
+# ---- Flash the DFU bootloader itself ----
+
+flash-bootloader:
+	$(MAKE) -C $(SDK_DIR)projects/bootloader flash
 
 # ---- GDB debug session ----
 # Step 1: Run 'make openocd' in one terminal (starts GDB server)

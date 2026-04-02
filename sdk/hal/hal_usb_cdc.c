@@ -17,6 +17,7 @@
 #include "ll_rcc.h"
 #include "ll_crs.h"
 #include "ll_gpio.h"
+#include "hal_dfu.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -424,10 +425,24 @@ static void _handle_setup(void)
             _ep0_send((const uint8_t *)&_cdc.line_coding, 7, setup.wLength);
             return;
 
-        case CDC_SET_CONTROL_LINE_STATE:
-            _cdc.dtr = (setup.wValue & 0x01) ? 1 : 0;
+        case CDC_SET_CONTROL_LINE_STATE: {
+            uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
+
+            /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot.
+             * This is the Arduino convention — host opens port at 1200 baud
+             * then closes it. make flash-dfu uses this to auto-enter DFU. */
+            if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
+                _ep0_send_status();
+                /* Small delay so the ZLP status reaches the host */
+                for (volatile int i = 0; i < 100000; i++)
+                    ;
+                hal_dfu_reboot();
+            }
+
+            _cdc.dtr = new_dtr;
             _ep0_send_status();
             return;
+        }
 
         case CDC_SEND_BREAK:
             _ep0_send_status();

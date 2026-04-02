@@ -1,0 +1,12 @@
+{
+  "project": {
+    "name": "dfu-test",
+    "core": "Core-U-2-a",
+    "description": "USB CDC + DFU reboot test"
+  },
+
+  "clock": "max",
+
+  "pads": {
+  }
+}

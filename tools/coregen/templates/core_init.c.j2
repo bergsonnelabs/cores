@@ -246,6 +246,11 @@ void core_pads_init(void)
 
 void core_init(void)
 {
+#ifdef APP_OFFSET
+    /* Relocate vector table for bootloader builds (app not at 0x08000000) */
+    REG32(0xE000ED08UL) = APP_OFFSET;
+#endif
+
     core_clock_init();
     core_pads_init();
 }
