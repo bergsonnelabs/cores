@@ -758,26 +758,30 @@ static inline uint32_t ll_rcc_get_radio_sleep_clk(void)
 }
 
 /* ---- Radio baseband clock (active clock for 2.4GHz radio) ---- */
+/* RCC_RADIOENR at offset 0x208:
+ *   Bit 1:  BBCLKEN       — baseband clock enable
+ *   Bit 16: STRADIOCLKON  — sleep timer radio clock on (enables HSE+bus on wakeup)
+ *   Bit 17: RADIOCLKRDY   — radio clock ready (read-only status)
+ * Note: there is NO bit 0 (RADIOENEN) — that was a documentation error. */
 
 static inline void ll_rcc_radio_bb_clk_enable(void)
 {
-    /* RCC_RADIOENR at offset 0x208, bit 0 = RADIOENEN */
-    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 0));
+    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 1));   /* BBCLKEN */
 }
 
 static inline void ll_rcc_radio_bb_clk_disable(void)
 {
-    CLR_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 0));
+    CLR_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 1));   /* BBCLKEN */
 }
 
-static inline void ll_rcc_radio_slp_tmr_clk_enable(void)
+static inline void ll_rcc_radio_wakeup_clk_enable(void)
 {
-    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 1));  /* RADIOSTCKEN */
+    SET_BITS(REG32(RCC_BASE + 0x208UL), (1UL << 16));  /* STRADIOCLKON */
 }
 
-static inline int ll_rcc_radio_slp_tmr_clk_enabled(void)
+static inline int ll_rcc_radio_clk_ready(void)
 {
-    return (REG32(RCC_BASE + 0x208UL) & (1UL << 1)) != 0;
+    return (REG32(RCC_BASE + 0x208UL) & (1UL << 17)) != 0;  /* RADIOCLKRDY */
 }
 
 #endif /* STM32WBA55xx */

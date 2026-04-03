@@ -110,12 +110,7 @@ void LINKLAYER_PLAT_ClockInit(void)
     /* Enable AHB5ENR peripheral clock (bus CLK) */
     ll_rcc_ahb5_clk_enable(LL_AHB5_RADIO);
 
-    /* Enable radio + sleep timer clocks (RCC_RADIOENR)
-     * Bit 0 = RADIOENEN (radio enable), bit 1 = STRADIOCLKEN (sleep timer) */
-    ll_rcc_radio_bb_clk_enable();
-    ll_rcc_radio_slp_tmr_clk_enable();
-
-    /* Also enable AHB5 sleep mode clock gating */
+    /* Enable AHB5 radio clock in sleep mode */
     ll_rcc_ahb5_clk_sleep_enable();
 }
 
@@ -144,13 +139,27 @@ void LINKLAYER_PLAT_Assert(uint8_t condition)
 
 void LINKLAYER_PLAT_WaitHclkRdy(void)
 {
-    /* Low-power AHB5 clock gating disabled for initial bring-up.
-     * The radio bus clock stays on at all times. */
+    /* Wait for radio bus clock readiness if it was turned off during sleep */
+    if (AHB5_SwitchedOff == 1)
+    {
+        AHB5_SwitchedOff = 0;
+        /* Wait for sleep timer to tick — proves bus clock is back */
+        uint32_t timeout = 100000;
+        while (radio_sleep_timer_val == ll_intf_cmn_get_slptmr_value() && --timeout)
+            ;
+    }
 }
 
 void LINKLAYER_PLAT_NotifyWFIEnter(void)
 {
-    /* No-op — AHB5 clock always on during bring-up */
+    /* Check if AHB5 clock will be cut during WFI:
+     * - Radio not in ACTIVE mode, OR
+     * - Neither RADIOSMEN nor STRADIOCLKON is set */
+    if ((ll_pwr_get_radio_mode() != LL_PWR_RADIO_ACTIVE_MODE) ||
+        ((_RCC_AHB5SMENR & LL_AHB5_RADIO) == 0 && (_RCC_RADIOENR & _RADIOENR_STRADIOCLKON) == 0))
+    {
+        AHB5_SwitchedOff = 1;
+    }
 }
 
 void LINKLAYER_PLAT_NotifyWFIExit(void)
@@ -165,16 +174,17 @@ void LINKLAYER_PLAT_AclkCtrl(uint8_t enable)
 {
     if (enable != 0u)
     {
-        /* Enable RADIO (bit 0 = RADIOENEN) + sleep timer (bit 1) */
-        SET_BITS(_RCC_RADIOENR, (1UL << 0) | _RADIOENR_BBCLKEN);
+        /* Enable RADIO baseband clock (BBCLKEN = bit 1 of RCC_RADIOENR)
+         * — matches HAL_RCCEx_EnableRadioBBClock() in working project */
+        ll_rcc_radio_bb_clk_enable();
 
         /* Wait for HSE to be ready */
         while (!ll_rcc_hse_ready()) ;
     }
     else
     {
-        /* Disable RADIO baseband */
-        CLR_BITS(_RCC_RADIOENR, (1UL << 0));
+        /* Disable RADIO baseband clock */
+        ll_rcc_radio_bb_clk_disable();
     }
 }
 
