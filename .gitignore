@@ -16,3 +16,5 @@ projects/*
 !projects/bootloader/
 !projects/hello/
 !projects/dfu-test/
+!projects/fault-test/
+!projects/power-test/

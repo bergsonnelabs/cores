@@ -1,17 +1,29 @@
 /**
  * core_power.h — Sleep and low-power modes
  *
- * CPU sleep, deep sleep (Stop), shutdown (Standby), and
- * independent watchdog (IWDG) for fault recovery.
+ * Simple API:
+ *   core_sleep()              — lightest, wakes on any interrupt
+ *   core_stop_for(seconds)   — Stop + RTC wakeup, auto clock recovery
+ *   core_standby_for(sec)  — Standby + RTC wakeup, full reset on wake
+ *
+ * Advanced:
+ *   core_deep_sleep()         — enter Stop (caller manages wakeup + clock recovery)
+ *   core_shutdown()           — enter Standby (caller manages wakeup)
  */
 
 #ifndef CORE_POWER_H
 #define CORE_POWER_H
 
 #include "ll_pwr.h"
+#include "ll_rtc.h"
+#include "ll_rcc.h"
 #include "ll_iwdg.h"
+#include "core_pad.h"
 
-/* ---- Sleep modes ---- */
+/* EXTI base (STM32L4) */
+#define _EXTI_BASE  0x40010400UL
+
+/* ---- Simple API ---- */
 
 /** Sleep until any interrupt (CPU stopped, peripherals running). */
 static inline void core_sleep(void)
@@ -19,25 +31,154 @@ static inline void core_sleep(void)
     ll_pwr_sleep_wfi();
 }
 
-/** Deep sleep / Stop mode (SRAM retained, wake via EXTI). */
-static inline void core_deep_sleep(void)
+/**
+ * Enter Stop mode for a number of seconds, then wake and restore clocks.
+ * Uses RTC wakeup timer (LSI). Returns after wake with PLL + SysTick restored.
+ */
+static inline void core_stop_for(uint32_t seconds)
+{
+    /* Enable PWR + backup domain */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_enable_backup_access();
+
+    /* Init RTC on LSI and set wakeup alarm */
+    ll_rtc_init(0);
+    ll_rtc_wakeup_config(seconds);
+
+    /* Unmask RTC wakeup on EXTI line 20 (required for Stop wake) */
+    SET_BITS(REG32(_EXTI_BASE + 0x00UL), (1UL << 20));  /* IMR1 */
+    SET_BITS(REG32(_EXTI_BASE + 0x08UL), (1UL << 20));  /* RTSR1 */
+
+    /* Enter Stop mode */
+    ll_pwr_stop();
+
+    /* --- Woke up, running on MSI 4MHz --- */
+
+    /* Clear RTC wakeup flag and EXTI pending */
+    ll_rtc_wakeup_clear_flag();
+    REG32(_EXTI_BASE + 0x14UL) = (1UL << 20);  /* PR1: clear pending */
+
+    /* Restore PLL + SysTick */
+    extern void core_clock_init(void);
+    core_clock_init();
+}
+
+/**
+ * Enter Stop mode until a GPIO edge occurs on the given pad.
+ * Configures the pad as input, enables EXTI, enters Stop, and restores
+ * clocks on wake. Returns after the edge is detected.
+ *
+ * @param pad   Tile pad number
+ * @param edge  EDGE_FALLING, EDGE_RISING, or EDGE_BOTH
+ */
+static inline void core_stop_until_on_change(uint8_t pad, uint32_t edge)
+{
+    extern void core_clock_init(void);
+
+    core_pad_on_change(pad, edge, (hal_callback_t)0, (void *)0);
+
+    ll_pwr_stop();
+
+    core_clock_init();
+}
+
+/**
+ * Enter Standby mode with RTC wakeup after the given seconds.
+ * Does not return — MCU resets on wake. Check core_woke_from_standby()
+ * at the top of main() to detect a Standby wake.
+ */
+static inline void core_standby_for(uint32_t seconds) __attribute__((noreturn));
+static inline void core_standby_for(uint32_t seconds)
+{
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_enable_backup_access();
+
+    ll_rtc_init(0);
+    ll_rtc_wakeup_config(seconds);
+
+    SET_BITS(REG32(_EXTI_BASE + 0x00UL), (1UL << 20));
+    SET_BITS(REG32(_EXTI_BASE + 0x08UL), (1UL << 20));
+
+    ll_pwr_standby();
+    __builtin_unreachable();
+}
+
+/**
+ * Enter Standby mode until a GPIO edge on the given pad (via WKUP pin).
+ * Does not return — MCU resets on wake. Not all pads support WKUP;
+ * returns without entering Standby if the pad has no WKUP capability.
+ *
+ * On Core.U.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).
+ *
+ * @param pad   Tile pad number
+ * @param edge  EDGE_FALLING or EDGE_RISING
+ */
+static inline void core_standby_until_on_change(uint8_t pad, uint32_t edge)
+{
+#if defined(STM32L422xx)
+    /* Resolve pad to GPIO */
+    hal_pad_gpio_t g = hal_pad_lookup(pad);
+    if (!g.port) return;
+
+    /* Match GPIO to WKUP pin number (STM32L422 fixed mapping) */
+    int wkup = -1;
+    if (g.port == GPIOA && g.pin == 0) wkup = 0;       /* WKUP1 */
+    else if (g.port == GPIOC && g.pin == 13) wkup = 1;  /* WKUP2 */
+    else if (g.port == GPIOA && g.pin == 2) wkup = 3;   /* WKUP4 */
+    if (wkup < 0) return;  /* pad not a WKUP pin */
+
+    ll_rcc_pwr_clk_enable();
+
+    /* PWR_CR3: enable WKUPx (bits 0-4) */
+    SET_BITS(REG32(PWR_BASE + 0x08UL), (1UL << wkup));
+
+    /* PWR_CR4: set polarity. Bit=0 → rising edge wake, bit=1 → falling edge */
+    if (edge == EDGE_FALLING)
+        SET_BITS(REG32(PWR_BASE + 0x0CUL), (1UL << wkup));
+    else
+        CLR_BITS(REG32(PWR_BASE + 0x0CUL), (1UL << wkup));
+
+    /* PWR_SCR: clear wakeup flag */
+    REG32(PWR_BASE + 0x14UL) = (1UL << wkup);
+
+    ll_pwr_standby();
+#else
+    (void)pad;
+    (void)edge;
+#endif
+    __builtin_unreachable();
+}
+
+/* ---- Advanced API ---- */
+
+/** Enter Stop mode (caller manages wakeup source + clock recovery). */
+static inline void core_stop(void)
 {
     ll_pwr_stop();
 }
 
-/**
- * Shutdown / Standby (lowest power, SRAM lost).
- * On wake the MCU resets from Reset_Handler.
- */
-static inline void core_shutdown(void)
+/** Enter Standby (caller manages wakeup source). Does not return. */
+static inline void core_standby(void) __attribute__((noreturn));
+static inline void core_standby(void)
 {
     ll_pwr_standby();
+    __builtin_unreachable();
 }
 
-/** Returns 1 if the MCU woke from a shutdown (standby). */
-static inline int core_woke_from_shutdown(void)
+/* Backward compatibility */
+#define core_deep_sleep  core_stop
+#define core_shutdown    core_standby
+
+/** Returns 1 if the MCU woke from Standby. */
+static inline int core_woke_from_standby(void)
 {
     return ll_pwr_woke_from_standby();
+}
+
+/** Clear the Standby wake flag. Call after core_woke_from_standby() returns 1. */
+static inline void core_clear_standby_flag(void)
+{
+    ll_pwr_clear_standby_flag();
 }
 
 /* ---- Watchdog ---- */
