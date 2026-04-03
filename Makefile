@@ -179,6 +179,9 @@ ifeq ($(BLE_ENABLED),1)
     CFLAGS += -I$(SDK_DIR)sdk/ble/include/auto
     CFLAGS += -I$(SDK_DIR)sdk/ble/link_layer/inc
     CFLAGS += -DBLE_ENABLED=1 -DBASIC_FEATURES=1 -DBLE=1
+    CFLAGS += -D'__PACKED_STRUCT=struct __attribute__((packed))'
+    CFLAGS += -D'__PACKED_UNION=union __attribute__((packed))'
+    CFLAGS += -include $(SDK_DIR)sdk/ble/include/cmsis_compiler.h
     BLE_LIBS  = $(SDK_DIR)sdk/ble/lib/stm32wba_ble_stack_basic.a
     BLE_LIBS += $(SDK_DIR)sdk/ble/lib/LinkLayer_BLE_Basic_lib.a
     BLE_SOURCES = $(wildcard $(SDK_DIR)sdk/ble/*.c)
