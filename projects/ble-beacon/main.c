@@ -1,19 +1,41 @@
 /**
- * BLE Beacon — minimal BLE advertising test
- *
- * Phase B1: stub main for build verification.
- * Will be fleshed out in B3/B4.
+ * BLE Beacon — minimal BLE advertising on Core.W
  */
 
 #include "core.h"
+#include "stm32_seq.h"
+
+extern void ble_app_init(void);
+extern int  ble_app_advertise(const char *name);
+
+/* Debug state readable via CubeProgrammer at &ble_debug[0] */
+volatile uint32_t ble_debug[8] __attribute__((used)) = {0};
 
 int main(void)
 {
     core_init();
-    core_led_init();
+    ble_debug[0] = 0xA0;  /* alive */
+
+    ble_app_init();
+    ble_debug[0] = 0xA1;  /* init done */
+
+    /* Start advertising from the main loop — aci_gap_set_discoverable
+     * is a blocking HCI command that needs the sequencer to drain events. */
+    uint8_t adv_started = 0;
+    uint32_t loops = 0;
 
     while (1) {
-        LED_TOGGLE();
-        core_delay_ms(500);
+        UTIL_SEQ_Run(~0UL);
+        loops++;
+        ble_debug[2] = loops;
+
+        /* Start advertising after sequencer has run a bit */
+        if (!adv_started && loops > 100) {
+            ble_debug[0] = 0xA2;  /* attempting advertise */
+            int ret = ble_app_advertise("TILETOWN");
+            ble_debug[1] = (uint32_t)ret;
+            ble_debug[0] = 0xA3;  /* advertise returned */
+            adv_started = 1;
+        }
     }
 }

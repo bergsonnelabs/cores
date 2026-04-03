@@ -36,54 +36,20 @@
 
 void BAES_Reset(void)
 {
-    ll_rcc_ahb2_clk_enable(LL_AHB2_AES);
-    AES_CR = 0;
+    /* TODO: Enable SAES clock and reset peripheral.
+     * WBA55 has SAES (Secure AES) at a different base than standard AES.
+     * Stubbed for now — not needed for basic advertising. */
 }
 
 void BAES_EcbCrypt(const uint8_t *key, const uint8_t *input,
                    uint8_t *output, int encrypt)
 {
+    (void)key;
+    (void)input;
     (void)encrypt;
-
-    ll_rcc_ahb2_clk_enable(LL_AHB2_AES);
-
-    /* Disable AES before configuration */
-    AES_CR = 0;
-
-    /* Load 128-bit key (little-endian word order) */
-    uint32_t k[4];
-    memcpy(k, key, 16);
-    AES_KEYR3 = k[0];
-    AES_KEYR2 = k[1];
-    AES_KEYR1 = k[2];
-    AES_KEYR0 = k[3];
-
-    /* Configure: encrypt, no swap, ECB mode */
-    AES_CR = AES_CR_DATATYPE_NONE | AES_CR_MODE_ENCRYPT | AES_CR_EN;
-
-    /* Load 128-bit input */
-    uint32_t in[4];
-    memcpy(in, input, 16);
-    AES_DINR = in[0];
-    AES_DINR = in[1];
-    AES_DINR = in[2];
-    AES_DINR = in[3];
-
-    /* Wait for completion */
-    uint32_t timeout = 100000;
-    while (!(AES_SR & AES_SR_CCF) && --timeout)
-        ;
-
-    /* Read output */
-    uint32_t out[4];
-    out[0] = AES_DOUTR;
-    out[1] = AES_DOUTR;
-    out[2] = AES_DOUTR;
-    out[3] = AES_DOUTR;
-    memcpy(output, out, 16);
-
-    /* Disable */
-    AES_CR = 0;
+    /* TODO: Implement using SAES peripheral at correct WBA55 address.
+     * Stubbed for now — basic advertising doesn't require AES. */
+    memset(output, 0, 16);
 }
 
 /* CMAC and CCM stubs — only needed for pairing/bonding */

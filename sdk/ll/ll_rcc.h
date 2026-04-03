@@ -699,7 +699,7 @@ static inline void ll_rcc_ahb5_clk_sleep_disable(void)
 static inline void ll_pwr_enable_backup_access(void)
 {
     ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));  /* PWR_DBPCR: DBP */
+    SET_BITS(REG32(PWR_BASE + 0x28UL), (1UL << 0));  /* PWR_DBPR: DBP (bit 0) */
 }
 
 /** Get radio power mode (PWR_SR1 bits [2:1]) */
