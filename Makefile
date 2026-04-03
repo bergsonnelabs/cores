@@ -170,11 +170,33 @@ ifeq ($(KILN_ENABLED),1)
   endif
 endif
 
+# ---- BLE support (Core.W only) ----
+BLE_ENABLED ?= 0
+ifeq ($(BLE_ENABLED),1)
+  ifeq ($(MCU_PART),STM32WBA55xx)
+    LDSCRIPT = $(SDK_DIR)sdk/device/stm32wba55hg_ble.ld
+    CFLAGS += -I$(SDK_DIR)sdk/ble/include
+    CFLAGS += -I$(SDK_DIR)sdk/ble/include/auto
+    CFLAGS += -I$(SDK_DIR)sdk/ble/link_layer/inc
+    CFLAGS += -DBLE_ENABLED=1 -DBASIC_FEATURES=1 -DBLE=1
+    BLE_LIBS  = $(SDK_DIR)sdk/ble/lib/stm32wba_ble_stack_basic.a
+    BLE_LIBS += $(SDK_DIR)sdk/ble/lib/LinkLayer_BLE_Basic_lib.a
+    BLE_SOURCES = $(wildcard $(SDK_DIR)sdk/ble/*.c)
+    BLE_OBJS = $(addprefix $(BUILD_DIR)/sdk/ble/, $(notdir $(BLE_SOURCES:.c=.o)))
+  else
+    $(error BLE_ENABLED=1 is only supported for Core-W-b (STM32WBA55xx))
+  endif
+endif
+
 ASFLAGS = $(CPU_FLAGS) -Wall
 
 LDFLAGS  = $(CPU_FLAGS)
 LDFLAGS += -T$(LDSCRIPT)
+ifeq ($(BLE_ENABLED),1)
+LDFLAGS += -Wl,--no-gc-sections
+else
 LDFLAGS += -Wl,--gc-sections
+endif
 LDFLAGS += -specs=nosys.specs -specs=nano.specs
 LDFLAGS += -Wl,-Map=$(TARGET).map,--cref
 
@@ -190,6 +212,10 @@ OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(GEN_OBJS)
 ifeq ($(KILN_ENABLED),1)
   KILN_OBJS = $(addprefix $(BUILD_DIR)/kiln/, $(notdir $(KILN_SOURCES:.c=.o)))
   OBJECTS += $(KILN_OBJS)
+endif
+
+ifeq ($(BLE_ENABLED),1)
+  OBJECTS += $(BLE_OBJS)
 endif
 
 # ---- Default goal ----
@@ -234,7 +260,11 @@ all: $(TARGET).bin $(TARGET).hex size
 
 $(TARGET).elf: $(OBJECTS) $(LDSCRIPT)
 	@echo "  LD    $(notdir $@)"
+ifeq ($(BLE_ENABLED),1)
+	$(Q)$(CC) $(OBJECTS) $(BLE_LIBS) $(LDFLAGS) -o $@
+else
 	$(Q)$(CC) $(OBJECTS) $(LDFLAGS) -o $@
+endif
 
 $(TARGET).bin: $(TARGET).elf
 	@echo "  BIN   $(notdir $@)"
@@ -277,6 +307,14 @@ $(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/drivers/%.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
+endif
+
+# BLE sources (relaxed warnings — vendor headers are noisy)
+ifeq ($(BLE_ENABLED),1)
+$(BUILD_DIR)/sdk/ble/%.o: $(SDK_DIR)sdk/ble/%.c $(GEN_HEADERS)
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $(notdir $<)"
+	$(Q)$(CC) $(CFLAGS) -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -c $< -o $@
 endif
 
 size: $(TARGET).elf
