@@ -205,6 +205,11 @@ static void config_hse_tuning(void)
 
 static uint8_t ble_init_done;
 
+/* Configurable parameters — set before calling ble_app_init/advertise */
+uint8_t  ble_app_tx_power_code = 0x19;        /* default ~0 dBm */
+uint16_t ble_app_adv_interval_min = 0x00A0;   /* default 100ms (units of 0.625ms) */
+uint16_t ble_app_adv_interval_max = 0x00F0;   /* default 150ms */
+
 void ble_app_init(void)
 {
     /* 1. HSE tuning from OTP (HSE must already be running — BLE requires it) */
@@ -298,18 +303,20 @@ void ble_app_init(void)
 
     BleStack_Init(&params);
 
-    /* Set BD address (public address, matches working CubeWBA project) */
+    /* Set BD address */
     {
+        /* TODO: derive from device UID96 at 0x0BF90700 for unique addresses.
+         * Using hardcoded address for now — UID address caused NVM lookup loops. */
         uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
         aci_hal_write_config_data(0x00 /* CONFIG_DATA_PUBADDR_OFFSET */, 6, bd_addr);
     }
 
-    /* Set TX power */
-    aci_hal_set_tx_power_level(1, 0x19);
+    /* Set TX power — configurable via ble_app_tx_power_code */
+    aci_hal_set_tx_power_level(1, ble_app_tx_power_code);
 
     /* Init GATT + GAP */
     aci_gatt_init();
-    aci_gap_init(0x01 /* GAP_PERIPHERAL_ROLE */, 0x00 /* privacy disabled */, 16,
+    aci_gap_init(0x01 /* GAP_PERIPHERAL_ROLE */, 0x00 /* public addr */, 16,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
@@ -334,11 +341,11 @@ int ble_app_advertise(const char *name)
      * 3. aci_gap_update_adv_data with explicit advertising data */
 
     ret = aci_gap_set_discoverable(
-        0x00,           /* ADV_IND */
-        0x0080,         /* min interval: 80ms */
-        0x00A0,         /* max interval: 100ms */
-        0x00,           /* public address */
-        0x00,           /* no filter */
+        0x00,                       /* ADV_IND */
+        ble_app_adv_interval_min,   /* min interval */
+        ble_app_adv_interval_max,   /* max interval */
+        0x00,                       /* public address */
+        0x00,                       /* no filter */
         0, NULL,        /* no local name in this call */
         0, NULL,        /* no service UUIDs */
         0x0006, 0x0010  /* conn interval min/max */
@@ -370,5 +377,15 @@ int ble_app_advertise(const char *name)
 
     ret = aci_gap_update_adv_data(pos, adv_data);
 
+    return (ret == 0) ? 0 : -1;
+}
+
+/* ============================================================
+ * ble_app_stop_advertise — stop BLE advertising
+ * ============================================================ */
+
+int ble_app_stop_advertise(void)
+{
+    tBleStatus ret = aci_gap_set_non_discoverable();
     return (ret == 0) ? 0 : -1;
 }

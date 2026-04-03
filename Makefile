@@ -186,6 +186,7 @@ ifeq ($(BLE_ENABLED),1)
     BLE_LIBS += $(SDK_DIR)sdk/ble/lib/LinkLayer_BLE_Basic_lib.a
     BLE_SOURCES = $(wildcard $(SDK_DIR)sdk/ble/*.c)
     BLE_OBJS = $(addprefix $(BUILD_DIR)/sdk/ble/, $(notdir $(BLE_SOURCES:.c=.o)))
+    BLE_OBJS += $(BUILD_DIR)/sdk/core/core_ble.o
   else
     $(error BLE_ENABLED=1 is only supported for Core-W-b (STM32WBA55xx))
   endif
@@ -318,6 +319,12 @@ $(BUILD_DIR)/sdk/ble/%.o: $(SDK_DIR)sdk/ble/%.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -c $< -o $@
+
+# core_ble.c — in sdk/core/ but only compiled for BLE builds
+$(BUILD_DIR)/sdk/core/core_ble.o: $(SDK_DIR)sdk/core/core_ble.c $(GEN_HEADERS)
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $(notdir $<)"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 endif
 
 size: $(TARGET).elf
