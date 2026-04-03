@@ -328,7 +328,7 @@ endif
 # ---- Flash the DFU bootloader itself ----
 
 flash-bootloader:
-	$(MAKE) -C $(SDK_DIR)projects/bootloader flash
+	$(MAKE) -C $(SDK_DIR)sdk/bootloader flash
 
 # ---- GDB debug session ----
 # Step 1: Run 'make openocd' in one terminal (starts GDB server)

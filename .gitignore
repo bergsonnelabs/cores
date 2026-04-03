@@ -13,4 +13,3 @@ projects/*/core.h
 # User project directory — not tracked in the SDK repo
 projects/*
 !projects/.gitkeep
-!projects/bootloader/
