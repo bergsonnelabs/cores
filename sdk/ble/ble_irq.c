@@ -20,9 +20,9 @@ volatile uint8_t radio_sw_low_isr_is_running_high_prio = 0;
 /* Debug counter */
 volatile uint32_t dbg_radio_irq_count = 0;
 
-/* RCC_RADIOENR register — STRADIOCLKON is bit 2 */
+/* RCC_RADIOENR register — STRADIOCLKON is bit 16 */
 #define _RCC_RADIOENR_ADDR  (*(volatile uint32_t *)(0x46020C00UL + 0x208UL))
-#define _STRADIOCLKON       (1UL << 2)
+#define _STRADIOCLKON       (1UL << 16)
 
 void RADIO_IRQHandler(void)
 {

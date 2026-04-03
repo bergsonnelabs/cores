@@ -142,6 +142,9 @@ static void Ble_UserEvtRx(void)
     UTIL_SEQ_SetTask(1U << CFG_TASK_BLE_HOST, 0);
 }
 
+/* Debug counter — readable via CubeProgrammer */
+volatile uint32_t ble_indication_count;
+
 /* BLECB_Indication — called by BleStack_Process for each HCI event */
 uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
                          const uint8_t *ext_data, uint16_t ext_length)
@@ -149,6 +152,8 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
     (void)length;
     (void)ext_data;
     (void)ext_length;
+
+    ble_indication_count++;
 
     if (!ble_evt_queue_ready) return 1;
     if (data[0] != HCI_EVENT_PKT_TYPE) return 1;
@@ -236,9 +241,11 @@ void ble_app_init(void)
      *    NOT an HSE trim register) — corrupts clock config and hangs.
      *    TODO: find correct HSE trim register for WBA55. */
 
-    /* 2. Radio sleep clock setup — HSE/1024 is the preferred source */
+    /* 2. Radio sleep clock setup — LSI matches the working CubeWBA project.
+     *    HSE/1024 should also work but LSI is what's proven. */
     ll_pwr_enable_backup_access();
-    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_HSE_DIV);
+    ll_rcc_lsi1_enable_wait();
+    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
 
     /* 3. Initialize sequencer */
     UTIL_SEQ_Init();

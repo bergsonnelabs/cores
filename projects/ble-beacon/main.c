@@ -14,6 +14,7 @@ volatile uint32_t ble_debug[8] __attribute__((used)) = {0};
 int main(void)
 {
     core_init();
+    core_led_init();
     ble_debug[0] = 0xA0;  /* alive */
 
     ble_app_init();
@@ -24,16 +25,25 @@ int main(void)
     uint8_t adv_started = 0;
     uint32_t loops = 0;
 
-    /* Capture irq_counter from linklayer_plat.c */
     extern volatile int32_t irq_counter;
-    extern volatile int32_t prio_high_isr_counter;
+    extern volatile uint32_t ble_indication_count;
 
     while (1) {
         UTIL_SEQ_Run(~0UL);
         loops++;
         ble_debug[2] = loops;
         ble_debug[3] = (uint32_t)irq_counter;
-        ble_debug[4] = (uint32_t)prio_high_isr_counter;
+        ble_debug[4] = ble_indication_count;
+
+        /* Heartbeat LED — 500ms toggle */
+        {
+            static uint32_t last_toggle = 0;
+            uint32_t now = core_millis();
+            if (now - last_toggle >= 500) {
+                last_toggle = now;
+                LED_TOGGLE();
+            }
+        }
 
         /* Start advertising after sequencer has run a bit */
         if (!adv_started && loops > 100) {

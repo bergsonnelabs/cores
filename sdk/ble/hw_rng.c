@@ -9,8 +9,8 @@
 #include "ll_common.h"
 #include "ll_rcc.h"
 
-/* RNG peripheral base address (AHB2 domain) */
-#define RNG_BASE    (PERIPH_BASE + 0x060C0800UL)  /* 0x460C0800 */
+/* RNG peripheral base address (AHB2 non-secure domain) */
+#define RNG_BASE    (PERIPH_BASE + 0x020C0800UL)  /* 0x420C0800 */
 
 #define RNG_CR      REG32(RNG_BASE + 0x00UL)
 #define RNG_SR      REG32(RNG_BASE + 0x04UL)
