@@ -56,7 +56,7 @@
     "power.stop":      { "status": "verified", "note": "Stop 1 + RTC wakeup + clock recovery to 80MHz PLL. USB re-enumerates after wake (projects/power-test)" },
     "power.standby":   { "status": "verified", "note": "Standby + RTC wakeup. Full reset on wake, standby flag detected (projects/power-test)" },
     "power.rtc_wake":  { "status": "verified", "note": "LSI-based RTC wakeup timer, tested from both Stop and Standby (projects/power-test)" },
-    "power.exti_wake": "compile",
+    "power.exti_wake": { "status": "verified", "note": "Falling edge on pad 10 (PA5) wakes from Stop 1 + clock recovery (projects/power-test)" },
 
     "security.rng":  "none",
     "security.aes":  "none",
