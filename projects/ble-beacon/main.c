@@ -35,13 +35,15 @@ int main(void)
         ble_debug[3] = (uint32_t)irq_counter;
         ble_debug[4] = ble_indication_count;
 
-        /* Heartbeat LED — 500ms toggle */
+        /* Heartbeat LED — brief flash every 2s */
         {
-            static uint32_t last_toggle = 0;
+            static uint32_t last_on = 0;
             uint32_t now = core_millis();
-            if (now - last_toggle >= 500) {
-                last_toggle = now;
-                LED_TOGGLE();
+            if (now - last_on >= 2000) {
+                last_on = now;
+                LED_ON();
+            } else if (now - last_on >= 20) {
+                LED_OFF();
             }
         }
 

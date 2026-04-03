@@ -189,30 +189,19 @@ static void ble_host_task(void)
 
 /* OTP memory on WBA55 */
 #define OTP_AREA_BASE   0x0BFA0000UL
-#define OTP_SIZE        0x200
-#define OTP_ENTRY_SIZE  8
 
-/* RCC HSECR offset for trim value */
-#define RCC_HSECR       REG32(RCC_BASE + 0x18UL)
+/* RCC_ECSCR1 at offset 0x210: HSETRIM bits [21:16] */
+#define RCC_ECSCR1      REG32(RCC_BASE + 0x210UL)
 
 static void config_hse_tuning(void)
 {
-    /* Read OTP index 0 for HSE trim value.
-       If OTP is empty (0xFF), use default trim 0x0C. */
-    uint32_t *otp = (uint32_t *)(OTP_AREA_BASE);
-    uint8_t hsetune = 0x0C;  /* default */
+    /* Apply default HSE trim (0x0C).
+     * TODO: read from OTP once we find the correct non-secure OTP address.
+     * 0x0BFA0000 is not accessible — may need secure access or different base. */
+    uint8_t hsetune = 0x0C;
 
-    /* OTP format: first word contains config, check if programmed */
-    if (otp[0] != 0xFFFFFFFF) {
-        /* Byte 2 of the first OTP entry is the HSE tune value */
-        hsetune = ((uint8_t *)otp)[2];
-    }
-
-    /* Write HSE trim: HSECR register, HSETUNE bits [13:8] */
-    uint32_t cr = RCC_HSECR;
-    cr &= ~(0x3FUL << 8);
-    cr |= ((uint32_t)(hsetune & 0x3F)) << 8;
-    RCC_HSECR = cr;
+    /* Write HSE trim: RCC_ECSCR1 register, HSETRIM bits [21:16] */
+    MOD_BITS(RCC_ECSCR1, 0x3FUL << 16, ((uint32_t)(hsetune & 0x3F)) << 16);
 }
 
 /* ============================================================
@@ -236,10 +225,8 @@ static void progress(int step)
 
 void ble_app_init(void)
 {
-    /* 1. HSE tuning from OTP — SKIPPED for now.
-     *    config_hse_tuning() was writing RCC offset 0x18 (RCC_CFGR3 on WBA55,
-     *    NOT an HSE trim register) — corrupts clock config and hangs.
-     *    TODO: find correct HSE trim register for WBA55. */
+    /* 1. HSE tuning from OTP */
+    config_hse_tuning();
 
     /* 2. Radio sleep clock setup — LSI matches the working CubeWBA project.
      *    HSE/1024 should also work but LSI is what's proven. */
@@ -308,23 +295,27 @@ void ble_app_init(void)
 
     BleStack_Init(&params);
 
+    /* Store ACI return values for debugging.
+     * Readable via ble_aci_results[] in CubeProgrammer. */
+    static volatile uint8_t ble_aci_results[8] __attribute__((used));
+
     /* 10. Set BD address */
     {
         uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
-        aci_hal_write_config_data(0x00, 6, bd_addr);
+        ble_aci_results[0] = aci_hal_write_config_data(0x00, 6, bd_addr);
     }
 
-    /* 12. Set TX power */
-    aci_hal_set_tx_power_level(1, 0x19);
+    /* Set TX power */
+    ble_aci_results[1] = aci_hal_set_tx_power_level(1, 0x19);
 
-    /* 13. Init GATT + GAP */
-    aci_gatt_init();
-    aci_gap_init(0x01, 0x00, 16,
+    /* Init GATT + GAP */
+    ble_aci_results[2] = aci_gatt_init();
+    ble_aci_results[3] = aci_gap_init(0x01, 0x00, 16,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
 
-    /* 11. Init service controller */
+    /* Init service controller */
     SVCCTL_Init();
 
     ble_init_done = 1;
@@ -336,26 +327,43 @@ void ble_app_init(void)
 
 int ble_app_advertise(const char *name)
 {
-    uint8_t name_len = 0;
-    while (name[name_len] && name_len < 20) name_len++;
+    tBleStatus ret;
 
-    /* Local name with AD type prefix (0x09 = Complete Local Name) */
-    uint8_t local_name[22];
-    local_name[0] = 0x09;
-    for (uint8_t i = 0; i < name_len; i++)
-        local_name[i + 1] = (uint8_t)name[i];
+    /* Match the working CubeWBA project exactly:
+     * 1. aci_gap_set_discoverable with NO name (all zeros)
+     * 2. aci_gap_delete_ad_type to remove TX power level
+     * 3. aci_gap_update_adv_data with explicit advertising data */
 
-    tBleStatus ret = aci_gap_set_discoverable(
+    ret = aci_gap_set_discoverable(
         0x00,           /* ADV_IND */
         0x0080,         /* min interval: 80ms */
         0x00A0,         /* max interval: 100ms */
         0x00,           /* public address */
         0x00,           /* no filter */
-        name_len + 1,   /* local name length (includes AD type) */
-        local_name,
+        0, NULL,        /* no local name in this call */
         0, NULL,        /* no service UUIDs */
         0x0006, 0x0010  /* conn interval min/max */
     );
+
+    if (ret != 0) return -1;
+
+    /* Remove TX power level from advertising data */
+    aci_gap_delete_ad_type(0x0A);  /* AD_TYPE_TX_POWER_LEVEL */
+
+    /* Build advertising data with complete local name */
+    uint8_t name_len = 0;
+    while (name[name_len] && name_len < 20) name_len++;
+
+    uint8_t adv_data[31];
+    uint8_t pos = 0;
+
+    /* AD element: Complete Local Name */
+    adv_data[pos++] = name_len + 1;   /* length of this AD element */
+    adv_data[pos++] = 0x09;           /* AD type: Complete Local Name */
+    for (uint8_t i = 0; i < name_len; i++)
+        adv_data[pos++] = (uint8_t)name[i];
+
+    ret = aci_gap_update_adv_data(pos, adv_data);
 
     return (ret == 0) ? 0 : -1;
 }
