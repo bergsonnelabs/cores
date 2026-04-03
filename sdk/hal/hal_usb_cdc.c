@@ -693,13 +693,14 @@ void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb)
 
 int hal_usb_cdc_write(const uint8_t *buf, uint16_t len)
 {
-    if (!_cdc.configured) return -1;
+    if (!_cdc.configured || !_cdc.dtr) return -1;
 
     uint16_t sent = 0;
     while (sent < len) {
-        /* Wait for previous TX to complete */
-        while (_cdc.tx_busy)
-            ;
+        /* Wait for previous TX to complete, bail if host disconnects */
+        while (_cdc.tx_busy) {
+            if (!_cdc.dtr) return (int)sent;
+        }
 
         uint16_t chunk = len - sent;
         if (chunk > EP1_MAX_PACKET) chunk = EP1_MAX_PACKET;
