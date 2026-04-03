@@ -52,6 +52,12 @@
     "conn.ble_gatt":"na",
     "conn.fdcan":   "na",
 
+    "power.sleep":     "compile",
+    "power.stop":      { "status": "compile", "note": "Entry works but clock recovery after wake not yet implemented — app will run at 4MHz MSI" },
+    "power.standby":   "compile",
+    "power.rtc_wake":  "compile",
+    "power.exti_wake": "compile",
+
     "security.rng":  "none",
     "security.aes":  "none",
     "security.pka":  "na",
