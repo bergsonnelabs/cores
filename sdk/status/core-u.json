@@ -9,7 +9,7 @@
     "system.led":   "verified",
     "system.tick":  "verified",
     "system.delay": "verified",
-    "system.fault": "compile",
+    "system.fault": { "status": "verified", "note": "Register dump over polled USB CDC + SOS blink. HardFault verified on Core.U.2 (projects/fault-test)" },
 
     "clocks.hsi":  "verified",
     "clocks.hse":  "na",
