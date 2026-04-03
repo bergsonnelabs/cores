@@ -52,11 +52,12 @@
     "conn.ble_gatt":"na",
     "conn.fdcan":   "na",
 
-    "power.sleep":     "compile",
-    "power.stop":      { "status": "compile", "note": "Entry works but clock recovery after wake not yet implemented — app will run at 4MHz MSI" },
-    "power.standby":   "compile",
-    "power.rtc_wake":  "compile",
-    "power.exti_wake": "compile",
+    "power.sleep":     { "status": "verified", "note": "WFI sleep, wakes on SysTick. Verified on Core.U.2 (projects/power-test)" },
+    "power.stop":      { "status": "verified", "note": "Stop 1 + RTC wakeup + clock recovery to 80MHz PLL. USB re-enumerates after wake (projects/power-test)" },
+    "power.standby":   { "status": "verified", "note": "Standby + RTC wakeup. Full reset on wake, standby flag detected (projects/power-test)" },
+    "power.rtc_wake":  { "status": "verified", "note": "LSI-based RTC wakeup timer, tested from both Stop and Standby (projects/power-test)" },
+    "power.exti_wake": { "status": "verified", "note": "Falling edge on pad 10 (PA5) wakes from Stop 1 + clock recovery (projects/power-test)" },
+    "power.wkup_wake": { "status": "verified", "note": "core_standby_until_on_change(8, EDGE_FALLING) verified on Core.U.2 (projects/power-test)" },
 
     "security.rng":  "none",
     "security.aes":  "none",

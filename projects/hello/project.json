@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "hello",
-    "core": "Core-U-2-a",
-    "description": "Hello world — blink + USB serial + DFU"
-  },
-  "clock": "max",
-  "pads": {}
-}
