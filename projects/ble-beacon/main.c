@@ -24,13 +24,23 @@ int main(void)
     uint8_t adv_started = 0;
     uint32_t loops = 0;
 
+    /* Capture irq_counter from linklayer_plat.c */
+    extern volatile int32_t irq_counter;
+    extern volatile int32_t prio_high_isr_counter;
+
     while (1) {
         UTIL_SEQ_Run(~0UL);
         loops++;
         ble_debug[2] = loops;
+        ble_debug[3] = (uint32_t)irq_counter;
+        ble_debug[4] = (uint32_t)prio_high_isr_counter;
 
         /* Start advertising after sequencer has run a bit */
         if (!adv_started && loops > 100) {
+            /* Force-enable interrupts — link layer init leaves them
+             * disabled (irq_counter imbalance). Radio ISR needs to fire
+             * for HCI command responses to arrive. */
+            __asm volatile ("cpsie i" ::: "memory");
             ble_debug[0] = 0xA2;  /* attempting advertise */
             int ret = ble_app_advertise("TILETOWN");
             ble_debug[1] = (uint32_t)ret;
