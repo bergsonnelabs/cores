@@ -207,7 +207,7 @@ static uint8_t ble_init_done;
 
 void ble_app_init(void)
 {
-    /* 1. HSE tuning from OTP */
+    /* 1. HSE tuning from OTP (HSE must already be running — BLE requires it) */
     config_hse_tuning();
 
     /* 1b. Match working project's peripheral clock config:
