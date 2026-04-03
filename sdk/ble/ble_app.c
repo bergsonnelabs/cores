@@ -142,9 +142,6 @@ static void Ble_UserEvtRx(void)
     UTIL_SEQ_SetTask(1U << CFG_TASK_BLE_HOST, 0);
 }
 
-/* Debug counter — readable via CubeProgrammer */
-volatile uint32_t ble_indication_count;
-
 /* BLECB_Indication — called by BleStack_Process for each HCI event */
 uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
                          const uint8_t *ext_data, uint16_t ext_length)
@@ -152,8 +149,6 @@ uint8_t BLECB_Indication(const uint8_t *data, uint16_t length,
     (void)length;
     (void)ext_data;
     (void)ext_length;
-
-    ble_indication_count++;
 
     if (!ble_evt_queue_ready) return 1;
     if (data[0] != HCI_EVENT_PKT_TYPE) return 1;
@@ -209,19 +204,6 @@ static void config_hse_tuning(void)
  * ============================================================ */
 
 static uint8_t ble_init_done;
-
-/* Debug progress callback — set by app before calling ble_app_init */
-static void (*_progress_cb)(int step);
-
-void ble_app_set_progress_cb(void (*cb)(int step))
-{
-    _progress_cb = cb;
-}
-
-static void progress(int step)
-{
-    if (_progress_cb) _progress_cb(step);
-}
 
 void ble_app_init(void)
 {
@@ -316,22 +298,18 @@ void ble_app_init(void)
 
     BleStack_Init(&params);
 
-    /* Store ACI return values for debugging.
-     * Readable via ble_aci_results[] in CubeProgrammer. */
-    static volatile uint8_t ble_aci_results[8] __attribute__((used));
-
-    /* 10. Set BD address */
+    /* Set BD address (public address, matches working CubeWBA project) */
     {
         uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
-        ble_aci_results[0] = aci_hal_write_config_data(0x00, 6, bd_addr);
+        aci_hal_write_config_data(0x00 /* CONFIG_DATA_PUBADDR_OFFSET */, 6, bd_addr);
     }
 
     /* Set TX power */
-    ble_aci_results[1] = aci_hal_set_tx_power_level(1, 0x19);
+    aci_hal_set_tx_power_level(1, 0x19);
 
     /* Init GATT + GAP */
-    ble_aci_results[2] = aci_gatt_init();
-    ble_aci_results[3] = aci_gap_init(0x01, 0x00, 16,
+    aci_gatt_init();
+    aci_gap_init(0x01 /* GAP_PERIPHERAL_ROLE */, 0x00 /* privacy disabled */, 16,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
@@ -369,7 +347,13 @@ int ble_app_advertise(const char *name)
     if (ret != 0) return -1;
 
     /* Remove TX power level from advertising data */
-    aci_gap_delete_ad_type(0x0A);  /* AD_TYPE_TX_POWER_LEVEL */
+    #ifndef AD_TYPE_TX_POWER_LEVEL
+    #define AD_TYPE_TX_POWER_LEVEL  0x0A
+    #endif
+    #ifndef AD_TYPE_COMPLETE_NAME
+    #define AD_TYPE_COMPLETE_NAME   0x09
+    #endif
+    aci_gap_delete_ad_type(AD_TYPE_TX_POWER_LEVEL);
 
     /* Build advertising data with complete local name */
     uint8_t name_len = 0;
@@ -380,7 +364,7 @@ int ble_app_advertise(const char *name)
 
     /* AD element: Complete Local Name */
     adv_data[pos++] = name_len + 1;   /* length of this AD element */
-    adv_data[pos++] = 0x09;           /* AD type: Complete Local Name */
+    adv_data[pos++] = AD_TYPE_COMPLETE_NAME;
     for (uint8_t i = 0; i < name_len; i++)
         adv_data[pos++] = (uint8_t)name[i];
 

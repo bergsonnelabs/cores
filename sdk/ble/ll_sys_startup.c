@@ -16,7 +16,9 @@
   ******************************************************************************
   */
 
+#ifndef BLE
 #define BLE  /* Enable BLE code path */
+#endif
 
 #include "ll_fw_config.h"
 #include "ll_sys.h"

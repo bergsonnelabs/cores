@@ -44,6 +44,7 @@
  * - numberOfVirtualMemory = 3
  * - actualSizeOfThePoolToGive = sizeOfDesiredPool + numberOfVirtualMemory * AMM_VIRTUAL_INFO_ELEMENT_SIZE
  */
+#undef AMM_VIRTUAL_INFO_ELEMENT_SIZE  /* override app_conf.h forward-declare */
 #define AMM_VIRTUAL_INFO_ELEMENT_SIZE (uint32_t)(sizeof (VirtualMemoryInfo_t) / sizeof (uint32_t))
 
 /* Exported types ------------------------------------------------------------*/

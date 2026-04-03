@@ -142,6 +142,7 @@ void ll_sys_bg_process(void)
     extern void emngr_handle_all_events(void);
     extern void HostStack_Process(void);
     extern void ll_sys_schedule_bg_process(void);
+    extern int ll_sys_dp_slp_exit(void);
 
     uint8_t can_sleep = emngr_can_mcu_sleep();
     if (can_sleep == 0)
