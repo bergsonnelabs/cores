@@ -228,11 +228,32 @@ void ble_app_init(void)
     /* 1. HSE tuning from OTP */
     config_hse_tuning();
 
-    /* 2. Radio sleep clock setup — LSI matches the working CubeWBA project.
-     *    HSE/1024 should also work but LSI is what's proven. */
+    /* 1b. Match working project's peripheral clock config:
+     *     - RNG clock source = HSI (CCIPR2 RNGSEL bits [13:12] = 0b10)
+     *     - Enable HASH clock (AHB2ENR bit 16) — used as BLE SW low ISR
+     *     - Enable RNG clock (AHB2ENR bit 18) */
+    MOD_BITS(REG32(RCC_BASE + 0xE4UL), 0x3UL << 12, 0x2UL << 12);
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 16) | (1UL << 18));  /* HASHEN + RNGEN */
+
+    /* Configure RNG: enable conditioning, set NIST compliance */
+    {
+        #define RNG_BASE_NS  (PERIPH_BASE + 0x020C0800UL)  /* 0x420C0800 */
+        #define RNG_CR_REG   REG32(RNG_BASE_NS + 0x00UL)
+        /* Disable RNG before config */
+        RNG_CR_REG = 0;
+        /* RNGEN=1, CONDRST=1 (start conditioning reset) */
+        RNG_CR_REG = (1UL << 2) | (1UL << 6);
+        /* Clear CONDRST to complete conditioning config */
+        RNG_CR_REG = (1UL << 2);
+    }
+
+    /* 2. Radio sleep clock setup — HSE/1024.
+     *    Register dump of working CubeWBA project confirms RADIOSTSEL=0b10
+     *    (HSE/1024) despite its code saying RCC_RADIOSTCLKSOURCE_LSI —
+     *    the HAL value maps differently than the LL value. */
     ll_pwr_enable_backup_access();
-    ll_rcc_lsi1_enable_wait();
-    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
+    ll_rcc_lsi1_enable_wait();  /* LSI1 still needed by link layer */
+    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_HSE_DIV);
 
     /* 3. Initialize sequencer */
     UTIL_SEQ_Init();
