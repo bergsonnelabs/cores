@@ -1,8 +1,8 @@
 /**
- * ble_app_glue.c — Application-level callbacks and stubs for BLE stack
+ * ble_app_glue.c — Application-level callbacks for BLE stack
  *
- * Provides symbols that the BLE middleware and binary libs expect
- * the application to define. Will be extended in Phase B3/B4.
+ * Handles HCI events (connection, disconnection, PHY updates),
+ * AMM callbacks, and debug signal stubs.
  */
 
 #include <stdint.h>
@@ -12,11 +12,95 @@
 #include "advanced_memory_manager.h"
 #include "app_conf.h"
 #include "svc_ctl.h"
+#include "ble_std.h"
+#include "auto/ble_types.h"
 #include "core_config.h"
 
 /* ---- SystemCoreClock (CMSIS convention) ---- */
 
 uint32_t SystemCoreClock = SYSCLK_HZ;
+
+/* ---- Connection state (readable from core_ble.c) ---- */
+
+volatile uint8_t  ble_connected;
+volatile uint16_t ble_conn_handle;
+
+/* User callbacks (set via core_ble API) */
+void (*ble_on_connect_cb)(void);
+void (*ble_on_disconnect_cb)(void);
+
+/* ---- GAP command response release ---- */
+
+static void gap_cmd_resp_release(void)
+{
+    UTIL_SEQ_SetEvt(1U << CFG_IDLEEVT_PROC_GAP_COMPLETE);
+}
+
+/* ---- SVCCTL_App_Notification ---- */
+
+SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
+{
+    hci_event_pckt *p_event = (hci_event_pckt *)((hci_uart_pckt *)p_Pckt)->data;
+
+    switch (p_event->evt)
+    {
+    case HCI_DISCONNECTION_COMPLETE_EVT_CODE:
+    {
+        ble_connected = 0;
+        ble_conn_handle = 0xFFFF;
+        gap_cmd_resp_release();
+        if (ble_on_disconnect_cb) ble_on_disconnect_cb();
+        break;
+    }
+
+    case HCI_LE_META_EVT_CODE:
+    {
+        evt_le_meta_event *p_meta = (evt_le_meta_event *)p_event->data;
+
+        switch (p_meta->subevent)
+        {
+        case HCI_LE_CONNECTION_COMPLETE_SUBEVT_CODE:
+        {
+            hci_le_connection_complete_event_rp0 *p_conn =
+                (hci_le_connection_complete_event_rp0 *)p_meta->data;
+            ble_connected = 1;
+            ble_conn_handle = p_conn->Connection_Handle;
+            if (ble_on_connect_cb) ble_on_connect_cb();
+            break;
+        }
+
+        case HCI_LE_ENHANCED_CONNECTION_COMPLETE_SUBEVT_CODE:
+        {
+            hci_le_enhanced_connection_complete_event_rp0 *p_conn =
+                (hci_le_enhanced_connection_complete_event_rp0 *)p_meta->data;
+            ble_connected = 1;
+            ble_conn_handle = p_conn->Connection_Handle;
+            if (ble_on_connect_cb) ble_on_connect_cb();
+            break;
+        }
+
+        case HCI_LE_PHY_UPDATE_COMPLETE_SUBEVT_CODE:
+            gap_cmd_resp_release();
+            break;
+
+        case HCI_LE_CONNECTION_UPDATE_COMPLETE_SUBEVT_CODE:
+            break;
+
+        default:
+            break;
+        }
+        break;
+    }
+
+    case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
+        break;
+
+    default:
+        break;
+    }
+
+    return SVCCTL_UserEvtFlowEnable;
+}
 
 /* ---- AMM callbacks ---- */
 
@@ -30,15 +114,6 @@ void AMM_RegisterBasicMemoryManager(AMM_BasicMemoryManagerFunctions_t *const p_f
 void AMM_ProcessRequest(void)
 {
     UTIL_SEQ_SetTask(1U << CFG_TASK_AMM, CFG_SEQ_PRIO_0);
-}
-
-/* ---- SVCCTL callback ---- */
-
-SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *pckt)
-{
-    (void)pckt;
-    /* Will be implemented in B4 for event routing */
-    return SVCCTL_UserEvtFlowEnable;
 }
 
 /* ---- Link layer debug signal stubs ---- */

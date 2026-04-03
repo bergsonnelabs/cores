@@ -72,4 +72,22 @@ void core_ble_set_tx_power(uint8_t level);
  */
 void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms);
 
+/**
+ * Check if a BLE central is connected.
+ * @return  1 if connected, 0 if not.
+ */
+int core_ble_connected(void);
+
+/**
+ * Set callback for connection events.
+ * Called from BLE stack context when a central connects.
+ */
+void core_ble_on_connect(void (*cb)(void));
+
+/**
+ * Set callback for disconnection events.
+ * Called from BLE stack context when the central disconnects.
+ */
+void core_ble_on_disconnect(void (*cb)(void));
+
 #endif /* CORE_BLE_H */

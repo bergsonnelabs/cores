@@ -1,11 +1,22 @@
 /**
- * BLE Beacon — minimal BLE advertising on Core.W
+ * BLE Beacon — advertising + connection on Core.W
  *
- * Advertises as "TILETOWN" using the core_ble API.
+ * Advertises as "TILETOWN". LED stays on while connected.
+ * Heartbeat blink when not connected.
  */
 
 #include "core.h"
 #include "core_ble.h"
+
+static void on_connect(void)
+{
+    LED_ON();
+}
+
+static void on_disconnect(void)
+{
+    LED_OFF();
+}
 
 int main(void)
 {
@@ -13,19 +24,23 @@ int main(void)
     core_led_init();
 
     core_ble_init();
+    core_ble_on_connect(on_connect);
+    core_ble_on_disconnect(on_disconnect);
     core_ble_advertise("TILETOWN");
 
     while (1) {
         core_ble_process();
 
-        /* Heartbeat LED — brief flash every 2s */
-        static uint32_t last_on = 0;
-        uint32_t now = core_millis();
-        if (now - last_on >= 2000) {
-            last_on = now;
-            LED_ON();
-        } else if (now - last_on >= 20) {
-            LED_OFF();
+        /* Heartbeat when not connected */
+        if (!core_ble_connected()) {
+            static uint32_t last_on = 0;
+            uint32_t now = core_millis();
+            if (now - last_on >= 2000) {
+                last_on = now;
+                LED_ON();
+            } else if (now - last_on >= 20) {
+                LED_OFF();
+            }
         }
     }
 }

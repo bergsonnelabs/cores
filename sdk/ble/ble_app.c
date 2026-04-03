@@ -282,7 +282,11 @@ void ble_app_init(void)
     UTIL_SEQ_RegTask(1U << CFG_TASK_HCI_ASYNCH_EVT_ID, 0, Ble_UserEvtRx);
     UTIL_SEQ_RegTask(1U << CFG_TASK_BLE_HOST, 0, ble_host_task);
 
-    /* 9. Initialize BLE stack */
+    /* 9. Initialize NVM (RAM-backed security database) */
+    extern void NVM_Init(void *buffer, uint32_t offset, uint32_t size);
+    NVM_Init(NULL, 0, 0);
+
+    /* 10. Initialize BLE stack */
     BleStack_init_t params;
     params.numAttrRecord           = CFG_BLE_NUM_GATT_ATTRIBUTES;
     params.numAttrServ             = CFG_BLE_NUM_GATT_SERVICES;
@@ -305,10 +309,19 @@ void ble_app_init(void)
 
     /* Set BD address */
     {
-        /* TODO: derive from device UID96 at 0x0BF90700 for unique addresses.
-         * Using hardcoded address for now — UID address caused NVM lookup loops. */
         uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
         aci_hal_write_config_data(0x00 /* CONFIG_DATA_PUBADDR_OFFSET */, 6, bd_addr);
+    }
+
+    /* Set Identity Root (IR) and Encryption Root (ER) keys.
+     * Required for connection security — even without pairing. */
+    {
+        uint8_t ir[16] = {0x12,0x34,0x56,0x78,0x9A,0xBC,0xDE,0xF0,
+                          0x12,0x34,0x56,0x78,0x9A,0xBC,0xDE,0xF0};
+        uint8_t er[16] = {0xFE,0xDC,0xBA,0x09,0x87,0x65,0x43,0x21,
+                          0xFE,0xDC,0xBA,0x09,0x87,0x65,0x43,0x21};
+        aci_hal_write_config_data(0x18 /* CONFIG_DATA_IR_OFFSET */, 16, ir);
+        aci_hal_write_config_data(0x08 /* CONFIG_DATA_ER_OFFSET */, 16, er);
     }
 
     /* Set TX power — configurable via ble_app_tx_power_code */

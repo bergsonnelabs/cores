@@ -101,3 +101,25 @@ void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms)
     ble_app_adv_interval_min = (uint16_t)((uint32_t)min_ms * 8 / 5);
     ble_app_adv_interval_max = (uint16_t)((uint32_t)max_ms * 8 / 5);
 }
+
+/* ---- Connection API ---- */
+
+/* State and callbacks defined in ble_app_glue.c */
+extern volatile uint8_t ble_connected;
+extern void (*ble_on_connect_cb)(void);
+extern void (*ble_on_disconnect_cb)(void);
+
+int core_ble_connected(void)
+{
+    return ble_connected;
+}
+
+void core_ble_on_connect(void (*cb)(void))
+{
+    ble_on_connect_cb = cb;
+}
+
+void core_ble_on_disconnect(void (*cb)(void))
+{
+    ble_on_disconnect_cb = cb;
+}
