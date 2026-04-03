@@ -8,6 +8,9 @@
 #ifndef CORE_USB_H
 #define CORE_USB_H
 
+/* USB CDC is only available on families with a USB peripheral (L4, U5) */
+#if defined(STM32L422xx) || defined(STM32H523xx)
+
 #include "hal_usb_cdc.h"
 #include <stdio.h>    /* snprintf, printf — commonly used with USB serial output */
 
@@ -64,5 +67,7 @@ static inline int core_usb_try_read(uint8_t *byte)
 {
     return hal_usb_cdc_rx_try(byte);
 }
+
+#endif /* STM32L422xx || STM32H523xx */
 
 #endif /* CORE_USB_H */
