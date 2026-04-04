@@ -174,7 +174,16 @@ uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
 
 int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)
 {
-    tBleStatus ret = aci_gatt_update_char_value(0, char_handle, 0, len, (const uint8_t *)data);
+    /* Find the service handle for this characteristic */
+    uint16_t svc_handle = 0;
+    for (uint8_t i = 0; i < char_count; i++) {
+        if (chars[i].char_handle == char_handle) {
+            svc_handle = chars[i].svc_handle;
+            break;
+        }
+    }
+
+    tBleStatus ret = aci_gatt_update_char_value(svc_handle, char_handle, 0, len, (const uint8_t *)data);
     return (ret == 0) ? 0 : -1;
 }
 
