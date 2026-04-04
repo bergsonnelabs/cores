@@ -53,9 +53,6 @@ static void _register_services(void)
     if (_services_builder) _services_builder();
 }
 
-/* Tracking how many chars in current service for add_service */
-static uint8_t _pending_num_chars;
-
 /* ============================================================
  * Lifecycle
  * ============================================================ */

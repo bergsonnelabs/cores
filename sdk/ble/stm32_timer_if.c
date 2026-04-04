@@ -73,19 +73,8 @@ static UTIL_TIMER_Status_t TimerIF_Init(void)
     /* Reset LPTIM2 */
     LPTIM2_CR = 0;
 
-    /* LPTIM2 runs from APB1 clock (SYSCLK).
-     * We use the internal prescaler to get ~1 kHz:
-     *   32 MHz / 32 = 1 MHz → ARR counts in microseconds
-     * Actually, for 1ms ticks, let's use prescaler /32 and
-     * multiply timeout by (SYSCLK/32/1000) = 1000 at 32MHz.
-     * Simpler: just use /1 prescaler and set ARR = timeout * (SYSCLK/1000)
-     * But LPTIM ARR is only 16 bits (max 65535).
-     *
-     * Best approach: prescaler = SYSCLK_HZ/1000000 won't work directly.
-     * Use prescaler /32: effective clock = SYSCLK/32.
-     * 1ms = SYSCLK/32/1000 ticks = 32000000/32/1000 = 1000 ticks at 32MHz.
-     * Max timeout = 65535/1000 = 65ms. That's enough for BLE timers.
-     */
+    /* Prescaler /32: effective clock = SYSCLK/32.
+     * At 32MHz: 1ms = 1000 ticks. Max timeout = 65ms (16-bit ARR). */
     LPTIM2_CFGR = LPTIM_CFGR_PRESC_DIV32;
 
     /* Enable LPTIM2 interrupt in NVIC */

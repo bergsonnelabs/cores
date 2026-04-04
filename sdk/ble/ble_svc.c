@@ -189,8 +189,9 @@ int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)
 
 int ble_svc_notify(uint16_t char_handle)
 {
-    /* Notification is triggered by the update_char_value call if the
-     * client has enabled notifications via CCCD. The stack handles
-     * this automatically — just update the value. */
+    /* No-op: notifications are sent automatically by ble_svc_set_value()
+     * when the client has subscribed (CCCD enabled). Calling set_value
+     * both updates the stored value and triggers the notification. */
+    (void)char_handle;
     return 0;
 }

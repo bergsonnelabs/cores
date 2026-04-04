@@ -440,7 +440,6 @@ int ble_app_advertise(const char *name)
     for (uint8_t i = 0; i < name_len; i++)
         adv_data[pos++] = (uint8_t)name[i];
 
-    /* Manufacturer data removed for now — was causing advertising issues */
 
     ret = aci_gap_update_adv_data(pos, adv_data);
 
