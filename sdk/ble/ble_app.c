@@ -349,7 +349,7 @@ void ble_app_init(void)
 
     /* Set BD address */
     {
-        uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x08, 0x00};
+        uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x09, 0x00};
         aci_hal_write_config_data(0x00 /* CONFIG_DATA_PUBADDR_OFFSET */, 6, bd_addr);
     }
 
@@ -432,21 +432,7 @@ int ble_app_advertise(const char *name)
     for (uint8_t i = 0; i < name_len; i++)
         adv_data[pos++] = (uint8_t)name[i];
 
-    /* AD element: Manufacturer Specific Data
-     * Company ID 0xFFFF (reserved for testing), then "Bergsonne Labs" */
-    #define AD_TYPE_MANUFACTURER_DATA 0xFF
-    {
-        const char *mfr = "Bergsonne Labs";
-        uint8_t mfr_len = 14;
-        if (pos + 2 + 2 + mfr_len <= 31) {
-            adv_data[pos++] = 2 + mfr_len + 1;      /* length */
-            adv_data[pos++] = AD_TYPE_MANUFACTURER_DATA;
-            adv_data[pos++] = 0xFF;                   /* company ID low (test) */
-            adv_data[pos++] = 0xFF;                   /* company ID high (test) */
-            for (uint8_t i = 0; i < mfr_len; i++)
-                adv_data[pos++] = (uint8_t)mfr[i];
-        }
-    }
+    /* Manufacturer data removed for now — was causing advertising issues */
 
     ret = aci_gap_update_adv_data(pos, adv_data);
 
