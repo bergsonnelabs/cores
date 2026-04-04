@@ -210,9 +210,56 @@ void baes_run_test(void)
         return;
     }
 
+    /* Method 7: bswap each word + reverse order for KEYR3=MSB, DINR MSB first
+     * KEYR3=bswap(k[0]), KEYR2=bswap(k[1]), KEYR1=bswap(k[2]), KEYR0=bswap(k[3])
+     * Same for DINR. This puts big-endian key/data into the registers correctly. */
+    memcpy(k, nist_key, 16);
+    memcpy(pt, nist_pt, 16);
+    {
+        /* Reverse word order AND bswap each word = full byte reversal of 16 bytes */
+        uint32_t rk[4] = { __builtin_bswap32(k[3]), __builtin_bswap32(k[2]),
+                           __builtin_bswap32(k[1]), __builtin_bswap32(k[0]) };
+        uint32_t rpt[4] = { __builtin_bswap32(pt[3]), __builtin_bswap32(pt[2]),
+                            __builtin_bswap32(pt[1]), __builtin_bswap32(pt[0]) };
+        hw_aes_encrypt(rk, rpt, ct);
+        /* Reverse output the same way */
+        uint32_t rct[4] = { __builtin_bswap32(ct[3]), __builtin_bswap32(ct[2]),
+                            __builtin_bswap32(ct[1]), __builtin_bswap32(ct[0]) };
+        memcpy(result, rct, 16);
+    }
+    if (memcmp(result, nist_ct, 16) == 0) {
+        aes_test_method = 7;
+        aes_test_result = 1;
+        memcpy((void*)aes_test_output, result, 16);
+        return;
+    }
+
+    /* Method 8: Key = bswap + reverse (KEYR3=MSB), Data = bswap only (DINR MSB first)
+     * Key: KEYR0=bswap(k[3])..KEYR3=bswap(k[0])  (reverse order, each word bswap'd)
+     * Data: DINR[0]=bswap(pt[0])..DINR[3]=bswap(pt[3])  (natural order, each word bswap'd)
+     * Output: result = bswap(DOUTR[0..3])  (natural order, each word bswap'd) */
+    memcpy(k, nist_key, 16);
+    memcpy(pt, nist_pt, 16);
+    {
+        uint32_t rk[4] = { __builtin_bswap32(k[3]), __builtin_bswap32(k[2]),
+                           __builtin_bswap32(k[1]), __builtin_bswap32(k[0]) };
+        uint32_t bpt[4] = { __builtin_bswap32(pt[0]), __builtin_bswap32(pt[1]),
+                            __builtin_bswap32(pt[2]), __builtin_bswap32(pt[3]) };
+        hw_aes_encrypt(rk, bpt, ct);
+        uint32_t bct[4] = { __builtin_bswap32(ct[0]), __builtin_bswap32(ct[1]),
+                            __builtin_bswap32(ct[2]), __builtin_bswap32(ct[3]) };
+        memcpy(result, bct, 16);
+    }
+    if (memcmp(result, nist_ct, 16) == 0) {
+        aes_test_method = 8;
+        aes_test_result = 1;
+        memcpy((void*)aes_test_output, result, 16);
+        return;
+    }
+
     /* None matched */
     aes_test_result = 2;
-    memcpy((void*)aes_test_output, ct, 16);  /* last attempt's output */
+    memcpy((void*)aes_test_output, ct, 16);
 }
 
 /* ---- BAES API (used by BLE stack) ---- */
@@ -228,54 +275,29 @@ void BAES_EcbCrypt(const uint8_t *key, const uint8_t *input,
 {
     (void)encrypt;
 
-    /* Use whichever method the test vector validated.
-     * Default to method 2 (BAES_SWAP) which matches the ST code pattern. */
-    uint32_t k[4], in[4], out[4];
+    /* Match ST's baes_ecb.c exactly:
+     * 1. Key loaded with HW_AES_REV: KEYR0=k[0]..KEYR3=k[3] (direct memcpy order)
+     * 2. Input BAES_SWAP'd: word order reversed [0,1,2,3] → [3,2,1,0]
+     * 3. DATATYPE=00 (32-bit, no byte swap)
+     * 4. Output BAES_SWAP'd back: [3,2,1,0] → [0,1,2,3]
+     *
+     * This is NOT the same as standard big-endian AES (which is method 8).
+     * The BLE stack's SMP code expects this specific byte transformation. */
+    uint32_t k[4], in[4], ct[4];
 
     memcpy(k, key, 16);
     memcpy(in, input, 16);
 
-    uint32_t method = aes_test_method ? aes_test_method : 2;
+    /* BAES_SWAP input: reverse word order */
+    { uint32_t t; t=in[0]; in[0]=in[3]; in[3]=t; t=in[1]; in[1]=in[2]; in[2]=t; }
 
-    switch (method) {
-    case 1: /* direct */
-        hw_aes_encrypt(k, in, out);
-        break;
-    case 2: /* BAES_SWAP input/output, key direct */
-        { uint32_t t; t=in[0]; in[0]=in[3]; in[3]=t; t=in[1]; in[1]=in[2]; in[2]=t; }
-        hw_aes_encrypt(k, in, out);
-        { uint32_t t; t=out[0]; out[0]=out[3]; out[3]=t; t=out[1]; out[1]=out[2]; out[2]=t; }
-        break;
-    case 3: /* BAES_SWAP key AND input/output */
-        { uint32_t t; t=k[0]; k[0]=k[3]; k[3]=t; t=k[1]; k[1]=k[2]; k[2]=t; }
-        { uint32_t t; t=in[0]; in[0]=in[3]; in[3]=t; t=in[1]; in[1]=in[2]; in[2]=t; }
-        hw_aes_encrypt(k, in, out);
-        { uint32_t t; t=out[0]; out[0]=out[3]; out[3]=t; t=out[1]; out[1]=out[2]; out[2]=t; }
-        break;
-    case 4: /* bswap32 each word */
-        for (int i=0;i<4;i++) in[i]=__builtin_bswap32(in[i]);
-        hw_aes_encrypt(k, in, out);
-        for (int i=0;i<4;i++) out[i]=__builtin_bswap32(out[i]);
-        break;
-    case 5: /* bswap32 key + input/output */
-        for (int i=0;i<4;i++) k[i]=__builtin_bswap32(k[i]);
-        for (int i=0;i<4;i++) in[i]=__builtin_bswap32(in[i]);
-        hw_aes_encrypt(k, in, out);
-        for (int i=0;i<4;i++) out[i]=__builtin_bswap32(out[i]);
-        break;
-    case 6: /* BAES_SWAP + bswap32 */
-        { uint32_t t; t=in[0]; in[0]=in[3]; in[3]=t; t=in[1]; in[1]=in[2]; in[2]=t; }
-        for (int i=0;i<4;i++) in[i]=__builtin_bswap32(in[i]);
-        hw_aes_encrypt(k, in, out);
-        for (int i=0;i<4;i++) out[i]=__builtin_bswap32(out[i]);
-        { uint32_t t; t=out[0]; out[0]=out[3]; out[3]=t; t=out[1]; out[1]=out[2]; out[2]=t; }
-        break;
-    default:
-        hw_aes_encrypt(k, in, out);
-        break;
-    }
+    /* Key goes directly (HW_AES_REV mode) */
+    hw_aes_encrypt(k, in, ct);
 
-    memcpy(output, out, 16);
+    /* BAES_SWAP output: reverse word order */
+    { uint32_t t; t=ct[0]; ct[0]=ct[3]; ct[3]=t; t=ct[1]; ct[1]=ct[2]; ct[2]=t; }
+
+    memcpy(output, ct, 16);
 }
 
 /* ---- CMAC / CCM stubs ---- */

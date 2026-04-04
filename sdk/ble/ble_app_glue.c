@@ -116,10 +116,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
         {
         case 0x0401:  /* ACI_GAP_PAIRING_COMPLETE */
         {
-            /* Log pairing status: byte at offset 2 in event data
-             * 0x00 = success, 0x01 = timeout, 0x02 = failed */
+            /* data[0-1] = conn handle, data[2] = status, data[3] = reason */
             uint8_t status = p_aci->data[2];
-            elog(0xBD000000 | status);  /* BD = BonD status */
+            uint8_t reason = p_aci->data[3];
+            elog(0xBD000000 | (status << 8) | reason);
             break;
         }
         case 0x0402:  /* ACI_GAP_PASS_KEY_REQ */
