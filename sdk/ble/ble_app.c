@@ -388,8 +388,8 @@ void ble_app_init(void)
         aci_gap_set_io_capability(IO_CAP_NO_INPUT_NO_OUTPUT);
         aci_gap_set_authentication_requirement(
             1,                          /* bonding mode: enabled */
-            0,                          /* MITM: not required (Just Works) */
-            SC_PAIRING_OPTIONAL,
+            0,                          /* MITM: not required */
+            0x00,                       /* SC: NOT supported (legacy only) */
             KEYPRESS_NOT_SUPPORTED,
             8, 16,                      /* encryption key size min/max */
             0, 0,                       /* no fixed pin */

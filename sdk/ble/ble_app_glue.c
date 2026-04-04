@@ -26,6 +26,11 @@ uint32_t SystemCoreClock = SYSCLK_HZ;
 volatile uint8_t  ble_connected;
 volatile uint16_t ble_conn_handle;
 
+/* Debug event log for pairing investigation */
+#define EVT_LOG_SIZE 32
+volatile uint32_t _evt_log[EVT_LOG_SIZE] __attribute__((used));
+volatile uint32_t _evt_log_idx;
+
 /* User callbacks (set via core_ble API) */
 void (*ble_on_connect_cb)(void);
 void (*ble_on_disconnect_cb)(void);
@@ -39,9 +44,15 @@ static void gap_cmd_resp_release(void)
 
 /* ---- SVCCTL_App_Notification ---- */
 
+static void elog(uint32_t v) {
+    uint32_t i = _evt_log_idx;
+    if (i < EVT_LOG_SIZE) { _evt_log[i] = v; _evt_log_idx = i + 1; }
+}
+
 SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
 {
     hci_event_pckt *p_event = (hci_event_pckt *)((hci_uart_pckt *)p_Pckt)->data;
+    elog(0xE0000000 | p_event->evt);
 
     switch (p_event->evt)
     {
@@ -100,14 +111,27 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
     case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
     {
         evt_blecore_aci *p_aci = (evt_blecore_aci *)p_event->data;
+        elog(0xAC000000 | p_aci->ecode);
         switch (p_aci->ecode)
         {
         case 0x0401:  /* ACI_GAP_PAIRING_COMPLETE */
-            /* Pairing finished — Just Works completes automatically */
+        {
+            /* Log pairing status: byte at offset 2 in event data
+             * 0x00 = success, 0x01 = timeout, 0x02 = failed */
+            uint8_t status = p_aci->data[2];
+            elog(0xBD000000 | status);  /* BD = BonD status */
+            break;
+        }
+        case 0x0402:  /* ACI_GAP_PASS_KEY_REQ */
+            /* Pass key requested — respond with fixed pin 0 (Just Works) */
+            aci_gap_pass_key_resp(ble_conn_handle, 0);
             break;
         case 0x0405:  /* ACI_GAP_BOND_LOST */
-            /* Bond lost — allow re-pairing */
             aci_gap_allow_rebond(ble_conn_handle);
+            break;
+        case 0x0409:  /* ACI_GAP_NUMERIC_COMPARISON_VALUE */
+            /* Auto-confirm numeric comparison (Just Works behavior) */
+            aci_gap_numeric_comparison_value_confirm_yesno(ble_conn_handle, 1);
             break;
         default:
             break;
