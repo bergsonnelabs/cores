@@ -254,6 +254,30 @@ void ble_app_init(void)
     ll_rcc_lsi1_enable_wait();  /* LSI1 still needed by link layer */
     ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_HSE_DIV);
 
+    /* 2b. Enable RTC APB clock and init in binary-only mode.
+     *     Working project uses RTC for BLE timer server timing. */
+    ll_rcc_apb7_clk_enable((1UL << 21));  /* RTCAPBEN */
+    /* Set RTCSEL = LSI (bits [9:8] = 0b10) — use MOD_BITS to avoid touching RADIOSTSEL */
+    MOD_BITS(REG32(RCC_BASE + 0xF0UL), 0x3UL << 8, 0x2UL << 8);
+
+    /* Init RTC in binary-only mode */
+    {
+        #define RTC_NS_ADDR  (PERIPH_BASE + 0x06007800UL)  /* 0x46007800 (APB7 domain) */
+        volatile uint32_t *wpr  = (volatile uint32_t *)(RTC_NS_ADDR + 0x24);
+        volatile uint32_t *icsr = (volatile uint32_t *)(RTC_NS_ADDR + 0x0C);
+        volatile uint32_t *prer = (volatile uint32_t *)(RTC_NS_ADDR + 0x10);
+        volatile uint32_t *cr   = (volatile uint32_t *)(RTC_NS_ADDR + 0x18);
+
+        *wpr = 0xCA;  /* unlock */
+        *wpr = 0x53;
+        *icsr |= (1UL << 7);  /* INIT=1 */
+        for (volatile uint32_t t = 100000; t && !(*icsr & (1UL << 6)); t--) ;
+        *cr |= (0x3UL << 8);  /* BIN=11 (binary-only) */
+        *prer = (31UL << 16);  /* PREDIV_A=31, PREDIV_S=0 */
+        *icsr &= ~(1UL << 7);  /* exit init */
+        *wpr = 0xFF;  /* re-lock */
+    }
+
     /* 3. Initialize sequencer */
     UTIL_SEQ_Init();
 

@@ -14,6 +14,7 @@
 #include "svc_ctl.h"
 #include "ble_std.h"
 #include "auto/ble_types.h"
+#include "auto/ble_l2cap_aci.h"
 #include "core_config.h"
 
 /* ---- SystemCoreClock (CMSIS convention) ---- */

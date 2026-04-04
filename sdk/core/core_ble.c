@@ -77,8 +77,8 @@ extern void ble_timer_server_check(void);
 
 void core_ble_process(void)
 {
-    ble_timer_server_check();   /* fire expired BLE timers */
     UTIL_SEQ_Run(~0UL);
+    ble_timer_server_check();   /* fire expired BLE timers */
 
     if (!_ble_seq_warmup_done) {
         _ble_seq_count++;

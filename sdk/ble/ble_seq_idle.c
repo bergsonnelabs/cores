@@ -13,7 +13,9 @@ extern int ll_sys_dp_slp_exit(void);
  */
 void UTIL_SEQ_Idle(void)
 {
-    /* Spin — no WFI. Keeps SWD accessible and minimizes radio latency. */
+    /* WFI — gives radio uncontested AHB5 bus access between events.
+     * Wakes on any interrupt (SysTick every 1ms, radio events, etc.) */
+    __asm volatile ("wfi");
 }
 
 /**
