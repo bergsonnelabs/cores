@@ -4,7 +4,7 @@
 
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 1024K
+    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 1016K  /* last 8KB reserved for BLE NVM */
     SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
 }
 
