@@ -216,6 +216,14 @@ void ble_app_init(void)
     #define RCC_CFGR4  REG32(RCC_BASE + 0x200UL)
     RCC_CFGR4 = 0x00000000;
 
+    /* 0b. Enable instruction cache (1-way mode) */
+    {
+        #define ICACHE_NS_BASE  (PERIPH_BASE + 0x00030400UL)  /* 0x40030400 */
+        #define ICACHE_CR_REG   REG32(ICACHE_NS_BASE + 0x00UL)
+        ICACHE_CR_REG = (1UL << 2);  /* WAYSEL = 1-way */
+        ICACHE_CR_REG = (1UL << 2) | (1UL << 0);  /* WAYSEL + EN */
+    }
+
     /* 1. HSE tuning from OTP (HSE must already be running — BLE requires it) */
     config_hse_tuning();
 
