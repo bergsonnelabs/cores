@@ -347,9 +347,17 @@ void ble_app_init(void)
 
     BleStack_Init(&params);
 
-    /* Set BD address */
+    /* Set BD address from device UID96 — unique per board.
+     * UID is at 0x0BF90700 (FLASH_ENGY_BASE + 0x200 on WBA55). */
     {
-        uint8_t bd_addr[6] = {0x34, 0x12, 0x2A, 0xE1, 0x09, 0x00};
+        volatile uint32_t *uid = (volatile uint32_t *)0x0BF90700UL;
+        uint8_t bd_addr[6];
+        bd_addr[0] = (uint8_t)(uid[0]);
+        bd_addr[1] = (uint8_t)(uid[0] >> 8);
+        bd_addr[2] = (uint8_t)(uid[0] >> 16);
+        bd_addr[3] = (uint8_t)(uid[1]);
+        bd_addr[4] = (uint8_t)(uid[1] >> 8);
+        bd_addr[5] = (uint8_t)(uid[1] >> 16);
         aci_hal_write_config_data(0x00 /* CONFIG_DATA_PUBADDR_OFFSET */, 6, bd_addr);
     }
 
