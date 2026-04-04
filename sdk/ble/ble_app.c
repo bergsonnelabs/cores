@@ -38,12 +38,12 @@ extern void ll_sys_ble_cntrl_init(void *hostCallback);
  * BLE stack memory config
  * ============================================================ */
 
-#define CFG_BLE_NUM_LINK             1
-#define CFG_BLE_NUM_GATT_SERVICES    2
-#define CFG_BLE_NUM_GATT_ATTRIBUTES  9
-#define CFG_BLE_ATT_VALUE_ARRAY_SIZE 100
-#define CFG_BLE_ATT_MTU_MAX          23
-#define CFG_BLE_MBLOCK_COUNT_MARGIN  0
+#define CFG_BLE_NUM_LINK             2
+#define CFG_BLE_NUM_GATT_SERVICES    8
+#define CFG_BLE_NUM_GATT_ATTRIBUTES  68
+#define CFG_BLE_ATT_VALUE_ARRAY_SIZE 1344
+#define CFG_BLE_ATT_MTU_MAX          251
+#define CFG_BLE_MBLOCK_COUNT_MARGIN  0x15
 #define CFG_BLE_COC_NBR_MAX          0
 #define CFG_BLE_COC_MPS_MAX          0
 #define CFG_BLE_COC_INITIATOR_NBR_MAX 0

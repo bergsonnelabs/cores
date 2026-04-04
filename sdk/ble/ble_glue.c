@@ -138,19 +138,17 @@ void ll_sys_schldr_timing_update_not(void *p_evnt_timing)
 
 void ll_sys_bg_process(void)
 {
-    extern uint8_t emngr_can_mcu_sleep(void);
     extern void emngr_handle_all_events(void);
     extern void HostStack_Process(void);
     extern void ll_sys_schedule_bg_process(void);
-    extern int ll_sys_dp_slp_exit(void);
+    extern uint8_t emngr_can_mcu_sleep(void);
 
-    uint8_t can_sleep = emngr_can_mcu_sleep();
-    if (can_sleep == 0)
-    {
-        ll_sys_dp_slp_exit();
-        emngr_handle_all_events();
-        HostStack_Process();
-    }
+    /* Always process events — don't gate on emngr_can_mcu_sleep().
+     * Skipping processing causes connection supervision timeouts (0x08)
+     * because the link layer events don't get handled in time. */
+    emngr_handle_all_events();
+    HostStack_Process();
+
     if (emngr_can_mcu_sleep() == 0)
     {
         ll_sys_schedule_bg_process();
