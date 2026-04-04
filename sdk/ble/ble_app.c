@@ -212,6 +212,10 @@ uint16_t ble_app_adv_interval_max = 0x00F0;   /* default 150ms */
 
 void ble_app_init(void)
 {
+    /* 0. Ensure AHB5 clock divider is 1 (no division). */
+    #define RCC_CFGR4  REG32(RCC_BASE + 0x200UL)
+    RCC_CFGR4 = 0x00000000;
+
     /* 1. HSE tuning from OTP (HSE must already be running — BLE requires it) */
     config_hse_tuning();
 
@@ -220,7 +224,7 @@ void ble_app_init(void)
      *     - Enable HASH clock (AHB2ENR bit 16) — used as BLE SW low ISR
      *     - Enable RNG clock (AHB2ENR bit 18) */
     MOD_BITS(REG32(RCC_BASE + 0xE4UL), 0x3UL << 12, 0x2UL << 12);
-    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 16) | (1UL << 18));  /* HASHEN + RNGEN */
+    SET_BITS(REG32(RCC_BASE + 0x8CUL), (1UL << 17) | (1UL << 18));  /* HASHEN(bit17) + RNGEN(bit18) */
 
     /* Configure RNG: enable conditioning, set NIST compliance */
     {
