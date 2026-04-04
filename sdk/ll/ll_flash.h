@@ -15,8 +15,7 @@
 #define LL_FLASH_H
 
 #include "ll_common.h"
-
-/* FLASH_BASE is defined in ll_rcc.h (0x40022000 for L422) */
+#include "ll_rcc.h"  /* for FLASH_BASE */
 
 /* ---- Register offsets ---- */
 
@@ -62,6 +61,19 @@
 #if defined(STM32L422xx)
   #define FLASH_PAGE_SIZE   2048
   #define FLASH_START       0x08000000UL
+#elif defined(STM32WBA55xx)
+  #define FLASH_PAGE_SIZE   8192     /* 8 KB pages */
+  #define FLASH_START       0x08000000UL
+  #define FLASH_TOTAL_SIZE  (1024 * 1024)  /* 1 MB */
+  #define FLASH_PAGE_COUNT  (FLASH_TOTAL_SIZE / FLASH_PAGE_SIZE)  /* 128 pages */
+
+  /* WBA55 uses non-secure registers at different offsets */
+  #undef  FLASH_KEYR
+  #undef  FLASH_SR
+  #undef  FLASH_CR
+  #define FLASH_KEYR        REG32(FLASH_BASE + 0x08UL)  /* NSKEYR */
+  #define FLASH_SR          REG32(FLASH_BASE + 0x20UL)  /* NSSR */
+  #define FLASH_CR          REG32(FLASH_BASE + 0x28UL)  /* NSCR1 */
 #endif
 
 /* ============================================================

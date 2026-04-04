@@ -35,6 +35,9 @@ volatile uint32_t _evt_log_idx;
 void (*ble_on_connect_cb)(void);
 void (*ble_on_disconnect_cb)(void);
 
+/* Re-advertise flag — set on disconnect, polled by core_ble_process */
+volatile uint8_t ble_need_readvertise;
+
 /* ---- GAP command response release ---- */
 
 static void gap_cmd_resp_release(void)
@@ -60,6 +63,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
     {
         ble_connected = 0;
         ble_conn_handle = 0xFFFF;
+        ble_need_readvertise = 1;
         gap_cmd_resp_release();
         if (ble_on_disconnect_cb) ble_on_disconnect_cb();
         break;
@@ -116,10 +120,10 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
         {
         case 0x0401:  /* ACI_GAP_PAIRING_COMPLETE */
         {
-            /* Log pairing status: byte at offset 2 in event data
-             * 0x00 = success, 0x01 = timeout, 0x02 = failed */
+            /* data[0-1] = conn handle, data[2] = status, data[3] = reason */
             uint8_t status = p_aci->data[2];
-            elog(0xBD000000 | status);  /* BD = BonD status */
+            uint8_t reason = p_aci->data[3];
+            elog(0xBD000000 | (status << 8) | reason);
             break;
         }
         case 0x0402:  /* ACI_GAP_PASS_KEY_REQ */

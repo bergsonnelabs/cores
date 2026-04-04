@@ -229,6 +229,10 @@ void ble_app_init(void)
         ICACHE_CR_REG = (1UL << 2) | (1UL << 0);  /* WAYSEL + EN */
     }
 
+    /* 0. Run AES test vector to validate byte ordering */
+    extern void baes_run_test(void);
+    baes_run_test();
+
     /* 1. HSE tuning from OTP (HSE must already be running — BLE requires it) */
     config_hse_tuning();
 

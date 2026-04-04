@@ -71,9 +71,13 @@ void core_ble_init(void)
     _ble_seq_count = 0;
 }
 
+/* Saved name for re-advertising after disconnect */
+static const char *_adv_name;
+
 int core_ble_advertise(const char *name)
 {
     if (!_ble_initialized) return -1;
+    _adv_name = name;
     while (!_ble_seq_warmup_done) {
         UTIL_SEQ_Run(~0UL);
         _ble_seq_count++;
@@ -88,12 +92,21 @@ int core_ble_stop_advertise(void)
     return ble_app_stop_advertise();
 }
 
+/* Re-advertise flag (ble_app_glue.c) */
+extern volatile uint8_t ble_need_readvertise;
+
 void core_ble_process(void)
 {
     UTIL_SEQ_Run(~0UL);
     if (!_ble_seq_warmup_done) {
         _ble_seq_count++;
         if (_ble_seq_count > 100) _ble_seq_warmup_done = 1;
+    }
+
+    /* Auto re-advertise after disconnect */
+    if (ble_need_readvertise && _adv_name) {
+        ble_need_readvertise = 0;
+        ble_app_advertise(_adv_name);
     }
 }
 
