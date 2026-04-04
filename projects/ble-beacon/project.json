@@ -1,0 +1,7 @@
+{
+  "clock": "default",
+  "pads": {},
+  "ble": {
+    "enabled": true
+  }
+}
