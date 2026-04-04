@@ -369,10 +369,11 @@ void ble_app_init(void)
 
     /* Init GATT + GAP */
     aci_gatt_init();
-    aci_gap_init(0x01 /* GAP_PERIPHERAL_ROLE */, 0x00 /* public addr */, 16,
+    aci_gap_init(0x01 /* GAP_PERIPHERAL_ROLE */, 0x00 /* public addr */, 20,
                  &gap_service_handle,
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
+
 
     /* Init service controller */
     SVCCTL_Init();
@@ -418,7 +419,7 @@ int ble_app_advertise(const char *name)
     #endif
     aci_gap_delete_ad_type(AD_TYPE_TX_POWER_LEVEL);
 
-    /* Build advertising data with complete local name */
+    /* Build advertising data */
     uint8_t name_len = 0;
     while (name[name_len] && name_len < 20) name_len++;
 
@@ -426,10 +427,26 @@ int ble_app_advertise(const char *name)
     uint8_t pos = 0;
 
     /* AD element: Complete Local Name */
-    adv_data[pos++] = name_len + 1;   /* length of this AD element */
+    adv_data[pos++] = name_len + 1;
     adv_data[pos++] = AD_TYPE_COMPLETE_NAME;
     for (uint8_t i = 0; i < name_len; i++)
         adv_data[pos++] = (uint8_t)name[i];
+
+    /* AD element: Manufacturer Specific Data
+     * Company ID 0xFFFF (reserved for testing), then "Bergsonne Labs" */
+    #define AD_TYPE_MANUFACTURER_DATA 0xFF
+    {
+        const char *mfr = "Bergsonne Labs";
+        uint8_t mfr_len = 14;
+        if (pos + 2 + 2 + mfr_len <= 31) {
+            adv_data[pos++] = 2 + mfr_len + 1;      /* length */
+            adv_data[pos++] = AD_TYPE_MANUFACTURER_DATA;
+            adv_data[pos++] = 0xFF;                   /* company ID low (test) */
+            adv_data[pos++] = 0xFF;                   /* company ID high (test) */
+            for (uint8_t i = 0; i < mfr_len; i++)
+                adv_data[pos++] = (uint8_t)mfr[i];
+        }
+    }
 
     ret = aci_gap_update_adv_data(pos, adv_data);
 

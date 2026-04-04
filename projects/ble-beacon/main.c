@@ -1,39 +1,49 @@
 /**
  * BLE LED Demo — control LED via BLE on Core.W
  *
- * Advertises as "TILETOWN". Connect and write to the LED characteristic:
- *   0x01 = LED on, 0x00 = LED off.
- * Heartbeat blink when not connected.
+ * Demonstrates the core_ble service builder API.
+ * Connect with nRF Connect and write to the LED characteristic.
  */
 
 #include "core.h"
 #include "core_ble.h"
 
-static void on_led_write(uint8_t value)
+/* ---- BLE Services ---- */
+
+static core_ble_char_t led_char;
+
+static void on_led_write(const uint8_t *data, uint16_t len)
 {
-    if (value) LED_ON();
-    else       LED_OFF();
+    (void)len;
+    if (data[0]) LED_ON();
+    else         LED_OFF();
 }
 
-static void on_disconnect(void)
+void app_ble_services(void)
 {
-    LED_OFF();
+    core_ble_svc_t svc;
+
+    svc = core_ble_add_service("LED Control");
+    led_char = core_ble_add_char(svc, "LED State",
+                                  CORE_BLE_RW, CORE_BLE_BOOL,
+                                  on_led_write);
 }
+
+/* ---- Main ---- */
 
 int main(void)
 {
     core_init();
     core_led_init();
 
-    core_ble_add_led_service(on_led_write);
+    core_ble_set_services(app_ble_services);
     core_ble_init();
-    core_ble_on_disconnect(on_disconnect);
-    core_ble_advertise("TILETOWN");
+    core_ble_advertise("Core.W");
 
     while (1) {
         core_ble_process();
 
-        /* Heartbeat when not connected — 10ms flash every 3s */
+        /* Heartbeat when not connected */
         if (!core_ble_connected()) {
             static uint32_t last_on = 0;
             uint32_t now = core_millis();
