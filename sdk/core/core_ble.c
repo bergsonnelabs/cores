@@ -150,6 +150,13 @@ void core_ble_set_tx_power(uint8_t level)
     ble_app_tx_power_code = _tx_power_codes[level];
 }
 
+extern uint8_t ble_app_pairing_enabled;
+
+void core_ble_enable_pairing(void)
+{
+    ble_app_pairing_enabled = 1;
+}
+
 void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms)
 {
     if (min_ms < 20) min_ms = 20;

@@ -14,6 +14,7 @@
 #include "svc_ctl.h"
 #include "ble_std.h"
 #include "auto/ble_types.h"
+#include "auto/ble_gap_aci.h"
 #include "core_config.h"
 
 /* ---- SystemCoreClock (CMSIS convention) ---- */
@@ -97,7 +98,22 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
     }
 
     case HCI_VENDOR_SPECIFIC_DEBUG_EVT_CODE:
+    {
+        evt_blecore_aci *p_aci = (evt_blecore_aci *)p_event->data;
+        switch (p_aci->ecode)
+        {
+        case 0x0401:  /* ACI_GAP_PAIRING_COMPLETE */
+            /* Pairing finished — Just Works completes automatically */
+            break;
+        case 0x0405:  /* ACI_GAP_BOND_LOST */
+            /* Bond lost — allow re-pairing */
+            aci_gap_allow_rebond(ble_conn_handle);
+            break;
+        default:
+            break;
+        }
         break;
+    }
 
     default:
         break;

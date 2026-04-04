@@ -44,6 +44,7 @@ int main(void)
     core_led_init();
 
     core_ble_set_services(app_ble_services);
+    core_ble_enable_pairing();
     core_ble_init();
     core_ble_advertise("Core.W");
 

@@ -144,4 +144,12 @@ void core_ble_set_tx_power(uint8_t level);
 /** Advertising interval in ms (20-10240). Default: 100/150. */
 void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms);
 
+/**
+ * Enable OS-level pairing (Just Works).
+ * When enabled, the phone/computer will show a "Pair?" dialog.
+ * Once paired, the device auto-reconnects and appears in OS
+ * Bluetooth settings. Call before core_ble_init(). Default: disabled.
+ */
+void core_ble_enable_pairing(void);
+
 #endif /* CORE_BLE_H */

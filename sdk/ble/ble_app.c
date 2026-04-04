@@ -213,6 +213,7 @@ void ble_app_set_services_cb(void (*cb)(void)) { _register_services_cb = cb; }
 uint8_t  ble_app_tx_power_code = 0x19;        /* default ~0 dBm */
 uint16_t ble_app_adv_interval_min = 0x00A0;   /* default 100ms (units of 0.625ms) */
 uint16_t ble_app_adv_interval_max = 0x00F0;   /* default 150ms */
+uint8_t  ble_app_pairing_enabled = 0;         /* default: pairing disabled */
 
 void ble_app_init(void)
 {
@@ -382,6 +383,19 @@ void ble_app_init(void)
                  &gap_dev_name_handle,
                  &gap_appearance_handle);
 
+    /* Set up security — configurable via ble_app_pairing_enabled */
+    if (ble_app_pairing_enabled) {
+        aci_gap_set_io_capability(IO_CAP_NO_INPUT_NO_OUTPUT);
+        aci_gap_set_authentication_requirement(
+            1,                          /* bonding mode: enabled */
+            0,                          /* MITM: not required (Just Works) */
+            SC_PAIRING_OPTIONAL,
+            KEYPRESS_NOT_SUPPORTED,
+            8, 16,                      /* encryption key size min/max */
+            0, 0,                       /* no fixed pin */
+            GAP_PUBLIC_ADDR
+        );
+    }
 
     /* Init service controller */
     SVCCTL_Init();
