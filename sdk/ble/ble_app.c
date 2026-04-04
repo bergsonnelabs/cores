@@ -205,6 +205,10 @@ static void config_hse_tuning(void)
 
 static uint8_t ble_init_done;
 
+/* Optional callback to register GATT services after SVCCTL_Init */
+static void (*_register_services_cb)(void);
+void ble_app_set_services_cb(void (*cb)(void)) { _register_services_cb = cb; }
+
 /* Configurable parameters — set before calling ble_app_init/advertise */
 uint8_t  ble_app_tx_power_code = 0x19;        /* default ~0 dBm */
 uint16_t ble_app_adv_interval_min = 0x00A0;   /* default 100ms (units of 0.625ms) */
@@ -372,6 +376,9 @@ void ble_app_init(void)
 
     /* Init service controller */
     SVCCTL_Init();
+
+    /* Init application GATT services (registered via ble_app_register_services_cb) */
+    if (_register_services_cb) _register_services_cb();
 
     ble_init_done = 1;
 }

@@ -40,10 +40,22 @@ static const uint8_t _tx_power_codes[] = {
     0x1F,   /* level 2: high  (~+10 dBm) */
 };
 
+/* LED service (sdk/ble/ble_led_svc.c) */
+extern void ble_led_svc_init(void (*on_write)(uint8_t value));
+
+/* Service registration callback */
+extern void ble_app_set_services_cb(void (*cb)(void));
+static void (*_led_write_cb)(uint8_t);
+static void _register_services(void)
+{
+    if (_led_write_cb) ble_led_svc_init(_led_write_cb);
+}
+
 /* ---- API implementation ---- */
 
 void core_ble_init(void)
 {
+    ble_app_set_services_cb(_register_services);
     ble_app_init();
     _ble_initialized = 1;
     _ble_seq_warmup_done = 0;
@@ -122,4 +134,11 @@ void core_ble_on_connect(void (*cb)(void))
 void core_ble_on_disconnect(void (*cb)(void))
 {
     ble_on_disconnect_cb = cb;
+}
+
+/* ---- LED Service ---- */
+
+void core_ble_add_led_service(void (*on_write)(uint8_t value))
+{
+    _led_write_cb = on_write;
 }

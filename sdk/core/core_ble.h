@@ -90,4 +90,14 @@ void core_ble_on_connect(void (*cb)(void));
  */
 void core_ble_on_disconnect(void (*cb)(void));
 
+/**
+ * Add an LED control GATT service.
+ * When a connected central writes to the characteristic:
+ *   0x01 = LED on, 0x00 = LED off.
+ * The on_write callback receives the written value.
+ *
+ * Must be called BEFORE core_ble_init().
+ */
+void core_ble_add_led_service(void (*on_write)(uint8_t value));
+
 #endif /* CORE_BLE_H */
