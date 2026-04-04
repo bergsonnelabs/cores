@@ -72,13 +72,9 @@ int core_ble_stop_advertise(void)
     return ble_app_stop_advertise();
 }
 
-/* Timer server polling (sdk/ble/stm32_timer_if.c) */
-extern void ble_timer_server_check(void);
-
 void core_ble_process(void)
 {
     UTIL_SEQ_Run(~0UL);
-    ble_timer_server_check();   /* fire expired BLE timers */
 
     if (!_ble_seq_warmup_done) {
         _ble_seq_count++;

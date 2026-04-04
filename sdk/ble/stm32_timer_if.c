@@ -1,50 +1,140 @@
 /**
- * stm32_timer_if.c -- Timer server low-level interface using SysTick
+ * stm32_timer_if.c -- BLE timer server interface using LPTIM2 interrupt
  *
- * Implements the UTIL_TIMER_Driver_s interface that stm32_timer.c
- * calls. Uses SysTick millisecond counter for timing.
+ * Uses LPTIM2 as a one-shot hardware timer for the BLE timer server.
+ * When the BLE stack sets an alarm, LPTIM2 counts and fires an
+ * interrupt at the exact timeout. This provides deterministic timing
+ * for BLE connection event scheduling.
  *
- * The timer server works in "tick" units. We define 1 tick = 1 ms.
+ * LPTIM2 is not exposed on any Core.W pads, so it's safe to reserve
+ * for BLE. Timer ticks = milliseconds.
  */
 
 #include <stdint.h>
 #include "stm32_timer.h"
+#include "ll_common.h"
+#include "ll_rcc.h"
+#include "hal_common.h"
+#include "core_config.h"
 
-/* SysTick millisecond counter from our HAL */
+/* LPTIM2 registers (APB1 domain, 0x40009400) */
+#define LPTIM2_BASE_ADDR  0x40009400UL
+#define LPTIM2_ISR   REG32(LPTIM2_BASE_ADDR + 0x00UL)
+#define LPTIM2_ICR   REG32(LPTIM2_BASE_ADDR + 0x04UL)
+#define LPTIM2_DIER  REG32(LPTIM2_BASE_ADDR + 0x08UL)
+#define LPTIM2_CFGR  REG32(LPTIM2_BASE_ADDR + 0x0CUL)
+#define LPTIM2_CR    REG32(LPTIM2_BASE_ADDR + 0x10UL)
+#define LPTIM2_CCR1  REG32(LPTIM2_BASE_ADDR + 0x14UL)
+#define LPTIM2_ARR   REG32(LPTIM2_BASE_ADDR + 0x18UL)
+#define LPTIM2_CNT   REG32(LPTIM2_BASE_ADDR + 0x1CUL)
+
+/* ISR/ICR bits */
+#define LPTIM_ISR_ARRM   (1UL << 1)   /* Auto-reload match */
+
+/* DIER bits */
+#define LPTIM_DIER_ARRMIE (1UL << 1)  /* ARR match interrupt enable */
+
+/* CR bits */
+#define LPTIM_CR_ENABLE  (1UL << 0)
+#define LPTIM_CR_SNGSTRT (1UL << 1)   /* Single start (one-shot) */
+
+/* CFGR prescaler bits [11:9] */
+#define LPTIM_CFGR_PRESC_DIV1   (0x0UL << 9)
+#define LPTIM_CFGR_PRESC_DIV32  (0x5UL << 9)
+
+/* SysTick for elapsed time tracking */
 extern volatile uint32_t _systick_ticks;
 
-/* Timer context -- saved at the start of each timer cycle */
-static uint32_t timer_context = 0;
+/* Timer context */
+static uint32_t timer_context;
 
-/* Pending alarm */
-static volatile uint32_t alarm_target = 0;
-static volatile uint8_t  alarm_active = 0;
+/* ---- LPTIM2 ISR — fires when one-shot timer expires ---- */
+
+void LPTIM2_IRQHandler(void)
+{
+    /* Clear ARR match flag */
+    LPTIM2_ICR = LPTIM_ISR_ARRM;
+
+    /* Disable timer */
+    LPTIM2_CR = 0;
+
+    /* Call BLE timer server handler */
+    UTIL_TIMER_IRQ_Handler();
+}
 
 /* ---- Low-level driver functions ---- */
 
 static UTIL_TIMER_Status_t TimerIF_Init(void)
 {
+    /* Enable LPTIM2 clock (APB1ENR2 bit 5) */
+    SET_BITS(REG32(RCC_BASE + 0xA0UL), (1UL << 5));
+    (void)REG32(RCC_BASE + 0xA0UL);
+
+    /* Reset LPTIM2 */
+    LPTIM2_CR = 0;
+
+    /* LPTIM2 runs from APB1 clock (SYSCLK).
+     * We use the internal prescaler to get ~1 kHz:
+     *   32 MHz / 32 = 1 MHz → ARR counts in microseconds
+     * Actually, for 1ms ticks, let's use prescaler /32 and
+     * multiply timeout by (SYSCLK/32/1000) = 1000 at 32MHz.
+     * Simpler: just use /1 prescaler and set ARR = timeout * (SYSCLK/1000)
+     * But LPTIM ARR is only 16 bits (max 65535).
+     *
+     * Best approach: prescaler = SYSCLK_HZ/1000000 won't work directly.
+     * Use prescaler /32: effective clock = SYSCLK/32.
+     * 1ms = SYSCLK/32/1000 ticks = 32000000/32/1000 = 1000 ticks at 32MHz.
+     * Max timeout = 65535/1000 = 65ms. That's enough for BLE timers.
+     */
+    LPTIM2_CFGR = LPTIM_CFGR_PRESC_DIV32;
+
+    /* Enable LPTIM2 interrupt in NVIC */
+    hal_nvic_set_priority(HAL_IRQ_LPTIM2, 8);
+    hal_nvic_enable_irq(HAL_IRQ_LPTIM2);
+
     timer_context = 0;
-    alarm_active = 0;
     return UTIL_TIMER_OK;
 }
 
 static UTIL_TIMER_Status_t TimerIF_DeInit(void)
 {
-    alarm_active = 0;
+    LPTIM2_CR = 0;
+    hal_nvic_disable_irq(HAL_IRQ_LPTIM2);
     return UTIL_TIMER_OK;
 }
 
 static UTIL_TIMER_Status_t TimerIF_StartTimer(uint32_t timeout)
 {
-    alarm_target = timeout;
-    alarm_active = 1;
+    /* Disable before reconfiguring */
+    LPTIM2_CR = 0;
+
+    /* Clear pending flags */
+    LPTIM2_ICR = LPTIM_ISR_ARRM;
+
+    /* Enable the timer (must be done before writing ARR/CCR on LPTIM) */
+    LPTIM2_CR = LPTIM_CR_ENABLE;
+
+    /* Convert ms to LPTIM ticks: ticks = ms * (SYSCLK/32/1000) */
+    uint32_t ticks_per_ms = SYSCLK_HZ / 32 / 1000;
+    uint32_t arr = timeout * ticks_per_ms;
+    if (arr == 0) arr = 1;
+    if (arr > 0xFFFF) arr = 0xFFFF;
+    LPTIM2_ARR = (uint16_t)(arr - 1);
+
+    /* Enable ARR match interrupt */
+    LPTIM2_DIER = LPTIM_DIER_ARRMIE;
+
+    /* Start single-shot countdown */
+    LPTIM2_CR = LPTIM_CR_ENABLE | LPTIM_CR_SNGSTRT;
+
     return UTIL_TIMER_OK;
 }
 
 static UTIL_TIMER_Status_t TimerIF_StopTimer(void)
 {
-    alarm_active = 0;
+    LPTIM2_CR = 0;
+    LPTIM2_DIER = 0;
+    LPTIM2_ICR = LPTIM_ISR_ARRM;
     return UTIL_TIMER_OK;
 }
 
@@ -71,17 +161,17 @@ static uint32_t TimerIF_GetTimerValue(void)
 
 static uint32_t TimerIF_GetMinimumTimeout(void)
 {
-    return 1; /* 1 ms minimum */
+    return 1;
 }
 
 static uint32_t TimerIF_ms2Tick(uint32_t ms)
 {
-    return ms; /* 1:1 mapping */
+    return ms;
 }
 
 static uint32_t TimerIF_Tick2ms(uint32_t tick)
 {
-    return tick; /* 1:1 mapping */
+    return tick;
 }
 
 /* ---- The driver struct ---- */
@@ -100,22 +190,3 @@ const UTIL_TIMER_Driver_s UTIL_TimerDriver =
     .ms2Tick             = TimerIF_ms2Tick,
     .Tick2ms             = TimerIF_Tick2ms,
 };
-
-/**
- * ble_timer_server_check() -- Call from main loop to fire expired timers
- *
- * The timer server sets an alarm via StartTimerEvt. We check if the
- * alarm has expired and call UTIL_TIMER_IRQ_Handler().
- */
-void ble_timer_server_check(void)
-{
-    if (alarm_active)
-    {
-        uint32_t elapsed = _systick_ticks - timer_context;
-        if (elapsed >= alarm_target)
-        {
-            alarm_active = 0;
-            UTIL_TIMER_IRQ_Handler();
-        }
-    }
-}

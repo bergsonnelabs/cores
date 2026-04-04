@@ -252,7 +252,7 @@ void ble_app_init(void)
      *    the HAL value maps differently than the LL value. */
     ll_pwr_enable_backup_access();
     ll_rcc_lsi1_enable_wait();  /* LSI1 still needed by link layer */
-    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_HSE_DIV);
+    ll_rcc_set_radio_sleep_clk(LL_RCC_RADIOSLEEPSOURCE_LSI);
 
     /* 2b. Enable RTC APB clock and init in binary-only mode.
      *     Working project uses RTC for BLE timer server timing. */
