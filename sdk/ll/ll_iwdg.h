@@ -145,7 +145,7 @@ static inline void ll_iwdg_init_10s(void)
 static inline int ll_iwdg_caused_reset(void)
 {
 #if defined(STM32L011xx)
-    return (REG32(RCC_BASE + 0x24UL) & (1UL << 29)) != 0;  /* CSR: IWDGRSTF */
+    return (REG32(RCC_BASE + 0x50UL) & (1UL << 29)) != 0;  /* CSR: IWDGRSTF */
 #elif defined(STM32L422xx)
     return (REG32(RCC_BASE + 0x94UL) & (1UL << 29)) != 0;  /* CSR: IWDGRSTF */
 #elif defined(STM32WBA55xx)
@@ -162,7 +162,7 @@ static inline int ll_iwdg_caused_reset(void)
 static inline void ll_rcc_clear_reset_flags(void)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x24UL), (1UL << 23));  /* CSR: RMVF */
+    SET_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 23));  /* CSR: RMVF */
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x94UL), (1UL << 23));  /* CSR: RMVF */
 #elif defined(STM32WBA55xx)
