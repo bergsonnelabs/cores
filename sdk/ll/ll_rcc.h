@@ -695,12 +695,8 @@ static inline void ll_rcc_ahb5_clk_sleep_disable(void)
 #define PWR_BASE          (AHB5_BASE + 0x0800UL)  /* 0x46020800 */
 #endif
 
-/** Enable PWR peripheral clock and backup domain write access. */
-static inline void ll_pwr_enable_backup_access(void)
-{
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    SET_BITS(REG32(PWR_BASE + 0x28UL), (1UL << 0));  /* PWR_DBPR: DBP (bit 0) */
-}
+/* ll_pwr_enable_backup_access() is defined in ll_pwr.h.
+ * Include ll_pwr.h if you need PWR/backup domain access. */
 
 /** Get radio power mode (PWR_SR1 bits [2:1]) */
 static inline uint32_t ll_pwr_get_radio_mode(void)

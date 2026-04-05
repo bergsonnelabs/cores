@@ -105,6 +105,7 @@ static inline int core_pad_adc_channel(uint8_t pad)
 }
 
 {% if timer_pads is defined and timer_pads %}
+#define CORE_HAS_TIMER_PADS  1
 #include "ll_tim.h"    /* TIM_TypeDef */
 
 /* ---- Timer/PWM channel mapping ---- */

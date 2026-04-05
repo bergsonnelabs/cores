@@ -12,7 +12,7 @@ static void _spi_clk_enable(SPI_TypeDef *instance)
 {
     if (instance == SPI1) ll_rcc_apb2_clk_enable(LL_APB2_SPI1);
 #if defined(STM32WBA55xx)
-    if (instance == SPI3) SET_BITS(REG32(RCC_BASE + 0xACUL), LL_APB7_SPI3);
+    if (instance == SPI3) ll_rcc_apb7_clk_enable(LL_APB7_SPI3);
 #elif defined(STM32H523xx)
     if (instance == SPI2) ll_rcc_apb1_clk_enable((1UL << 14));
     if (instance == SPI3) SET_BITS(REG32(RCC_BASE + 0xA8UL), LL_APB3_SPI3);
