@@ -91,6 +91,21 @@ static inline int ll_rcc_hsi16_ready(void)
 
 #endif /* HSI16 */
 
+/* ---- CSI (4 MHz low-power internal, H5 only) ---- */
+
+#if defined(STM32H523xx)
+
+static inline void ll_rcc_csi_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 8));  /* CR: CSION */
+}
+static inline int ll_rcc_csi_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 9)) != 0;  /* CR: CSIRDY */
+}
+
+#endif /* CSI */
+
 /* ---- MSI (Multi-Speed Internal, L0/L4) ---- */
 
 #if defined(STM32L422xx)

@@ -99,6 +99,14 @@ void core_clock_init(void)
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
     ll_rcc_set_sysclk(LL_RCC_SYSCLK_HSI16);
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_HSI16);
+{% elif clock_config.source == "csi" %}
+    /* CSI 4 MHz low-power internal RC (H5 only) */
+    ll_rcc_csi_enable();
+    while (!ll_rcc_csi_ready())
+        ;
+    ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
+    ll_rcc_set_sysclk(LL_RCC_SYSCLK_CSI);
+    ll_rcc_wait_sysclk(LL_RCC_SYSCLK_CSI);
 {% elif clock_config.source == "hse" %}
     ll_rcc_hse_enable();
     while (!ll_rcc_hse_ready())
