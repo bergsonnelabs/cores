@@ -358,13 +358,23 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
        CFGR: [1:0] PLL1SRC, [3:2] PLL1RGE, [12:7] PLL1M-1, [16] PLL1PEN
        DIVR: [8:0] PLL1N-1, [15:9] PLL1P-1 (P=SYSCLK output, odd values only)
        Note: SYSCLK uses PLL1P output (not PLL1R like WBA55) */
-    uint32_t cfgr = src
-                  | ((m - 1) << 7)    /* PLL1M at [12:7] */
-                  | (1UL << 16);      /* PLL1PEN */
-    uint32_t divr = ((n - 1) << 0)    /* PLL1N at [8:0] */
-                  | ((r - 1) << 9);   /* PLL1P at [15:9] */
-    REG32(RCC_BASE + 0x28UL) = cfgr;
-    REG32(RCC_BASE + 0x34UL) = divr;
+    /* H5: Compute RGE from M and write PLL1CFGR in a single atomic write
+     * to avoid read-modify-write losing bit 7 (M LSB). */
+    {
+        uint32_t vco_in_mhz = 64 / m;  /* HSI = 64 MHz (after HSIDIV clear) */
+        uint32_t rge = (vco_in_mhz > 8) ? 0x3UL : (vco_in_mhz > 4) ? 0x2UL :
+                       (vco_in_mhz > 2) ? 0x1UL : 0x0UL;
+        uint32_t cfgr = src
+                      | (rge << 2)            /* PLL1RGE at [3:2] */
+                      | (m << 8)              /* PLL1M at [13:8] (direct, not M-1) */
+                      | (1UL << 16);          /* PLL1PEN */
+        REG32(RCC_BASE + 0x28UL) = cfgr;
+    }
+    {
+        uint32_t divr = ((n - 1) << 0)    /* PLL1N at [8:0] */
+                      | ((r - 1) << 9);   /* PLL1P at [15:9] */
+        REG32(RCC_BASE + 0x34UL) = divr;
+    }
 #endif
 }
 
