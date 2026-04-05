@@ -16,7 +16,7 @@
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
-{% if clock_config.lp_run %}
+{% if clock_config.lp_run or clock_config.needs_vos %}
 #include "ll_pwr.h"
 {% endif %}
 {% if i2c_buses %}
@@ -46,9 +46,9 @@ void core_clock_init(void)
 {
 {% if clock_config.pll %}
 {% if clock_config.needs_vos %}
-    /* ---- Voltage scaling: Range 1 for >16MHz on WBA55 ---- */
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    ll_pwr_set_vos(1);
+    /* ---- Voltage scaling for high-speed operation ---- */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_set_vos({{ clock_config.vos_value }});
 {% endif %}
 
     /* ---- Enable clock source: {{ clock_config.source }} ---- */

@@ -282,7 +282,8 @@ static inline uint32_t ll_flash_latency_for_mhz(uint32_t mhz)
   #define LL_RCC_PLLSRC_HSE    0x3UL
 #elif defined(STM32H523xx)
   #define LL_RCC_PLLSRC_NONE   0x0UL
-  #define LL_RCC_PLLSRC_HSI48  0x1UL  /* Actually uses HSI for PLL */
+  #define LL_RCC_PLLSRC_HSI48  0x1UL  /* HSI 64 MHz as PLL source */
+  #define LL_RCC_PLLSRC_HSI16  0x1UL  /* alias for coregen compatibility */
   #define LL_RCC_PLLSRC_CSI    0x2UL
   #define LL_RCC_PLLSRC_HSE    0x3UL
 #endif
@@ -957,7 +958,32 @@ static inline void ll_pwr_set_vos(uint32_t range)
         ;
 }
 
-#endif /* STM32WBA55xx VOS */
+#elif defined(STM32H523xx)
+
+#ifndef PWR_BASE
+  #define PWR_BASE  0x44020800UL
+#endif
+
+/**
+ * Set voltage scaling range for H5.
+ *   0 = Scale 0 (up to 250MHz, boost)
+ *   1 = Scale 1 (up to 150MHz)
+ *   2 = Scale 2 (up to 100MHz)
+ *   3 = Scale 3 (up to 32MHz, reset default)
+ *
+ * PWR_VOSCR at offset 0x10: VOS[5:4]
+ * PWR_VOSR  at offset 0x0C: VOSRDY bit 3
+ */
+static inline void ll_pwr_set_vos(uint32_t scale)
+{
+    MOD_BITS(REG32(PWR_BASE + 0x10UL), 0x3UL << 4, scale << 4);
+    /* Wait for VOSRDY (bit 3 of PWR_VOSR) */
+    uint32_t timeout = 100000;
+    while (!(REG32(PWR_BASE + 0x0CUL) & (1UL << 3)) && --timeout)
+        ;
+}
+
+#endif /* VOS */
 
 /* ============================================================
  * I2C kernel clock source selection — WBA55 only

@@ -570,8 +570,22 @@ def build_clock_config(config, tile, mcu):
     # LP Run mode (STM32L0 only): ultra-low-power run at MSI ≤ 1MHz
     lp_run = resolved.get("lp_run", False)
 
-    # WBA55 needs VOS Range 1 for SYSCLK > 16MHz
-    needs_vos = (mcu["define"] == "STM32WBA55xx" and target_mhz > 16)
+    # Voltage scaling: WBA55 needs Range 1 for >16MHz; H5 needs scale 0-3
+    needs_vos = False
+    vos_value = 1  # default for WBA55
+    if mcu["define"] == "STM32WBA55xx" and target_mhz > 16:
+        needs_vos = True
+        vos_value = 1  # Range 1
+    elif mcu["define"] == "STM32H523xx" and target_mhz > 32:
+        needs_vos = True
+        # H5 VOS register encoding (inverted from scale number):
+        # VOS=00(0)→Scale3(32MHz), 01(1)→Scale2(100MHz), 10(2)→Scale1(150MHz), 11(3)→Scale0(250MHz)
+        if target_mhz <= 100:
+            vos_value = 1   # VOS=01, Scale 2
+        elif target_mhz <= 150:
+            vos_value = 2   # VOS=10, Scale 1
+        else:
+            vos_value = 3   # VOS=11, Scale 0 (boost)
 
     # MSI range define (STM32L0/L4)
     _msi_range_map = {
@@ -596,6 +610,7 @@ def build_clock_config(config, tile, mcu):
         "apb1_div": 1,
         "apb2_div": 1,
         "needs_vos": needs_vos,
+        "vos_value": vos_value,
     }
 
 
