@@ -9,7 +9,7 @@
     "system.led":   "verified",
     "system.tick":  "verified",
     "system.delay": "verified",
-    "system.fault": "compile",
+    "system.fault": "verified",
 
     "clocks.hsi":  "verified",
     "clocks.hse":  "verified",
@@ -17,19 +17,22 @@
     "clocks.pll":  "verified",
 
     "gpio.digital":  "verified",
-    "gpio.exti":     "compile",
+    "gpio.exti":     "verified",
     "gpio.af":       "verified",
     "gpio.od_pull":  "verified",
 
-    "uart.polling": "compile",
+    "uart.polling": "verified",
     "uart.irq":     "compile",
     "uart.lp":      "compile",
+
+    "timer.basic": "verified",
+    "timer.pwm":   "compile",
 
     "i2c.std":  "verified",
     "i2c.fast": "verified",
     "i2c.fmp":  "na",
 
-    "spi.master": "compile",
+    "spi.master": { "status": "partial", "note": "APB7 clock + MODF bugs fixed; SPI v2 transfer sequence (CSTART/TSIZE) needs RM study — loopback times out on RXP" },
 
     "adc.raw":      "verified",
     "adc.mv":       "verified",
@@ -45,17 +48,23 @@
     "coregen.spi":    "compile",
     "coregen.uart":   "compile",
 
+    "power.sleep":   "verified",
+    "power.stop":    "compile",
+    "power.standby": "compile",
+
+    "watchdog.iwdg": "compile",
+
     "conn.usb_cdc":  "na",
     "conn.usb_hid":  "na",
     "conn.usb_msc":  "na",
     "conn.dfu":      "na",
-    "conn.ble":      "wip",
-    "conn.ble_adv":  "wip",
-    "conn.ble_gatt": "wip",
+    "conn.ble":      "verified",
+    "conn.ble_adv":  "verified",
+    "conn.ble_gatt": "verified",
     "conn.fdcan":    "na",
 
-    "security.rng":  "none",
-    "security.aes":  "none",
+    "security.rng":  "verified",
+    "security.aes":  "verified",
     "security.pka":  "none",
     "security.hash": "na",
 

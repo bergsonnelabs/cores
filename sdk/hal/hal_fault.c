@@ -14,6 +14,7 @@
 #include "hal_fault.h"
 #include "ll_common.h"
 #include "ll_rcc.h"
+#include "ll_gpio.h"
 
 #if defined(STM32L422xx)
 #include "ll_usb.h"
@@ -116,6 +117,17 @@ static void fault_usb_reg(const char *name, uint32_t val)
 
 /* ---- LED SOS (raw GPIO, no coregen dependency) ---- */
 
+/* MCU-specific LED pin.  Must match the tile JSON for each family. */
+#if defined(STM32WBA55xx) || defined(STM32H523xx)
+  /* Core.W: PB12 (active-high)    Core.H: PB12 (active-high) */
+  #define FAULT_LED_PORT   GPIOB
+  #define FAULT_LED_PIN    12
+#else
+  /* Core.U / Core.L: PA8 (active-high) */
+  #define FAULT_LED_PORT   GPIOA
+  #define FAULT_LED_PIN    8
+#endif
+
 static void fault_delay(volatile uint32_t count)
 {
     while (count--)
@@ -124,14 +136,15 @@ static void fault_delay(volatile uint32_t count)
 
 static void fault_led_init(void)
 {
-    /* Enable GPIOA clock (AHB2ENR bit 0) */
-    SET_BITS(REG32(RCC_BASE + 0x4CUL), (1UL << 0));
-    /* PA8 = output */
-    MOD_BITS(GPIOA->MODER, 3UL << 16, 1UL << 16);
+    ll_rcc_gpio_clk_enable(FAULT_LED_PORT);
+    /* Set LED pin as output */
+    MOD_BITS(FAULT_LED_PORT->MODER,
+             3UL << (FAULT_LED_PIN * 2),
+             1UL << (FAULT_LED_PIN * 2));
 }
 
-static void fault_led_on(void)  { GPIOA->BSRR = (1UL << 8); }
-static void fault_led_off(void) { GPIOA->BSRR = (1UL << 24); }
+static void fault_led_on(void)  { FAULT_LED_PORT->BSRR = (1UL << FAULT_LED_PIN); }
+static void fault_led_off(void) { FAULT_LED_PORT->BSRR = (1UL << (FAULT_LED_PIN + 16)); }
 
 static void fault_blink(int n, uint32_t on_ticks, uint32_t off_ticks)
 {
@@ -231,6 +244,24 @@ static void fault_usage(uint32_t *stack)      { fault_handler(HAL_FAULT_USAGE, s
 
 /* Naked entry points — read the correct SP and branch to the trampoline.
  * The trampoline address is loaded from a literal pool via ldr. */
+
+#if defined(STM32L011xx)
+/* Cortex-M0+: no PSP in typical usage, no Thumb-2 conditional execution.
+ * Always use MSP. Only HardFault exists (no MemManage/Bus/Usage). */
+void HardFault_Handler(void) __attribute__((naked));
+void HardFault_Handler(void)
+{
+    __asm volatile (
+        "mrs r0, msp      \n"
+        "ldr r1, =%0      \n"
+        "bx r1            \n"
+        :
+        : "X" (fault_hard)
+    );
+}
+
+#else
+/* Cortex-M3/M4/M33: check EXC_RETURN bit 2 to select MSP vs PSP. */
 #define FAULT_ENTRY(name, trampoline)                                   \
     void name(void) __attribute__((naked));                             \
     void name(void)                                                     \
@@ -251,3 +282,4 @@ FAULT_ENTRY(HardFault_Handler,   fault_hard)
 FAULT_ENTRY(MemManage_Handler,   fault_memmanage)
 FAULT_ENTRY(BusFault_Handler,    fault_bus)
 FAULT_ENTRY(UsageFault_Handler,  fault_usage)
+#endif

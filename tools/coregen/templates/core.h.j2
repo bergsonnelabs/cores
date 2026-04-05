@@ -30,6 +30,8 @@
 /* ---- core_ API layer ---- */
 #include "core_gpio.h"
 #include "core_timing.h"
+{% if usb_enabled %}
 #include "core_usb.h"
+{% endif %}
 
 #endif /* CORE_H */

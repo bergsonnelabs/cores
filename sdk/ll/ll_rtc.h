@@ -109,7 +109,7 @@ static inline void ll_rtc_lock(void)
 static inline void ll_rcc_lse_enable(void)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x24UL), (1UL << 0));   /* CSR: LSEON */
+    SET_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 0));   /* CSR: LSEON */
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x90UL), (1UL << 0));   /* BDCR: LSEON */
 #elif defined(STM32WBA55xx)
@@ -122,7 +122,7 @@ static inline void ll_rcc_lse_enable(void)
 static inline int ll_rcc_lse_ready(void)
 {
 #if defined(STM32L011xx)
-    return (REG32(RCC_BASE + 0x24UL) & (1UL << 1)) != 0;
+    return (REG32(RCC_BASE + 0x50UL) & (1UL << 1)) != 0;
 #elif defined(STM32L422xx)
     return (REG32(RCC_BASE + 0x90UL) & (1UL << 1)) != 0;
 #elif defined(STM32WBA55xx)
@@ -140,7 +140,7 @@ static inline int ll_rcc_lse_ready(void)
 static inline void ll_rcc_lsi_enable(void)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x24UL), (1UL << 8));   /* CSR: LSION */
+    SET_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 8));   /* CSR: LSION */
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x94UL), (1UL << 0));   /* CSR: LSION */
 #elif defined(STM32WBA55xx)
@@ -153,7 +153,7 @@ static inline void ll_rcc_lsi_enable(void)
 static inline int ll_rcc_lsi_ready(void)
 {
 #if defined(STM32L011xx)
-    return (REG32(RCC_BASE + 0x24UL) & (1UL << 9)) != 0;
+    return (REG32(RCC_BASE + 0x50UL) & (1UL << 9)) != 0;
 #elif defined(STM32L422xx)
     return (REG32(RCC_BASE + 0x94UL) & (1UL << 1)) != 0;
 #elif defined(STM32WBA55xx)
@@ -172,7 +172,7 @@ static inline int ll_rcc_lsi_ready(void)
 static inline void ll_rcc_rtc_set_source(uint32_t source)
 {
 #if defined(STM32L011xx)
-    MOD_BITS(REG32(RCC_BASE + 0x24UL), 0x3UL << 16, source << 16);
+    MOD_BITS(REG32(RCC_BASE + 0x50UL), 0x3UL << 16, source << 16);
 #elif defined(STM32L422xx)
     MOD_BITS(REG32(RCC_BASE + 0x90UL), 0x3UL << 8, source << 8);  /* BDCR RTCSEL */
 #elif defined(STM32WBA55xx)
@@ -186,7 +186,7 @@ static inline void ll_rcc_rtc_set_source(uint32_t source)
 static inline void ll_rcc_rtc_enable(void)
 {
 #if defined(STM32L011xx)
-    SET_BITS(REG32(RCC_BASE + 0x24UL), (1UL << 18));  /* CSR: RTCEN */
+    SET_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 18));  /* CSR: RTCEN */
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x90UL), (1UL << 15));  /* BDCR: RTCEN */
 #elif defined(STM32WBA55xx)

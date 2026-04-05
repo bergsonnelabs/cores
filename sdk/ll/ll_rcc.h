@@ -33,7 +33,7 @@
 #elif defined(STM32WBA55xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32H523xx)
-  #define FLASH_BASE        (PERIPH_BASE + 0x08022000UL)
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #endif
 
 #define FLASH_ACR           REG32(FLASH_BASE + 0x00UL)
@@ -77,7 +77,34 @@ static inline int ll_rcc_hsi16_ready(void)
     return (REG32(RCC_BASE + 0x00UL) & (1UL << 10)) != 0;  /* CR: HSIRDY */
 }
 
+#elif defined(STM32H523xx)
+
+/* H5 "HSI" is 64 MHz (called HSI16 here for coregen compatibility) */
+static inline void ll_rcc_hsi16_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 0));  /* CR: HSION */
+}
+static inline int ll_rcc_hsi16_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 1)) != 0;  /* CR: HSIRDY */
+}
+
 #endif /* HSI16 */
+
+/* ---- CSI (4 MHz low-power internal, H5 only) ---- */
+
+#if defined(STM32H523xx)
+
+static inline void ll_rcc_csi_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 8));  /* CR: CSION */
+}
+static inline int ll_rcc_csi_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 9)) != 0;  /* CR: CSIRDY */
+}
+
+#endif /* CSI */
 
 /* ---- MSI (Multi-Speed Internal, L0/L4) ---- */
 
@@ -116,15 +143,16 @@ static inline int ll_rcc_msi_ready(void)
  * Range values: 0=65kHz, 1=131kHz, 2=262kHz, 3=524kHz,
  *               4=1.048MHz, 5=2.097MHz, 6=4.194MHz */
 #define LL_RCC_MSI_RANGE_1MHZ    0x4UL   /* 1.048576 MHz */
+#define LL_RCC_MSI_RANGE_2MHZ    0x5UL   /* 2.097152 MHz (reset default) */
 #define LL_RCC_MSI_RANGE_4MHZ    0x6UL   /* 4.194304 MHz */
 
-/** Configure MSI range on STM32L0 (RCC_ICSCR[15:13]). */
+/** Configure MSI range on STM32L0 (RCC_ICSCR[15:13]).
+ *  Only modifies MSIRANGE — preserves MSITRIM calibration value. */
 static inline void ll_rcc_msi_set_range(uint32_t range)
 {
-    uint32_t icscr = REG32(RCC_BASE + 0x04UL);
-    icscr &= ~(0x7UL << 13);
-    icscr |= (range << 13);
-    REG32(RCC_BASE + 0x04UL) = icscr;
+    /* Only change MSIRANGE[15:13], preserve everything else
+     * including MSITRIM[12:8] which holds factory calibration. */
+    MOD_BITS(REG32(RCC_BASE + 0x04UL), 0x7UL << 13, range << 13);
 }
 
 /** Poll until MSI is stable (CR: MSIRDY, bit 1). */
@@ -269,7 +297,8 @@ static inline uint32_t ll_flash_latency_for_mhz(uint32_t mhz)
   #define LL_RCC_PLLSRC_HSE    0x3UL
 #elif defined(STM32H523xx)
   #define LL_RCC_PLLSRC_NONE   0x0UL
-  #define LL_RCC_PLLSRC_HSI48  0x1UL  /* Actually uses HSI for PLL */
+  #define LL_RCC_PLLSRC_HSI48  0x1UL  /* HSI 64 MHz as PLL source */
+  #define LL_RCC_PLLSRC_HSI16  0x1UL  /* alias for coregen compatibility */
   #define LL_RCC_PLLSRC_CSI    0x2UL
   #define LL_RCC_PLLSRC_HSE    0x3UL
 #endif
@@ -341,15 +370,26 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
 
 #elif defined(STM32H523xx)
     /* H5: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
-       CFGR: [1:0] PLL1SRC, [5:2] PLL1M-1, [18] PLL1REN
-       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
-    uint32_t cfgr = src
-                  | ((m - 1) << 2)
-                  | (1UL << 18);  /* PLL1REN */
-    uint32_t divr = ((n - 1) << 0)
-                  | ((r - 1) << 24);
-    REG32(RCC_BASE + 0x28UL) = cfgr;
-    REG32(RCC_BASE + 0x34UL) = divr;
+       CFGR: [1:0] PLL1SRC, [3:2] PLL1RGE, [12:7] PLL1M-1, [16] PLL1PEN
+       DIVR: [8:0] PLL1N-1, [15:9] PLL1P-1 (P=SYSCLK output, odd values only)
+       Note: SYSCLK uses PLL1P output (not PLL1R like WBA55) */
+    /* H5: Compute RGE from M and write PLL1CFGR in a single atomic write
+     * to avoid read-modify-write losing bit 7 (M LSB). */
+    {
+        uint32_t vco_in_mhz = 64 / m;  /* HSI = 64 MHz (after HSIDIV clear) */
+        uint32_t rge = (vco_in_mhz > 8) ? 0x3UL : (vco_in_mhz > 4) ? 0x2UL :
+                       (vco_in_mhz > 2) ? 0x1UL : 0x0UL;
+        uint32_t cfgr = src
+                      | (rge << 2)            /* PLL1RGE at [3:2] */
+                      | (m << 8)              /* PLL1M at [13:8] (direct, not M-1) */
+                      | (1UL << 16);          /* PLL1PEN */
+        REG32(RCC_BASE + 0x28UL) = cfgr;
+    }
+    {
+        uint32_t divr = ((n - 1) << 0)    /* PLL1N at [8:0] */
+                      | ((r - 1) << 9);   /* PLL1P at [15:9] */
+        REG32(RCC_BASE + 0x34UL) = divr;
+    }
 #endif
 }
 
@@ -371,7 +411,7 @@ static inline void ll_rcc_pll_set_input_range(uint32_t vco_input_mhz)
 #elif defined(STM32H523xx)
     uint32_t rge = (vco_input_mhz > 8) ? 0x3UL : (vco_input_mhz > 4) ? 0x2UL :
                    (vco_input_mhz > 2) ? 0x1UL : 0x0UL;
-    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 3, rge << 3);
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 2, rge << 2);  /* PLL1RGE[3:2] */
 #else
     (void)vco_input_mhz;
 #endif
@@ -470,7 +510,8 @@ static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
   #define RCC_CFGR_SW_MASK     0x3UL
   #define RCC_CFGR_SWS_SHIFT   2      /* RCC_CFGR1_SWS_Pos = 2 */
 #elif defined(STM32H523xx)
-  #define LL_RCC_SYSCLK_HSI48  0x0UL
+  #define LL_RCC_SYSCLK_HSI16  0x0UL  /* HSI on H5 is 64 MHz; SW=0 selects it */
+  #define LL_RCC_SYSCLK_HSI48  0x0UL  /* alias — same oscillator */
   #define LL_RCC_SYSCLK_CSI    0x1UL
   #define LL_RCC_SYSCLK_HSE    0x2UL
   #define LL_RCC_SYSCLK_PLL    0x3UL
@@ -695,12 +736,8 @@ static inline void ll_rcc_ahb5_clk_sleep_disable(void)
 #define PWR_BASE          (AHB5_BASE + 0x0800UL)  /* 0x46020800 */
 #endif
 
-/** Enable PWR peripheral clock and backup domain write access. */
-static inline void ll_pwr_enable_backup_access(void)
-{
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    SET_BITS(REG32(PWR_BASE + 0x28UL), (1UL << 0));  /* PWR_DBPR: DBP (bit 0) */
-}
+/* ll_pwr_enable_backup_access() is defined in ll_pwr.h.
+ * Include ll_pwr.h if you need PWR/backup domain access. */
 
 /** Get radio power mode (PWR_SR1 bits [2:1]) */
 static inline uint32_t ll_pwr_get_radio_mode(void)
@@ -947,7 +984,37 @@ static inline void ll_pwr_set_vos(uint32_t range)
         ;
 }
 
-#endif /* STM32WBA55xx VOS */
+#elif defined(STM32H523xx)
+
+#ifndef PWR_BASE
+  #define PWR_BASE  0x44020800UL
+#endif
+
+/**
+ * Set voltage scaling range for H5.
+ *   0 = Scale 0 (up to 250MHz, boost)
+ *   1 = Scale 1 (up to 150MHz)
+ *   2 = Scale 2 (up to 100MHz)
+ *   3 = Scale 3 (up to 32MHz, reset default)
+ *
+ * PWR_VOSR  at offset 0x0C: BOOSTEN(18), BOOSTRDY(14), VOSRDY(3)
+ * PWR_VOSCR at offset 0x10: VOS[5:4]
+ *
+ * The EPOD booster must be enabled before changing VOS above Scale 3.
+ */
+static inline void ll_pwr_set_vos(uint32_t scale)
+{
+    /* PWR_VOSCR at offset 0x10: VOS[5:4]
+     * PWR_VOSSR at offset 0x14: VOSRDY(3), ACTVOSRDY(13), ACTVOS[15:14] */
+    MOD_BITS(REG32(PWR_BASE + 0x10UL), 0x3UL << 4, scale << 4);
+
+    /* Wait for VOSRDY (bit 3 of PWR_VOSSR at offset 0x14) */
+    uint32_t timeout = 100000;
+    while (!(REG32(PWR_BASE + 0x14UL) & (1UL << 3)) && --timeout)
+        ;
+}
+
+#endif /* VOS */
 
 /* ============================================================
  * I2C kernel clock source selection — WBA55 only

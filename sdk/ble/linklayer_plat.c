@@ -12,8 +12,7 @@
 #include <string.h>
 #include "hal_common.h"
 #include "ll_rcc.h"
-/* ll_pwr.h not included — ll_rcc.h already provides WBA-specific
-   ll_pwr_enable_backup_access() and ll_pwr_get_radio_mode() */
+#include "ll_pwr.h"
 #include "app_conf.h"
 #include "linklayer_plat.h"
 

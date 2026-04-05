@@ -16,7 +16,7 @@
 #include "ll_rcc.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
-{% if clock_config.lp_run %}
+{% if clock_config.lp_run or clock_config.needs_vos %}
 #include "ll_pwr.h"
 {% endif %}
 {% if i2c_buses %}
@@ -46,9 +46,9 @@ void core_clock_init(void)
 {
 {% if clock_config.pll %}
 {% if clock_config.needs_vos %}
-    /* ---- Voltage scaling: Range 1 for >16MHz on WBA55 ---- */
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    ll_pwr_set_vos(1);
+    /* ---- Voltage scaling for high-speed operation ---- */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_set_vos({{ clock_config.vos_value }});
 {% endif %}
 
     /* ---- Enable clock source: {{ clock_config.source }} ---- */
@@ -99,6 +99,14 @@ void core_clock_init(void)
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
     ll_rcc_set_sysclk(LL_RCC_SYSCLK_HSI16);
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_HSI16);
+{% elif clock_config.source == "csi" %}
+    /* CSI 4 MHz low-power internal RC (H5 only) */
+    ll_rcc_csi_enable();
+    while (!ll_rcc_csi_ready())
+        ;
+    ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
+    ll_rcc_set_sysclk(LL_RCC_SYSCLK_CSI);
+    ll_rcc_wait_sysclk(LL_RCC_SYSCLK_CSI);
 {% elif clock_config.source == "hse" %}
     ll_rcc_hse_enable();
     while (!ll_rcc_hse_ready())
@@ -108,9 +116,13 @@ void core_clock_init(void)
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_HSE);
 {% elif clock_config.source == "msi" %}
     /* Configure MSI to {{ clock_config.sysclk_mhz }}MHz */
+{% if clock_config.msi_range != "LL_RCC_MSI_RANGE_2MHZ" %}
     ll_rcc_msi_set_range({{ clock_config.msi_range }});
     while (!ll_rcc_msi_ready())
         ;
+{% else %}
+    /* MSI range 5 (~2.097MHz) is the L0 reset default — no change needed */
+{% endif %}
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
     ll_rcc_set_sysclk(LL_RCC_SYSCLK_MSI);
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_MSI);

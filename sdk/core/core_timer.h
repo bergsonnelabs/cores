@@ -126,8 +126,10 @@ static inline void core_timer_pwm_set(core_timer_t *h, uint8_t channel,
  * Set PWM duty cycle by pad number (requires coregen).
  * Resolves the channel from the pad's timer assignment.
  */
+/* Only available when coregen assigns timer pads */
 #if __has_include("core_pads.h")
 #include "core_pads.h"
+#ifdef CORE_HAS_TIMER_PADS
 static inline void core_timer_pwm_set_pad(core_timer_t *h, uint8_t pad,
                                            uint8_t duty_percent)
 {
@@ -137,6 +139,7 @@ static inline void core_timer_pwm_set_pad(core_timer_t *h, uint8_t pad,
         hal_timer_pwm_set_duty(h, ch, (uint16_t)duty_percent * 10);
     }
 }
+#endif
 #endif
 
 /* ============================================================

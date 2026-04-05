@@ -11,6 +11,7 @@
 #include "core_config.h"
 #include "ll_common.h"
 #include "ll_rcc.h"
+#include "ll_pwr.h"
 #include "blestack.h"
 #include "auto/ble_gap_aci.h"
 #include "auto/ble_gatt_aci.h"

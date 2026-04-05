@@ -193,7 +193,11 @@ static inline void ll_spi_init(SPI_TypeDef *spi, uint32_t prescaler,
               | (cpol ? LL_SPI_CFG2_CPOL : 0)
               | (cpha ? LL_SPI_CFG2_CPHA : 0);
 
-    spi->CR1 |= LL_SPI_CR1_SPE;                       /* Enable */
+    /* SSI must be high in master mode with SSM to prevent MODF.
+     * Clear any latched MODF before enabling SPE. */
+    spi->CR1 = (1UL << 12);                            /* SSI = 1 */
+    spi->IFCR = (1UL << 9);                            /* Clear MODF */
+    spi->CR1 = (1UL << 12) | LL_SPI_CR1_SPE;          /* SSI + Enable */
 #endif
 }
 
@@ -218,16 +222,22 @@ static inline uint8_t ll_spi_transfer(SPI_TypeDef *spi, uint8_t tx_data)
     return *(volatile uint8_t *)&spi->DR;
 
 #elif defined(STM32WBA55xx) || defined(STM32H523xx)
-    /* Set transfer size to 1 */
-    spi->CR2 = 1;
+    /* SPI v2 single-byte transfer:
+     *   1. Set TSIZE = 1
+     *   2. Write TXDR (preload data before starting clock)
+     *   3. Set CSTART (begins clocking)
+     *   4. Wait for RXP (byte received)
+     *   5. Read RXDR
+     *   6. Wait for EOT, clear flags */
 
-    /* Start transfer */
-    SET_BITS(spi->CR1, LL_SPI_CR1_CSTART);
+    /* TSIZE must be set while SPE=0 on SPI v2 */
+    spi->CR1 &= ~LL_SPI_CR1_SPE;  /* Disable */
+    spi->CR2 = 1;                  /* TSIZE = 1 byte */
+    spi->CR1 |= LL_SPI_CR1_SPE;   /* Re-enable */
 
-    /* Wait for TX space, write */
-    while (!(spi->SR & LL_SPI_SR_TXP))
-        ;
+    /* Preload TX data, then start clocking */
     *(volatile uint8_t *)&spi->TXDR = tx_data;
+    SET_BITS(spi->CR1, LL_SPI_CR1_CSTART);
 
     /* Wait for RX data */
     while (!(spi->SR & LL_SPI_SR_RXP))

@@ -20,8 +20,8 @@
 #include "ll_iwdg.h"
 #include "core_pad.h"
 
-/* EXTI base (STM32L4) */
-#define _EXTI_BASE  0x40010400UL
+/* EXTI addresses come from ll_exti.h */
+#include "ll_exti.h"
 
 /* ---- Simple API ---- */
 
@@ -46,17 +46,26 @@ static inline void core_stop_for(uint32_t seconds)
     ll_rtc_wakeup_config(seconds);
 
     /* Unmask RTC wakeup on EXTI line 20 (required for Stop wake) */
-    SET_BITS(REG32(_EXTI_BASE + 0x00UL), (1UL << 20));  /* IMR1 */
-    SET_BITS(REG32(_EXTI_BASE + 0x08UL), (1UL << 20));  /* RTSR1 */
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* IMR */
+    SET_BITS(REG32(EXTI_BASE + 0x08UL), (1UL << 20));  /* RTSR */
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 20));  /* IMR1 */
+    SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* RTSR1 */
+#endif
 
     /* Enter Stop mode */
     ll_pwr_stop();
 
-    /* --- Woke up, running on MSI 4MHz --- */
+    /* --- Woke up --- */
 
     /* Clear RTC wakeup flag and EXTI pending */
     ll_rtc_wakeup_clear_flag();
-    REG32(_EXTI_BASE + 0x14UL) = (1UL << 20);  /* PR1: clear pending */
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    REG32(EXTI_BASE + 0x14UL) = (1UL << 20);  /* PR: clear pending */
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    REG32(EXTI_BASE + 0x0CUL) = (1UL << 20);  /* RPR1: clear pending */
+#endif
 
     /* Restore PLL + SysTick */
     extern void core_clock_init(void);
@@ -96,8 +105,13 @@ static inline void core_standby_for(uint32_t seconds)
     ll_rtc_init(0);
     ll_rtc_wakeup_config(seconds);
 
-    SET_BITS(REG32(_EXTI_BASE + 0x00UL), (1UL << 20));
-    SET_BITS(REG32(_EXTI_BASE + 0x08UL), (1UL << 20));
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));
+    SET_BITS(REG32(EXTI_BASE + 0x08UL), (1UL << 20));
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 20));
+    SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));
+#endif
 
     ll_pwr_standby();
     __builtin_unreachable();
