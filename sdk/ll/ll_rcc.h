@@ -116,15 +116,16 @@ static inline int ll_rcc_msi_ready(void)
  * Range values: 0=65kHz, 1=131kHz, 2=262kHz, 3=524kHz,
  *               4=1.048MHz, 5=2.097MHz, 6=4.194MHz */
 #define LL_RCC_MSI_RANGE_1MHZ    0x4UL   /* 1.048576 MHz */
+#define LL_RCC_MSI_RANGE_2MHZ    0x5UL   /* 2.097152 MHz (reset default) */
 #define LL_RCC_MSI_RANGE_4MHZ    0x6UL   /* 4.194304 MHz */
 
-/** Configure MSI range on STM32L0 (RCC_ICSCR[15:13]). */
+/** Configure MSI range on STM32L0 (RCC_ICSCR[15:13]).
+ *  Only modifies MSIRANGE — preserves MSITRIM calibration value. */
 static inline void ll_rcc_msi_set_range(uint32_t range)
 {
-    uint32_t icscr = REG32(RCC_BASE + 0x04UL);
-    icscr &= ~(0x7UL << 13);
-    icscr |= (range << 13);
-    REG32(RCC_BASE + 0x04UL) = icscr;
+    /* Only change MSIRANGE[15:13], preserve everything else
+     * including MSITRIM[12:8] which holds factory calibration. */
+    MOD_BITS(REG32(RCC_BASE + 0x04UL), 0x7UL << 13, range << 13);
 }
 
 /** Poll until MSI is stable (CR: MSIRDY, bit 1). */

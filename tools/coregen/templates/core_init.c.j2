@@ -108,9 +108,13 @@ void core_clock_init(void)
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_HSE);
 {% elif clock_config.source == "msi" %}
     /* Configure MSI to {{ clock_config.sysclk_mhz }}MHz */
+{% if clock_config.msi_range != "LL_RCC_MSI_RANGE_2MHZ" %}
     ll_rcc_msi_set_range({{ clock_config.msi_range }});
     while (!ll_rcc_msi_ready())
         ;
+{% else %}
+    /* MSI range 5 (~2.097MHz) is the L0 reset default — no change needed */
+{% endif %}
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
     ll_rcc_set_sysclk(LL_RCC_SYSCLK_MSI);
     ll_rcc_wait_sysclk(LL_RCC_SYSCLK_MSI);
