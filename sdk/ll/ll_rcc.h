@@ -33,7 +33,7 @@
 #elif defined(STM32WBA55xx)
   #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #elif defined(STM32H523xx)
-  #define FLASH_BASE        (PERIPH_BASE + 0x08022000UL)
+  #define FLASH_BASE        (PERIPH_BASE + 0x00022000UL)
 #endif
 
 #define FLASH_ACR           REG32(FLASH_BASE + 0x00UL)
@@ -75,6 +75,18 @@ static inline void ll_rcc_hsi16_enable(void)
 static inline int ll_rcc_hsi16_ready(void)
 {
     return (REG32(RCC_BASE + 0x00UL) & (1UL << 10)) != 0;  /* CR: HSIRDY */
+}
+
+#elif defined(STM32H523xx)
+
+/* H5 "HSI" is 64 MHz (called HSI16 here for coregen compatibility) */
+static inline void ll_rcc_hsi16_enable(void)
+{
+    SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 0));  /* CR: HSION */
+}
+static inline int ll_rcc_hsi16_ready(void)
+{
+    return (REG32(RCC_BASE + 0x00UL) & (1UL << 1)) != 0;  /* CR: HSIRDY */
 }
 
 #endif /* HSI16 */
@@ -471,7 +483,8 @@ static inline int ll_rcc_hsi16_enable_timeout(uint32_t retries)
   #define RCC_CFGR_SW_MASK     0x3UL
   #define RCC_CFGR_SWS_SHIFT   2      /* RCC_CFGR1_SWS_Pos = 2 */
 #elif defined(STM32H523xx)
-  #define LL_RCC_SYSCLK_HSI48  0x0UL
+  #define LL_RCC_SYSCLK_HSI16  0x0UL  /* HSI on H5 is 64 MHz; SW=0 selects it */
+  #define LL_RCC_SYSCLK_HSI48  0x0UL  /* alias — same oscillator */
   #define LL_RCC_SYSCLK_CSI    0x1UL
   #define LL_RCC_SYSCLK_HSE    0x2UL
   #define LL_RCC_SYSCLK_PLL    0x3UL
