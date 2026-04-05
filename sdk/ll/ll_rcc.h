@@ -355,13 +355,14 @@ static inline void ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint3
 
 #elif defined(STM32H523xx)
     /* H5: RCC_PLL1CFGR at offset 0x28, RCC_PLL1DIVR at offset 0x34
-       CFGR: [1:0] PLL1SRC, [5:2] PLL1M-1, [18] PLL1REN
-       DIVR: [8:0] PLL1N-1, [30:24] PLL1R-1 */
+       CFGR: [1:0] PLL1SRC, [3:2] PLL1RGE, [12:7] PLL1M-1, [16] PLL1PEN
+       DIVR: [8:0] PLL1N-1, [15:9] PLL1P-1 (P=SYSCLK output, odd values only)
+       Note: SYSCLK uses PLL1P output (not PLL1R like WBA55) */
     uint32_t cfgr = src
-                  | ((m - 1) << 2)
-                  | (1UL << 18);  /* PLL1REN */
-    uint32_t divr = ((n - 1) << 0)
-                  | ((r - 1) << 24);
+                  | ((m - 1) << 7)    /* PLL1M at [12:7] */
+                  | (1UL << 16);      /* PLL1PEN */
+    uint32_t divr = ((n - 1) << 0)    /* PLL1N at [8:0] */
+                  | ((r - 1) << 9);   /* PLL1P at [15:9] */
     REG32(RCC_BASE + 0x28UL) = cfgr;
     REG32(RCC_BASE + 0x34UL) = divr;
 #endif
@@ -385,7 +386,7 @@ static inline void ll_rcc_pll_set_input_range(uint32_t vco_input_mhz)
 #elif defined(STM32H523xx)
     uint32_t rge = (vco_input_mhz > 8) ? 0x3UL : (vco_input_mhz > 4) ? 0x2UL :
                    (vco_input_mhz > 2) ? 0x1UL : 0x0UL;
-    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 3, rge << 3);
+    MOD_BITS(REG32(RCC_BASE + 0x28UL), 0x3UL << 2, rge << 2);  /* PLL1RGE[3:2] */
 #else
     (void)vco_input_mhz;
 #endif
@@ -971,15 +972,20 @@ static inline void ll_pwr_set_vos(uint32_t range)
  *   2 = Scale 2 (up to 100MHz)
  *   3 = Scale 3 (up to 32MHz, reset default)
  *
+ * PWR_VOSR  at offset 0x0C: BOOSTEN(18), BOOSTRDY(14), VOSRDY(3)
  * PWR_VOSCR at offset 0x10: VOS[5:4]
- * PWR_VOSR  at offset 0x0C: VOSRDY bit 3
+ *
+ * The EPOD booster must be enabled before changing VOS above Scale 3.
  */
 static inline void ll_pwr_set_vos(uint32_t scale)
 {
+    /* PWR_VOSCR at offset 0x10: VOS[5:4]
+     * PWR_VOSSR at offset 0x14: VOSRDY(3), ACTVOSRDY(13), ACTVOS[15:14] */
     MOD_BITS(REG32(PWR_BASE + 0x10UL), 0x3UL << 4, scale << 4);
-    /* Wait for VOSRDY (bit 3 of PWR_VOSR) */
+
+    /* Wait for VOSRDY (bit 3 of PWR_VOSSR at offset 0x14) */
     uint32_t timeout = 100000;
-    while (!(REG32(PWR_BASE + 0x0CUL) & (1UL << 3)) && --timeout)
+    while (!(REG32(PWR_BASE + 0x14UL) & (1UL << 3)) && --timeout)
         ;
 }
 
