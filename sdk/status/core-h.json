@@ -46,7 +46,7 @@
     "coregen.uart":   "compile",
 
     "conn.usb_cdc": "verified",
-    "conn.dfu":     "compile",
+    "conn.dfu":     "verified",
     "conn.fdcan":   "compile",
     "conn.ble":     "na",
     "conn.ble_adv": "na",
