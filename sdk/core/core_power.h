@@ -45,11 +45,21 @@ static inline void core_stop_for(uint32_t seconds)
     ll_rtc_init(0);
     ll_rtc_wakeup_config(seconds);
 
-    /* Unmask RTC wakeup on EXTI line 20 (required for Stop wake) */
+    /* Unmask RTC wakeup for Stop mode wake.
+     * L0/L4: EXTI line 20 (IMR + RTSR).
+     * H5: RTC has direct NVIC interrupt (RTC_IRQn=2). Enable NVIC +
+     *      EXTI line 19 (wakeup timer) for wakeup from Stop.
+     *      Note: line 17 = RTC (non-secure, all events), line 19 = TAMP.
+     *      RTC is a "direct" EXTI event — only IMR needed, no RTSR. */
 #if defined(STM32L011xx) || defined(STM32L422xx)
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* IMR */
     SET_BITS(REG32(EXTI_BASE + 0x08UL), (1UL << 20));  /* RTSR */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    /* H5: EXTI line 17 = RTC non-secure (direct event, IMR only) */
+    ll_nvic_set_priority(2, 0x30);  /* RTC_IRQn = 2 */
+    ll_nvic_enable_irq(2);
+    SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 17));  /* IMR1: line 17 */
+#elif defined(STM32WBA55xx)
     SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 20));  /* IMR1 */
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* RTSR1 */
 #endif
@@ -59,11 +69,13 @@ static inline void core_stop_for(uint32_t seconds)
 
     /* --- Woke up --- */
 
-    /* Clear RTC wakeup flag and EXTI pending */
+    /* Clear RTC wakeup flag */
     ll_rtc_wakeup_clear_flag();
 #if defined(STM32L011xx) || defined(STM32L422xx)
     REG32(EXTI_BASE + 0x14UL) = (1UL << 20);  /* PR: clear pending */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    ll_nvic_disable_irq(2);
+#elif defined(STM32WBA55xx)
     REG32(EXTI_BASE + 0x0CUL) = (1UL << 20);  /* RPR1: clear pending */
 #endif
 
@@ -108,7 +120,9 @@ static inline void core_standby_for(uint32_t seconds)
 #if defined(STM32L011xx) || defined(STM32L422xx)
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));
     SET_BITS(REG32(EXTI_BASE + 0x08UL), (1UL << 20));
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 17));  /* IMR1: line 17 (RTC) */
+#elif defined(STM32WBA55xx)
     SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 20));
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));
 #endif

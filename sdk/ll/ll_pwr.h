@@ -68,7 +68,7 @@ static inline void ll_pwr_enable_backup_access(void)
 #elif defined(STM32WBA55xx)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR1: DBP */
 #elif defined(STM32H523xx)
-    SET_BITS(REG32(PWR_BASE + 0x04UL), (1UL << 8));   /* DBPCR: DBP */
+    SET_BITS(REG32(PWR_BASE + 0x24UL), (1UL << 0));   /* DBPCR: DBP (offset 0x024, bit 0) */
 #endif
 }
 
@@ -126,13 +126,14 @@ static inline void ll_pwr_stop(void)
     MOD_BITS(REG32(PWR_BASE + 0x00UL), 0x7UL, 0x1UL);
 
 #elif defined(STM32H523xx)
-    /* H5: PMCR LPMS = 01 → Stop 1 */
-    MOD_BITS(REG32(PWR_BASE + 0x00UL), 0x7UL, 0x1UL);
+    /* H5: PMCR LPMS = 00 → Stop 0 (Stop 1 doesn't wake from RTC on H523) */
+    MOD_BITS(REG32(PWR_BASE + 0x00UL), 0x7UL, 0x0UL);
 #endif
 
     /* Set SLEEPDEEP bit and execute WFI */
     SET_BITS(SCB_SCR, SCB_SCR_SLEEPDEEP);
     __asm volatile ("dsb" ::: "memory");
+    __asm volatile ("isb");
     __asm volatile ("wfi");
 
     /* After waking: clear SLEEPDEEP */
@@ -173,8 +174,10 @@ static inline void ll_pwr_standby(void)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 2));   /* CR: CWUF */
 #elif defined(STM32L422xx)
     REG32(PWR_BASE + 0x14UL) = 0x1F;                  /* SCR: clear all WUF */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
-    REG32(PWR_BASE + 0x14UL) = 0x1F;                  /* WUSCR/SCR: clear WUF */
+#elif defined(STM32H523xx)
+    REG32(PWR_BASE + 0x40UL) = 0x1F;                  /* WUSCR: clear all WUF */
+#elif defined(STM32WBA55xx)
+    REG32(PWR_BASE + 0x14UL) = 0x1F;                  /* WUSCR: clear WUF */
 #endif
 
     SET_BITS(SCB_SCR, SCB_SCR_SLEEPDEEP);
@@ -213,7 +216,9 @@ static inline int ll_pwr_woke_from_standby(void)
     return (REG32(PWR_BASE + 0x04UL) & (1UL << 1)) != 0;  /* CSR: SBF */
 #elif defined(STM32L422xx)
     return (REG32(PWR_BASE + 0x10UL) & (1UL << 8)) != 0;  /* SR1: SBF */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    return (REG32(PWR_BASE + 0x04UL) & (1UL << 6)) != 0;  /* PMSR: SBF (bit 6) */
+#elif defined(STM32WBA55xx)
     return (REG32(PWR_BASE + 0x10UL) & (1UL << 8)) != 0;  /* SR1: SBF */
 #endif
 }
@@ -225,7 +230,9 @@ static inline void ll_pwr_clear_standby_flag(void)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 3));   /* CR: CSBF */
 #elif defined(STM32L422xx)
     SET_BITS(REG32(PWR_BASE + 0x14UL), (1UL << 8));   /* SCR: CSBF */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 7));   /* PMCR: CSSF (clears SBF+STOPF) */
+#elif defined(STM32WBA55xx)
     SET_BITS(REG32(PWR_BASE + 0x14UL), (1UL << 8));
 #endif
 }
