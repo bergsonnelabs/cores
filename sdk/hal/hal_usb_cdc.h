@@ -33,8 +33,12 @@
  * RX callback type
  * ============================================================ */
 
-/** Called from USB ISR when data is received on EP1 OUT. */
-typedef void (*hal_usb_cdc_rx_cb_t)(const uint8_t *data, uint16_t len);
+/** Called from USB ISR when data is received on EP1 OUT.
+ *  @param data  Received bytes
+ *  @param len   Number of bytes
+ *  @param ctx   User context (passed at registration time)
+ */
+typedef void (*hal_usb_cdc_rx_cb_t)(const uint8_t *data, uint16_t len, void *ctx);
 
 /* ============================================================
  * API
@@ -85,7 +89,7 @@ int hal_usb_cdc_printf(const char *fmt, ...)
  * If set, data is NOT stored in the ring buffer.
  * If not set, data goes into the ring buffer for polling reads.
  */
-void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb);
+void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb, void *ctx);
 
 /**
  * Check if data is available to read (ring buffer mode).

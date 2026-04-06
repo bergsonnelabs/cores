@@ -16,6 +16,10 @@
 #ifndef CORE_BLE_H
 #define CORE_BLE_H
 
+#if !defined(STM32WBA55xx)
+#error "core_ble.h: BLE is only available on Core.W (STM32WBA55). This tile does not have a BLE radio."
+#endif
+
 #include <stdint.h>
 
 /* ============================================================
@@ -47,8 +51,8 @@
 typedef uint16_t core_ble_svc_t;
 typedef uint16_t core_ble_char_t;
 
-/* Write callback type */
-typedef void (*core_ble_write_cb)(const uint8_t *data, uint16_t len);
+/* Write callback type (called when central writes to a characteristic) */
+typedef void (*core_ble_write_cb)(const uint8_t *data, uint16_t len, void *ctx);
 
 /* ============================================================
  * Lifecycle
@@ -95,13 +99,15 @@ core_ble_svc_t core_ble_add_service(const char *name);
  * @param type      Value type: CORE_BLE_BOOL, CORE_BLE_UINT8, CORE_BLE_UINT16,
  *                  CORE_BLE_UINT32, or CORE_BLE_BYTES(n) for raw buffers.
  * @param on_write  Callback when central writes. NULL if read-only.
+ * @param ctx       User context passed to on_write callback; may be NULL.
  * @return          Characteristic handle for set_value/notify.
  */
 core_ble_char_t core_ble_add_char(core_ble_svc_t svc,
                                    const char *name,
                                    uint8_t access,
                                    uint8_t type,
-                                   core_ble_write_cb on_write);
+                                   core_ble_write_cb on_write,
+                                   void *ctx);
 
 /* ============================================================
  * Runtime — read/write/notify
@@ -128,11 +134,17 @@ int core_ble_notify(core_ble_char_t ch);
 /** Returns 1 if a central is connected. */
 int core_ble_connected(void);
 
-/** Set callback for connection events. */
-void core_ble_on_connect(void (*cb)(void));
+/** Set callback for connection events.
+ *  @param cb   Called when a central connects; may be NULL
+ *  @param ctx  User context passed to callback; may be NULL
+ */
+void core_ble_on_connect(void (*cb)(void *ctx), void *ctx);
 
-/** Set callback for disconnection events. */
-void core_ble_on_disconnect(void (*cb)(void));
+/** Set callback for disconnection events.
+ *  @param cb   Called when a central disconnects; may be NULL
+ *  @param ctx  User context passed to callback; may be NULL
+ */
+void core_ble_on_disconnect(void (*cb)(void *ctx), void *ctx);
 
 /* ============================================================
  * Configuration (call before core_ble_init)

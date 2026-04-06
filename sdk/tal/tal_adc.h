@@ -25,7 +25,7 @@
  *   uint32_t mv = hal_adc_read_mv(&adc, PAD_5_ADC_CH);
  *
  * DMA / continuous mode — also pad-centric:
- *   tal_adc_start_dma(&adc, buf, len, callback);
+ *   tal_adc_start_dma(&adc, buf, len, callback, ctx);
  *   uint16_t v = tal_adc_dma_read_pad(&adc, 5);  // index looked up automatically
  *   tal_adc_stop_dma(&adc);
  *
@@ -186,11 +186,13 @@ static inline uint32_t tal_adc_read_vdda_mv(hal_adc_t *adc)
  * @param buf       Destination buffer (uint16_t[], DMA-accessible)
  * @param len       Buffer length in samples
  * @param callback  Called on half-transfer and full-transfer; may be NULL
+ * @param ctx       User context passed to callback; may be NULL
  */
 static inline hal_status_t tal_adc_start_dma(hal_adc_t *adc, uint16_t *buf,
-                                              uint16_t len, void (*callback)(void))
+                                              uint16_t len, hal_callback_t callback,
+                                              void *ctx)
 {
-    return hal_adc_start_dma(adc, buf, len, callback);
+    return hal_adc_start_dma(adc, buf, len, callback, ctx);
 }
 
 /**

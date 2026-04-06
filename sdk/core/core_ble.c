@@ -17,7 +17,8 @@ extern void     ble_svc_init(void);
 extern uint16_t ble_svc_add_service(const char *name, uint8_t num_chars);
 extern uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
                                   uint8_t access, uint8_t value_len,
-                                  void (*on_write)(const uint8_t *data, uint16_t len));
+                                  void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                                  void *ctx);
 extern int      ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len);
 extern int      ble_svc_notify(uint16_t char_handle);
 
@@ -31,8 +32,10 @@ extern void UTIL_SEQ_Run(uint32_t mask);
 
 /* Connection state (ble_app_glue.c) */
 extern volatile uint8_t ble_connected;
-extern void (*ble_on_connect_cb)(void);
-extern void (*ble_on_disconnect_cb)(void);
+extern void (*ble_on_connect_cb)(void *ctx);
+extern void *ble_on_connect_ctx;
+extern void (*ble_on_disconnect_cb)(void *ctx);
+extern void *ble_on_disconnect_ctx;
 
 /* ---- State ---- */
 
@@ -126,9 +129,10 @@ core_ble_char_t core_ble_add_char(core_ble_svc_t svc,
                                    const char *name,
                                    uint8_t access,
                                    uint8_t type,
-                                   core_ble_write_cb on_write)
+                                   core_ble_write_cb on_write,
+                                   void *ctx)
 {
-    return ble_svc_add_char(svc, name, access, type, on_write);
+    return ble_svc_add_char(svc, name, access, type, on_write, ctx);
 }
 
 /* ============================================================
@@ -150,8 +154,8 @@ int core_ble_notify(core_ble_char_t ch)
  * ============================================================ */
 
 int core_ble_connected(void)      { return ble_connected; }
-void core_ble_on_connect(void (*cb)(void))    { ble_on_connect_cb = cb; }
-void core_ble_on_disconnect(void (*cb)(void)) { ble_on_disconnect_cb = cb; }
+void core_ble_on_connect(void (*cb)(void *ctx), void *ctx)    { ble_on_connect_cb = cb; ble_on_connect_ctx = ctx; }
+void core_ble_on_disconnect(void (*cb)(void *ctx), void *ctx) { ble_on_disconnect_cb = cb; ble_on_disconnect_ctx = ctx; }
 
 /* ============================================================
  * Configuration

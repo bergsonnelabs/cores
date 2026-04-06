@@ -21,9 +21,18 @@
  * PWM output
  * ============================================================ */
 
-/** Initialize a timer for PWM output at the given frequency. */
+/** Initialize a timer for PWM output at the given frequency.
+ *  Clock is auto-resolved from SYSCLK_HZ (core_config.h).
+ */
 static inline hal_status_t core_pwm_init(core_timer_t *h, TIM_TypeDef *instance,
-                                          uint32_t pclk_hz, uint32_t freq_hz)
+                                          uint32_t freq_hz)
+{
+    return hal_timer_pwm_init(h, instance, SYSCLK_HZ, freq_hz);
+}
+
+/** @deprecated Use core_pwm_init(h, instance, freq_hz) — clock auto-resolved. */
+static inline hal_status_t core_pwm_init_clk(core_timer_t *h, TIM_TypeDef *instance,
+                                              uint32_t pclk_hz, uint32_t freq_hz)
 {
     return hal_timer_pwm_init(h, instance, pclk_hz, freq_hz);
 }
@@ -92,10 +101,20 @@ static inline void core_pwm_set_pad(core_timer_t *h, uint8_t pad,
  *   period_us: interval in microseconds (1 – 1000000)
  *   cb:        callback function (called from ISR context!)
  *   ctx:       user context passed to callback
+ *
+ * Clock is auto-resolved from SYSCLK_HZ (core_config.h).
  */
 static inline hal_status_t core_every_us(core_timer_t *h, TIM_TypeDef *instance,
-                                          uint32_t pclk_hz, uint32_t period_us,
+                                          uint32_t period_us,
                                           hal_callback_t cb, void *ctx)
+{
+    return hal_timer_tick_init(h, instance, SYSCLK_HZ, period_us, cb, ctx);
+}
+
+/** @deprecated Use core_every_us(h, instance, period_us, cb, ctx) — clock auto-resolved. */
+static inline hal_status_t core_every_us_clk(core_timer_t *h, TIM_TypeDef *instance,
+                                              uint32_t pclk_hz, uint32_t period_us,
+                                              hal_callback_t cb, void *ctx)
 {
     return hal_timer_tick_init(h, instance, pclk_hz, period_us, cb, ctx);
 }

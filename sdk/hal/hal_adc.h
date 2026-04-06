@@ -100,7 +100,8 @@ typedef struct {
     /* DMA circular buffer */
     uint16_t             *dma_buf;
     uint16_t              dma_len;
-    void                (*dma_callback)(void);  /* called on HT and TC */
+    hal_callback_t        dma_callback;          /* called on HT and TC */
+    void                 *dma_callback_ctx;
     bool                  dma_active;
 
     /* VREFINT calibration cache — computed lazily on first read_mv call */
@@ -226,7 +227,7 @@ void hal_adc_read_all(hal_adc_t *adc, uint16_t *buf);
  * @param callback Called on HT and TC interrupts (may be NULL)
  */
 hal_status_t hal_adc_start_dma(hal_adc_t *adc, uint16_t *buf, uint16_t len,
-                                void (*callback)(void));
+                                hal_callback_t callback, void *ctx);
 
 /**
  * Stop DMA conversion and disable the DMA channel.

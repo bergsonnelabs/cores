@@ -209,6 +209,9 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_TIM1_CC       44
   #define HAL_IRQ_TIM2          45
   #define HAL_IRQ_TIM3          46
+  /* Note: TIM6 and TIM7 have NO dedicated NVIC interrupt on the STM32H523.
+     Position 54 is reserved and 55 is I2C1_EV.  These basic timers can still
+     be used for DAC triggering and timebase, but cannot generate tick callbacks. */
   #define HAL_IRQ_ADC1          37
   #define HAL_IRQ_GPDMA1_CH0    29
   #define HAL_IRQ_GPDMA1_CH1    30

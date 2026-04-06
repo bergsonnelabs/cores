@@ -59,7 +59,7 @@ void core_clock_init(void)
 {% endif %}
 
     /* ---- Enable clock source: {{ clock_config.source }} ---- */
-{% if clock_config.source == "hsi16" %}
+{% if clock_config.source in ("hsi16", "hsi") %}
     ll_rcc_hsi16_enable();
     while (!ll_rcc_hsi16_ready())
         ;
@@ -77,7 +77,7 @@ void core_clock_init(void)
     ll_flash_set_latency(ll_flash_latency_for_mhz({{ clock_config.sysclk_mhz }}));
 
     /* ---- Configure PLL: {{ clock_config.source_mhz }}MHz ÷{{ clock_config.pll.m }} ×{{ clock_config.pll.n }} ÷{{ clock_config.pll.r }} = {{ clock_config.sysclk_mhz }}MHz ---- */
-{% if clock_config.source == "hsi16" %}
+{% if clock_config.source in ("hsi16", "hsi") %}
     ll_rcc_pll_config(LL_RCC_PLLSRC_HSI16, {{ clock_config.pll.m }}, {{ clock_config.pll.n }}, {{ clock_config.pll.r }});
 {% elif clock_config.source == "hse" %}
     ll_rcc_pll_config(LL_RCC_PLLSRC_HSE, {{ clock_config.pll.m }}, {{ clock_config.pll.n }}, {{ clock_config.pll.r }});
@@ -99,7 +99,7 @@ void core_clock_init(void)
     ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
     ll_pwr_set_vos(1);
 {% endif %}
-{% if clock_config.source == "hsi16" %}
+{% if clock_config.source in ("hsi16", "hsi") %}
     ll_rcc_hsi16_enable();
     while (!ll_rcc_hsi16_ready())
         ;

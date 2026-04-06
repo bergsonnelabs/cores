@@ -93,6 +93,9 @@ static uint32_t _tim_irq(TIM_TypeDef *instance)
     if (instance == TIM1)  return HAL_IRQ_TIM1_UP;
     if (instance == TIM2)  return HAL_IRQ_TIM2;
     if (instance == TIM3)  return HAL_IRQ_TIM3;
+    /* TIM6/TIM7 have no NVIC interrupt on H523 — trigger-only, cannot
+       generate tick callbacks.  _tim_irq returns 0 → hal_timer_tick_init
+       will fail gracefully. */
 #endif
     return 0;
 }
@@ -303,9 +306,11 @@ hal_status_t hal_timer_tick_init(hal_timer_t *h, TIM_TypeDef *instance,
     SET_BITS(instance->DIER, LL_TIM_DIER_UIE);
 
     /* Register handle and enable NVIC */
+    uint32_t irq = _tim_irq(instance);
+    if (!irq) return HAL_ERROR;  /* Timer has no NVIC interrupt (e.g. TIM6/TIM7 on H523) */
     _tim_handles[idx] = h;
-    hal_nvic_set_priority(_tim_irq(instance), 0x30);
-    hal_nvic_enable_irq(_tim_irq(instance));
+    hal_nvic_set_priority(irq, 0x30);
+    hal_nvic_enable_irq(irq);
 
     return HAL_OK;
 }
@@ -336,9 +341,11 @@ hal_status_t hal_timer_tick_enable(hal_timer_t *h, hal_callback_t cb, void *ctx)
     _tim_handles[idx] = h;
 
     /* Enable update interrupt + NVIC */
+    uint32_t irq = _tim_irq(h->instance);
+    if (!irq) return HAL_ERROR;  /* Timer has no NVIC interrupt */
     SET_BITS(h->instance->DIER, LL_TIM_DIER_UIE);
-    hal_nvic_set_priority(_tim_irq(h->instance), 0x30);
-    hal_nvic_enable_irq(_tim_irq(h->instance));
+    hal_nvic_set_priority(irq, 0x30);
+    hal_nvic_enable_irq(irq);
 
     return HAL_OK;
 }
