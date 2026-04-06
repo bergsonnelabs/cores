@@ -33,5 +33,8 @@
 {% if usb_enabled %}
 #include "core_usb.h"
 {% endif %}
+{% if dac_enabled %}
+#include "core_dac.h"
+{% endif %}
 
 #endif /* CORE_H */
