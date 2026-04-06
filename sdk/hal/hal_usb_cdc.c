@@ -777,6 +777,7 @@ uint16_t hal_usb_cdc_available(void)
 #include "ll_rcc.h"
 #include "ll_crs.h"
 #include "ll_gpio.h"
+#include "ll_systick.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -1315,6 +1316,31 @@ void hal_usb_cdc_init(void)
     _cdc.line_coding.bParityType = 0;
     _cdc.line_coding.bDataBits   = 8;
 
+    /* USB requires SYSCLK > 4 MHz for reliable enumeration.
+     * If running from the low-speed CSI (4 MHz), automatically
+     * switch to HSI/2 (32 MHz) before enabling USB. */
+    {
+        /* RCC_CFGR1 SWS bits [5:3] indicate current SYSCLK source.
+         * SWS=0b10 means CSI is active. */
+        uint32_t sws = (REG32(RCC_BASE + 0x1CUL) >> 3) & 0x7UL;
+        if (sws == 0x2UL) {  /* CSI active — too slow for USB */
+            /* Set flash latency for 32 MHz (LATENCY=1) */
+            MOD_BITS(REG32(0x40022000UL), 0xFUL, 1UL);
+            while ((REG32(0x40022000UL) & 0xF) != 1) ;
+
+            /* Enable HSI (64 MHz on H5), divide by 2 → 32 MHz */
+            ll_rcc_hsi16_enable();
+            while (!ll_rcc_hsi16_ready()) ;
+            MOD_BITS(REG32(RCC_BASE + 0x00UL), 3UL << 5, 1UL << 5);
+
+            /* Switch SYSCLK to HSI */
+            ll_rcc_set_sysclk(LL_RCC_SYSCLK_HSI16);
+
+            /* Update SysTick for new clock speed */
+            ll_systick_init(32000000UL);
+        }
+    }
+
     /* Enable HSI48 for crystal-less USB */
     ll_rcc_hsi48_enable();
     while (!ll_rcc_hsi48_ready())
@@ -1335,25 +1361,14 @@ void hal_usb_cdc_init(void)
      *   bit 24: USB33DEN — enable USB 3.3V regulator
      *   bit 25: USB33SV  — supply valid (removes VDDUSB isolation)
      * PWR_VMSR at PWR_BASE + 0x3C:
-     *   bit 24: USB33RDY — USB 3.3V supply ready
-     * Must enable regulator, wait for ready, then set supply valid. */
+     *   bit 24: USB33RDY — USB 3.3V supply ready */
     SET_BITS(REG32(PWR_BASE + 0x38UL), (1UL << 24));   /* USB33DEN */
     while (!(REG32(PWR_BASE + 0x3CUL) & (1UL << 24)))  /* Wait USB33RDY */
         ;
     SET_BITS(REG32(PWR_BASE + 0x38UL), (1UL << 25));   /* USB33SV */
 
-    /* USB pins PA11/PA12: on H5, the USB transceiver connects directly
-     * to the pins. No GPIO AF configuration needed — CubeMX doesn't
-     * configure them either. Configuring as AF10 may interfere. */
-
     /* Power on USB peripheral */
     ll_usb_drd_power_on();
-
-    /* Ensure EXTI line 42 (USB) is unmasked.
-     * EXTI_IMR2 at EXTI_BASE + 0x90, bit 10 = line 42.
-     * Should be set by default, but enforce it. */
-    #define EXTI_BASE_ADDR  0x44022000UL
-    SET_BITS(REG32(EXTI_BASE_ADDR + 0x90UL), (1UL << 10));
 
     /* Enable USB interrupt */
     hal_nvic_set_priority(HAL_IRQ_USB, 0x30);
