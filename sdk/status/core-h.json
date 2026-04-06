@@ -36,6 +36,7 @@
     "adc.temp":     { "status": "verified", "note": "Reads ~71°C — includes chip self-heating. Calibration formula correct per RM." },
     "adc.res":      "verified",
     "adc.oversamp": "verified",
+    "adc.dac":      "verified",
     "adc.cont":     "compile",
     "adc.dma":      "compile",
 
