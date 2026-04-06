@@ -270,8 +270,8 @@ static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio,
         adc->CFGR2 = cfgr2;
     } else {
         uint32_t cfgr2 = adc->CFGR2;
-        cfgr2 &= ~((0x1FUL << 2) | (0xFUL << 7) | (1UL << 0));
-        cfgr2 |= (ovsr << 2) | (shift << 7) | (1UL << 0);
+        cfgr2 &= ~((0x7UL << 2) | (0xFUL << 5) | (1UL << 0));
+        cfgr2 |= (ovsr << 2) | (shift << 5) | (1UL << 0);  /* OVSS at [8:5] */
         adc->CFGR2 = cfgr2;
     }
 #endif
