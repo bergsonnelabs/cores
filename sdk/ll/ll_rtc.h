@@ -146,7 +146,7 @@ static inline void ll_rcc_lsi_enable(void)
 #elif defined(STM32WBA55xx)
     SET_BITS(REG32(RCC_BASE + 0xE4UL), (1UL << 0));   /* BDCR2: LSION? */
 #elif defined(STM32H523xx)
-    SET_BITS(REG32(RCC_BASE + 0xF4UL), (1UL << 0));   /* CSR: LSION? */
+    SET_BITS(REG32(RCC_BASE + 0xF0UL), (1UL << 26));  /* BDCR: LSION */
 #endif
 }
 
@@ -159,7 +159,7 @@ static inline int ll_rcc_lsi_ready(void)
 #elif defined(STM32WBA55xx)
     return (REG32(RCC_BASE + 0xE4UL) & (1UL << 1)) != 0;
 #elif defined(STM32H523xx)
-    return (REG32(RCC_BASE + 0xF4UL) & (1UL << 1)) != 0;
+    return (REG32(RCC_BASE + 0xF0UL) & (1UL << 27)) != 0;  /* BDCR: LSIRDY */
 #else
     return 0;
 #endif

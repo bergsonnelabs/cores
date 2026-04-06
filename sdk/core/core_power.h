@@ -45,11 +45,20 @@ static inline void core_stop_for(uint32_t seconds)
     ll_rtc_init(0);
     ll_rtc_wakeup_config(seconds);
 
-    /* Unmask RTC wakeup on EXTI line 20 (required for Stop wake) */
+    /* Unmask RTC wakeup for Stop mode wake.
+     * L0/L4: EXTI line 20 (IMR + RTSR).
+     * H5: RTC has direct NVIC interrupt (RTC_IRQn=2). Enable NVIC +
+     *      EXTI line 17 event mask for wakeup from Stop. */
 #if defined(STM32L011xx) || defined(STM32L422xx)
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* IMR */
     SET_BITS(REG32(EXTI_BASE + 0x08UL), (1UL << 20));  /* RTSR */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    /* H5: enable RTC NVIC interrupt + EXTI line 17 rising edge + event mask */
+    ll_nvic_set_priority(2, 0x30);  /* RTC_IRQn = 2 */
+    ll_nvic_enable_irq(2);
+    SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 17));  /* IMR1: line 17 */
+    SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 17));  /* RTSR1: line 17 rising */
+#elif defined(STM32WBA55xx)
     SET_BITS(REG32(EXTI_BASE + 0x80UL), (1UL << 20));  /* IMR1 */
     SET_BITS(REG32(EXTI_BASE + 0x00UL), (1UL << 20));  /* RTSR1 */
 #endif
@@ -63,7 +72,10 @@ static inline void core_stop_for(uint32_t seconds)
     ll_rtc_wakeup_clear_flag();
 #if defined(STM32L011xx) || defined(STM32L422xx)
     REG32(EXTI_BASE + 0x14UL) = (1UL << 20);  /* PR: clear pending */
-#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+#elif defined(STM32H523xx)
+    REG32(EXTI_BASE + 0x0CUL) = (1UL << 17);  /* RPR1: clear line 17 */
+    ll_nvic_disable_irq(2);
+#elif defined(STM32WBA55xx)
     REG32(EXTI_BASE + 0x0CUL) = (1UL << 20);  /* RPR1: clear pending */
 #endif
 
