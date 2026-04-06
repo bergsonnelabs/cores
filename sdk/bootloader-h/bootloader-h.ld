@@ -1,25 +1,26 @@
-/* Linker script for STM32H523HE */
-/* 512KB Flash, 272KB SRAM */
+/* Linker script for DFU Bootloader — STM32H523HE
+ *
+ * Bootloader occupies first 8KB of flash (sector 0).
+ * Application firmware starts at 0x08002000.
+ *
+ * The 8K limit is enforced at link time — if the bootloader
+ * exceeds this, the linker will error. */
 
 MEMORY
 {
-    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 512K
-    SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 272K - 16  /* Last 16 bytes reserved for DFU magic */
+    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 8K
+    SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 272K
 }
 
-/* Entry point */
 ENTRY(Reset_Handler)
 
-/* Highest address of the stack — top of SRAM */
 _estack = ORIGIN(SRAM) + LENGTH(SRAM);
 
-/* Minimum heap and stack sizes */
-_Min_Heap_Size  = 0x200;
-_Min_Stack_Size = 0x400;
+_Min_Heap_Size  = 0;
+_Min_Stack_Size = 0x200;
 
 SECTIONS
 {
-    /* Vector table and code go into FLASH */
     .isr_vector :
     {
         . = ALIGN(4);
@@ -34,10 +35,8 @@ SECTIONS
         *(.text*)
         *(.glue_7)
         *(.glue_7t)
-
         KEEP(*(.init))
         KEEP(*(.fini))
-
         . = ALIGN(4);
         _etext = .;
     } >FLASH
@@ -50,23 +49,11 @@ SECTIONS
         . = ALIGN(4);
     } >FLASH
 
-    /* ARM exception handling — needed by some C library functions */
-    .ARM.extab :
-    {
-        *(.ARM.extab* .gnu.linkonce.armextab.*)
-    } >FLASH
+    .ARM.extab : { *(.ARM.extab* .gnu.linkonce.armextab.*) } >FLASH
+    .ARM : { __exidx_start = .; *(.ARM.exidx*) __exidx_end = .; } >FLASH
 
-    .ARM :
-    {
-        __exidx_start = .;
-        *(.ARM.exidx*)
-        __exidx_end = .;
-    } >FLASH
-
-    /* Used by startup to initialize .data */
     _sidata = LOADADDR(.data);
 
-    /* Initialized data — loaded from FLASH, lives in SRAM */
     .data :
     {
         . = ALIGN(4);
@@ -77,7 +64,6 @@ SECTIONS
         _edata = .;
     } >SRAM AT> FLASH
 
-    /* Uninitialized data — zero-filled in SRAM */
     .bss :
     {
         . = ALIGN(4);
@@ -91,7 +77,6 @@ SECTIONS
         __bss_end__ = _ebss;
     } >SRAM
 
-    /* Heap grows up, stack grows down — check they don't collide */
     ._user_heap_stack :
     {
         . = ALIGN(8);
@@ -102,13 +87,6 @@ SECTIONS
         . = ALIGN(8);
     } >SRAM
 
-    /* Discard debug sections from standard libraries */
-    /DISCARD/ :
-    {
-        libc.a(*)
-        libm.a(*)
-        libgcc.a(*)
-    }
-
+    /DISCARD/ : { libc.a(*) libm.a(*) libgcc.a(*) }
     .ARM.attributes 0 : { *(.ARM.attributes) }
 }

@@ -107,6 +107,10 @@ ifeq ($(BOOTLOADER),1)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_app.ld
     APP_OFFSET = 0x08002000UL
   endif
+  ifeq ($(TILE),Core-H-1-a)
+    LDSCRIPT = $(SDK_DIR)sdk/device/stm32h523he_app.ld
+    APP_OFFSET = 0x08002000UL
+  endif
 endif
 
 # ---- Paths ----
