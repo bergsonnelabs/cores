@@ -223,9 +223,10 @@ static void _apply_oversample(ADC_TypeDef *adc, hal_adc_oversample_t ratio,
         return;
     }
 
-    /* ratio encodes log2(N): e.g. 4× → 2, 16× → 4, …
-       OVS register value = log2(N) - 1 per RM (0=2×, 1=4×, …) */
-    uint32_t ovsr  = (uint32_t)(ratio / 2) - 1;
+    /* Enum: 1X=0, 2X=1, 4X=2, 8X=3, 16X=4, 32X=5, …
+       OVS register: 0=2×, 1=4×, 2=8×, 3=16×, …
+       So ovsr = enum_value - 1 */
+    uint32_t ovsr  = (uint32_t)ratio - 1;
     uint32_t shift = (uint32_t)shift_bits;
 
 #if defined(STM32L011xx)
@@ -495,7 +496,7 @@ hal_status_t hal_adc_set_oversample(hal_adc_t *adc, hal_adc_oversample_t ratio)
 #endif
     adc->oversample     = ratio;
     adc->effective_bits = (uint8_t)adc->resolution;  /* noise reduction: no bit-depth change */
-    _apply_oversample(adc->instance, ratio, (uint8_t)(ratio / 2));
+    _apply_oversample(adc->instance, ratio, (uint8_t)ratio);  /* shift = log2(N) = enum value */
     return HAL_OK;
 }
 
@@ -544,17 +545,14 @@ uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel)
     inst->ISR = LL_ADC_ISR_EOC;
 
 #elif defined(STM32H523xx)
-    /* H5: SQR1 set during init. Just set channel and clear EOC.
-     * On H5, writing SQR1 after ADEN may not take effect reliably. */
-    {
-        /* Stop any in-progress conversion first */
-        if (inst->CR & LL_ADC_CR_ADSTART) {
-            inst->CR |= (1UL << 4);  /* ADSTP */
-            uint32_t t2 = 10000;
-            while ((inst->CR & (1UL << 4)) && --t2) ;
-        }
-        inst->SQR1 = (adc->channels[channel].channel << 6);
+    /* H5: stop any in-progress conversion, then set channel in SQR1.
+     * SQR1 is writable when ADSTART=0. */
+    if (inst->CR & LL_ADC_CR_ADSTART) {
+        inst->CR |= (1UL << 4);  /* ADSTP */
+        uint32_t t2 = 10000;
+        while ((inst->CR & (1UL << 4)) && --t2) ;
     }
+    inst->SQR1 = (channel << 6);   /* channel = ADC channel number */
     inst->ISR = LL_ADC_ISR_EOC;
 #endif
 
