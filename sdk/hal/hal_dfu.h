@@ -19,9 +19,17 @@
 
 #include "ll_common.h"
 
-/* Magic value and its fixed RAM address (top of SRAM, outside linker regions) */
+/* Magic value and its fixed RAM address (top of SRAM, outside linker regions).
+ * The linker scripts reserve the last 16 bytes of SRAM for this. */
 #define DFU_MAGIC           0xDEADBEEFUL
-#define DFU_MAGIC_ADDR      (*(volatile uint32_t *)0x20009FF0UL)
+
+#if defined(STM32L422xx)
+  /* L422: 40KB SRAM, top = 0x2000A000 */
+  #define DFU_MAGIC_ADDR    (*(volatile uint32_t *)0x20009FF0UL)
+#elif defined(STM32H523xx)
+  /* H523: 272KB SRAM, top = 0x20044000 */
+  #define DFU_MAGIC_ADDR    (*(volatile uint32_t *)0x20043FF0UL)
+#endif
 
 /* SCB AIRCR: Application Interrupt and Reset Control Register */
 #define SCB_AIRCR           REG32(0xE000ED0CUL)

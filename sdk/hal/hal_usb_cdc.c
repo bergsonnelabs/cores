@@ -778,6 +778,7 @@ uint16_t hal_usb_cdc_available(void)
 #include "ll_crs.h"
 #include "ll_gpio.h"
 #include "ll_systick.h"
+#include "hal_dfu.h"
 #include <string.h>
 #include <stdio.h>
 
@@ -1118,13 +1119,13 @@ static void _handle_setup(void)
             uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
 
             /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot.
-             * On H5, this reboots into ROM DFU (BOOT0-based) rather than
-             * a custom bootloader. TODO: implement custom DFU for H5. */
+             * Writes magic to noinit SRAM, resets. Startup code checks
+             * magic and jumps to ROM system bootloader (USB DFU). */
             if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
                 _ep0_send_status();
                 for (volatile int i = 0; i < 100000; i++)
                     ;
-                /* TODO: hal_dfu_reboot() needs H5-compatible SRAM address */
+                hal_dfu_reboot();
             }
 
             _cdc.dtr = new_dtr;

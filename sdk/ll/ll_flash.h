@@ -74,6 +74,64 @@
   #define FLASH_KEYR        REG32(FLASH_BASE + 0x08UL)  /* NSKEYR */
   #define FLASH_SR          REG32(FLASH_BASE + 0x20UL)  /* NSSR */
   #define FLASH_CR          REG32(FLASH_BASE + 0x28UL)  /* NSCR1 */
+#elif defined(STM32H523xx)
+  #define FLASH_PAGE_SIZE   8192     /* 8 KB sectors */
+  #define FLASH_START       0x08000000UL
+  #define FLASH_TOTAL_SIZE  (512 * 1024)   /* 512 KB */
+  #define FLASH_PAGE_COUNT  (FLASH_TOTAL_SIZE / FLASH_PAGE_SIZE)  /* 64 sectors */
+
+  /* H5 non-secure flash registers (different offsets + bit positions) */
+  #undef  FLASH_KEYR
+  #undef  FLASH_SR
+  #undef  FLASH_CR
+
+  #define FLASH_KEYR        REG32(FLASH_BASE + 0x04UL)  /* NSKEYR */
+  #define FLASH_SR          REG32(FLASH_BASE + 0x20UL)  /* NSSR */
+  #define FLASH_CR          REG32(FLASH_BASE + 0x28UL)  /* NSCR */
+  #define FLASH_CCR         REG32(FLASH_BASE + 0x30UL)  /* NSCCR (clear flags) */
+
+  /* H5 SR bits are different from L4 */
+  #undef  FLASH_SR_EOP
+  #undef  FLASH_SR_OPERR
+  #undef  FLASH_SR_PROGERR
+  #undef  FLASH_SR_WRPERR
+  #undef  FLASH_SR_PGAERR
+  #undef  FLASH_SR_SIZERR
+  #undef  FLASH_SR_PGSERR
+  #undef  FLASH_SR_MISERR
+  #undef  FLASH_SR_FASTERR
+  #undef  FLASH_SR_BSY
+  #undef  FLASH_SR_ERR_MASK
+
+  #define FLASH_SR_BSY        (1UL << 0)
+  #define FLASH_SR_EOP        (1UL << 16)
+  #define FLASH_SR_WRPERR     (1UL << 17)
+  #define FLASH_SR_PGSERR     (1UL << 18)
+  #define FLASH_SR_STRBERR    (1UL << 19)
+  #define FLASH_SR_INCERR     (1UL << 20)
+  #define FLASH_SR_ERR_MASK   (FLASH_SR_WRPERR | FLASH_SR_PGSERR | \
+                               FLASH_SR_STRBERR | FLASH_SR_INCERR)
+
+  /* H5 CR bits are different from L4 */
+  #undef  FLASH_CR_PG
+  #undef  FLASH_CR_PER
+  #undef  FLASH_CR_MER1
+  #undef  FLASH_CR_PNB_SHIFT
+  #undef  FLASH_CR_PNB_MASK
+  #undef  FLASH_CR_STRT
+  #undef  FLASH_CR_LOCK
+
+  #define FLASH_CR_LOCK       (1UL << 0)
+  #define FLASH_CR_PG         (1UL << 1)
+  #define FLASH_CR_SER        (1UL << 2)    /* Sector erase (was PER on L4) */
+  #define FLASH_CR_PER        FLASH_CR_SER  /* Alias for compatibility */
+  #define FLASH_CR_FW         (1UL << 4)    /* Force write */
+  #define FLASH_CR_START      (1UL << 5)    /* Start erase (was STRT on L4) */
+  #define FLASH_CR_STRT       FLASH_CR_START /* Alias for compatibility */
+  #define FLASH_CR_SNB_SHIFT  6
+  #define FLASH_CR_SNB_MASK   (0x7FUL << FLASH_CR_SNB_SHIFT)
+  #define FLASH_CR_PNB_SHIFT  FLASH_CR_SNB_SHIFT  /* Alias */
+  #define FLASH_CR_PNB_MASK   FLASH_CR_SNB_MASK   /* Alias */
 #endif
 
 /* ============================================================
@@ -102,10 +160,15 @@ static inline void ll_flash_wait_bsy(void)
         ;
 }
 
-/** Clear all error flags in FLASH_SR. */
+/** Clear all error flags. */
 static inline void ll_flash_clear_errors(void)
 {
+#if defined(STM32H523xx)
+    /* H5 uses a separate clear register (NSCCR) */
+    FLASH_CCR = FLASH_SR_ERR_MASK | FLASH_SR_EOP;
+#else
     FLASH_SR = FLASH_SR_ERR_MASK | FLASH_SR_EOP;
+#endif
 }
 
 /**
@@ -117,14 +180,13 @@ static inline int ll_flash_erase_page(uint32_t page)
     ll_flash_wait_bsy();
     ll_flash_clear_errors();
 
-    /* Set PER + page number, then start */
-    FLASH_CR = FLASH_CR_PER | (page << FLASH_CR_PNB_SHIFT);
-    SET_BITS(FLASH_CR, FLASH_CR_STRT);
+    /* Set sector/page erase + number, then start */
+    FLASH_CR = FLASH_CR_PER | (page << FLASH_CR_PNB_SHIFT) | FLASH_CR_STRT;
 
     ll_flash_wait_bsy();
 
-    /* Clear PER */
-    CLR_BITS(FLASH_CR, FLASH_CR_PER);
+    /* Clear erase bits */
+    CLR_BITS(FLASH_CR, FLASH_CR_PER | FLASH_CR_STRT);
 
     if (FLASH_SR & FLASH_SR_ERR_MASK)
         return -1;
