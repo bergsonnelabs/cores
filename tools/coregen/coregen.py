@@ -452,6 +452,11 @@ def build_pad_config(config, pad_map):
             # No AF needed — analog functions bypass the AF mux entirely.
             entry["mode"] = "analog"
             entry["af"] = None
+        elif re.match(r'^DAC\d+\.OUT', assigned_func):
+            # DAC output: set to analog mode.
+            entry["mode"] = "analog"
+            entry["af"] = None
+            entry["dac"] = True
         else:
             # Find AF for this function
             for af_func in pad_info["af_functions"]:
@@ -1128,6 +1133,11 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
         ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
         ctx["timer_pads"] = build_timer_config(project, pad_map)
+
+        # DAC: detect from pad config
+        dac_pads = [p for p in ctx["pad_config"] if p.get("dac")]
+        ctx["dac_enabled"] = len(dac_pads) > 0
+        ctx["dac_pad"] = dac_pads[0] if dac_pads else None
 
         # Build tile peripheral driver config
         tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(

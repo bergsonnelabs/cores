@@ -25,6 +25,9 @@
 {% if spi_buses %}
 #include "hal_spi.h"
 {% endif %}
+{% if dac_enabled %}
+#include "hal_dac.h"
+{% endif %}
 {% if pad_config and pad_config | selectattr("exti") | list %}
 #include "hal_exti.h"
 {% endif %}
@@ -40,6 +43,10 @@ hal_i2c_t {{ bus.handle }};
 {% for bus in spi_buses %}
 hal_spi_t {{ bus.handle }};
 {% endfor %}
+{% endif %}
+{% if dac_enabled %}
+/* ---- DAC handle ---- */
+hal_dac_t core_dac = { GPIO{{ dac_pad.port }}, {{ dac_pad.pin }}, 2 };
 {% endif %}
 
 void core_clock_init(void)
