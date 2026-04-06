@@ -91,13 +91,13 @@
   #define TS_CAL2_TEMP       130
 
 #elif defined(STM32H523xx)
-  /* H523 RM0481 §3.12 — calibrated at VDDA = 3.3V, 30°C / 110°C */
+  /* H523 — calibrated at VDDA = 3.3V, 30°C / 130°C (from ST LL ADC header) */
   #define VREFINT_CAL_ADDR   ((volatile uint16_t *)0x08FFF810UL)
-  #define TS_CAL1_ADDR       ((volatile uint16_t *)0x08FFF800UL)
-  #define TS_CAL2_ADDR       ((volatile uint16_t *)0x08FFF804UL)
+  #define TS_CAL1_ADDR       ((volatile uint16_t *)0x08FFF814UL)
+  #define TS_CAL2_ADDR       ((volatile uint16_t *)0x08FFF818UL)
   #define VREFINT_CAL_VDD_MV 3300UL
   #define TS_CAL1_TEMP       30
-  #define TS_CAL2_TEMP       110
+  #define TS_CAL2_TEMP       130
 #endif
 
 /* ============================================================
@@ -379,32 +379,61 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
     SET_BITS(instance->CR, LL_ADC_CR_ADEN);
     { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
 
-#elif defined(STM32L422xx) || defined(STM32H523xx)
-    /* ---- L4 / H5 init ---- */
+#elif defined(STM32L422xx)
+    /* ---- L4 init ---- */
 
-    /* Exit deep power-down (bits must be written in the correct order) */
-    instance->CR = 0;                             /* clear DEEPPWD */
+    /* Exit deep power-down */
+    instance->CR = 0;
     SET_BITS(instance->CR, (1UL << 28));          /* ADVREGEN = 1 */
-    for (volatile int i = 0; i < 1000; i++) {}    /* ~20µs regulator startup */
+    for (volatile int i = 0; i < 1000; i++) {}
 
-    /* ADC kernel clock: PCLK/4 via ADC_CCR PRESC[21:18] */
-    MOD_BITS(ADC_CCR, 0xFUL << 18, 0x2UL << 18); /* PRESC = 0b0010 = /4 */
+    MOD_BITS(ADC_CCR, 0xFUL << 18, 0x2UL << 18); /* PRESC = /4 */
 
     ll_adc_calibrate(instance);
 
-    /* Configuration */
     instance->CFGR1 = LL_ADC_CFGR1_OVRMOD;
-    /* Resolution: CFGR1[4:3] on L4, CFGR1[3:2] on H5 */
-#if defined(STM32L422xx)
     MOD_BITS(instance->CFGR1, 0x3UL << 3, _res_encode(res) << 3);
-#else
-    /* H5: RES field at bits [3:2] per RM0481 §24.7.2 */
-    MOD_BITS(instance->CFGR1, 0x3UL << 2, _res_encode(res) << 2);
-#endif
 
-    /* Enable ADC with stabilisation delay */
     instance->ISR = LL_ADC_ISR_ADRDY;
     SET_BITS(instance->CR, LL_ADC_CR_ADEN);
+    { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
+
+#elif defined(STM32H523xx)
+    /* ---- H5 init ----
+     * Exact sequence verified on hardware. Order matters:
+     * 1. Set CKMODE in CCR (HCLK/4 — async kernel clock not configured)
+     * 2. Exit deep power-down (CR = 0, then ADVREGEN via direct assign)
+     * 3. Wait for regulator startup
+     * 4. Calibrate
+     * 5. Set CFGR1 (resolution + OVRMOD) via direct assign
+     * 6. Set SMPR for all channels (must be before ADEN)
+     * 7. Enable ADC */
+
+    /* 1. Clock: CKMODE=11 (HCLK/4), clear PRESC */
+    ADC_CCR = (ADC_CCR & ~((0x3UL << 16) | (0xFUL << 18))) | (0x3UL << 16);
+
+    /* 2. Exit deep power-down */
+    instance->CR = 0;                   /* Clear DEEPPWD (direct assign) */
+    instance->CR = (1UL << 28);         /* ADVREGEN (direct assign, not |=) */
+
+    /* 3. Wait for regulator startup (~10µs min per datasheet) */
+    for (volatile int i = 0; i < 2000; i++) {}
+
+    /* 4. Calibrate (single-ended) */
+    instance->CR &= ~(1UL << 30);      /* ADCALDIF = 0 */
+    instance->CR |= (1UL << 31);       /* ADCAL = 1 */
+    { uint32_t t = 100000; while ((instance->CR & (1UL << 31)) && --t) ; }
+
+    /* 5. Configuration: OVRMOD + resolution (direct assign to CFGR1) */
+    instance->CFGR1 = LL_ADC_CFGR1_OVRMOD | (_res_encode(res) << 2);
+
+    /* 6. Sample time: max for all channels (SMPR only writable when ADEN=0) */
+    instance->SMPR  = 0x3FFFFFFFUL;
+    instance->SMPR2 = 0x3FFFFFFFUL;
+
+    /* 7. Enable ADC */
+    instance->ISR = LL_ADC_ISR_ADRDY;
+    instance->CR |= LL_ADC_CR_ADEN;
     { uint32_t t = 100000; while (!(instance->ISR & LL_ADC_ISR_ADRDY) && --t) ; }
 
 #elif defined(STM32WBA55xx)
@@ -509,10 +538,23 @@ uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel)
      * SQR1 (offset 0x30) is NOT CHSELR on these families. */
     inst->TR3 = (1UL << channel);
 
-#elif defined(STM32L422xx) || defined(STM32H523xx)
-    /* L4/H5: sequence register — single channel in SQ1 field */
-    inst->SQR1 = (channel << 6);   /* L[3:0]=0 (length-1), SQ1[10:6]=channel */
-    /* Clear any stale EOC */
+#elif defined(STM32L422xx)
+    /* L4: sequence register — single channel in SQ1 field */
+    inst->SQR1 = (channel << 6);
+    inst->ISR = LL_ADC_ISR_EOC;
+
+#elif defined(STM32H523xx)
+    /* H5: SQR1 set during init. Just set channel and clear EOC.
+     * On H5, writing SQR1 after ADEN may not take effect reliably. */
+    {
+        /* Stop any in-progress conversion first */
+        if (inst->CR & LL_ADC_CR_ADSTART) {
+            inst->CR |= (1UL << 4);  /* ADSTP */
+            uint32_t t2 = 10000;
+            while ((inst->CR & (1UL << 4)) && --t2) ;
+        }
+        inst->SQR1 = (adc->channels[channel].channel << 6);
+    }
     inst->ISR = LL_ADC_ISR_EOC;
 #endif
 
