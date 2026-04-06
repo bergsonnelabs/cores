@@ -4,6 +4,8 @@
  * Output a 12-bit analog voltage on a DAC-capable pad.
  * The DAC instance is configured by coregen based on project.json.
  *
+ * Only available on Core.H (STM32H523).
+ *
  * Usage:
  *   core_dac_init();
  *   core_dac_write_mv(1650);   // Output 1.65V
@@ -13,7 +15,9 @@
 #ifndef CORE_DAC_H
 #define CORE_DAC_H
 
-#if defined(STM32H523xx)
+#if !defined(STM32H523xx)
+#error "core_dac.h: DAC is not available on this Core tile. Only Core.H (STM32H523) has a DAC peripheral."
+#endif
 
 #include "hal_dac.h"
 
@@ -44,7 +48,5 @@ static inline uint16_t core_dac_read(void)
 {
     return hal_dac_read(&core_dac);
 }
-
-#endif /* STM32H523xx */
 
 #endif /* CORE_DAC_H */

@@ -13,11 +13,21 @@
 
 /* ---- Init ---- */
 
-/** Initialize a UART instance. Same signature as hal_uart_init. */
+/** Initialize a UART instance.
+ *  Clock is auto-resolved from PCLK1_HZ (core_config.h).
+ */
 static inline hal_status_t core_serial_init(hal_uart_t *h,
                                              USART_TypeDef *instance,
-                                             uint32_t pclk_hz,
                                              const hal_uart_config_t *cfg)
+{
+    return hal_uart_init(h, instance, PCLK1_HZ, cfg);
+}
+
+/** @deprecated Use core_serial_init(h, instance, cfg) — clock auto-resolved. */
+static inline hal_status_t core_serial_init_clk(hal_uart_t *h,
+                                                 USART_TypeDef *instance,
+                                                 uint32_t pclk_hz,
+                                                 const hal_uart_config_t *cfg)
 {
     return hal_uart_init(h, instance, pclk_hz, cfg);
 }

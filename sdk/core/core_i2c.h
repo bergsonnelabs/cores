@@ -17,7 +17,7 @@
  * For manual init (no coregen):
  *
  *   core_i2c_t bus;
- *   core_i2c_setup(&bus, I2C1, I2C_400K);
+ *   core_i2c_init(&bus, I2C1, I2C_400K);
  */
 
 #ifndef CORE_I2C_H
@@ -63,14 +63,14 @@ static inline uint32_t _core_i2c_timing(uint32_t speed_hz)
  * Initialize an I2C bus with automatic timing resolution.
  *
  *   core_i2c_t bus;
- *   core_i2c_setup(&bus, I2C1, I2C_400K);
+ *   core_i2c_init(&bus, I2C1, I2C_400K);
  *
  * Resolves the TIMINGR value from the compile-time kernel clock.
  * Enables FMP mode automatically when speed is I2C_1M.
  */
-static inline hal_status_t core_i2c_setup(core_i2c_t *h,
-                                           I2C_TypeDef *instance,
-                                           uint32_t speed_hz)
+static inline hal_status_t core_i2c_init(core_i2c_t *h,
+                                          I2C_TypeDef *instance,
+                                          uint32_t speed_hz)
 {
     uint32_t timing = _core_i2c_timing(speed_hz);
     if (!timing) return HAL_ERROR;
@@ -79,19 +79,22 @@ static inline hal_status_t core_i2c_setup(core_i2c_t *h,
         .timeout_ms = 100,
         .fmp = (speed_hz >= I2C_1M) ? 1 : 0,
     };
-    return hal_i2c_init(h, instance, &cfg);
+    return hal_i2c_init_cfg(h, instance, &cfg);
 }
 
 /**
- * Initialize I2C with explicit config (same as hal_i2c_init).
- * Use core_i2c_setup() for the simpler speed-based API.
+ * Initialize I2C with explicit config struct (advanced).
+ * For most use cases, prefer core_i2c_init(h, instance, speed_hz).
  */
-static inline hal_status_t core_i2c_init(core_i2c_t *h,
-                                          I2C_TypeDef *instance,
-                                          const hal_i2c_config_t *cfg)
+static inline hal_status_t core_i2c_init_cfg(core_i2c_t *h,
+                                              I2C_TypeDef *instance,
+                                              const hal_i2c_config_t *cfg)
 {
     return hal_i2c_init(h, instance, cfg);
 }
+
+/** @deprecated Use core_i2c_init(). */
+#define core_i2c_setup core_i2c_init
 
 /* ---- Master operations ---- */
 

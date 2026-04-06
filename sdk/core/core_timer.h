@@ -12,7 +12,7 @@
  *
  *   core_timer_t tim1;
  *   core_timer_init_freq(&tim1, TIM1, 1000);   // 1 kHz overflow
- *   core_timer_pwm_set(&tim1, 1, 50);         // CH1 = 50% PWM
+ *   core_timer_pwm_set(&tim1, 1, 500);        // CH1 = 50% PWM (permil)
  *   core_timer_capture_init(&tim1, 3);         // CH3 = capture
  *   core_timer_start(&tim1);
  *
@@ -110,33 +110,30 @@ static inline void core_timer_set_freq(core_timer_t *h, uint32_t freq_hz)
 
 /**
  * Set PWM duty cycle for a channel.
- *   channel:       1–4
- *   duty_percent:  0–100 (0 = off, 50 = 50%, 100 = always on)
- *
- * For finer control (0.1% resolution), use the HAL directly:
- *   hal_timer_pwm_set_duty(h, channel, permil);  // 0–1000
+ *   channel:      1–4
+ *   duty_permil:  0–1000 (0 = off, 500 = 50%, 1000 = always on)
  */
 static inline void core_timer_pwm_set(core_timer_t *h, uint8_t channel,
-                                       uint8_t duty_percent)
+                                       uint16_t duty_permil)
 {
-    hal_timer_pwm_set_duty(h, channel, (uint16_t)duty_percent * 10);
+    hal_timer_pwm_set_duty(h, channel, duty_permil);
 }
 
 /**
  * Set PWM duty cycle by pad number (requires coregen).
  * Resolves the channel from the pad's timer assignment.
+ *   duty_permil:  0–1000 (0 = off, 500 = 50%, 1000 = always on)
  */
-/* Only available when coregen assigns timer pads */
 #if __has_include("core_pads.h")
 #include "core_pads.h"
 #ifdef CORE_HAS_TIMER_PADS
 static inline void core_timer_pwm_set_pad(core_timer_t *h, uint8_t pad,
-                                           uint8_t duty_percent)
+                                           uint16_t duty_permil)
 {
     TIM_TypeDef *inst;
     uint8_t ch;
     if (core_pad_timer_info(pad, &inst, &ch) == 0) {
-        hal_timer_pwm_set_duty(h, ch, (uint16_t)duty_percent * 10);
+        hal_timer_pwm_set_duty(h, ch, duty_permil);
     }
 }
 #endif
@@ -172,7 +169,7 @@ static inline uint32_t core_timer_capture_read(core_timer_t *h, uint8_t channel)
  *
  * Typical pattern:
  *   core_timer_init(&t, TIM2, 1000);         // 1 kHz timebase
- *   core_timer_pwm_set(&t, 1, 500);          // CH1 = 50% PWM
+ *   core_timer_pwm_set(&t, 1, 500);          // CH1 = 50% PWM (permil)
  *   core_timer_enable_tick(&t, on_tick, NULL); // also fire ISR at 1 kHz
  *   core_timer_start(&t);
  */

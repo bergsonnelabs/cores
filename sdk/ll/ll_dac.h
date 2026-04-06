@@ -47,7 +47,7 @@
 #define LL_AHB2_DAC1        (1UL << 11)
 
 /**
- * Initialize DAC channel 1.
+ * Initialize DAC channel 2 (PA5, pad 9 on Core.H).
  * Enables the DAC with output buffer connected to the pin.
  * GPIO must already be configured as analog.
  * AHB2 clock must be enabled: ll_rcc_ahb2_clk_enable(LL_AHB2_DAC1).
@@ -65,7 +65,7 @@ static inline void ll_dac_init(void)
 }
 
 /**
- * Write a 12-bit value to DAC channel 1.
+ * Write a 12-bit value to DAC channel 2 (PA5).
  * Output voltage = (val / 4095) × VREF+ (typically 3.3V).
  *
  * @param val  0–4095
@@ -76,7 +76,7 @@ static inline void ll_dac_write(uint16_t val)
 }
 
 /**
- * Write a voltage in millivolts to DAC channel 1.
+ * Write a voltage in millivolts to DAC channel 2 (PA5).
  * Assumes VREF+ = 3300 mV.
  *
  * @param mv  0–3300
@@ -89,7 +89,7 @@ static inline void ll_dac_write_mv(uint16_t mv)
 }
 
 /**
- * Read back the current DAC output register value.
+ * Read back the current DAC channel 2 (PA5) output register value.
  */
 static inline uint16_t ll_dac_read(void)
 {
@@ -97,7 +97,7 @@ static inline uint16_t ll_dac_read(void)
 }
 
 /**
- * Disable DAC channel 1.
+ * Disable DAC channel 2 (PA5).
  */
 static inline void ll_dac_deinit(void)
 {

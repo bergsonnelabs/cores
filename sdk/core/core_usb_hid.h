@@ -10,13 +10,17 @@
  * The HID interface is part of the composite CDC+HID device —
  * call core_usb_init() first, then use core_usb_hid_send().
  *
+ * Only available on Core.U (STM32L422) and Core.H (STM32H523).
+ *
  * VID:1209 PID:0001, Interface 2 = HID (vendor-defined, usage page 0xFF00).
  */
 
 #ifndef CORE_USB_HID_H
 #define CORE_USB_HID_H
 
-#if defined(STM32L422xx) || defined(STM32H523xx)
+#if !defined(STM32L422xx) && !defined(STM32H523xx)
+#error "core_usb_hid.h: USB HID is not available on this Core tile. Only Core.U and Core.H have USB hardware."
+#endif
 
 #include "hal_usb_cdc.h"
 
@@ -29,7 +33,5 @@ static inline int core_usb_hid_send(const uint8_t *buf, uint16_t len)
 {
     return hal_usb_hid_send_report(buf, len);
 }
-
-#endif /* STM32L422xx || STM32H523xx */
 
 #endif /* CORE_USB_HID_H */

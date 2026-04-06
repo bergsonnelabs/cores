@@ -31,7 +31,6 @@ typedef hal_adc_t core_adc_t;
 #define ADC_8BIT   HAL_ADC_RES_8BIT
 #define ADC_10BIT  HAL_ADC_RES_10BIT
 #define ADC_12BIT  HAL_ADC_RES_12BIT
-#define ADC_14BIT  HAL_ADC_RES_14BIT
 
 /* ============================================================
  * Init
@@ -90,12 +89,15 @@ static inline uint32_t core_adc_vdd(core_adc_t *adc)
  * DMA / continuous mode
  * ============================================================ */
 
-/** Start continuous conversion with DMA circular buffer. */
+/** Start continuous conversion with DMA circular buffer.
+ *  @param cb   Called on half-transfer and transfer-complete; may be NULL
+ *  @param ctx  User context passed to callback; may be NULL
+ */
 static inline hal_status_t core_adc_start_dma(core_adc_t *adc, uint16_t *buf,
                                                uint16_t len,
-                                               void (*cb)(void))
+                                               hal_callback_t cb, void *ctx)
 {
-    return tal_adc_start_dma(adc, buf, len, cb);
+    return tal_adc_start_dma(adc, buf, len, cb, ctx);
 }
 
 /** Stop continuous DMA conversion. */

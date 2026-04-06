@@ -170,11 +170,12 @@ static inline void core_standby_until_on_change(uint8_t pad, uint32_t edge)
     REG32(PWR_BASE + 0x14UL) = (1UL << wkup);
 
     ll_pwr_standby();
+    __builtin_unreachable();
 #else
+    /* WKUP-pin standby not yet implemented on this core family. */
     (void)pad;
     (void)edge;
 #endif
-    __builtin_unreachable();
 }
 
 /* ---- Advanced API ---- */
@@ -209,38 +210,20 @@ static inline void core_clear_standby_flag(void)
     ll_pwr_clear_standby_flag();
 }
 
-/* ---- Watchdog ---- */
+/* ---- Watchdog ----
+ * The canonical watchdog API lives in core_watchdog.h (millisecond precision,
+ * auto-prescaler).  This header re-exports it for backward compatibility.
+ */
+#include "core_watchdog.h"
 
 /**
- * Start the independent watchdog with a timeout in seconds.
- * Supported values: 1, 2, 5, 10. Other values clamp to the
- * nearest supported timeout.
- *
- * WARNING: Once started, the IWDG cannot be stopped.
- * Call core_watchdog_feed() regularly in your main loop.
+ * Start the independent watchdog with a timeout in seconds (convenience).
+ * For finer control use core_watchdog_start() from core_watchdog.h which
+ * accepts milliseconds.
  */
-static inline void core_watchdog_start(uint32_t seconds)
+static inline void core_watchdog_start_seconds(uint32_t seconds)
 {
-    if (seconds <= 1)
-        ll_iwdg_init_1s();
-    else if (seconds <= 2)
-        ll_iwdg_init_2s();
-    else if (seconds <= 5)
-        ll_iwdg_init_5s();
-    else
-        ll_iwdg_init_10s();
-}
-
-/** Feed (refresh) the watchdog to prevent a reset. */
-static inline void core_watchdog_feed(void)
-{
-    ll_iwdg_refresh();
-}
-
-/** Returns 1 if the last reset was caused by the watchdog. */
-static inline int core_watchdog_caused_reset(void)
-{
-    return ll_iwdg_caused_reset();
+    core_watchdog_start(seconds * 1000);
 }
 
 #endif /* CORE_POWER_H */

@@ -249,6 +249,7 @@ static struct {
 
     /* RX callback (optional) */
     hal_usb_cdc_rx_cb_t  rx_cb;
+    void                *rx_cb_ctx;
 
     /* RX ring buffer (used when no callback is set) */
     hal_ringbuf_t        rx_ring;
@@ -567,7 +568,7 @@ static void _handle_ctr(void)
 
                 if (_cdc.rx_cb) {
                     /* Deliver to callback */
-                    _cdc.rx_cb(tmp, count);
+                    _cdc.rx_cb(tmp, count, _cdc.rx_cb_ctx);
                 } else {
                     /* Store in ring buffer */
                     for (uint16_t i = 0; i < count; i++) {
@@ -685,9 +686,10 @@ int hal_usb_cdc_connected(void)
     return _cdc.configured && _cdc.dtr;
 }
 
-void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb)
+void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb, void *ctx)
 {
-    _cdc.rx_cb = cb;
+    _cdc.rx_cb     = cb;
+    _cdc.rx_cb_ctx = ctx;
 }
 
 /* ---- TX ---- */
@@ -1007,6 +1009,7 @@ static struct {
     volatile uint8_t     tx_busy;
 
     hal_usb_cdc_rx_cb_t  rx_cb;
+    void                *rx_cb_ctx;
 
     hal_ringbuf_t        rx_ring;
     uint8_t              rx_buf[HAL_USB_CDC_RX_BUF_SIZE];
@@ -1370,7 +1373,7 @@ static void _handle_ctr(void)
                 ll_usb_drd_pma_read(PMA_EP1_RX, tmp, count);
 
                 if (_cdc.rx_cb) {
-                    _cdc.rx_cb(tmp, count);
+                    _cdc.rx_cb(tmp, count, _cdc.rx_cb_ctx);
                 } else {
                     for (uint16_t i = 0; i < count; i++) {
                         hal_ringbuf_put(&_cdc.rx_ring, tmp[i]);
@@ -1520,9 +1523,10 @@ int hal_usb_cdc_connected(void)
     return _cdc.configured && _cdc.dtr;
 }
 
-void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb)
+void hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb, void *ctx)
 {
-    _cdc.rx_cb = cb;
+    _cdc.rx_cb     = cb;
+    _cdc.rx_cb_ctx = ctx;
 }
 
 int hal_usb_cdc_write(const uint8_t *buf, uint16_t len)

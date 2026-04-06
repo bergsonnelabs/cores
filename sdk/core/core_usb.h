@@ -8,8 +8,10 @@
 #ifndef CORE_USB_H
 #define CORE_USB_H
 
-/* USB CDC is only available on families with a USB peripheral (L4, U5) */
-#if defined(STM32L422xx) || defined(STM32H523xx)
+/* USB CDC requires a USB peripheral: Core.U (STM32L422) or Core.H (STM32H523). */
+#if !defined(STM32L422xx) && !defined(STM32H523xx)
+#error "core_usb.h: USB is not available on this Core tile. Only Core.U and Core.H have USB hardware."
+#endif
 
 #include "hal_usb_cdc.h"
 #include <stdio.h>    /* snprintf, printf — commonly used with USB serial output */
@@ -38,10 +40,12 @@ static inline int core_usb_write(const uint8_t *buf, uint16_t len)
 /**
  * Set a callback for received data.
  * Called from USB ISR. When set, data is NOT buffered for polling reads.
+ * @param cb   Callback: void cb(const uint8_t *data, uint16_t len, void *ctx)
+ * @param ctx  User context passed to callback; may be NULL
  */
-static inline void core_usb_on_receive(hal_usb_cdc_rx_cb_t cb)
+static inline void core_usb_on_receive(hal_usb_cdc_rx_cb_t cb, void *ctx)
 {
-    hal_usb_cdc_set_rx_callback(cb);
+    hal_usb_cdc_set_rx_callback(cb, ctx);
 }
 
 /** Returns the number of bytes available to read (ring buffer mode). */
@@ -67,7 +71,5 @@ static inline int core_usb_try_read(uint8_t *byte)
 {
     return hal_usb_cdc_rx_try(byte);
 }
-
-#endif /* STM32L422xx || STM32H523xx */
 
 #endif /* CORE_USB_H */

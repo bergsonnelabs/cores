@@ -736,14 +736,15 @@ static hal_adc_t *_adc_dma_handles[HAL_ADC_MAX_DMA_INSTANCES];
  * enable the DMA channel.
  */
 hal_status_t hal_adc_start_dma(hal_adc_t *adc, uint16_t *buf, uint16_t len,
-                                void (*callback)(void))
+                                hal_callback_t callback, void *ctx)
 {
     if (adc->dma_active) return HAL_BUSY;
     if (adc->n_channels == 0 || len == 0) return HAL_ERROR;
 
-    adc->dma_buf      = buf;
-    adc->dma_len      = len;
-    adc->dma_callback = callback;
+    adc->dma_buf          = buf;
+    adc->dma_len          = len;
+    adc->dma_callback     = callback;
+    adc->dma_callback_ctx = ctx;
     adc->dma_active   = true;
 
     /* Register handle for ISR lookup */
@@ -917,7 +918,7 @@ static void _adc_dma_irq_common(void)
     for (int i = 0; i < HAL_ADC_MAX_DMA_INSTANCES; i++) {
         hal_adc_t *h = _adc_dma_handles[i];
         if (h && h->dma_active && h->dma_callback) {
-            h->dma_callback();
+            h->dma_callback(h->dma_callback_ctx);
         }
     }
 }
