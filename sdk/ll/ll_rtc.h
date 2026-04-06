@@ -248,6 +248,12 @@ static inline void ll_rtc_init(int use_lse)
 
     ll_rcc_rtc_enable();
 
+#if defined(STM32H523xx)
+    /* H5: enable the RTC APB interface clock (not enabled by default in run mode) */
+    SET_BITS(REG32(RCC_BASE + 0xA8UL), (1UL << 21));  /* APB3ENR: RTCAPBEN */
+    (void)REG32(RCC_BASE + 0xA8UL);  /* read-back fence */
+#endif
+
     ll_rtc_unlock();
     ll_rtc_enter_init();
 
@@ -330,7 +336,7 @@ static inline void ll_rtc_get_date(uint8_t *year, uint8_t *month,
  *   seconds: wakeup interval in seconds (1-65535 with 1Hz clock)
  *
  * Uses WUCKSEL = 1Hz (CK_SPRE) for simple second-based intervals.
- * Generates EXTI line 20 interrupt on expiry.
+ * EXTI: line 20 on L0/L4/WBA, line 17 on H5 (direct event).
  */
 static inline void ll_rtc_wakeup_config(uint32_t seconds)
 {
@@ -352,8 +358,17 @@ static inline void ll_rtc_wakeup_config(uint32_t seconds)
     MOD_BITS(RTC_CR, 0x7UL, LL_RTC_WUCKSEL_1HZ);
     RTC_WUTR = seconds - 1;
 
+#if defined(STM32H523xx)
+    /* H5: WUTE must be set during init mode for reliable timer start.
+     * Setting WUTE outside init mode doesn't propagate to the RTC domain
+     * (WUTWF stays 1, counter never starts). Enter init briefly to set WUTE. */
+    ll_rtc_enter_init();
+    SET_BITS(RTC_CR, LL_RTC_CR_WUTE | LL_RTC_CR_WUTIE);
+    ll_rtc_exit_init();
+#else
     /* Enable wakeup timer and its interrupt */
     SET_BITS(RTC_CR, LL_RTC_CR_WUTE | LL_RTC_CR_WUTIE);
+#endif
 
     ll_rtc_lock();
 }
@@ -371,16 +386,19 @@ static inline void ll_rtc_wakeup_clear_flag(void)
 {
 #if defined(STM32L011xx)
     CLR_BITS(RTC_ISR, LL_RTC_ISR_WUTF);
+#elif defined(STM32H523xx)
+    /* H5: SCR at offset 0x5C (RM0481/RM0492), CWUTF at bit 2 */
+    REG32(RTC_BASE + 0x5CUL) = (1UL << 2);
 #else
-    /* On L4+, WUTF is cleared by writing 1 to SCR (status clear register) */
-    REG32(RTC_BASE + 0x34UL) = LL_RTC_ISR_WUTF;
+    /* L4/WBA: SCR at offset 0x34, CWUTF at bit 2 */
+    REG32(RTC_BASE + 0x34UL) = (1UL << 2);
 #endif
 }
 
 /* ============================================================
  * Backup registers (BKP0R–BKP31R)
  *
- * Reading requires no setup (RTCAPBEN is enabled by default).
+ * Reading requires RTCAPBEN on H5 (enabled by ll_rtc_init).
  * Writing requires PWR clock + backup domain access:
  *   ll_rcc_pwr_clk_enable();
  *   ll_pwr_enable_backup_access();
