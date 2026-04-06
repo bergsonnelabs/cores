@@ -5,7 +5,7 @@
  * WBA (Core.W), H5 (Core.H).
  *
  * Features:
- *   - Configurable resolution (6/8/10/12-bit; 14-bit H5 only)
+ *   - Configurable resolution (6/8/10/12-bit)
  *   - Per-channel sampling time
  *   - Hardware oversampling (up to 256×, 1024× on H5)
  *   - Single-shot blocking reads
@@ -28,15 +28,13 @@
 
 /**
  * ADC resolution.
- * HAL_ADC_RES_14BIT is H5 only — hal_adc_init() returns HAL_ERROR
- * if requested on another family.
+ * All Core families support 6/8/10/12-bit.
  */
 typedef enum {
     HAL_ADC_RES_6BIT   = 6,
     HAL_ADC_RES_8BIT   = 8,
     HAL_ADC_RES_10BIT  = 10,
     HAL_ADC_RES_12BIT  = 12,
-    HAL_ADC_RES_14BIT  = 14,   /* H5 only */
 } hal_adc_res_t;
 
 /**

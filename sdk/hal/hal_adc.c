@@ -5,7 +5,7 @@
  *   STM32L011xx (Core.L)  — ADC v3: simple CHSELR, no ADVREGEN
  *   STM32L422xx (Core.U)  — ADC v5: ADVREGEN, SMPR1/SMPR2, oversampling
  *   STM32WBA55xx (Core.W) — ADC4: similar to L0 layout, ADVREGEN, CCR
- *   STM32H523xx (Core.H)  — ADC v5+: like L4 plus 14-bit, 1024× oversample
+ *   STM32H523xx (Core.H)  — ADC v5+: like L4, 12-bit, 1024× oversample
  *
  * Per-family internal channel numbers:
  *   L0:  VREFINT = CH17, TEMP = CH16
@@ -149,7 +149,7 @@ static uint32_t _samp_encode(hal_adc_samp_t s)
  * Map hal_adc_res_t → hardware RES field encoding.
  *
  * L0/L4/WBA CFGR1[4:3]: 00=12-bit, 01=10-bit, 10=8-bit, 11=6-bit
- * H5  CFGR1[4:3]:        00=14-bit, 01=12-bit, 10=10-bit, 11=8-bit (no 6-bit)
+ * H5  CFGR1[4:3]:        00=12-bit, 01=10-bit, 10=8-bit, 11=6-bit (same as L4)
  *
  * Returns 0xFF for unsupported combinations.
  */
@@ -161,7 +161,7 @@ static uint32_t _res_encode(hal_adc_res_t res)
     case HAL_ADC_RES_10BIT: return 0x1UL;
     case HAL_ADC_RES_8BIT:  return 0x2UL;
     case HAL_ADC_RES_6BIT:  return 0x3UL;
-    default:                return 0xFFUL; /* 14-bit not supported */
+    default:                return 0xFFUL;
     }
 #elif defined(STM32H523xx)
     /* H523 is 12-bit ADC (not 14-bit like H562/H573).
@@ -171,7 +171,7 @@ static uint32_t _res_encode(hal_adc_res_t res)
     case HAL_ADC_RES_10BIT: return 0x1UL;
     case HAL_ADC_RES_8BIT:  return 0x2UL;
     case HAL_ADC_RES_6BIT:  return 0x3UL;
-    case HAL_ADC_RES_14BIT: return 0xFFUL; /* 14-bit not on H523 */
+    /* 14-bit not available on H523 — only H562/H573 */
     default:                return 0xFFUL;
     }
 #else
