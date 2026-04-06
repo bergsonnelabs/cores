@@ -788,9 +788,10 @@ uint16_t hal_usb_cdc_available(void)
  * BDT:     0x00 - 0x3F  (8 endpoints x 8 bytes = 64 bytes)
  * EP0 TX:  0x40 - 0x7F  (64 bytes)
  * EP0 RX:  0x80 - 0xBF  (64 bytes)
- * EP1 TX:  0xC0 - 0xFF  (64 bytes)
- * EP1 RX:  0x100 - 0x13F (64 bytes)
- * EP2 TX:  0x140 - 0x14F (16 bytes)
+ * EP1 TX:  0xC0 - 0xFF  (64 bytes)  — CDC bulk
+ * EP1 RX:  0x100 - 0x13F (64 bytes) — CDC bulk
+ * EP2 TX:  0x140 - 0x14F (16 bytes) — CDC notification
+ * EP3 TX:  0x150 - 0x18F (64 bytes) — HID reports
  * ============================================================ */
 
 #define PMA_EP0_TX          0x40
@@ -798,10 +799,12 @@ uint16_t hal_usb_cdc_available(void)
 #define PMA_EP1_TX          0xC0
 #define PMA_EP1_RX          0x100
 #define PMA_EP2_TX          0x140
+#define PMA_EP3_TX          0x150
 
 #define EP0_MAX_PACKET      64
 #define EP1_MAX_PACKET      64
 #define EP2_MAX_PACKET      8
+#define EP3_MAX_PACKET      64
 
 /* ============================================================
  * USB descriptor data (identical to L4)
@@ -832,13 +835,26 @@ uint16_t hal_usb_cdc_available(void)
 #define CDC_ACM_SUBCLASS            0x02
 #define CDC_AT_PROTOCOL             0x01
 
+/* Composite device: CDC-ACM (serial) + HID (generic reports).
+ * Uses IAD (Interface Association Descriptor) to group CDC interfaces. */
+
+#define USB_DESC_IAD            0x0B
+#define USB_DESC_HID            0x21
+#define USB_DESC_HID_REPORT     0x22
+
+/* HID class requests */
+#define HID_GET_REPORT          0x01
+#define HID_GET_IDLE            0x02
+#define HID_SET_REPORT          0x09
+#define HID_SET_IDLE            0x0A
+
 static const uint8_t dev_desc[] = {
     18,                     /* bLength */
     USB_DESC_DEVICE,        /* bDescriptorType */
     0x00, 0x02,             /* bcdUSB = 2.00 */
-    0x02,                   /* bDeviceClass = Communications */
-    0x02,                   /* bDeviceSubClass = ACM */
-    0x00,                   /* bDeviceProtocol */
+    0xEF,                   /* bDeviceClass = Miscellaneous (composite) */
+    0x02,                   /* bDeviceSubClass = Common Class */
+    0x01,                   /* bDeviceProtocol = IAD */
     EP0_MAX_PACKET,         /* bMaxPacketSize0 */
     0x09, 0x12,             /* idVendor = 0x1209 (pid.codes) */
     0x01, 0x00,             /* idProduct = 0x0001 (placeholder) */
@@ -849,11 +865,37 @@ static const uint8_t dev_desc[] = {
     1,                      /* bNumConfigurations */
 };
 
-#define CONFIG_DESC_TOTAL_LEN   67
+/* HID Report Descriptor — generic vendor-defined, 64-byte IN reports */
+static const uint8_t hid_report_desc[] = {
+    0x06, 0x00, 0xFF,       /* Usage Page (Vendor Defined 0xFF00) */
+    0x09, 0x01,             /* Usage (Vendor Usage 1) */
+    0xA1, 0x01,             /* Collection (Application) */
+    0x15, 0x00,             /*   Logical Minimum (0) */
+    0x26, 0xFF, 0x00,       /*   Logical Maximum (255) */
+    0x75, 0x08,             /*   Report Size (8 bits) */
+    0x95, 0x40,             /*   Report Count (64) */
+    0x09, 0x01,             /*   Usage (Vendor Usage 1) */
+    0x81, 0x02,             /*   Input (Data, Variable, Absolute) */
+    0x09, 0x02,             /*   Usage (Vendor Usage 2) */
+    0x91, 0x02,             /*   Output (Data, Variable, Absolute) */
+    0xC0,                   /* End Collection */
+};
+
+#define HID_REPORT_DESC_LEN  sizeof(hid_report_desc)
+
+/* Configuration descriptor:
+ * Config(9) + IAD(8) + CDC_IF0(9) + CDC_Func(5+4+5+5) + EP2(7) +
+ * CDC_IF1(9) + EP1_OUT(7) + EP1_IN(7) + HID_IF2(9) + HID_Desc(9) + EP3(7)
+ * = 9 + 8 + 9 + 19 + 7 + 9 + 7 + 7 + 9 + 9 + 7 = 100 */
+#define CONFIG_DESC_TOTAL_LEN   100
 
 static const uint8_t cfg_desc[] = {
+    /* Configuration descriptor */
     9, USB_DESC_CONFIGURATION,
-    CONFIG_DESC_TOTAL_LEN, 0x00, 2, 1, 0, 0x80, 250,
+    CONFIG_DESC_TOTAL_LEN, 0x00, 3, 1, 0, 0x80, 250, /* 3 interfaces */
+
+    /* ---- IAD: group CDC interfaces 0+1 ---- */
+    8, USB_DESC_IAD, 0, 2, 0x02, CDC_ACM_SUBCLASS, CDC_AT_PROTOCOL, 0,
 
     /* CDC Control Interface (Interface 0) */
     9, USB_DESC_INTERFACE, 0, 0, 1, 0x02, CDC_ACM_SUBCLASS, CDC_AT_PROTOCOL, 0,
@@ -875,7 +917,28 @@ static const uint8_t cfg_desc[] = {
 
     /* EP1 IN — CDC bulk data */
     7, USB_DESC_ENDPOINT, 0x81, 0x02, EP1_MAX_PACKET, 0x00, 0,
+
+    /* ---- HID Interface (Interface 2) ---- */
+    9, USB_DESC_INTERFACE, 2, 0, 1, 0x03, 0x00, 0x00, 0,
+    /* bInterfaceClass=0x03 (HID), no subclass, no protocol */
+
+    /* HID Descriptor */
+    9, USB_DESC_HID,
+    0x11, 0x01,             /* bcdHID = 1.11 */
+    0x00,                   /* bCountryCode = 0 */
+    1,                      /* bNumDescriptors */
+    USB_DESC_HID_REPORT,    /* bDescriptorType = Report */
+    HID_REPORT_DESC_LEN, 0,/* wDescriptorLength */
+
+    /* EP3 IN — HID reports (interrupt) */
+    7, USB_DESC_ENDPOINT, 0x83, 0x03, EP3_MAX_PACKET, 0x00, 1,
+    /* bInterval=1ms for fastest polling */
 };
+
+/* Offset of the HID descriptor within cfg_desc (for GET_DESCRIPTOR HID).
+ * Config(9) + IAD(8) + CDC_IF0(9) + Func(5+4+5+5=19) + EP2(7) +
+ * CDC_IF1(9) + EP1out(7) + EP1in(7) + HID_IF(9) = 84 */
+#define CFG_DESC_HID_OFFSET  84
 
 static const uint8_t str0_desc[] = { 4, USB_DESC_STRING, 0x09, 0x04 };
 
@@ -947,6 +1010,10 @@ static struct {
 
     hal_ringbuf_t        rx_ring;
     uint8_t              rx_buf[HAL_USB_CDC_RX_BUF_SIZE];
+
+    /* HID state */
+    volatile uint8_t     hid_tx_busy;
+    uint8_t              hid_idle_rate;
 } _cdc;
 
 /* ============================================================
@@ -1051,6 +1118,25 @@ static void _handle_setup(void)
             case USB_DESC_DEVICE_QUALIFIER:
                 _ep0_stall();
                 return;
+
+            case USB_DESC_HID:
+                /* HID descriptor (9 bytes within the config descriptor).
+                 * Offset: find HID descriptor start in cfg_desc. */
+                if (setup.wIndex == 2) {  /* Interface 2 = HID */
+                    /* HID descriptor is at a fixed offset in cfg_desc.
+                     * Config(9) + IAD(8) + CDC_IF0(9) + Func(19) + EP2(7)
+                     * + CDC_IF1(9) + EP1out(7) + EP1in(7) + HID_IF(9) = 84 */
+                    _ep0_send(cfg_desc + CFG_DESC_HID_OFFSET, 9, setup.wLength);
+                    return;
+                }
+                break;
+
+            case USB_DESC_HID_REPORT:
+                if (setup.wIndex == 2) {
+                    _ep0_send(hid_report_desc, sizeof(hid_report_desc), setup.wLength);
+                    return;
+                }
+                break;
             }
             break;
         }
@@ -1075,6 +1161,12 @@ static void _handle_setup(void)
                 ll_usb_drd_chep_config(2, USB_CHEP_INTERRUPT, 2);
                 ll_usb_drd_bdt_set_tx(2, PMA_EP2_TX, 0);
                 ll_usb_drd_chep_set_stat_tx(2, USB_CHEP_STAT_NAK);
+
+                /* Configure EP3 (HID interrupt IN) */
+                ll_usb_drd_chep_config(3, USB_CHEP_INTERRUPT, 3);
+                ll_usb_drd_bdt_set_tx(3, PMA_EP3_TX, 0);
+                ll_usb_drd_chep_set_stat_tx(3, USB_CHEP_STAT_NAK);
+                _cdc.hid_tx_busy = 0;
             } else {
                 _cdc.state = USB_STATE_ADDRESS;
                 _cdc.configured = 0;
@@ -1102,40 +1194,71 @@ static void _handle_setup(void)
         }
     }
 
-    /* ---- CDC class requests ---- */
+    /* ---- Class requests — route by interface (wIndex) ---- */
     if (type == 0x20) {
-        switch (setup.bRequest) {
+        uint16_t iface = setup.wIndex;
 
-        case CDC_SET_LINE_CODING:
-            _cdc.ep0_state = EP0_DATA_OUT;
-            ll_usb_drd_chep_set_stat_rx(0, USB_CHEP_STAT_VALID);
-            return;
+        /* CDC class requests (interfaces 0 and 1) */
+        if (iface <= 1) {
+            switch (setup.bRequest) {
 
-        case CDC_GET_LINE_CODING:
-            _ep0_send((const uint8_t *)&_cdc.line_coding, 7, setup.wLength);
-            return;
+            case CDC_SET_LINE_CODING:
+                _cdc.ep0_state = EP0_DATA_OUT;
+                ll_usb_drd_chep_set_stat_rx(0, USB_CHEP_STAT_VALID);
+                return;
 
-        case CDC_SET_CONTROL_LINE_STATE: {
-            uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
+            case CDC_GET_LINE_CODING:
+                _ep0_send((const uint8_t *)&_cdc.line_coding, 7, setup.wLength);
+                return;
 
-            /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot.
-             * Writes magic to noinit SRAM, resets. Startup code checks
-             * magic and jumps to ROM system bootloader (USB DFU). */
-            if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
+            case CDC_SET_CONTROL_LINE_STATE: {
+                uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
+
+                /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot. */
+                if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
+                    _ep0_send_status();
+                    for (volatile int i = 0; i < 100000; i++)
+                        ;
+                    hal_dfu_reboot();
+                }
+
+                _cdc.dtr = new_dtr;
                 _ep0_send_status();
-                for (volatile int i = 0; i < 100000; i++)
-                    ;
-                hal_dfu_reboot();
+                return;
             }
 
-            _cdc.dtr = new_dtr;
-            _ep0_send_status();
-            return;
+            case CDC_SEND_BREAK:
+                _ep0_send_status();
+                return;
+            }
         }
 
-        case CDC_SEND_BREAK:
-            _ep0_send_status();
-            return;
+        /* HID class requests (interface 2) */
+        if (iface == 2) {
+            switch (setup.bRequest) {
+
+            case HID_SET_IDLE:
+                _cdc.hid_idle_rate = (setup.wValue >> 8) & 0xFF;
+                _ep0_send_status();
+                return;
+
+            case HID_GET_IDLE: {
+                static uint8_t idle;
+                idle = _cdc.hid_idle_rate;
+                _ep0_send(&idle, 1, setup.wLength);
+                return;
+            }
+
+            case HID_GET_REPORT:
+                /* Not implemented — host should read via EP3 interrupt IN */
+                _ep0_stall();
+                return;
+
+            case HID_SET_REPORT:
+                /* Not implemented — would need EP0 DATA OUT handling */
+                _ep0_stall();
+                return;
+            }
         }
     }
 
@@ -1261,6 +1384,16 @@ static void _handle_ctr(void)
         if (chep1 & USB_CHEP_VTTX) {
             ll_usb_drd_chep_clr_vttx(1);
             _cdc.tx_busy = 0;
+        }
+    }
+
+    else if (ep == 3) {
+        uint32_t chep3 = ll_usb_drd_chep_read(3);
+
+        /* ---- EP3 TX (HID report sent) ---- */
+        if (chep3 & USB_CHEP_VTTX) {
+            ll_usb_drd_chep_clr_vttx(3);
+            _cdc.hid_tx_busy = 0;
         }
     }
 }
@@ -1455,6 +1588,35 @@ uint16_t hal_usb_cdc_read(uint8_t *buf, uint16_t max_len)
 uint16_t hal_usb_cdc_available(void)
 {
     return hal_ringbuf_count(&_cdc.rx_ring);
+}
+
+/* ============================================================
+ * HID API
+ * ============================================================ */
+
+int hal_usb_hid_send_report(const uint8_t *buf, uint16_t len)
+{
+    if (!_cdc.configured) return -1;
+    if (len > EP3_MAX_PACKET) len = EP3_MAX_PACKET;
+
+    /* Wait for previous report to complete */
+    while (_cdc.hid_tx_busy) {
+        if (!_cdc.configured) return -1;
+    }
+
+    /* Zero-pad to 64 bytes — HID report descriptor declares fixed-size reports.
+     * macOS (and some other hosts) ignore reports shorter than declared size. */
+    uint8_t padded[EP3_MAX_PACKET];
+    __builtin_memcpy(padded, buf, len);
+    if (len < EP3_MAX_PACKET)
+        __builtin_memset(padded + len, 0, EP3_MAX_PACKET - len);
+
+    ll_usb_drd_pma_write(PMA_EP3_TX, padded, EP3_MAX_PACKET);
+    ll_usb_drd_bdt_set_tx_count(3, EP3_MAX_PACKET);
+    _cdc.hid_tx_busy = 1;
+    ll_usb_drd_chep_set_stat_tx(3, USB_CHEP_STAT_VALID);
+
+    return (int)len;
 }
 
 #endif /* STM32H523xx */
