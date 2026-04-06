@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "usb-stream",
+    "core": "Core-H-1-a",
+    "description": "Raw binary USB streaming at maximum throughput"
+  },
+  "clock": "low",
+  "pads": {}
+}

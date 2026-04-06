@@ -1320,10 +1320,10 @@ void hal_usb_cdc_init(void)
      * If running from the low-speed CSI (4 MHz), automatically
      * switch to HSI/2 (32 MHz) before enabling USB. */
     {
-        /* RCC_CFGR1 SWS bits [5:3] indicate current SYSCLK source.
-         * SWS=0b10 means CSI is active. */
-        uint32_t sws = (REG32(RCC_BASE + 0x1CUL) >> 3) & 0x7UL;
-        if (sws == 0x2UL) {  /* CSI active — too slow for USB */
+        /* RCC_CFGR1 SWS bits [4:3] indicate current SYSCLK source.
+         * 0=HSI, 1=CSI, 2=HSE, 3=PLL1. CSI (4MHz) is too slow. */
+        uint32_t sws = (REG32(RCC_BASE + 0x1CUL) >> 3) & 0x3UL;
+        if (sws == 0x1UL) {  /* CSI active — too slow for USB */
             /* Set flash latency for 32 MHz (LATENCY=1) */
             MOD_BITS(REG32(0x40022000UL), 0xFUL, 1UL);
             while ((REG32(0x40022000UL) & 0xF) != 1) ;
