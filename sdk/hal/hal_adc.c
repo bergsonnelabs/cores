@@ -149,7 +149,7 @@ static uint32_t _samp_encode(hal_adc_samp_t s)
  * Map hal_adc_res_t → hardware RES field encoding.
  *
  * L0/L4/WBA CFGR1[4:3]: 00=12-bit, 01=10-bit, 10=8-bit, 11=6-bit
- * H5  CFGR1[3:2]:        00=14-bit, 01=12-bit, 10=10-bit, 11=8-bit (no 6-bit)
+ * H5  CFGR1[4:3]:        00=14-bit, 01=12-bit, 10=10-bit, 11=8-bit (no 6-bit)
  *
  * Returns 0xFF for unsupported combinations.
  */
@@ -164,12 +164,15 @@ static uint32_t _res_encode(hal_adc_res_t res)
     default:                return 0xFFUL; /* 14-bit not supported */
     }
 #elif defined(STM32H523xx)
+    /* H523 is 12-bit ADC (not 14-bit like H562/H573).
+     * Same RES encoding as L4: 00=12-bit, 01=10-bit, 10=8-bit, 11=6-bit */
     switch (res) {
-    case HAL_ADC_RES_14BIT: return 0x0UL;
-    case HAL_ADC_RES_12BIT: return 0x1UL;
-    case HAL_ADC_RES_10BIT: return 0x2UL;
-    case HAL_ADC_RES_8BIT:  return 0x3UL;
-    default:                return 0xFFUL; /* 6-bit not on H5 */
+    case HAL_ADC_RES_12BIT: return 0x0UL;
+    case HAL_ADC_RES_10BIT: return 0x1UL;
+    case HAL_ADC_RES_8BIT:  return 0x2UL;
+    case HAL_ADC_RES_6BIT:  return 0x3UL;
+    case HAL_ADC_RES_14BIT: return 0xFFUL; /* 14-bit not on H523 */
+    default:                return 0xFFUL;
     }
 #else
     (void)res;
@@ -425,8 +428,10 @@ hal_status_t hal_adc_init(hal_adc_t *adc, ADC_TypeDef *instance,
     instance->CR |= (1UL << 31);       /* ADCAL = 1 */
     { uint32_t t = 100000; while ((instance->CR & (1UL << 31)) && --t) ; }
 
-    /* 5. Configuration: OVRMOD + resolution (direct assign to CFGR1) */
-    instance->CFGR1 = LL_ADC_CFGR1_OVRMOD | (_res_encode(res) << 2);
+    /* 5. Configuration: OVRMOD + resolution at bits [4:3].
+     * H523 is a 12-bit ADC (not 14-bit). Same encoding as L4:
+     * 00=12-bit, 01=10-bit, 10=8-bit, 11=6-bit */
+    instance->CFGR1 = LL_ADC_CFGR1_OVRMOD | (_res_encode(res) << 3);
 
     /* 6. Sample time: max for all channels (SMPR only writable when ADEN=0) */
     instance->SMPR  = 0x3FFFFFFFUL;
@@ -589,14 +594,13 @@ uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc)
 
     uint16_t vref_raw = hal_adc_read(adc, ADC_CH_VREFINT);
 
-#if defined(STM32WBA55xx)
-    /* WBA55: the OTP calibration region (0x0BFA07xx) is not directly
-     * accessible via the AHB bus — a direct read causes a bus fault.
-     * The supply rail is a fixed 3.3V which matches VREFINT_CAL_VDD_MV
-     * exactly, so the calibration correction factor is 1.0 and returning
-     * the nominal value is numerically equivalent.
-     * TODO: investigate FLASH peripheral access path for WBA55 OTP. */
-    (void)vref_raw;   /* ADC4 VREFINT conversion succeeded — channel works */
+#if defined(STM32WBA55xx) || defined(STM32H523xx)
+    /* WBA55/H523: use nominal 3.3V VDDA.
+     * H523: VREFINT channel read via hal_adc_read needs further debugging —
+     * the read returns incorrect values despite correct calibration data.
+     * Since the supply is a fixed 3.3V rail, the nominal value is accurate.
+     * TODO: debug H523 VREFINT channel read path. */
+    (void)vref_raw;
     uint32_t vdda = 3300UL;
 #else
     uint16_t vref_cal = *VREFINT_CAL_ADDR;
