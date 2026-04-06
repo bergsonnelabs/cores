@@ -120,6 +120,15 @@ uint16_t hal_usb_cdc_available(void);
  */
 void hal_usb_cdc_poll(void);
 
+/* ---- HID ---- */
+
+/**
+ * Send a HID report (up to 64 bytes) via EP3 interrupt IN.
+ * Blocking — waits for previous report to complete.
+ * Returns bytes sent, or -1 if not configured.
+ */
+int hal_usb_hid_send_report(const uint8_t *buf, uint16_t len);
+
 #endif /* STM32L422xx || STM32H523xx */
 
 #endif /* HAL_USB_CDC_H */
