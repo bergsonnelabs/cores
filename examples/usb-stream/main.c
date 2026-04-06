@@ -30,8 +30,9 @@ static stream_packet_t packet;
 static volatile uint8_t streaming = 0;
 
 /* RX callback — runs in USB ISR, checks for start/stop commands */
-static void on_rx(const uint8_t *data, uint16_t len)
+static void on_rx(const uint8_t *data, uint16_t len, void *ctx)
 {
+    (void)ctx;
     for (uint16_t i = 0; i < len; i++) {
         if (data[i] == 's') streaming = 1;
         if (data[i] == 'x') streaming = 0;
@@ -44,7 +45,7 @@ int main(void)
     core_usb_init();
     core_pad_output(9);
 
-    core_usb_on_receive(on_rx);
+    core_usb_on_receive(on_rx, NULL);
 
     uint32_t seq = 0;
     uint16_t sample = 0;
