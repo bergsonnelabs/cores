@@ -45,7 +45,7 @@
     "coregen.spi":    "compile",
     "coregen.uart":   "compile",
 
-    "conn.usb_cdc": "compile",
+    "conn.usb_cdc": "verified",
     "conn.dfu":     "compile",
     "conn.fdcan":   "compile",
     "conn.ble":     "na",
