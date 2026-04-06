@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdarg.h>
 
-#if defined(STM32L422xx)
+#if defined(STM32L422xx) || defined(STM32H523xx)
 
 /* ============================================================
  * Configuration
@@ -114,6 +114,12 @@ uint16_t hal_usb_cdc_read(uint8_t *buf, uint16_t max_len);
  */
 uint16_t hal_usb_cdc_available(void);
 
-#endif /* STM32L422xx */
+/**
+ * Poll USB events (call from main loop).
+ * Use this as an alternative to interrupt-driven operation.
+ */
+void hal_usb_cdc_poll(void);
+
+#endif /* STM32L422xx || STM32H523xx */
 
 #endif /* HAL_USB_CDC_H */

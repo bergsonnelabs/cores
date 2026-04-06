@@ -876,6 +876,27 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
 
 #endif /* STM32L422xx */
 
+#if defined(STM32H523xx)
+
+/**
+ * Select the USB kernel clock source (H5).
+ * RCC_CCIPR4 at offset 0xE4, USBSEL bits [5:4].
+ *   0 = Disable
+ *   1 = PLL1Q
+ *   2 = PLL3Q (not available on H523)
+ *   3 = HSI48
+ */
+static inline void ll_rcc_set_usb_clk_source(uint32_t src)
+{
+    MOD_BITS(REG32(RCC_BASE + 0xE4UL), 3UL << 4, (src & 3UL) << 4);
+}
+
+#define LL_RCC_USB_DISABLE      0x0UL
+#define LL_RCC_USB_PLL1Q        0x1UL
+#define LL_RCC_USB_HSI48        0x3UL
+
+#endif /* STM32H523xx */
+
 /* ============================================================
  * Peripheral clock enable bit masks (per family)
  * ============================================================ */
@@ -927,7 +948,7 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   /* AHB4/AHB5 defined above with WBA55 functions */
 
 #elif defined(STM32H523xx)
-  /* APB1 */
+  /* APB1 (RCC_APB1LENR, offset 0x9C) */
   #define LL_APB1_TIM2      (1UL << 0)
   #define LL_APB1_TIM3      (1UL << 1)
   #define LL_APB1_TIM6      (1UL << 4)
@@ -936,10 +957,12 @@ static inline void ll_rcc_set_usb_clk_source(uint32_t src)
   #define LL_APB1_USART3    (1UL << 18)
   #define LL_APB1_I2C1      (1UL << 21)
   #define LL_APB1_I2C2      (1UL << 22)
-  /* APB2 */
+  #define LL_APB1_CRS       (1UL << 24)
+  /* APB2 (RCC_APB2ENR, offset 0xA4) */
   #define LL_APB2_TIM1      (1UL << 11)
   #define LL_APB2_SPI1      (1UL << 12)
   #define LL_APB2_USART1    (1UL << 14)
+  #define LL_APB2_USB       (1UL << 24)
   /* APB3 */
   #define LL_APB3_LPUART1   (1UL << 6)
   #define LL_APB3_I2C3      (1UL << 23)

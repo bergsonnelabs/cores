@@ -178,16 +178,17 @@ g_pfnVectors:
     .word 0                         /* 61: Reserved */
     .word 0                         /* 62: Reserved */
     .word LPUART1_IRQHandler        /* 63: LPUART1 */
-    .word 0                         /* 64: Reserved */
+    .word LPTIM1_IRQHandler         /* 64: LPTIM1 */
     .word 0                         /* 65: Reserved */
     .word 0                         /* 66: Reserved */
     .word 0                         /* 67: Reserved */
     .word 0                         /* 68: Reserved */
     .word 0                         /* 69: Reserved */
-    .word 0                         /* 70: Reserved */
+    .word LPTIM2_IRQHandler         /* 70: LPTIM2 */
     .word 0                         /* 71: Reserved */
     .word 0                         /* 72: Reserved */
-    .word USB_DRD_FS_IRQHandler     /* 73: USB DRD FS */
+    .word 0                         /* 73: Reserved */
+    .word USB_DRD_FS_IRQHandler     /* 74: USB DRD FS */
 
 /**
  * Weak aliases — any of these can be overridden by defining the
@@ -316,5 +317,9 @@ g_pfnVectors:
     .thumb_set USART3_IRQHandler, Default_Handler
     .weak LPUART1_IRQHandler
     .thumb_set LPUART1_IRQHandler, Default_Handler
+    .weak LPTIM1_IRQHandler
+    .thumb_set LPTIM1_IRQHandler, Default_Handler
+    .weak LPTIM2_IRQHandler
+    .thumb_set LPTIM2_IRQHandler, Default_Handler
     .weak USB_DRD_FS_IRQHandler
     .thumb_set USB_DRD_FS_IRQHandler, Default_Handler

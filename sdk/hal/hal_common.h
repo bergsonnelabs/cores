@@ -218,6 +218,7 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
   #define HAL_IRQ_GPDMA1_CH5    34
   #define HAL_IRQ_GPDMA1_CH6    35
   #define HAL_IRQ_GPDMA1_CH7    36
+  #define HAL_IRQ_USB            74    /* USB_DRD_FS — RM0492 Table, vector 0x0168 */
 #endif
 
 /* ============================================================
