@@ -79,7 +79,7 @@ static inline hal_status_t core_i2c_init(core_i2c_t *h,
         .timeout_ms = 100,
         .fmp = (speed_hz >= I2C_1M) ? 1 : 0,
     };
-    return hal_i2c_init_cfg(h, instance, &cfg);
+    return hal_i2c_init(h, instance, &cfg);
 }
 
 /**

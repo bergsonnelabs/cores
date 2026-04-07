@@ -1,0 +1,12 @@
+{
+  "project": {
+    "name": "val-blink-gpio",
+    "core": "Core-L-1-a",
+    "description": "Validation: GPIO output, input with EXTI, LED, watchdog"
+  },
+  "clock": "max",
+  "pads": {
+    "11": "GPIO.OUT",
+    "8":  "GPIO.IN"
+  }
+}

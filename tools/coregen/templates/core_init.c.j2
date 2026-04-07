@@ -95,9 +95,9 @@ void core_clock_init(void)
 {% else %}
     /* ---- No PLL — run directly from {{ clock_config.source }} at {{ clock_config.sysclk_mhz }}MHz ---- */
 {% if clock_config.needs_vos %}
-    /* Voltage scaling: Range 1 for >16MHz on WBA55 */
-    ll_rcc_ahb4_clk_enable(LL_AHB4_PWR);
-    ll_pwr_set_vos(1);
+    /* ---- Voltage scaling for high-speed operation ---- */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_set_vos({{ clock_config.vos_value }});
 {% endif %}
 {% if clock_config.source in ("hsi16", "hsi") %}
     ll_rcc_hsi16_enable();
@@ -161,8 +161,13 @@ void core_clock_init(void)
     ll_rcc_hsi48_enable();
     while (!ll_rcc_hsi48_ready())
         ;
+#if defined(STM32H523xx)
+    ll_rcc_set_usb_clk_source(LL_RCC_USB_HSI48);
+    ll_rcc_apb2_clk_enable(LL_APB2_USB);
+#else
     ll_rcc_set_usb_clk_source(LL_RCC_USB48_HSI48);
     ll_rcc_apb1_clk_enable(LL_APB1_USB);
+#endif
 {% endif %}
 }
 

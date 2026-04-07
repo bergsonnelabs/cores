@@ -1,0 +1,14 @@
+{
+  "project": {
+    "name": "val-power-rtc",
+    "core": "Core-H-1-a",
+    "description": "Validation: Sleep, stop modes, EXTI wakeup, RTC"
+  },
+  "clock": "high",
+  "pads": {
+    "8": "GPIO.IN"
+  },
+  "gpio": {
+    "8": { "direction": "in", "pull": "up", "exti": "falling" }
+  }
+}

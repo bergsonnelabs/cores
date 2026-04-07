@@ -411,3 +411,11 @@ swo: $(TARGET).elf
 		-c "tpiu config internal /dev/stdout uart off $(SYSCLK_HZ) 2000000" \
 		-c "itm port 0 on" \
 		-c "reset run"
+
+# ---- End-to-end validation ----
+.PHONY: validate validate-generate
+validate:
+	@python3 $(SDK_DIR)tools/validate.py
+
+validate-generate:
+	@python3 $(SDK_DIR)tools/validate.py --generate-only

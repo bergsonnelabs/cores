@@ -1,0 +1,19 @@
+{
+  "project": {
+    "name": "val-i2c-spi-tile",
+    "core": "Core-W-b",
+    "description": "Validation: I2C + SPI buses on Core.W"
+  },
+  "clock": "max",
+  "pads": {
+    "10": "I2C1.CLK",
+    "11": "I2C1.DAT",
+    "9":  "SPI1.CLK",
+    "8":  "GPIO.OUT"
+  },
+  "interfaces": {
+    "I2C1": {
+      "speed": 400000
+    }
+  }
+}

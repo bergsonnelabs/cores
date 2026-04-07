@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "val-availability",
+    "core": "Core-L-1-a",
+    "description": "Negative test: core_dac.h must #error on Core.L (no DAC hardware)"
+  },
+  "clock": "default",
+  "pads": {}
+}
