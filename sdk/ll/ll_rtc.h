@@ -402,8 +402,15 @@ static inline void ll_rtc_wakeup_clear_flag(void)
  * (hours, minutes, seconds). Set MSKx bits to ignore a field.
  * ============================================================ */
 
-#define RTC_ALRMAR          REG32(RTC_BASE + 0x1CUL)  /* Alarm A register */
-#define RTC_ALRMASSR        REG32(RTC_BASE + 0x44UL)  /* Alarm A sub-second */
+/* Alarm A register offset differs by family:
+ *   L0/L4/WBA: 0x1C    H5: 0x40  (RM0481 §46.6.16) */
+#if defined(STM32H523xx)
+  #define RTC_ALRMAR        REG32(RTC_BASE + 0x40UL)
+  #define RTC_ALRMASSR      REG32(RTC_BASE + 0x44UL)
+#else
+  #define RTC_ALRMAR        REG32(RTC_BASE + 0x1CUL)
+  #define RTC_ALRMASSR      REG32(RTC_BASE + 0x44UL)
+#endif
 
 /* ALRMAR field masks */
 #define LL_RTC_ALRM_MSK4   (1UL << 31)  /* Mask day/date (ignore) */
@@ -485,12 +492,12 @@ static inline void ll_rtc_alarm_a_clear_flag(void)
 static inline int ll_rtc_alarm_a_flag(void)
 {
 #if defined(STM32L011xx)
-    return (RTC_ISR & (1UL << 8)) != 0;
+    return (RTC_ISR & (1UL << 8)) != 0;  /* ALRAF in ISR */
 #elif defined(STM32H523xx)
-    /* H5: MISR at offset 0x58, ALRAMF at bit 0 */
-    return (REG32(RTC_BASE + 0x58UL) & (1UL << 0)) != 0;
+    /* H5: SR at offset 0x50 (RM0481 §46.6.22), ALRAF at bit 0 */
+    return (REG32(RTC_BASE + 0x50UL) & (1UL << 0)) != 0;
 #else
-    /* L4/WBA: MISR at offset 0x30 or SR at offset 0x30, ALRAF at bit 0 */
+    /* L4/WBA: SR at offset 0x30, ALRAF at bit 0 */
     return (REG32(RTC_BASE + 0x30UL) & (1UL << 0)) != 0;
 #endif
 }
