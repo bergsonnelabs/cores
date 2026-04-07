@@ -359,10 +359,16 @@ else
 endif
 
 # ---- Flash via USB DFU ----
-# With BOOTLOADER=1: auto-triggers DFU mode via 1200-baud touch if a CDC serial
-# port is present, then flashes via plain DFU. Falls back to direct dfu-util if
-# no serial port is found (board already in DFU or no CDC in the app).
-# Without BOOTLOADER=1: DfuSe protocol to ST ROM bootloader at 0x08000000.
+#
+# flash-dfu:  Smart flash — uses APP_ADDR (0x08002000) when BOOTLOADER=1,
+#             0x08000000 otherwise. Tries 1200-baud touch first if a CDC
+#             serial port is present to trigger the custom DFU bootloader.
+#
+# flash-rom:  Always flashes at 0x08000000 via ROM DFU (for fresh boards
+#             or when BOOT0 is held high). Works regardless of BOOTLOADER
+#             setting — the binary is placed at the start of flash.
+#             NOTE: with BOOTLOADER=1 the binary expects to run from
+#             0x08002000, so use flash-rom only with BOOTLOADER=0.
 
 flash-dfu: $(TARGET).bin
 ifeq ($(BOOTLOADER),1)
@@ -370,12 +376,17 @@ ifeq ($(BOOTLOADER),1)
 	if [ -n "$$TTY" ]; then \
 		echo "  DFU   Triggering reboot via 1200-baud touch on $$TTY..."; \
 		stty -f "$$TTY" 1200 hupcl; \
-		sleep 2; \
+		echo "  DFU   Waiting for DFU device..."; \
+		sleep 4; \
 	fi
-	@dfu-util -a 0 -s $(APP_ADDR):leave -D $< || true
+	@dfu-util -a 0 -s $(APP_ADDR):leave -D $< \
+		|| (echo "  DFU   Retry..." && sleep 2 && dfu-util -a 0 -s $(APP_ADDR):leave -D $<)
 else
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 endif
+
+flash-rom: $(TARGET).bin
+	dfu-util -a 0 -s 0x08000000:leave -D $<
 
 # ---- Flash the DFU bootloader itself ----
 
