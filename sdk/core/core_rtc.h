@@ -55,19 +55,66 @@ static inline void core_rtc_get_date(uint8_t *y, uint8_t *mo, uint8_t *d,
 }
 
 /* ============================================================
- * Wakeup alarm
+ * Periodic wakeup timer
  * ============================================================ */
 
-/** Configure a periodic wakeup alarm (1–65535 seconds). */
-static inline void core_rtc_alarm(uint32_t seconds)
+/** Configure a periodic wakeup timer (1–65535 seconds). */
+static inline void core_rtc_wakeup(uint32_t seconds)
 {
     ll_rtc_wakeup_config(seconds);
 }
 
-/** Disable the wakeup alarm. */
-static inline void core_rtc_alarm_stop(void)
+/** Disable the periodic wakeup timer. */
+static inline void core_rtc_wakeup_stop(void)
 {
     ll_rtc_wakeup_disable();
+}
+
+/* Backward compat */
+#define core_rtc_alarm       core_rtc_wakeup
+#define core_rtc_alarm_stop  core_rtc_wakeup_stop
+
+/* ============================================================
+ * Alarm A — calendar-based alarm
+ *
+ * Triggers when the RTC time matches the configured fields.
+ * Pass 0xFF for any field to ignore it (wildcard).
+ *
+ * Usage:
+ *   core_rtc_set_alarm(8, 30, 0);      // every day at 08:30:00
+ *   core_rtc_set_alarm(0xFF, 0, 0);    // every hour at XX:00:00
+ *   core_rtc_set_alarm(0xFF, 0xFF, 0); // every minute at XX:XX:00
+ * ============================================================ */
+
+/**
+ * Set Alarm A to trigger at a specific time.
+ * Pass 0xFF for hours, minutes, or seconds to ignore that field.
+ * The alarm fires when all non-masked fields match the RTC time.
+ *
+ * @param hours    0–23, or 0xFF to match any hour
+ * @param minutes  0–59, or 0xFF to match any minute
+ * @param seconds  0–59, or 0xFF to match any second
+ */
+static inline void core_rtc_set_alarm(uint8_t hours, uint8_t minutes,
+                                       uint8_t seconds)
+{
+    ll_rtc_alarm_a_set(hours, minutes, seconds);
+}
+
+/** Clear the alarm (disable Alarm A). */
+static inline void core_rtc_clear_alarm(void)
+{
+    ll_rtc_alarm_a_disable();
+}
+
+/** Check if the alarm has fired (poll mode). Clears the flag. */
+static inline int core_rtc_alarm_fired(void)
+{
+    if (ll_rtc_alarm_a_flag()) {
+        ll_rtc_alarm_a_clear_flag();
+        return 1;
+    }
+    return 0;
 }
 
 #endif /* CORE_RTC_H */

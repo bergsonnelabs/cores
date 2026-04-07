@@ -1,0 +1,81 @@
+/**
+ * core_rng.h — Hardware Random Number Generator
+ *
+ * Generates true random numbers using analog noise sources.
+ * Available on Core.U (STM32L422), Core.W (STM32WBA55), and Core.H (STM32H523).
+ * Not available on Core.L (STM32L011).
+ *
+ * Usage:
+ *   core_rng_init();
+ *   uint32_t val = core_rng_read();     // single 32-bit random value
+ *   uint32_t buf[4];
+ *   core_rng_fill(buf, 4);              // fill buffer with random values
+ *   core_rng_deinit();                  // power down (optional)
+ */
+
+#ifndef CORE_RNG_H
+#define CORE_RNG_H
+
+#if !defined(STM32L422xx) && !defined(STM32WBA55xx) && !defined(STM32H523xx)
+#error "core_rng.h: Hardware RNG is not available on this Core tile. Only Core.U, Core.W, and Core.H have an RNG peripheral."
+#endif
+
+#include "ll_rng.h"
+#include "ll_rcc.h"
+
+/**
+ * Initialize the hardware RNG.
+ * Enables the peripheral clock, configures the RNG, and waits
+ * for the first random number to be ready.
+ *
+ * On Core.U: requires HSI48 to be running (auto-enabled if USB is used,
+ * otherwise call ll_rcc_hsi48_enable() first).
+ */
+static inline void core_rng_init(void)
+{
+#if defined(STM32L422xx)
+    /* L422 RNG is clocked from HSI48 — ensure it's running */
+    ll_rcc_hsi48_enable();
+    while (!ll_rcc_hsi48_ready())
+        ;
+    /* Select HSI48 as RNG clock: RCC_CCIPR bits [29:28] = 0b10 (HSI48) */
+    MOD_BITS(REG32(RCC_BASE + 0x88UL), 0x3UL << 28, 0x2UL << 28);
+#endif
+
+    ll_rcc_ahb2_clk_enable(LL_AHB2_RNG);
+    ll_rng_enable();
+}
+
+/**
+ * Read a single 32-bit random value (blocking).
+ * Returns 0 on timeout — check core_rng_error() if this happens.
+ */
+static inline uint32_t core_rng_read(void)
+{
+    return ll_rng_read();
+}
+
+/**
+ * Fill a buffer with random 32-bit values (blocking).
+ * @param buf    Destination buffer
+ * @param count  Number of uint32_t values to generate
+ * @return       Number of values successfully generated
+ */
+static inline uint32_t core_rng_fill(uint32_t *buf, uint32_t count)
+{
+    return ll_rng_fill(buf, count);
+}
+
+/** Check if the RNG has a seed error (entropy source failure). */
+static inline int core_rng_error(void)
+{
+    return ll_rng_seed_error() || ll_rng_clock_error();
+}
+
+/** Power down the RNG peripheral. */
+static inline void core_rng_deinit(void)
+{
+    ll_rng_disable();
+}
+
+#endif /* CORE_RNG_H */

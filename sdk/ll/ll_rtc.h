@@ -396,6 +396,106 @@ static inline void ll_rtc_wakeup_clear_flag(void)
 }
 
 /* ============================================================
+ * Alarm A
+ *
+ * Alarm A matches on a configurable subset of calendar fields
+ * (hours, minutes, seconds). Set MSKx bits to ignore a field.
+ * ============================================================ */
+
+#define RTC_ALRMAR          REG32(RTC_BASE + 0x1CUL)  /* Alarm A register */
+#define RTC_ALRMASSR        REG32(RTC_BASE + 0x44UL)  /* Alarm A sub-second */
+
+/* ALRMAR field masks */
+#define LL_RTC_ALRM_MSK4   (1UL << 31)  /* Mask day/date (ignore) */
+#define LL_RTC_ALRM_MSK3   (1UL << 23)  /* Mask hours (ignore) */
+#define LL_RTC_ALRM_MSK2   (1UL << 15)  /* Mask minutes (ignore) */
+#define LL_RTC_ALRM_MSK1   (1UL << 7)   /* Mask seconds (ignore) */
+
+/**
+ * Set Alarm A to trigger at a specific time (24h format).
+ * Set hours/minutes/seconds to the desired alarm time.
+ * Fields with 0xFF are masked (ignored for matching).
+ *
+ * Example: alarm at 08:30:00 every day:
+ *   ll_rtc_alarm_a_set(8, 30, 0);
+ *
+ * Example: alarm every hour at XX:30:00:
+ *   ll_rtc_alarm_a_set(0xFF, 30, 0);
+ */
+static inline void ll_rtc_alarm_a_set(uint8_t hours, uint8_t minutes, uint8_t seconds)
+{
+    ll_rtc_unlock();
+
+    /* Disable Alarm A */
+    CLR_BITS(RTC_CR, LL_RTC_CR_ALRAE);
+
+    /* Wait for alarm write allowed */
+#if defined(STM32L011xx)
+    while (!(RTC_ISR & (1UL << 0)))   /* ALRAWF */
+        ;
+#elif !defined(STM32H523xx)
+    while (!(RTC_ICSR & (1UL << 0)))  /* ALRAWF */
+        ;
+#else
+    /* H5: no ALRAWF — write is immediately effective after ALRAE=0 */
+    for (volatile int i = 0; i < 10; i++) ;
+#endif
+
+    /* Build alarm register value */
+    uint32_t alrm = LL_RTC_ALRM_MSK4;  /* Always mask day/date */
+
+    if (hours == 0xFF)   alrm |= LL_RTC_ALRM_MSK3;
+    else                 alrm |= ((uint32_t)ll_bin_to_bcd(hours) << 16);
+
+    if (minutes == 0xFF) alrm |= LL_RTC_ALRM_MSK2;
+    else                 alrm |= ((uint32_t)ll_bin_to_bcd(minutes) << 8);
+
+    if (seconds == 0xFF) alrm |= LL_RTC_ALRM_MSK1;
+    else                 alrm |= (uint32_t)ll_bin_to_bcd(seconds);
+
+    RTC_ALRMAR = alrm;
+
+    /* Enable Alarm A + interrupt */
+    SET_BITS(RTC_CR, LL_RTC_CR_ALRAE | LL_RTC_CR_ALRAIE);
+
+    ll_rtc_lock();
+}
+
+/** Disable Alarm A. */
+static inline void ll_rtc_alarm_a_disable(void)
+{
+    ll_rtc_unlock();
+    CLR_BITS(RTC_CR, LL_RTC_CR_ALRAE | LL_RTC_CR_ALRAIE);
+    ll_rtc_lock();
+}
+
+/** Clear the Alarm A flag. */
+static inline void ll_rtc_alarm_a_clear_flag(void)
+{
+#if defined(STM32L011xx)
+    CLR_BITS(RTC_ISR, (1UL << 8));  /* ALRAF */
+#elif defined(STM32H523xx)
+    REG32(RTC_BASE + 0x5CUL) = (1UL << 0);  /* SCR: CALRAF */
+#else
+    REG32(RTC_BASE + 0x34UL) = (1UL << 0);  /* SCR: CALRAF */
+#endif
+}
+
+/** Check if Alarm A flag is set. */
+static inline int ll_rtc_alarm_a_flag(void)
+{
+#if defined(STM32L011xx)
+    return (RTC_ISR & (1UL << 8)) != 0;
+#elif defined(STM32H523xx)
+    /* H5: MISR at offset 0x58, ALRAMF at bit 0 */
+    return (REG32(RTC_BASE + 0x58UL) & (1UL << 0)) != 0;
+#else
+    /* L4/WBA: MISR at offset 0x30 or SR at offset 0x30, ALRAF at bit 0 */
+    return (REG32(RTC_BASE + 0x30UL) & (1UL << 0)) != 0;
+#endif
+}
+
+/* ============================================================
  * Backup registers (BKP0R–BKP31R)
  *
  * Reading requires RTCAPBEN on H5 (enabled by ll_rtc_init).

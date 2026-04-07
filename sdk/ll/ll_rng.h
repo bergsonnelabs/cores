@@ -18,7 +18,9 @@
 
 /* ---- RNG base address ---- */
 
-#if defined(STM32WBA55xx)
+#if defined(STM32L422xx)
+  #define RNG_BASE    0x50060800UL  /* AHB2 */
+#elif defined(STM32WBA55xx)
   #define RNG_BASE    (PERIPH_BASE + 0x020C0800UL)  /* 0x420C0800 — AHB2 */
 #elif defined(STM32H523xx)
   #define RNG_BASE    (PERIPH_BASE + 0x020C0800UL)  /* Same offset on H5 */
@@ -69,7 +71,12 @@ static inline void ll_rng_enable(void)
     MOD_BITS(REG32(RCC_BASE + 0xE4UL), 0x3UL << 12, 0x2UL << 12);
 #endif
 
-    /* Disable, then conditioning reset + enable */
+#if defined(STM32L422xx)
+    /* L422: simple RNG — just enable, no conditioning reset needed.
+     * RNG clock comes from HSI48 (must be enabled for USB or RNG). */
+    RNG_CR = LL_RNG_CR_RNGEN;
+#else
+    /* WBA55/H523: conditioning reset + enable */
     RNG_CR = 0;
     RNG_CR = LL_RNG_CR_CONDRST | LL_RNG_CR_RNGEN;
 
@@ -78,8 +85,9 @@ static inline void ll_rng_enable(void)
 
     /* Clear CONDRST, keep RNGEN — completes conditioning */
     RNG_CR = LL_RNG_CR_RNGEN;
+#endif
 
-    /* Wait for first DRDY (conditioning complete + first number ready) */
+    /* Wait for first DRDY (first number ready) */
     for (volatile uint32_t t = 200000; t; t--) {
         if (RNG_SR & LL_RNG_SR_DRDY) {
             (void)RNG_DR;  /* Discard first value */
