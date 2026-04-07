@@ -1,0 +1,12 @@
+{
+  "project": {
+    "name": "val-bootloader",
+    "core": "Core-H-1-a",
+    "description": "Validation: BOOTLOADER=1 compiles with APP_OFFSET and DFU logic on Core.H"
+  },
+  "clock": "default",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {}
+}

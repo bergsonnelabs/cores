@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "val-guard-usb",
+    "core": "Core-W-b",
+    "description": "Negative test: core_usb.h must #error on Core.W (no USB hardware)"
+  },
+  "clock": "default",
+  "pads": {}
+}

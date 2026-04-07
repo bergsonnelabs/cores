@@ -1,0 +1,12 @@
+{
+  "project": {
+    "name": "val-usb-rx-callback",
+    "core": "Core-U-2-a",
+    "description": "Validation: USB CDC receive callback, polling reads, connection status"
+  },
+  "clock": "max",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {}
+}

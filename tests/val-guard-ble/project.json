@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "val-guard-ble",
+    "core": "Core-U-2-a",
+    "description": "Negative test: core_ble.h must #error on Core.U (no BLE radio)"
+  },
+  "clock": "default",
+  "pads": {}
+}
