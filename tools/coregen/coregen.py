@@ -884,7 +884,7 @@ def build_spi_config(config, mcu, pad_map):
 TILE_DRIVER_MAP = {
     "Sense.I.9":   {"header": "tile_sense_i_9.h",    "source": "tile_sense_i_9",    "prefix": "tile_sense_i_9"},
     "Sense.I.6P8": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
-    "Sense.I.6P6": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
+    "Sense.I.6P6": {"header": "tile_sense_i_6p6.h",  "source": "tile_sense_i_6p6",  "prefix": "tile_sense_i_6p6"},
     "Sense.I.6D":  {"header": "tile_sense_i_6d.h",   "source": "tile_sense_i_6d",   "prefix": "tile_sense_i_6d"},
     "Drive.P":     {"header": "tile_drive_p.h",      "source": "tile_drive_p",      "prefix": "tile_drive_p"},
     "Drive.H":     {"header": "tile_drive_h.h",      "source": "tile_drive_h",      "prefix": "tile_drive_h"},

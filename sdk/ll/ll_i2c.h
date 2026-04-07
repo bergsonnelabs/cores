@@ -568,6 +568,11 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
  */
 static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
 {
+    /* Matches the ST HAL HAL_I2C_IsDeviceReady approach:
+     * Send START + address (write, 0 bytes), NO AUTOEND.
+     * Wait for either NACK (device absent) or TC (transfer complete,
+     * meaning device ACKed). Then manually send STOP. */
+
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
@@ -582,15 +587,30 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
         }
     }
 
-    /* Send START + address with 0 bytes, AUTOEND */
+    /* START + address, write direction, 0 bytes, NO AUTOEND */
     i2c->CR2 = ((uint32_t)addr << LL_I2C_CR2_SADD_SHIFT)
              | (0UL << LL_I2C_CR2_NBYTES_SHIFT)
-             | LL_I2C_CR2_AUTOEND
              | LL_I2C_CR2_START;
 
-    /* Wait for STOP (AUTOEND) with timeout */
+    /* Wait for NACK or TC (transfer complete = address ACKed) */
     timeout = 100000;
-    while (!(i2c->ISR & LL_I2C_ISR_STOPF)) {
+    while (1) {
+        uint32_t isr = i2c->ISR;
+        if (isr & LL_I2C_ISR_NACKF) {
+            /* Device NACKed — clear flags, send STOP */
+            i2c->ICR = LL_I2C_ICR_NACKCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_NACK;
+        }
+        if (isr & LL_I2C_ISR_TC) {
+            /* Device ACKed — send STOP */
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_OK;
+        }
         if (--timeout == 0) {
             i2c->CR1 = 0;
             for (volatile int d = 0; d < 100; d++);
@@ -598,12 +618,6 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
             return LL_I2C_TIMEOUT;
         }
     }
-
-    int result = (i2c->ISR & LL_I2C_ISR_NACKF) ? LL_I2C_NACK : LL_I2C_OK;
-
-    i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF | LL_I2C_ICR_OVRCF;
-
-    return result;
 }
 
 /* ============================================================
