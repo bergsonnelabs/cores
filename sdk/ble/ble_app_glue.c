@@ -32,8 +32,10 @@ volatile uint32_t _evt_log[EVT_LOG_SIZE] __attribute__((used));
 volatile uint32_t _evt_log_idx;
 
 /* User callbacks (set via core_ble API) */
-void (*ble_on_connect_cb)(void);
-void (*ble_on_disconnect_cb)(void);
+void (*ble_on_connect_cb)(void *ctx);
+void *ble_on_connect_ctx;
+void (*ble_on_disconnect_cb)(void *ctx);
+void *ble_on_disconnect_ctx;
 
 /* Re-advertise flag — set on disconnect, polled by core_ble_process */
 volatile uint8_t ble_need_readvertise;
@@ -65,7 +67,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
         ble_conn_handle = 0xFFFF;
         ble_need_readvertise = 1;
         gap_cmd_resp_release();
-        if (ble_on_disconnect_cb) ble_on_disconnect_cb();
+        if (ble_on_disconnect_cb) ble_on_disconnect_cb(ble_on_disconnect_ctx);
         break;
     }
 
@@ -82,7 +84,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
             if (p_conn->Status == 0) {
                 ble_connected = 1;
                 ble_conn_handle = p_conn->Connection_Handle;
-                if (ble_on_connect_cb) ble_on_connect_cb();
+                if (ble_on_connect_cb) ble_on_connect_cb(ble_on_connect_ctx);
             }
             break;
         }
@@ -94,7 +96,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
             if (p_conn->Status == 0) {
                 ble_connected = 1;
                 ble_conn_handle = p_conn->Connection_Handle;
-                if (ble_on_connect_cb) ble_on_connect_cb();
+                if (ble_on_connect_cb) ble_on_connect_cb(ble_on_connect_ctx);
             }
             break;
         }

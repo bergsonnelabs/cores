@@ -14,9 +14,9 @@
 static core_ble_char_t led_char;
 static core_ble_char_t counter_char;
 
-static void on_led_write(const uint8_t *data, uint16_t len)
+static void on_led_write(const uint8_t *data, uint16_t len, void *ctx)
 {
-    (void)len;
+    (void)len; (void)ctx;
     if (data[0]) LED_ON();
     else         LED_OFF();
 }
@@ -28,12 +28,12 @@ void app_ble_services(void)
     svc = core_ble_add_service("LED Control");
     led_char = core_ble_add_char(svc, "LED State",
                                   CORE_BLE_RW, CORE_BLE_BOOL,
-                                  on_led_write);
+                                  on_led_write, NULL);
 
     svc = core_ble_add_service("Counter");
     counter_char = core_ble_add_char(svc, "Count",
                                       CORE_BLE_READ | CORE_BLE_NOTIFY,
-                                      CORE_BLE_UINT8, NULL);
+                                      CORE_BLE_UINT8, NULL, NULL);
 }
 
 /* ---- Main ---- */

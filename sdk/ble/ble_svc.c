@@ -30,7 +30,8 @@ typedef struct {
     uint16_t char_handle;   /* characteristic handle from aci_gatt_add_char */
     uint8_t  access;        /* CHAR_PROP_* flags */
     uint8_t  value_len;     /* max value length */
-    void (*on_write)(const uint8_t *data, uint16_t len);
+    void (*on_write)(const uint8_t *data, uint16_t len, void *ctx);
+    void *on_write_ctx;
 } ble_char_record_t;
 
 /* ---- State ---- */
@@ -73,7 +74,7 @@ static SVCCTL_EvtAckStatus_t BLE_SVC_EventHandler(void *p_Event)
             {
                 if (chars[i].on_write && p_mod->Attr_Data_Length > 0)
                 {
-                    chars[i].on_write(p_mod->Attr_Data, p_mod->Attr_Data_Length);
+                    chars[i].on_write(p_mod->Attr_Data, p_mod->Attr_Data_Length, chars[i].on_write_ctx);
                 }
                 return SVCCTL_EvtAckFlowEnable;
             }
@@ -117,7 +118,8 @@ uint16_t ble_svc_add_service(const char *name, uint8_t num_chars)
 
 uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
                            uint8_t access, uint8_t value_len,
-                           void (*on_write)(const uint8_t *data, uint16_t len))
+                           void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                           void *ctx)
 {
     (void)name;
 
@@ -166,7 +168,8 @@ uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
     chars[char_count].char_handle = char_handle;
     chars[char_count].access      = access;
     chars[char_count].value_len   = value_len;
-    chars[char_count].on_write    = on_write;
+    chars[char_count].on_write     = on_write;
+    chars[char_count].on_write_ctx = ctx;
     char_count++;
 
     return char_handle;
