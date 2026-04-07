@@ -40,7 +40,16 @@ static inline void core_rng_init(void)
         ;
     /* Select HSI48 as RNG clock: RCC_CCIPR bits [29:28] = 0b10 (HSI48) */
     MOD_BITS(REG32(RCC_BASE + 0x88UL), 0x3UL << 28, 0x2UL << 28);
+#elif defined(STM32H523xx)
+    /* H5 RNG is clocked from HSI48. Enable it if not already running
+     * (USB init may have already enabled it). */
+    ll_rcc_hsi48_enable();
+    while (!ll_rcc_hsi48_ready())
+        ;
+    /* Select HSI48 as RNG clock: RCC_CCIPR5 bits [3:2] = 0b11 (HSI48) */
+    MOD_BITS(REG32(RCC_BASE + 0xD4UL), 0x3UL << 2, 0x3UL << 2);
 #endif
+    /* WBA55: RNG clock source is set inside ll_rng_enable() (HSI16 via CCIPR2) */
 
     ll_rcc_ahb2_clk_enable(LL_AHB2_RNG);
     ll_rng_enable();

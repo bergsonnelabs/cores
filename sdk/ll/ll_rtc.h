@@ -504,7 +504,18 @@ static inline int ll_rtc_alarm_a_flag(void)
  *   ll_pwr_enable_backup_access();
  * ============================================================ */
 
-#define RTC_BKP_BASE        (RTC_BASE + 0x50UL)
+/* Backup register base varies by family:
+ * L0/L4: in the RTC peripheral at RTC_BASE + 0x50
+ * WBA/H5: in the TAMP peripheral at TAMP_BASE + 0x100 */
+#if defined(STM32WBA55xx)
+  #define TAMP_BASE           0x46007C00UL
+  #define RTC_BKP_BASE        (TAMP_BASE + 0x100UL)
+#elif defined(STM32H523xx)
+  #define TAMP_BASE           0x44007C00UL
+  #define RTC_BKP_BASE        (TAMP_BASE + 0x100UL)
+#else
+  #define RTC_BKP_BASE        (RTC_BASE + 0x50UL)
+#endif
 
 /** Read backup register n (0–31). No clock setup needed. */
 static inline uint32_t ll_rtc_bkp_read(uint32_t n)
