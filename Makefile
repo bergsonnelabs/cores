@@ -103,13 +103,13 @@ endif
 
 BOOTLOADER ?= 0
 ifeq ($(BOOTLOADER),1)
+  APP_ADDR   = 0x08002000
+  APP_OFFSET = $(APP_ADDR)UL
   ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_app.ld
-    APP_OFFSET = 0x08002000UL
   endif
   ifeq ($(TILE),Core-H-1-a)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32h523he_app.ld
-    APP_OFFSET = 0x08002000UL
   endif
 endif
 
@@ -372,7 +372,7 @@ ifeq ($(BOOTLOADER),1)
 		stty -f "$$TTY" 1200 hupcl; \
 		sleep 2; \
 	fi
-	@dfu-util -a 0 -R -D $< || true
+	@dfu-util -a 0 -s $(APP_ADDR):leave -D $< || true
 else
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 endif
