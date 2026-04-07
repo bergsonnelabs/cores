@@ -642,28 +642,46 @@ I2C_CLK_MAP = {
 # 1MHz entries only exist for kernel clocks >= 48MHz (16/32MHz don't have
 # sufficient timing margin and no LL_I2C_TIMING_1M_16/32MHZ constants exist).
 I2C_TIMING_MAP = {
+    # Standard mode (100kHz) — minimum kernel clock: 1 MHz
     (100000,   1): "LL_I2C_TIMING_100K_1MHZ",
+    (100000,   2): "LL_I2C_TIMING_100K_2MHZ",
     (100000,   4): "LL_I2C_TIMING_100K_4MHZ",
     (100000,   8): "LL_I2C_TIMING_100K_8MHZ",
     (100000,  16): "LL_I2C_TIMING_100K_16MHZ",
     (100000,  32): "LL_I2C_TIMING_100K_32MHZ",
     (100000,  48): "LL_I2C_TIMING_100K_48MHZ",
+    (100000,  64): "LL_I2C_TIMING_100K_64MHZ",
     (100000,  80): "LL_I2C_TIMING_100K_80MHZ",
+    (100000, 128): "LL_I2C_TIMING_100K_128MHZ",
     (100000, 144): "LL_I2C_TIMING_100K_144MHZ",
     (100000, 240): "LL_I2C_TIMING_100K_240MHZ",
+    (100000, 248): "LL_I2C_TIMING_100K_248MHZ",
+    # Fast mode (400kHz) — minimum kernel clock: 4 MHz
     (400000,   4): "LL_I2C_TIMING_400K_4MHZ",
     (400000,   8): "LL_I2C_TIMING_400K_8MHZ",
     (400000,  16): "LL_I2C_TIMING_400K_16MHZ",
     (400000,  32): "LL_I2C_TIMING_400K_32MHZ",
     (400000,  48): "LL_I2C_TIMING_400K_48MHZ",
+    (400000,  64): "LL_I2C_TIMING_400K_64MHZ",
     (400000,  80): "LL_I2C_TIMING_400K_80MHZ",
+    (400000, 128): "LL_I2C_TIMING_400K_128MHZ",
     (400000, 144): "LL_I2C_TIMING_400K_144MHZ",
     (400000, 240): "LL_I2C_TIMING_400K_240MHZ",
+    (400000, 248): "LL_I2C_TIMING_400K_248MHZ",
+    # Fast mode plus (1MHz) — minimum kernel clock: 16 MHz
+    (1000000,  16): "LL_I2C_TIMING_1M_16MHZ",
+    (1000000,  32): "LL_I2C_TIMING_1M_32MHZ",
     (1000000,  48): "LL_I2C_TIMING_1M_48MHZ",
+    (1000000,  64): "LL_I2C_TIMING_1M_64MHZ",
     (1000000,  80): "LL_I2C_TIMING_1M_80MHZ",
+    (1000000, 128): "LL_I2C_TIMING_1M_128MHZ",
     (1000000, 144): "LL_I2C_TIMING_1M_144MHZ",
     (1000000, 240): "LL_I2C_TIMING_1M_240MHZ",
+    (1000000, 248): "LL_I2C_TIMING_1M_248MHZ",
 }
+
+# Minimum kernel clock (MHz) for each I2C speed (from CubeMX — below this, timing is not achievable)
+I2C_MIN_CLOCK = {100000: 1, 400000: 4, 1000000: 16}
 
 
 def build_i2c_config(config, mcu, clock_config):
@@ -710,10 +728,17 @@ def build_i2c_config(config, mcu, clock_config):
             print(f"  ERROR: I2C{bus_num} speed {speed} not supported (use 100000, 400000, or 1000000)")
             sys.exit(1)
 
+        # Check minimum clock for requested speed
+        speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
+        min_clk = I2C_MIN_CLOCK.get(speed, 1)
+        if i2c_clk_mhz < min_clk:
+            print(f"  ERROR: I2C{bus_num} {speed_label} requires at least {min_clk}MHz kernel clock, but this config has {i2c_clk_mhz}MHz.")
+            print(f"         Use a higher clock level or a lower I2C speed.")
+            sys.exit(1)
+
         # Look up timing constant for this speed + I2C kernel clock combo
         timing = I2C_TIMING_MAP.get((speed, i2c_clk_mhz))
         if timing is None:
-            speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
             print(f"  ERROR: I2C{bus_num} {speed_label} is not supported with a {i2c_clk_mhz}MHz I2C kernel clock.")
             if family_define == "STM32WBA55xx" and speed == 1000000:
                 print(f"         Core.W routes I2C to HSI16 (16MHz); maximum supported speed is 400kHz.")
