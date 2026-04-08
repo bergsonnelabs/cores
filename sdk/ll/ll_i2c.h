@@ -338,11 +338,16 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
         while (1) {
             uint32_t isr = i2c->ISR;
             if (isr & LL_I2C_ISR_NACKF) {
-                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+                i2c->ICR = LL_I2C_ICR_NACKCF;
+                /* AUTOEND generates STOP after NACK — wait for it */
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
             if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
-                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF | LL_I2C_ICR_STOPCF;
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_ERROR;
             }
             if (isr & LL_I2C_ISR_TXIS)
@@ -397,11 +402,16 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
         while (1) {
             uint32_t isr = i2c->ISR;
             if (isr & LL_I2C_ISR_NACKF) {
-                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+                i2c->ICR = LL_I2C_ICR_NACKCF;
+                /* AUTOEND generates STOP after NACK — wait for it */
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
             if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
-                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF | LL_I2C_ICR_STOPCF;
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_ERROR;
             }
             if (isr & LL_I2C_ISR_RXNE)
@@ -456,9 +466,18 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
     if (reg > 0xFF) {
         timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
-            if (i2c->ISR & LL_I2C_ISR_NACKF) {
-                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+            uint32_t isr = i2c->ISR;
+            if (isr & LL_I2C_ISR_NACKF) {
+                i2c->ICR = LL_I2C_ICR_NACKCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
+            }
+            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
+                return LL_I2C_ERROR;
             }
             if (--timeout == 0)
                 return LL_I2C_TIMEOUT;
@@ -467,9 +486,18 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
     }
     timeout = LL_I2C_DEFAULT_TIMEOUT;
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
-        if (i2c->ISR & LL_I2C_ISR_NACKF) {
-            i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+        uint32_t isr = i2c->ISR;
+        if (isr & LL_I2C_ISR_NACKF) {
+            i2c->ICR = LL_I2C_ICR_NACKCF;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
+        }
+        if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+            i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_ERROR;
         }
         if (--timeout == 0)
             return LL_I2C_TIMEOUT;
@@ -480,9 +508,18 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
     for (uint32_t i = 0; i < len; i++) {
         timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
-            if (i2c->ISR & LL_I2C_ISR_NACKF) {
-                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+            uint32_t isr = i2c->ISR;
+            if (isr & LL_I2C_ISR_NACKF) {
+                i2c->ICR = LL_I2C_ICR_NACKCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
+            }
+            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
+                return LL_I2C_ERROR;
             }
             if (--timeout == 0)
                 return LL_I2C_TIMEOUT;
@@ -514,6 +551,7 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
                                   uint16_t reg, uint8_t *buf, uint32_t len)
 {
     volatile uint32_t timeout;
+    uint32_t isr;
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
@@ -527,31 +565,80 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
     if (reg > 0xFF) {
         timeout = LL_I2C_DEFAULT_TIMEOUT;
         while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
-            if (i2c->ISR & LL_I2C_ISR_NACKF) {
-                i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+            isr = i2c->ISR;
+            if (isr & LL_I2C_ISR_NACKF) {
+                i2c->ICR = LL_I2C_ICR_NACKCF;
+                i2c->CR2 = LL_I2C_CR2_STOP;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_NACK;
             }
-            if (--timeout == 0)
+            if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+                i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+                i2c->CR2 = LL_I2C_CR2_STOP;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
+                return LL_I2C_ERROR;
+            }
+            if (--timeout == 0) {
+                i2c->CR2 = LL_I2C_CR2_STOP;
+                while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+                i2c->ICR = LL_I2C_ICR_STOPCF;
                 return LL_I2C_TIMEOUT;
+            }
         }
         i2c->TXDR = (uint8_t)(reg >> 8);
     }
     timeout = LL_I2C_DEFAULT_TIMEOUT;
     while (!(i2c->ISR & LL_I2C_ISR_TXIS)) {
-        if (i2c->ISR & LL_I2C_ISR_NACKF) {
-            i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF;
+        isr = i2c->ISR;
+        if (isr & LL_I2C_ISR_NACKF) {
+            i2c->ICR = LL_I2C_ICR_NACKCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
-        if (--timeout == 0)
+        if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+            i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_ERROR;
+        }
+        if (--timeout == 0) {
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
             return LL_I2C_TIMEOUT;
+        }
     }
     i2c->TXDR = (uint8_t)(reg & 0xFF);
 
     /* Wait for transfer complete (TC, not TCR since no RELOAD) */
     timeout = LL_I2C_DEFAULT_TIMEOUT;
     while (!(i2c->ISR & LL_I2C_ISR_TC)) {
-        if (--timeout == 0)
+        isr = i2c->ISR;
+        if (isr & LL_I2C_ISR_NACKF) {
+            i2c->ICR = LL_I2C_ICR_NACKCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_NACK;
+        }
+        if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+            i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_ERROR;
+        }
+        if (--timeout == 0) {
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
             return LL_I2C_TIMEOUT;
+        }
     }
 
     /* Phase 2: Read data with repeated START */
@@ -604,6 +691,14 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
             i2c->ICR = LL_I2C_ICR_STOPCF;
             return LL_I2C_NACK;
         }
+        if (isr & (LL_I2C_ISR_BERR | LL_I2C_ISR_ARLO | LL_I2C_ISR_OVR)) {
+            /* Bus error — clear flags, send STOP, reset PE */
+            i2c->ICR = LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
+            return LL_I2C_ERROR;
+        }
         if (isr & LL_I2C_ISR_TC) {
             /* Device ACKed — send STOP */
             i2c->CR2 = LL_I2C_CR2_STOP;
@@ -612,6 +707,9 @@ static inline int ll_i2c_probe(I2C_TypeDef *i2c, uint8_t addr)
             return LL_I2C_OK;
         }
         if (--timeout == 0) {
+            i2c->CR2 = LL_I2C_CR2_STOP;
+            while (!(i2c->ISR & LL_I2C_ISR_STOPF)) ;
+            i2c->ICR = LL_I2C_ICR_STOPCF;
             i2c->CR1 = 0;
             for (volatile int d = 0; d < 100; d++);
             i2c->CR1 = LL_I2C_CR1_PE;
