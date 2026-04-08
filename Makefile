@@ -379,8 +379,24 @@ ifeq ($(BOOTLOADER),1)
 		echo "  DFU   Waiting for DFU device..."; \
 		sleep 4; \
 	fi
-	@dfu-util -a 0 -s $(APP_ADDR):leave -D $< \
-		|| (echo "  DFU   Retry..." && sleep 2 && dfu-util -a 0 -s $(APP_ADDR):leave -D $<)
+	@_dfu_log=$$(mktemp); \
+	_dfu_ok=0; \
+	dfu-util -a 0 -R -D $< > "$$_dfu_log" 2>&1; \
+	if grep -q "Download done" "$$_dfu_log"; then _dfu_ok=1; fi; \
+	if [ "$$_dfu_ok" = "0" ]; then \
+		dfu-util -a 0 -s $(APP_ADDR):leave -D $< > "$$_dfu_log" 2>&1; \
+		if grep -q "Download done" "$$_dfu_log"; then _dfu_ok=1; fi; \
+	fi; \
+	if [ "$$_dfu_ok" = "1" ]; then \
+		_sz=$$(grep -o '[0-9]* bytes$$' "$$_dfu_log" | tail -1); \
+		echo "  DFU   Downloaded $${_sz:-firmware}"; \
+		echo "  DFU   OK"; \
+		echo "  DFU   Resetting..."; \
+	else \
+		cat "$$_dfu_log"; \
+		echo "  DFU   FAILED"; \
+	fi; \
+	rm -f "$$_dfu_log"
 else
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 endif

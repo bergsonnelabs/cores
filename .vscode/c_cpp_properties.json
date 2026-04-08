@@ -5,16 +5,23 @@
             "includePath": [
                 "${workspaceFolder}/sdk/ll",
                 "${workspaceFolder}/sdk/hal",
-                "${workspaceFolder}/kiln",
-                "${workspaceFolder}/kiln/drivers",
-                "${workspaceFolder}/kiln/hal",
+                "${workspaceFolder}/sdk/tal",
+                "${workspaceFolder}/sdk/core",
+                "${workspaceFolder}/sdk/ble/include",
+                "${workspaceFolder}/sdk/ble/include/auto",
+                "${workspaceFolder}/sdk/ble/link_layer/inc",
+                "${workspaceFolder}/Kiln",
+                "${workspaceFolder}/Kiln/drivers",
+                "${workspaceFolder}/Kiln/hal",
                 "${workspaceFolder}/projects/*/coregen",
                 "${workspaceFolder}/projects/*"
             ],
             "defines": [
-                "STM32WBA55xx"
+                "STM32L422xx",
+                "STM32WBA55xx",
+                "STM32H523xx"
             ],
-            "compilerPath": "",
+            "compilerPath": "/opt/homebrew/bin/arm-none-eabi-gcc",
             "cStandard": "c17",
             "intelliSenseMode": "gcc-arm"
         }
