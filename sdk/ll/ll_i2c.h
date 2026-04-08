@@ -322,6 +322,12 @@ static inline int ll_i2c_write(I2C_TypeDef *i2c, uint8_t addr,
 {
     volatile uint32_t timeout;
 
+    /* Wait for bus idle (matches ST HAL behavior) */
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (i2c->ISR & LL_I2C_ISR_BUSY) {
+        if (--timeout == 0) return LL_I2C_TIMEOUT;
+    }
+
     /* Clear any pending flags */
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
@@ -387,6 +393,11 @@ static inline int ll_i2c_read(I2C_TypeDef *i2c, uint8_t addr,
 {
     volatile uint32_t timeout;
 
+    /* NOTE: no BUSY wait here — this function is called from
+     * ll_i2c_read_reg Phase 2 where the bus is intentionally
+     * busy (waiting for restart). Standalone callers must ensure
+     * the bus is idle before calling. */
+
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
 
@@ -450,6 +461,12 @@ static inline int ll_i2c_write_reg(I2C_TypeDef *i2c, uint8_t addr,
                                    uint16_t reg, const uint8_t *data, uint32_t len)
 {
     volatile uint32_t timeout;
+
+    /* Wait for bus idle */
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (i2c->ISR & LL_I2C_ISR_BUSY) {
+        if (--timeout == 0) return LL_I2C_TIMEOUT;
+    }
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
@@ -552,6 +569,12 @@ static inline int ll_i2c_read_reg(I2C_TypeDef *i2c, uint8_t addr,
 {
     volatile uint32_t timeout;
     uint32_t isr;
+
+    /* Wait for bus idle */
+    timeout = LL_I2C_DEFAULT_TIMEOUT;
+    while (i2c->ISR & LL_I2C_ISR_BUSY) {
+        if (--timeout == 0) return LL_I2C_TIMEOUT;
+    }
 
     i2c->ICR = LL_I2C_ICR_NACKCF | LL_I2C_ICR_STOPCF
              | LL_I2C_ICR_BERRCF | LL_I2C_ICR_ARLOCF | LL_I2C_ICR_OVRCF;
