@@ -1,0 +1,13 @@
+{
+  "project": {
+    "name": "val-rom-dfu-h",
+    "core": "Core-H-1-a",
+    "description": "Validation: ROM_DFU=1 on Core.H — app at 0x08000000, 1200-baud touch triggers ROM bootloader"
+  },
+  "clock": "default",
+  "bootloader": "rom",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {}
+}

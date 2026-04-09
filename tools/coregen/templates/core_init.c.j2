@@ -27,6 +27,7 @@
 {% endif %}
 {% if usb_capable %}
 #include "hal_usb_cdc.h"
+#include "hal_dfu.h"
 {% endif %}
 {% if dac_enabled %}
 #include "hal_dac.h"
@@ -276,6 +277,17 @@ void core_pads_init(void)
 
 void core_init(void)
 {
+{% if usb_capable %}
+#ifdef ROM_DFU
+    /* ROM DFU: check for magic before ANY peripheral/clock init.
+     * If found, jump to the factory ROM bootloader (DfuSe, 0483:DF11).
+     * The MCU is in near-reset state here — only .data/.bss init has run. */
+    if (DFU_MAGIC_ADDR == DFU_MAGIC) {
+        DFU_MAGIC_ADDR = 0;
+        hal_dfu_jump_to_rom();  /* does not return */
+    }
+#endif
+{% endif %}
 #ifdef APP_OFFSET
     /* Relocate vector table for bootloader builds (app not at 0x08000000) */
     REG32(0xE000ED08UL) = APP_OFFSET;

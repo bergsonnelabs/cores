@@ -105,6 +105,8 @@ cores/
 | `PROJECT` | `blink` | Project name (looks in `examples/` or `projects/`) |
 | `PROJECT_DIR` | `examples/$(PROJECT)` | Override if project lives elsewhere |
 | `KILN_ENABLED` | `0` or `1` | Auto-set: 1 if project has tiles configured |
+| `BOOTLOADER` | from project.json | `1` = custom DFU bootloader (app at 0x08002000) |
+| `ROM_DFU` | from project.json | `1` = ROM DfuSe bootloader (app at 0x08000000) |
 | `V` | `0` | Verbosity (1 = show all commands) |
 
 ### Common Commands
@@ -170,6 +172,7 @@ Every project in `projects/<name>/` has a `project.json`. It is the single sourc
       "cs_pad": "8"              // SPI tiles only: which pad is this tile's CS
     }
   ],
+  "bootloader": "custom",          // "custom" | "rom" | "none" (default: "none")
   "usb": {
     "enabled": false
   },
@@ -194,6 +197,11 @@ Every project in `projects/<name>/` has a `project.json`. It is the single sourc
 - A tile's `bus` must match a key in `interfaces`
 - SPI tiles require a `cs_pad`; I2C tiles do not
 - `ble.enabled` on Core-W-b auto-overrides any HSI16 clock level to the lowest HSE level
+- `bootloader` controls DFU firmware update method:
+  - `"custom"` — 8KB custom DFU 1.1 bootloader at 0x08000000. App linked at 0x08002000 with VTOR relocation. 1200-baud touch triggers custom bootloader (VID:PID 1209:0002). Works on Core.U and Core.H.
+  - `"rom"` — No custom bootloader. App at 0x08000000 (full flash). 1200-baud touch triggers ST ROM bootloader (DfuSe, 0483:DF11). Works fully on Core.U. On Core.H, flash works but requires power cycle after (H5 ROM Go command limitation).
+  - `"none"` (default) — No DFU support. Flash via SWD or BOOT0 only.
+  - `BOOTLOADER` and `ROM_DFU` Make variables are auto-set from this key. Command-line overrides still work.
 - `debug` and `isp` are accepted and validated but only emit comments/defines — no init code
 - `isp.boot0_pad` emits `#define CORE_BOOT0_PAD <n>` in `core_board.h`
 - `isp.method == "uart"` emits a `make flash-uart` hint comment in `core_board.h`
