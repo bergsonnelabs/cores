@@ -5,6 +5,7 @@
     "description": "Validation: BOOTLOADER=1 compiles with APP_OFFSET and DFU logic on Core.H"
   },
   "clock": "default",
+  "bootloader": "custom",
   "usb": {
     "enabled": true
   },

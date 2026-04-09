@@ -88,4 +88,12 @@
 {% endfor %}
 {% endif %}
 
+{% if bootloader_mode != "none" %}
+/* ---- Bootloader ---- */
+/*   "custom" — Core DFU bootloader (1209:0002). App at 0x08002000.
+ *   "rom"    — ST ROM bootloader (0483:DF11). App at 0x08000000.
+ * Configured in project.json: "bootloader": "{{ bootloader_mode }}" */
+#define BOOTLOADER_MODE  "{{ bootloader_mode }}"
+{% endif %}
+
 #endif /* CORE_CONFIG_H */

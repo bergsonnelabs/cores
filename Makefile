@@ -98,11 +98,32 @@ else
 endif
 
 # ---- Bootloader support ----
-# Build with BOOTLOADER=1 to link the application at 0x08002000 (behind the
-# custom DFU bootloader) and set VTOR via APP_OFFSET.
+# Bootloader mode is read from project.json: "bootloader": "custom"|"rom"|"none"
+#
+#   "custom" — Custom DFU 1.1 bootloader at 0x08000000, app at 0x08002000.
+#   "rom"    — ROM DfuSe bootloader (0483:DF11), app at 0x08000000.
+#   "none"   — No DFU support. Flash via SWD or BOOT0.
+#
+# The mode maps to BOOTLOADER/ROM_DFU flags below. Command-line overrides
+# still work (e.g. make BOOTLOADER=1) because ?= defers to explicit values.
 
-BOOTLOADER ?= 0
+_BOOT_MODE := $(shell python3 -c "import json; print(json.load(open('$(PROJECT_JSON)')).get('bootloader','none'))" 2>/dev/null || echo none)
+
+ifeq ($(_BOOT_MODE),custom)
+  BOOTLOADER ?= 1
+  ROM_DFU    ?= 0
+else ifeq ($(_BOOT_MODE),rom)
+  BOOTLOADER ?= 0
+  ROM_DFU    ?= 1
+else
+  BOOTLOADER ?= 0
+  ROM_DFU    ?= 0
+endif
+
 ifeq ($(BOOTLOADER),1)
+  ifeq ($(ROM_DFU),1)
+    $(error BOOTLOADER=1 and ROM_DFU=1 are mutually exclusive)
+  endif
   APP_ADDR   = 0x08002000
   APP_OFFSET = $(APP_ADDR)UL
   ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
@@ -111,6 +132,14 @@ ifeq ($(BOOTLOADER),1)
   ifeq ($(TILE),Core-H-1-a)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32h523he_app.ld
   endif
+endif
+
+ifeq ($(ROM_DFU),1)
+  ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
+    LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_romdfu.ld
+  endif
+  # Core.H: standard linker script already has noinit reservation and
+  # app at 0x08000000 — no separate ROM DFU linker script needed.
 endif
 
 # ---- Paths ----
@@ -160,6 +189,9 @@ CFLAGS += -Og -g3
 
 ifdef APP_OFFSET
   CFLAGS += -DAPP_OFFSET=$(APP_OFFSET)
+endif
+ifeq ($(ROM_DFU),1)
+  CFLAGS += -DROM_DFU
 endif
 
 # ---- Kiln driver support (optional) ----
@@ -360,15 +392,19 @@ endif
 
 # ---- Flash via USB DFU ----
 #
-# flash-dfu:  Smart flash — uses APP_ADDR (0x08002000) when BOOTLOADER=1,
-#             0x08000000 otherwise. Tries 1200-baud touch first if a CDC
-#             serial port is present to trigger the custom DFU bootloader.
+# flash-dfu:  Smart flash via USB DFU. Behavior depends on boot mode:
+#
+#   BOOTLOADER=1: 1200-baud touch triggers custom DFU bootloader.
+#     Tries plain DFU 1.1 first, falls back to DfuSe at APP_ADDR.
+#
+#   ROM_DFU=1: 1200-baud touch triggers ROM bootloader (DfuSe).
+#     Flashes at 0x08000000 with :leave to auto-reset into app.
+#
+#   Neither: Direct DfuSe flash to 0x08000000 (board must already
+#     be in DFU mode, e.g. BOOT0 held high).
 #
 # flash-rom:  Always flashes at 0x08000000 via ROM DFU (for fresh boards
-#             or when BOOT0 is held high). Works regardless of BOOTLOADER
-#             setting — the binary is placed at the start of flash.
-#             NOTE: with BOOTLOADER=1 the binary expects to run from
-#             0x08002000, so use flash-rom only with BOOTLOADER=0.
+#             or when BOOT0 is held high). Works regardless of boot mode.
 
 flash-dfu: $(TARGET).bin
 ifeq ($(BOOTLOADER),1)
@@ -395,6 +431,33 @@ ifeq ($(BOOTLOADER),1)
 	else \
 		cat "$$_dfu_log"; \
 		echo "  DFU   FAILED"; \
+	fi; \
+	rm -f "$$_dfu_log"
+else ifeq ($(ROM_DFU),1)
+	@TTY=$$(ls /dev/tty.usbmodem* 2>/dev/null | head -1); \
+	if [ -n "$$TTY" ]; then \
+		echo "  DFU   Triggering reboot via 1200-baud touch on $$TTY..."; \
+		stty -f "$$TTY" 1200 hupcl; \
+		echo "  DFU   Waiting for ROM DFU device (0483:df11)..."; \
+		sleep 4; \
+	fi
+	@_dfu_log=$$(mktemp); \
+	dfu-util -a 0 -s 0x08000000:leave -D $< > "$$_dfu_log" 2>&1 || true; \
+	if grep -q "File downloaded successfully" "$$_dfu_log"; then \
+		_sz=$$(grep -o 'size = [0-9]*' "$$_dfu_log" | tail -1 | grep -o '[0-9]*'); \
+		echo "  DFU   Downloaded $${_sz:-?} bytes"; \
+		echo "  DFU   Resetting..."; \
+		sleep 5; \
+		if ls /dev/tty.usbmodem* >/dev/null 2>&1; then \
+			echo "  DFU   OK"; \
+		else \
+			echo "  DFU   OK — power cycle if the app hasn't started"; \
+		fi; \
+	else \
+		cat "$$_dfu_log"; \
+		echo "  DFU   FAILED"; \
+		rm -f "$$_dfu_log"; \
+		exit 1; \
 	fi; \
 	rm -f "$$_dfu_log"
 else

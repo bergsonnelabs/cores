@@ -399,6 +399,23 @@ def validate_project_config(config, tile, pad_map):
                 f"Options: {available}"
             )
 
+    # Validate bootloader mode
+    bootloader = config.get("bootloader", "none")
+    valid_boot_modes = {"none", "custom", "rom"}
+    if bootloader not in valid_boot_modes:
+        errors.append(
+            f"Bootloader mode '{bootloader}' is not valid. "
+            f"Options: {', '.join(sorted(valid_boot_modes))}"
+        )
+    if bootloader != "none":
+        mcu_define = tile.get("processor", {}).get("define", "")
+        usb_capable = {"STM32L422xx", "STM32H523xx"}
+        if mcu_define not in usb_capable:
+            warnings.append(
+                f"Bootloader '{bootloader}' requires USB — "
+                f"{mcu_define} does not support USB CDC"
+            )
+
     return warnings, errors
 
 
@@ -1164,6 +1181,8 @@ def generate(tile_path, output_dir, project_path=None):
         # when main.c forgets to call core_usb_init().
         _usb_capable_parts = {"STM32L422xx", "STM32H523xx"}
         ctx["usb_capable"] = mcu["define"] in _usb_capable_parts
+        # Bootloader mode: "none", "custom", or "rom" (from project.json)
+        ctx["bootloader_mode"] = project.get("bootloader", "none")
         ctx["timer_pads"] = build_timer_config(project, pad_map)
 
         # DAC: detect from pad config

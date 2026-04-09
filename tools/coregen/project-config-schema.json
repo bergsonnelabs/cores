@@ -158,6 +158,13 @@
         }
       },
       "additionalProperties": false
+    },
+
+    "bootloader": {
+      "type": "string",
+      "enum": ["none", "custom", "rom"],
+      "default": "none",
+      "description": "DFU bootloader mode. 'custom' = 8KB DFU 1.1 bootloader (1209:0002), app at 0x08002000. 'rom' = ST ROM DfuSe bootloader (0483:DF11), app at 0x08000000. 'none' = no DFU, flash via SWD or BOOT0. The Makefile reads this and sets BOOTLOADER/ROM_DFU flags automatically."
     }
   }
 }

@@ -1,4 +1,4 @@
-TILE         := Core-H-1-a
+TILE         := Core-U-2-a
 KILN_ENABLED := 0
 BLE_ENABLED  := 0
 PROJECT      := $(notdir $(CURDIR))
