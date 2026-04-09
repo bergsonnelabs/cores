@@ -67,6 +67,8 @@
     "power.rtc_wake": { "status": "verified", "note": "LSI RTC wakeup from Stop 0 (H5 requires Stop 0, init-mode WUTE, RTCAPBEN)" },
     "power.exti_wake":"compile",
     "power.wkup_wake":"",
+    "power.rtc_alarm": { "status": "compile", "note": "LL+Core Alarm A implemented. Tested in tests/val-backup-rng-alarm (Core.H)" },
+    "power.backup":    { "status": "compile", "note": "32 backup registers (BKP0-31) at TAMP+0x100. Tested in tests/val-backup-rng-alarm (Core.H)" },
 
     "coregen.gpio":   "verified",
     "coregen.i2c":    "verified",

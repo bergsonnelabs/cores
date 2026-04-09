@@ -63,12 +63,16 @@ static inline void ll_pwr_enable_backup_access(void)
 {
 #if defined(STM32L011xx)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR: DBP */
+    while (!(REG32(PWR_BASE + 0x00UL) & (1UL << 8))) ;
 #elif defined(STM32L422xx)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR1: DBP */
+    while (!(REG32(PWR_BASE + 0x00UL) & (1UL << 8))) ;
 #elif defined(STM32WBA55xx)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR1: DBP */
+    while (!(REG32(PWR_BASE + 0x00UL) & (1UL << 8))) ;
 #elif defined(STM32H523xx)
     SET_BITS(REG32(PWR_BASE + 0x24UL), (1UL << 0));   /* DBPCR: DBP (offset 0x024, bit 0) */
+    while (!(REG32(PWR_BASE + 0x24UL) & (1UL << 0))) ;
 #endif
 }
 

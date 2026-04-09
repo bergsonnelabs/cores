@@ -48,6 +48,9 @@ cores/
 │   │   ├── core_watchdog.h     # IWDG: start/feed/caused_reset
 │   │   ├── core_usb.h          # USB CDC serial
 │   │   ├── core_timing.h       # core_delay_ms/us, core_millis, core_timeout
+│   │   ├── core_rng.h          # Hardware RNG: init/read/fill/deinit (U/W/H)
+│   │   ├── core_rtc.h          # RTC: time, date, alarm A, wakeup timer
+│   │   ├── core_backup.h       # Backup registers: persist through reset/standby
 │   │   └── core_exti.h         # Backward compat shim → core_pad.h
 │   ├── hal/                    # HAL headers + implementations
 │   │   ├── hal_i2c.h/c

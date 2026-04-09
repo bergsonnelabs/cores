@@ -15,6 +15,8 @@
 #define LL_RTC_H
 
 #include "ll_common.h"
+#include "ll_pwr.h"
+#include "ll_rcc.h"
 
 /* ---- RTC base address ---- */
 
@@ -225,6 +227,24 @@ static inline void ll_rtc_exit_init(void)
 }
 
 /**
+ * Wait for the calendar shadow registers to synchronize.
+ * Call after ll_rtc_exit_init() before reading time/date.
+ * Takes up to 2 RTCCLK cycles (~62 us with 32 kHz clock).
+ */
+static inline void ll_rtc_wait_sync(void)
+{
+#if defined(STM32L011xx)
+    CLR_BITS(RTC_ISR, LL_RTC_ISR_RSF);
+    while (!(RTC_ISR & LL_RTC_ISR_RSF))
+        ;
+#else
+    CLR_BITS(RTC_ICSR, LL_RTC_ISR_RSF);
+    while (!(RTC_ICSR & LL_RTC_ISR_RSF))
+        ;
+#endif
+}
+
+/**
  * Initialize the RTC with LSE or LSI.
  *   use_lse: 1 = use LSE (32.768kHz crystal), 0 = use LSI (~32kHz)
  *
@@ -234,18 +254,62 @@ static inline void ll_rtc_exit_init(void)
  */
 static inline void ll_rtc_init(int use_lse)
 {
+    /* Ensure backup domain access is enabled (PWR clock + DBP) */
+    ll_rcc_pwr_clk_enable();
+    ll_pwr_enable_backup_access();
+
+    uint32_t desired_src = use_lse ? 1 : 2;
+
     if (use_lse) {
         ll_rcc_lse_enable();
         while (!ll_rcc_lse_ready())
             ;
-        ll_rcc_rtc_set_source(1);  /* LSE */
     } else {
         ll_rcc_lsi_enable();
         while (!ll_rcc_lsi_ready())
             ;
-        ll_rcc_rtc_set_source(2);  /* LSI */
     }
 
+    /* RTCSEL is write-once per backup domain reset. If it's already set
+     * to a different source (e.g. ROM bootloader set HSE/32), we must
+     * reset the backup domain before we can select our clock. */
+    {
+#if defined(STM32L011xx)
+        uint32_t bdcr = REG32(RCC_BASE + 0x50UL);
+        uint32_t cur_sel = (bdcr >> 16) & 0x3;
+#elif defined(STM32L422xx)
+        uint32_t bdcr = REG32(RCC_BASE + 0x90UL);
+        uint32_t cur_sel = (bdcr >> 8) & 0x3;
+#elif defined(STM32WBA55xx)
+        uint32_t bdcr = REG32(RCC_BASE + 0xE0UL);
+        uint32_t cur_sel = (bdcr >> 8) & 0x3;
+#elif defined(STM32H523xx)
+        uint32_t bdcr = REG32(RCC_BASE + 0xF0UL);
+        uint32_t cur_sel = (bdcr >> 8) & 0x3;
+#endif
+        if (cur_sel != 0 && cur_sel != desired_src) {
+            /* Wrong source locked in — backup domain reset required */
+#if defined(STM32L011xx)
+            SET_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 19));
+            for (volatile int i = 0; i < 100; i++) ;
+            CLR_BITS(REG32(RCC_BASE + 0x50UL), (1UL << 19));
+#elif defined(STM32L422xx)
+            SET_BITS(REG32(RCC_BASE + 0x90UL), (1UL << 16));
+            for (volatile int i = 0; i < 100; i++) ;
+            CLR_BITS(REG32(RCC_BASE + 0x90UL), (1UL << 16));
+#elif defined(STM32WBA55xx)
+            SET_BITS(REG32(RCC_BASE + 0xE0UL), (1UL << 16));
+            for (volatile int i = 0; i < 100; i++) ;
+            CLR_BITS(REG32(RCC_BASE + 0xE0UL), (1UL << 16));
+#elif defined(STM32H523xx)
+            SET_BITS(REG32(RCC_BASE + 0xF0UL), (1UL << 16));
+            for (volatile int i = 0; i < 100; i++) ;
+            CLR_BITS(REG32(RCC_BASE + 0xF0UL), (1UL << 16));
+#endif
+        }
+    }
+
+    ll_rcc_rtc_set_source(desired_src);
     ll_rcc_rtc_enable();
 
 #if defined(STM32H523xx)
@@ -288,6 +352,7 @@ static inline void ll_rtc_set_time(uint8_t hours, uint8_t minutes, uint8_t secon
            | ((uint32_t)ll_bin_to_bcd(seconds));
 
     ll_rtc_exit_init();
+    ll_rtc_wait_sync();
     ll_rtc_lock();
 }
 
@@ -304,6 +369,7 @@ static inline void ll_rtc_set_date(uint8_t year, uint8_t month,
            | ((uint32_t)ll_bin_to_bcd(day));
 
     ll_rtc_exit_init();
+    ll_rtc_wait_sync();
     ll_rtc_lock();
 }
 
@@ -480,11 +546,15 @@ static inline void ll_rtc_alarm_a_disable(void)
 static inline void ll_rtc_alarm_a_clear_flag(void)
 {
 #if defined(STM32L011xx)
-    CLR_BITS(RTC_ISR, (1UL << 8));  /* ALRAF */
+    CLR_BITS(RTC_ISR, (1UL << 8));  /* ALRAF in ISR (rc_w0) */
+#elif defined(STM32L422xx)
+    /* L4: ALRAF is rc_w0 in ICSR — write 0 to bit 8, keep other bits */
+    RTC_ICSR = RTC_ICSR & ~(1UL << 8);
 #elif defined(STM32H523xx)
     REG32(RTC_BASE + 0x5CUL) = (1UL << 0);  /* SCR: CALRAF */
 #else
-    REG32(RTC_BASE + 0x34UL) = (1UL << 0);  /* SCR: CALRAF */
+    /* WBA: SCR at offset 0x34, CALRAF at bit 0 */
+    REG32(RTC_BASE + 0x34UL) = (1UL << 0);
 #endif
 }
 
@@ -493,11 +563,13 @@ static inline int ll_rtc_alarm_a_flag(void)
 {
 #if defined(STM32L011xx)
     return (RTC_ISR & (1UL << 8)) != 0;  /* ALRAF in ISR */
+#elif defined(STM32L422xx)
+    return (RTC_ICSR & (1UL << 8)) != 0;  /* L4: ALRAF in ICSR bit 8 */
 #elif defined(STM32H523xx)
     /* H5: SR at offset 0x50 (RM0481 §46.6.22), ALRAF at bit 0 */
     return (REG32(RTC_BASE + 0x50UL) & (1UL << 0)) != 0;
 #else
-    /* L4/WBA: SR at offset 0x30, ALRAF at bit 0 */
+    /* WBA: SR at offset 0x30, ALRAF at bit 0 */
     return (REG32(RTC_BASE + 0x30UL) & (1UL << 0)) != 0;
 #endif
 }

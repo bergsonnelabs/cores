@@ -87,7 +87,7 @@ These are features in `features.json` that exist on the hardware but are **not y
 
 | Feature | L | U | W | H | Useful | Effort | Notes |
 |---------|---|---|---|---|--------|--------|-------|
-| **Hardware RNG** | -- | HW | V | HW | 4 | 2 | W verified. U/H have it but marked "none". Simple peripheral, high value for crypto/BLE. |
+| **Hardware RNG** | -- | V | V | HW | 4 | 2 | W+U verified. H has it but marked "none". U: HSI48+CCIPR mux, 6/6 tests pass (tests/val-backup-rng-alarm-u). |
 | **AES accelerator** | HW* | HW | V | HW | 4 | 3 | W verified. L has AES-128 only. U has AES-128/256. H has AES+SAES. High value for secure comms. |
 | **PKA/ECC** | -- | -- | HW | HW* | 3 | 4 | W has full PKA (none status). H has limited PKA (ECDSA verify only). For secure BLE pairing, cert validation. |
 | **HASH (SHA-256)** | -- | -- | -- | HW | 3 | 2 | H only (also W has HASH per RM but marked na in status?). Firmware integrity, HMAC. |
@@ -173,10 +173,10 @@ These are IC capabilities discovered in the reference manuals that don't appear 
 | 2 | **SPI coregen auto-init** | U,W,H | 2 | Prerequisite for SPI tiles in project.json. |
 | 3 | **LPTIM** | all | 3 | Runs in Stop mode. Enables periodic low-power wakeup without RTC complexity. |
 | 4 | **UART IRQ + coregen** | all | 2+2 | Non-blocking serial. Compile-only everywhere; just needs testing and coregen hookup. |
-| 5 | **Hardware RNG** | U,H | 2 | Simple peripheral. Essential for crypto, random seeds, BLE nonces. W already done. |
+| 5 | **Hardware RNG** | ~~U~~,H | 2 | **U done.** 6/6 tests pass (tests/val-backup-rng-alarm-u). H still needs testing. |
 | 6 | **Stop mode (L, W)** | L,W | 3 | L: debug RTC wakeup hang. W: needs hw test. Verified on U/H. |
-| 7 | **RTC alarms** | all | 2 | Calendar-based wakeup scheduling. Minimal code on top of existing RTC init. |
-| 8 | **Backup registers** | all | 1 | Trivial read/write API. Persist data through resets. Crash counters, boot flags. |
+| 7 | **RTC alarms** | all | 2 | API + LL implemented. U: time set/get verified, but ALRMAR writes read back 0 — hw investigation needed. L4 alarm flag bug fixed (was reading TSTR instead of ICSR). |
+| 8 | **Backup registers** | all | 1 | API implemented. U: BKPxR writes read back 0 — same root cause as alarm (hw investigation). L0/L4 clock-enable bug fixed in core_backup.h. |
 
 ### Tier 2 — Valuable, Moderate Effort
 

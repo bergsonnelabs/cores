@@ -51,6 +51,9 @@
     "power.sleep":   "verified",
     "power.stop":    "compile",
     "power.standby": "compile",
+    "power.wkup_wake":"",
+    "power.rtc_alarm": { "status": "compile", "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.W" },
+    "power.backup":    { "status": "compile", "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.W" },
 
     "watchdog.iwdg": "compile",
 
