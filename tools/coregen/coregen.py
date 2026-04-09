@@ -912,6 +912,7 @@ TILE_DRIVER_MAP = {
     "Power.P.N":   {"header": "tile_power_p_n.h",    "source": "tile_power_p_n",    "prefix": "tile_power_p_n"},
     "Disp.RGBW":   {"header": "tile_disp_rgbw.h",   "source": "tile_disp_rgbw",   "prefix": "tile_disp_rgbw"},
     "Sense.T.C":   {"header": "tile_sense_t_c.h",  "source": "tile_sense_t_c",  "prefix": "tile_sense_t_c"},
+    "Sense.MIC":   {"header": "tile_sense_mic.h",  "source": "tile_sense_mic",  "prefix": "tile_sense_mic"},
 }
 
 
