@@ -1159,6 +1159,11 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
         ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
         ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
+        # USB-capable MCUs always get CDC init in core_init() so the
+        # DFU bootloader's 1200-baud touch reboot always works — even
+        # when main.c forgets to call core_usb_init().
+        _usb_capable_parts = {"STM32L422xx", "STM32H523xx"}
+        ctx["usb_capable"] = mcu["define"] in _usb_capable_parts
         ctx["timer_pads"] = build_timer_config(project, pad_map)
 
         # DAC: detect from pad config
