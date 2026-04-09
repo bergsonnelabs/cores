@@ -68,6 +68,8 @@
     "power.rtc_wake": "compile",
     "power.exti_wake":"compile",
     "power.wkup_wake":"",
+    "power.rtc_alarm": { "status": "compile", "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.L" },
+    "power.backup":    { "status": "compile", "note": "5 backup registers (BKP0-4) at RTC+0x50. Not yet hw-tested on Core.L" },
 
     "coregen.gpio":   "verified",
     "coregen.i2c":    "compile",

@@ -113,7 +113,10 @@
         { "id": "power.stop",      "layer": "LL", "name": "STOP mode",          "desc": "CPU and most clocks halted, RAM retained — wakeup from EXTI or timer (~5 µs)." },
         { "id": "power.standby",   "layer": "LL", "name": "standby / shutdown", "desc": "Near-zero power draw — RAM is lost and wakeup triggers a full reset." },
         { "id": "power.rtc_wake",  "layer": "LL", "name": "RTC wakeup",         "desc": "Wake from STOP or Standby on a timed RTC alarm." },
-        { "id": "power.exti_wake", "layer": "LL", "name": "EXTI wakeup",        "desc": "Wake from STOP or Standby on a GPIO edge — e.g. button press or tile interrupt line." }
+        { "id": "power.exti_wake", "layer": "LL", "name": "EXTI wakeup",        "desc": "Wake from STOP or Standby on a GPIO edge — e.g. button press or tile interrupt line." },
+        { "id": "power.wkup_wake","layer": "LL", "name": "wakeup pin (Standby)","desc": "Dedicated WKUP pins wake from Standby without EXTI config." },
+        { "id": "power.rtc_alarm","layer": "Core","name": "RTC Alarm A",        "desc": "Calendar-based alarm — triggers when RTC matches configured hours/minutes/seconds (with wildcards)." },
+        { "id": "power.backup",   "layer": "Core","name": "backup registers",   "desc": "32-bit registers that persist through resets and Standby. Crash counters, boot flags, state preservation." }
       ]
     },
     {
