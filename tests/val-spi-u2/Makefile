@@ -1,5 +1,5 @@
 TILE         := Core-U-2-a
-KILN_ENABLED := 0
+KILN_ENABLED := 1
 BLE_ENABLED  := 0
 BOOTLOADER   := 0
 PROJECT      := $(notdir $(CURDIR))

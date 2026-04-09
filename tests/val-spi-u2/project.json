@@ -2,7 +2,7 @@
   "project": {
     "name": "val-spi-u2",
     "core": "Core-U-2-a",
-    "description": "Validation: SPI1 to Sense.I.6P6 (ICM-42686P) on Core.U.2"
+    "description": "Validation: Sense.I.6P6 via Kiln driver over SPI1 on Core.U.2"
   },
   "clock": "max",
   "pads": {
@@ -14,8 +14,11 @@
   "interfaces": {
     "SPI1": {
       "prescaler": 16,
-      "cpol": 1,
-      "cpha": 1
+      "cpol": 0,
+      "cpha": 0
     }
-  }
+  },
+  "tiles": [
+    { "tile": "Sense.I.6P6", "bus": "SPI1", "instance": 0, "cs_pad": 19 }
+  ]
 }
