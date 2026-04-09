@@ -30,6 +30,12 @@
 #include "hal_spi.h"
 #include "hal_gpio.h"
 
+/** SPI handle type — same as hal_spi_t under the hood. */
+typedef hal_spi_t core_spi_t;
+
+/** SPI configuration — prescaler, clock polarity, clock phase. */
+typedef hal_spi_config_t core_spi_config_t;
+
 /* ---- Init ---- */
 
 /** Initialize SPI in master mode. Same signature as hal_spi_init. */
