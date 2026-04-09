@@ -77,4 +77,42 @@ static inline void core_spi_xfer(hal_spi_t *h, const uint8_t *tx,
     hal_spi_xfer(h, tx, rx, len);
 }
 
+/* ---- DMA transfer (non-blocking) ---- */
+
+/**
+ * Start a DMA-based SPI transfer (non-blocking).
+ *
+ * Full-duplex: tx bytes are sent while rx bytes are received
+ * simultaneously. Either tx or rx can be NULL for write-only or
+ * read-only transfers. The callback fires from DMA ISR context
+ * when the transfer completes.
+ *
+ * Caller must manage CS: assert before calling, deassert in
+ * the callback. The command/address byte should be sent via
+ * polling (core_spi_transfer) before starting DMA.
+ *
+ * @param h    SPI handle
+ * @param tx   TX buffer (NULL = send zeros)
+ * @param rx   RX buffer (NULL = discard received data)
+ * @param len  Number of bytes to transfer
+ * @param cb   Completion callback (called from DMA ISR)
+ * @param ctx  User context for callback
+ * @return HAL_OK on success, HAL_BUSY if a DMA transfer is active,
+ *         HAL_ERROR if DMA is not available on this platform
+ */
+static inline hal_status_t core_spi_xfer_dma(hal_spi_t *h,
+                                              const uint8_t *tx,
+                                              uint8_t *rx,
+                                              uint32_t len,
+                                              hal_callback_t cb, void *ctx)
+{
+    return hal_spi_xfer_dma(h, tx, rx, len, cb, ctx);
+}
+
+/** Returns 1 if a DMA transfer is in progress. */
+static inline int core_spi_busy(hal_spi_t *h)
+{
+    return hal_spi_busy(h);
+}
+
 #endif /* CORE_SPI_H */

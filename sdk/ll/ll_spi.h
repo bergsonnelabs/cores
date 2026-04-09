@@ -42,6 +42,8 @@ typedef struct {
 #define LL_SPI_CR1_SSM          (1UL << 9)
 
 /* CR2 bits */
+#define LL_SPI_CR2_RXDMAEN     (1UL << 0)   /* RX DMA enable */
+#define LL_SPI_CR2_TXDMAEN     (1UL << 1)   /* TX DMA enable */
 #define LL_SPI_CR2_DS_SHIFT     8            /* DS[3:0] data size */
 #define LL_SPI_CR2_FRXTH        (1UL << 12)  /* FIFO threshold: 1=8-bit */
 
@@ -81,6 +83,8 @@ typedef struct {
 #define LL_SPI_CR2_TSIZE_SHIFT  0
 
 /* CFG1 bits */
+#define LL_SPI_CFG1_RXDMAEN    (1UL << 14)  /* RX DMA enable */
+#define LL_SPI_CFG1_TXDMAEN    (1UL << 15)  /* TX DMA enable */
 #define LL_SPI_CFG1_DSIZE_SHIFT 0            /* DSIZE[4:0] */
 #define LL_SPI_CFG1_MBR_SHIFT   28           /* MBR[2:0] prescaler */
 
@@ -319,6 +323,50 @@ static inline int ll_spi_busy(SPI_TypeDef *spi)
     return (spi->SR & LL_SPI_SR_BSY) != 0;
 #elif defined(STM32WBA55xx) || defined(STM32H523xx)
     return !(spi->SR & LL_SPI_SR_EOT);
+#endif
+}
+
+/* ============================================================
+ * DMA enable / disable
+ * ============================================================ */
+
+/** Enable DMA requests for RX */
+static inline void ll_spi_enable_dma_rx(SPI_TypeDef *spi)
+{
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    SET_BITS(spi->CR2, LL_SPI_CR2_RXDMAEN);
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    SET_BITS(spi->CFG1, LL_SPI_CFG1_RXDMAEN);
+#endif
+}
+
+/** Disable DMA requests for RX */
+static inline void ll_spi_disable_dma_rx(SPI_TypeDef *spi)
+{
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    CLR_BITS(spi->CR2, LL_SPI_CR2_RXDMAEN);
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    CLR_BITS(spi->CFG1, LL_SPI_CFG1_RXDMAEN);
+#endif
+}
+
+/** Enable DMA requests for TX */
+static inline void ll_spi_enable_dma_tx(SPI_TypeDef *spi)
+{
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    SET_BITS(spi->CR2, LL_SPI_CR2_TXDMAEN);
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    SET_BITS(spi->CFG1, LL_SPI_CFG1_TXDMAEN);
+#endif
+}
+
+/** Disable DMA requests for TX */
+static inline void ll_spi_disable_dma_tx(SPI_TypeDef *spi)
+{
+#if defined(STM32L011xx) || defined(STM32L422xx)
+    CLR_BITS(spi->CR2, LL_SPI_CR2_TXDMAEN);
+#elif defined(STM32WBA55xx) || defined(STM32H523xx)
+    CLR_BITS(spi->CFG1, LL_SPI_CFG1_TXDMAEN);
 #endif
 }
 

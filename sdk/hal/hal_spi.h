@@ -33,6 +33,8 @@ typedef struct hal_spi {
     volatile uint8_t busy;
     hal_callback_t   complete_cb;
     void            *complete_ctx;
+    uint8_t         *dma_rx_buf;   /* DMA destination buffer */
+    uint32_t         dma_len;      /* DMA transfer length */
 } hal_spi_t;
 
 /* ============================================================
