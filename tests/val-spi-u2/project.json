@@ -9,7 +9,7 @@
     "2":  "SPI1.MOSI",
     "10": "SPI1.CLK",
     "18": "SPI1.MISO",
-    "11": "GPIO.OUT"
+    "19": "GPIO.OUT"
   },
   "interfaces": {
     "SPI1": {
