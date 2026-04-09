@@ -1,11 +1,31 @@
 /**
- * core_spi.h -- SPI bus communication
+ * core_spi.h — SPI master bus communication
  *
- * Wraps hal_spi with friendlier names.
+ * Master-mode SPI with software CS management, polling and DMA
+ * transfers. Wraps hal_spi with pad-based convenience.
+ *
+ * Quick start (polling):
+ * @code
+ *   hal_spi_t spi;
+ *   hal_spi_config_t cfg = { .prescaler = LL_SPI_PRESCALER_8 };
+ *   core_spi_init(&spi, SPI1, &cfg);
+ *   core_spi_set_cs(&spi, 11);         // Pad 11 as CS
+ *
+ *   core_spi_select(&spi);
+ *   uint8_t who = core_spi_transfer(&spi, 0xF5);  // Read reg 0x75
+ *   core_spi_deselect(&spi);
+ * @endcode
+ *
+ * Available on: Core.U, Core.W, Core.H (not Core.L — no SPI peripheral).
  */
 
 #ifndef CORE_SPI_H
 #define CORE_SPI_H
+
+/* SPI is not available on Core.L (STM32L011) */
+#if defined(STM32L011xx)
+#error "core_spi.h: SPI is not available on Core.L. Only Core.U, Core.W, and Core.H have SPI."
+#endif
 
 #include "hal_spi.h"
 #include "hal_gpio.h"
