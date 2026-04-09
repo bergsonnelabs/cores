@@ -25,6 +25,9 @@
 {% if spi_buses %}
 #include "hal_spi.h"
 {% endif %}
+{% if usb_capable %}
+#include "hal_usb_cdc.h"
+{% endif %}
 {% if dac_enabled %}
 #include "hal_dac.h"
 {% endif %}
@@ -155,7 +158,7 @@ void core_clock_init(void)
 
     /* ---- SysTick (1ms tick for ll_delay_ms) ---- */
     ll_systick_init(SYSCLK_HZ);
-{% if usb_enabled %}
+{% if usb_enabled or usb_capable %}
 
     /* ---- USB 48MHz clock (HSI48, crystal-less via CRS) ---- */
     ll_rcc_hsi48_enable();
@@ -241,6 +244,9 @@ void core_pads_init(void)
 {% if i2c_kernel_clk == "hsi16" %}
 
     /* ---- I2C kernel clock: HSI16 (independent of SYSCLK) ---- */
+    ll_rcc_hsi16_enable();
+    while (!ll_rcc_hsi16_ready())
+        ;
 {% for bus in i2c_buses %}
     ll_rcc_set_i2c_clk_source({{ bus.num }}, LL_RCC_I2C_CLK_HSI16);
 {% endfor %}
@@ -277,4 +283,11 @@ void core_init(void)
 
     core_clock_init();
     core_pads_init();
+{% if usb_capable %}
+
+    /* ---- USB CDC (always-on for DFU recovery) ----
+     * Ensures the 1200-baud touch mechanism works even when main.c
+     * doesn't call core_usb_init() — prevents DFU lockout. */
+    hal_usb_cdc_init();
+{% endif %}
 }

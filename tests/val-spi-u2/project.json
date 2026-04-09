@@ -1,0 +1,21 @@
+{
+  "project": {
+    "name": "val-spi-u2",
+    "core": "Core-U-2-a",
+    "description": "Validation: SPI1 to Sense.I.6P6 (ICM-42686P) on Core.U.2"
+  },
+  "clock": "max",
+  "pads": {
+    "2":  "SPI1.MOSI",
+    "10": "SPI1.CLK",
+    "18": "SPI1.MISO",
+    "11": "GPIO.OUT"
+  },
+  "interfaces": {
+    "SPI1": {
+      "prescaler": 16,
+      "cpol": 1,
+      "cpha": 1
+    }
+  }
+}
