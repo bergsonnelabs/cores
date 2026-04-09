@@ -567,8 +567,9 @@ int main(void) {
 
 1. Create `kiln/drivers/tile_<family>_<name>.h/c`
 2. Add `TILES_CHECK_VERSION(1, 0)` and the `_find()` / `_init()` / data functions
-3. Add the tile to `kiln/definitions/<TileName>.json` with bus capabilities
-4. coregen will pick it up automatically via `build_tiles_config()`
+3. Add the tile to `TILE_DRIVER_MAP` in `tools/coregen/coregen.py` (maps tile name → driver source/header/prefix)
+4. Add the tile to `kiln/definitions/<TileName>.json` with bus capabilities (if not already in the DB)
+5. coregen uses `TILE_DRIVER_MAP` in `build_tiles_config()` to resolve driver paths — tiles not in the map will cause a build error
 
 ### Add a new HAL peripheral
 
