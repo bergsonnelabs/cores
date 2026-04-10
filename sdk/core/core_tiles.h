@@ -23,6 +23,7 @@
 #define CORE_TILES_H
 
 #include "core_i2c.h"
+#include "core_spi.h"
 #include "core_pad.h"
 #include "tiles_hal.h"
 #include "ll_systick.h"
@@ -68,7 +69,33 @@ static inline int _ct_gpio_irq_enable(void *h, uint8_t pin, uint8_t edge,
     return core_pad_on_change(pin, e, cb, ctx);
 }
 
-/* ---- Public: create a tiles_hal_t* from a core_i2c_t* ---- */
+/* ---- Internal: Cores SDK -> tiles_hal_t SPI adapters ---- */
+
+static inline int _ct_spi_read(void *h, uint8_t cs, uint8_t reg,
+                               uint8_t *data, uint16_t len)
+{
+    core_spi_t *spi = (core_spi_t *)h;
+    (void)cs;  /* CS already configured on the hal_spi_t handle */
+    core_spi_select(spi);
+    core_spi_transfer(spi, reg | 0x80);  /* Read bit (MSB=1) */
+    core_spi_read(spi, data, len);
+    core_spi_deselect(spi);
+    return 0;
+}
+
+static inline int _ct_spi_write(void *h, uint8_t cs, uint8_t reg,
+                                const uint8_t *data, uint16_t len)
+{
+    core_spi_t *spi = (core_spi_t *)h;
+    (void)cs;
+    core_spi_select(spi);
+    core_spi_transfer(spi, reg & 0x7F);  /* Write bit (MSB=0) */
+    core_spi_write(spi, data, len);
+    core_spi_deselect(spi);
+    return 0;
+}
+
+/* ---- Public: create a tiles_hal_t* from a bus handle ---- */
 
 /**
  * Create a tiles_hal_t that routes through the Cores SDK.
@@ -114,6 +141,38 @@ static inline tiles_hal_t *core_tiles_hal(core_i2c_t *bus)
     hals[i].gpio_irq_enable = _ct_gpio_irq_enable;
     hals[i].delay_ms        = ll_delay_ms;
     hals[i].buses           = TILES_BUS_I2C;
+    hals[i].handle          = bus;
+    return &hals[i];
+}
+
+/**
+ * Get a tiles_hal_t* for a given core_spi_t bus.
+ * Works the same as core_tiles_hal() but wires SPI function pointers.
+ * CS pin must already be configured on the hal_spi_t handle.
+ *
+ *   tile_drive_a_2_init(core_tiles_hal_spi(&core_spi1), 0, &dac, NULL);
+ */
+static inline tiles_hal_t *core_tiles_hal_spi(core_spi_t *bus)
+{
+    enum { CT_MAX_SPI = 4 };
+    static tiles_hal_t hals[CT_MAX_SPI];
+    static void *keys[CT_MAX_SPI];
+    static uint8_t count = 0;
+
+    for (uint8_t i = 0; i < count; i++)
+        if (keys[i] == bus)
+            return &hals[i];
+
+    if (count >= CT_MAX_SPI)
+        return &hals[0];
+
+    uint8_t i = count++;
+    keys[i] = bus;
+    hals[i].spi_read        = _ct_spi_read;
+    hals[i].spi_write       = _ct_spi_write;
+    hals[i].gpio_irq_enable = _ct_gpio_irq_enable;
+    hals[i].delay_ms        = ll_delay_ms;
+    hals[i].buses           = TILES_BUS_SPI;
     hals[i].handle          = bus;
     return &hals[i];
 }
