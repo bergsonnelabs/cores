@@ -15,7 +15,7 @@ int main(void)
 {
     core_init();
 
-    tiles_hal_t *hal = core_tiles_hal(&core_i2c3);
+    tiles_pal_t *hal = core_tiles_pal(&core_i2c3);
     tile_t tof;
 
     /* ---- Lifecycle ---- */

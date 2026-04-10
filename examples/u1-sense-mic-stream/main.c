@@ -49,12 +49,12 @@ int main(void)
     core_delay_ms(500);
 
     /* Init RGBW on I2C1 */
-    tile_disp_rgbw_init(core_tiles_hal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
 
     /* Find and init Sense.MIC on I2C3 with retries */
     uint8_t mic_found = 0;
     for (int attempt = 0; attempt < 10; attempt++) {
-        if (tile_sense_mic_find(core_tiles_hal(&core_i2c3), 0)) {
+        if (tile_sense_mic_find(core_tiles_pal(&core_i2c3), 0)) {
             mic_found = 1;
             break;
         }
@@ -67,7 +67,7 @@ int main(void)
         while (1) core_delay_ms(1000);
     }
 
-    tile_sense_mic_init(core_tiles_hal(&core_i2c3), 0, &mic, NULL);
+    tile_sense_mic_init(core_tiles_pal(&core_i2c3), 0, &mic, NULL);
     if (!tile_is_ready(&mic)) {
         tile_disp_rgbw_set(&led, 24, 12, 0, 0);  /* Yellow */
         core_usb_printf("# error: Sense.MIC init failed\r\n");

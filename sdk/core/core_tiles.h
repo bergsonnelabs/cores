@@ -1,11 +1,11 @@
 /**
  * core_tiles.h — Bridge between Cores SDK and Kiln tile drivers.
  *
- * Provides core_tiles_hal() which accepts either an I2C or SPI bus
- * handle and returns a tiles_hal_t* wired to the Cores SDK:
+ * Provides core_tiles_pal() which accepts either an I2C or SPI bus
+ * handle and returns a tiles_pal_t* wired to the Cores SDK:
  *
- *   tiles_hal_t *hal = core_tiles_hal(&core_i2c1);   // I2C bus
- *   tiles_hal_t *hal = core_tiles_hal(&core_spi1);   // SPI bus
+ *   tiles_pal_t *hal = core_tiles_pal(&core_i2c1);   // I2C bus
+ *   tiles_pal_t *hal = core_tiles_pal(&core_spi1);   // SPI bus
  *
  * The correct bus type is resolved at compile time via C11 _Generic.
  * Passing the wrong type is a compile error.
@@ -17,7 +17,7 @@
 #include "core_i2c.h"
 #include "core_spi.h"
 #include "core_pad.h"
-#include "tiles_hal.h"
+#include "tiles_pal.h"
 #include "ll_systick.h"
 
 /* ---- Internal: I2C adapters ---- */
@@ -91,10 +91,10 @@ static inline int _ct_gpio_irq_enable(void *h, uint8_t pin, uint8_t edge,
 
 /* ---- Internal: typed constructors ---- */
 
-static inline tiles_hal_t *_core_tiles_hal_i2c(core_i2c_t *bus)
+static inline tiles_pal_t *_core_tiles_pal_i2c(core_i2c_t *bus)
 {
     enum { CT_MAX = 4 };
-    static tiles_hal_t hals[CT_MAX];
+    static tiles_pal_t hals[CT_MAX];
     static void *keys[CT_MAX];
     static uint8_t count = 0;
 
@@ -119,10 +119,10 @@ static inline tiles_hal_t *_core_tiles_hal_i2c(core_i2c_t *bus)
     return &hals[i];
 }
 
-static inline tiles_hal_t *_core_tiles_hal_spi(core_spi_t *bus)
+static inline tiles_pal_t *_core_tiles_pal_spi(core_spi_t *bus)
 {
     enum { CT_MAX = 4 };
-    static tiles_hal_t hals[CT_MAX];
+    static tiles_pal_t hals[CT_MAX];
     static void *keys[CT_MAX];
     static uint8_t count = 0;
 
@@ -147,20 +147,20 @@ static inline tiles_hal_t *_core_tiles_hal_spi(core_spi_t *bus)
 /* ---- Public API ---- */
 
 /**
- * Get a tiles_hal_t* for any Cores SDK bus handle.
+ * Get a tiles_pal_t* for any Cores SDK bus handle.
  *
  * Accepts either a core_i2c_t* or core_spi_t* — the correct bus type
  * is resolved at compile time. Each unique bus pointer gets its own
  * cached slot (up to 4 per bus type).
  *
  * @code
- *   tiles_hal_t *hal = core_tiles_hal(&core_i2c1);   // I2C
- *   tiles_hal_t *hal = core_tiles_hal(&core_spi1);   // SPI
+ *   tiles_pal_t *hal = core_tiles_pal(&core_i2c1);   // I2C
+ *   tiles_pal_t *hal = core_tiles_pal(&core_spi1);   // SPI
  * @endcode
  */
-#define core_tiles_hal(bus) _Generic((bus), \
-    core_i2c_t*: _core_tiles_hal_i2c,      \
-    core_spi_t*: _core_tiles_hal_spi       \
+#define core_tiles_pal(bus) _Generic((bus), \
+    core_i2c_t*: _core_tiles_pal_i2c,      \
+    core_spi_t*: _core_tiles_pal_spi       \
 )(bus)
 
 #endif /* CORE_TILES_H */

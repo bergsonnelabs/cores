@@ -20,7 +20,7 @@ int main(void)
 
     /* Init RGBW indicator on I2C1 */
     tile_t led;
-    tile_disp_rgbw_init(core_tiles_hal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
 
     uint8_t addrs[16];
     uint8_t count;

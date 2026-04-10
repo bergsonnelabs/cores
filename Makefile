@@ -200,7 +200,7 @@ KILN_ENABLED ?= 0
 ifeq ($(KILN_ENABLED),1)
   -include $(GEN_DIR)/core_drivers.mk
   CFLAGS += -I"$(KILN_DIR)" -I"$(KILN_DIR)/drivers" -I"$(KILN_DIR)/hal"
-  KILN_SOURCES = $(KILN_DIR)/hal/tiles_hal_core.c
+  KILN_SOURCES =
   ifdef KILN_DRIVERS
     KILN_SOURCES += $(foreach drv,$(KILN_DRIVERS),$(KILN_DIR)/drivers/$(drv).c)
   endif

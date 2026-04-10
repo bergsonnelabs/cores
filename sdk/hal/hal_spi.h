@@ -6,7 +6,7 @@
  *
  * CS is managed via GPIO (not hardware NSS) for predictable
  * per-byte control. Assign a CS pin with hal_spi_set_cs() or
- * manage CS externally via the tiles_hal_core CS array.
+ * manage CS externally via the tile driver CS array.
  *
  * DMA: hal_spi_xfer_dma() provides non-blocking full-duplex
  * transfers with completion callback. Currently implemented for
