@@ -397,15 +397,11 @@ Enums: `HAL_ADC_RES_6/8/10/12BIT` (all families, plus `14BIT` on H5). Sampling: 
 - Function pointers for I2C, SPI, QSPI, delay, error callback
 - Bus type flags: `TILES_BUS_I2C`, `TILES_BUS_SPI`, `TILES_BUS_QSPI`
 
-**`kiln/hal/tiles_hal_core.h`** — Cores SDK implementation:
+**`sdk/core/core_tiles.h`** — Cores SDK bridge (wires bus handles to `tiles_hal_t`):
 ```c
-typedef struct {
-    hal_i2c_t *i2c;     // NULL if not I2C
-    hal_spi_t *spi;     // NULL if not SPI
-    uint32_t   buses;   // TILES_BUS_I2C | TILES_BUS_SPI
-} tiles_hal_core_cfg_t;
-
-void tiles_hal_core_init(tiles_hal_t *hal, tiles_hal_core_cfg_t *cfg);
+// Single function for both I2C and SPI (C11 _Generic dispatch):
+tiles_hal_t *hal = core_tiles_hal(&core_i2c1);   // I2C bus
+tiles_hal_t *hal = core_tiles_hal(&core_spi1);   // SPI bus
 ```
 
 ### Tile Driver Conventions
@@ -434,23 +430,19 @@ void tile_sense_i_9_get_raw_accels(tile_t *tile, int16_t accel[3]);
 
 ### Using Tile Drivers in User Code
 
-Generated `tile_handles.h` declares handles; `core_init.c` initialises buses. User code adds tile init:
+Generated `core_init.c` initialises clocks, pads, and bus peripherals. User code includes `core_tiles.h` for the bridge and calls `core_tiles_hal()` to get a `tiles_hal_t*`:
 
 ```c
 #include "core.h"           // Generated: clocks, pads, bus handles
-#include "tile_handles.h"   // Generated: extern tile_t declarations
-
-// coregen:begin — do not edit this block
-extern tiles_hal_t core_hal_i2c1;
-// coregen:end
+#include "core_tiles.h"     // core_tiles_hal() — I2C and SPI
+#include "tile_sense_i_9.h"
 
 int main(void) {
-    core_init();            // Clock + pads + I2C/SPI peripheral init
+    core_init();
 
-    // Your tile init goes here:
-    tiles_hal_core_cfg_t cfg = { .i2c = &core_i2c1, .buses = TILES_BUS_I2C };
-    tiles_hal_core_init(&core_hal_i2c1, &cfg);
-    tile_sense_i_9_init(&core_hal_i2c1, 0, &imu);
+    tile_t imu;
+    tiles_hal_t *hal = core_tiles_hal(&core_i2c1);
+    tile_sense_i_9_init(hal, 0, &imu);
 
     while (1) {
         int16_t accel[3];
