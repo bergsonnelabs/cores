@@ -29,7 +29,7 @@ int main(void)
     /* ---- Init Disp.RGBW on I2C1 ---- */
 
     tile_t led;
-    tile_disp_rgbw_init(core_tiles_hal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
     tile_disp_rgbw_set(&led, 16, 16, 0, 0);  /* Yellow: waiting */
 
     /* Wait for USB host to connect */
@@ -37,7 +37,7 @@ int main(void)
 
     /* ---- Init Sense.BP on I2C3 ---- */
 
-    tiles_hal_t *hal3 = core_tiles_hal(&core_i2c3);
+    tiles_pal_t *hal3 = core_tiles_pal(&core_i2c3);
     tile_t baro;
 
     core_usb_printf("\r\n--- Sense.BP (ILPS22QS) hardware test ---\r\n");

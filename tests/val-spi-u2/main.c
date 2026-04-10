@@ -10,9 +10,8 @@
 
 #include "core.h"
 #include "core_usb.h"
+#include "core_tiles.h"
 #include "tile_handles.h"
-
-extern hal_spi_t core_spi1;
 
 #define dbg(...)  core_usb_printf(__VA_ARGS__)
 #define imu       tile_sense_i_6p6_spi1_0
@@ -30,17 +29,12 @@ int main(void)
 
     dbg("\r\n=== Sense.I.6P6 over SPI — full validation ===\r\n\r\n");
 
-    /* ---- HAL setup ---- */
-    tiles_hal_core_cfg_t hal_cfg = {
-        .spi   = &core_spi1,
-        .buses = TILES_BUS_SPI,
-        .cs    = { [0] = { .port = (tiles_gpio_t *)GPIOA, .pin = 4 } },
-    };
-    tiles_hal_core_init(&core_hal_spi1, &hal_cfg);
+    /* ---- PAL setup ---- */
+    tiles_pal_t *pal = core_tiles_pal(&core_spi1);
 
     /* ---- Init ---- */
     sense_i_6p6_cfg_t cfg = {0};
-    tile_sense_i_6p6_init(&core_hal_spi1, 0, &imu, &cfg);
+    tile_sense_i_6p6_init(pal, 0, &imu, &cfg);
     dbg("Init: state=%d WHO_AM_I=0x%02X\r\n", imu.state, imu.flags);
     if (!tile_is_ready(&imu)) {
         dbg("FAIL\r\n");

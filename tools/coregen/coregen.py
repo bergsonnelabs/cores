@@ -922,10 +922,10 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
     """Build tile peripheral config from 'tiles' list in project config.
 
     For each declared tile, looks up driver info, validates the bus assignment,
-    and generates handle names. Returns (tiles_config, tile_hal_buses, tile_driver_sources).
+    and generates handle names. Returns (tiles_config, tile_pal_buses, tile_driver_sources).
 
     tiles_config: list of dicts with per-tile info for template rendering
-    tile_hal_buses: list of dicts for unique buses needing tiles_hal_t handles
+    tile_pal_buses: list of dicts for unique buses needing tiles_pal_t handles
                     SPI buses include a 'cs_entries' list (one per tile instance)
     tile_driver_sources: list of unique driver source names (for Makefile)
     """
@@ -972,12 +972,12 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
 
         # Track unique buses for HAL handle generation
         if bus_name not in seen_buses:
-            hal_handle = f"core_hal_{bus_name.lower()}"
+            pal_handle = f"core_pal_{bus_name.lower()}"
             if is_spi:
                 spi_bus = spi_lookup[bus_name]
                 seen_buses[bus_name] = {
                     "bus_name": bus_name,
-                    "hal_handle": hal_handle,
+                    "pal_handle": pal_handle,
                     "spi_handle": spi_bus["handle"],
                     "bus_type": "spi",
                     "cs_entries": [],   # populated below
@@ -987,7 +987,7 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
                 i2c_bus = i2c_lookup[bus_name]
                 seen_buses[bus_name] = {
                     "bus_name": bus_name,
-                    "hal_handle": hal_handle,
+                    "pal_handle": pal_handle,
                     "i2c_handle": i2c_bus["handle"],
                     "bus_type": "i2c",
                 }
@@ -1022,13 +1022,13 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
             "header": driver["header"],
             "source": driver["source"],
             "prefix": driver["prefix"],
-            "hal_handle": seen_buses[bus_name]["hal_handle"],
+            "pal_handle": seen_buses[bus_name]["pal_handle"],
         })
 
-    tile_hal_buses = list(seen_buses.values())
+    tile_pal_buses = list(seen_buses.values())
     tile_driver_sources = sorted(seen_drivers)
 
-    return tiles_config, tile_hal_buses, tile_driver_sources
+    return tiles_config, tile_pal_buses, tile_driver_sources
 
 
 # ---- Smart tiles.h generation ----
@@ -1194,11 +1194,11 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["dac_pad"] = dac_pads[0] if dac_pads else None
 
         # Build tile peripheral driver config
-        tiles_config, tile_hal_buses, tile_driver_sources = build_tiles_config(
+        tiles_config, tile_pal_buses, tile_driver_sources = build_tiles_config(
             project, ctx["i2c_buses"], ctx["spi_buses"], pad_map
         )
         ctx["tiles_config"] = tiles_config
-        ctx["tile_hal_buses"] = tile_hal_buses
+        ctx["tile_pal_buses"] = tile_pal_buses
         ctx["tile_driver_sources"] = tile_driver_sources
 
         # Collect unique driver headers for includes

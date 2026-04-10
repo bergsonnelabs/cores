@@ -55,9 +55,7 @@ cores/
 │       └── core-h.json         # Core.H (STM32H523) feature statuses
 ├── kiln/                       # Tile driver framework (git submodule)
 │   ├── tiles.h                 # Framework entry point — include this
-│   ├── tiles_hal.h             # Platform abstraction interface
-│   ├── hal/
-│   │   └── tiles_hal_core.h/c  # Cores SDK implementation of tiles_hal_t
+│   ├── tiles_pal.h             # Platform abstraction interface
 │   ├── definitions/            # Tile JSON definitions (28 tiles, canonical source)
 │   └── drivers/                # Tile peripheral drivers (tile_*.h/c)
 ├── tools/
@@ -389,23 +387,19 @@ Enums: `HAL_ADC_RES_6/8/10/12BIT` (all families, plus `14BIT` on H5). Sampling: 
 ### Framework Headers
 
 **`tiles.h`** — include in all tile drivers and user code when `KILN_ENABLED=1`:
-- Defines `tile_t` handle: `{ tiles_hal_t* hal, uint8_t id, tile_state_t state, ... }`
+- Defines `tile_t` handle: `{ tiles_pal_t* hal, uint8_t id, tile_state_t state, ... }`
 - States: `TILE_STATE_NONE -> TILE_STATE_FOUND -> TILE_STATE_READY` (or `TILE_STATE_ERROR`)
 - `TILES_CHECK_VERSION(major, minor)` — compile-time SDK version assertion
 
-**`tiles_hal.h`** — platform abstraction handle (`tiles_hal_t`):
+**`tiles_pal.h`** — platform abstraction handle (`tiles_pal_t`):
 - Function pointers for I2C, SPI, QSPI, delay, error callback
 - Bus type flags: `TILES_BUS_I2C`, `TILES_BUS_SPI`, `TILES_BUS_QSPI`
 
-**`kiln/hal/tiles_hal_core.h`** — Cores SDK implementation:
+**`sdk/core/core_tiles.h`** — Cores SDK bridge (wires bus handles to `tiles_pal_t`):
 ```c
-typedef struct {
-    hal_i2c_t *i2c;     // NULL if not I2C
-    hal_spi_t *spi;     // NULL if not SPI
-    uint32_t   buses;   // TILES_BUS_I2C | TILES_BUS_SPI
-} tiles_hal_core_cfg_t;
-
-void tiles_hal_core_init(tiles_hal_t *hal, tiles_hal_core_cfg_t *cfg);
+// Single function for both I2C and SPI (C11 _Generic dispatch):
+tiles_pal_t *hal = core_tiles_pal(&core_i2c1);   // I2C bus
+tiles_pal_t *hal = core_tiles_pal(&core_spi1);   // SPI bus
 ```
 
 ### Tile Driver Conventions
@@ -419,10 +413,10 @@ Drivers live in `kiln/drivers/tile_<family>_<name>.h/c`:
 TILES_CHECK_VERSION(1, 0);
 
 // Find: scan bus for the device, set tile state
-uint8_t tile_sense_i_9_find(tiles_hal_t *hal, uint8_t instance);
+uint8_t tile_sense_i_9_find(tiles_pal_t *hal, uint8_t instance);
 
 // Init: configure registers, mark TILE_STATE_READY
-void tile_sense_i_9_init(tiles_hal_t *hal, uint8_t instance, tile_t *tile);
+void tile_sense_i_9_init(tiles_pal_t *hal, uint8_t instance, tile_t *tile);
 
 // Data access functions (after init)
 void tile_sense_i_9_get_raw_accels(tile_t *tile, int16_t accel[3]);
@@ -430,27 +424,23 @@ void tile_sense_i_9_get_raw_accels(tile_t *tile, int16_t accel[3]);
 
 - `instance` selects the I2C address variant (0 = primary address, 1 = alternate, etc.)
 - For SPI tiles, `instance` is per-CS-line (each CS = one device = one instance)
-- Drivers access hardware only through `tiles_hal_t` function pointers — never directly
+- Drivers access hardware only through `tiles_pal_t` function pointers — never directly
 
 ### Using Tile Drivers in User Code
 
-Generated `tile_handles.h` declares handles; `core_init.c` initialises buses. User code adds tile init:
+Generated `core_init.c` initialises clocks, pads, and bus peripherals. User code includes `core_tiles.h` for the bridge and calls `core_tiles_pal()` to get a `tiles_pal_t*`:
 
 ```c
 #include "core.h"           // Generated: clocks, pads, bus handles
-#include "tile_handles.h"   // Generated: extern tile_t declarations
-
-// coregen:begin — do not edit this block
-extern tiles_hal_t core_hal_i2c1;
-// coregen:end
+#include "core_tiles.h"     // core_tiles_pal() — I2C and SPI
+#include "tile_sense_i_9.h"
 
 int main(void) {
-    core_init();            // Clock + pads + I2C/SPI peripheral init
+    core_init();
 
-    // Your tile init goes here:
-    tiles_hal_core_cfg_t cfg = { .i2c = &core_i2c1, .buses = TILES_BUS_I2C };
-    tiles_hal_core_init(&core_hal_i2c1, &cfg);
-    tile_sense_i_9_init(&core_hal_i2c1, 0, &imu);
+    tile_t imu;
+    tiles_pal_t *hal = core_tiles_pal(&core_i2c1);
+    tile_sense_i_9_init(hal, 0, &imu);
 
     while (1) {
         int16_t accel[3];
