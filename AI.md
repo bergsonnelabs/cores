@@ -1,8 +1,8 @@
-# Cores SDK — AI Assistant Onboarding Guide
+# Cores SDK — AI Assistant Reference
 
-This file gives any AI coding assistant (Claude, Copilot, Cursor, etc.) the context needed to work effectively in this repo without re-discovering the architecture from scratch.
+Architecture, APIs, and conventions for the Cores SDK. This file gives any AI coding assistant the context needed to write firmware for Tiletown Core boards.
 
-**Keep this file up to date.** Refresh it before pushing any change that affects repo structure, project.json format, HAL APIs, coregen behaviour, or tile driver conventions.
+For operational workflows (driver authoring checklist, commit procedures, CI/CD) see the project's CLAUDE.md.
 
 ---
 
@@ -38,31 +38,8 @@ cores/
 ├── Makefile                    # Top-level build orchestrator
 ├── AI.md                       # ← this file
 ├── sdk/
-│   ├── core/                   # User-facing API layer (core_ namespace)
-│   │   ├── core_timer.h        # Timer: init_freq/init_tick, PWM, capture, tick
-│   │   ├── core_gpio.h         # GPIO + EXTI: single include for all pad I/O
-│   │   ├── core_pad.h          # Pad read/write/toggle + core_pad_on_change()
-│   │   ├── core_adc.h          # ADC: pad-centric reads, DMA, temp sensor
-│   │   ├── core_i2c.h          # I2C: auto-timing from compile-time clock
-│   │   ├── core_pwm.h          # PWM legacy wrappers (prefer core_timer.h)
-│   │   ├── core_watchdog.h     # IWDG: start/feed/caused_reset
-│   │   ├── core_usb.h          # USB CDC serial
-│   │   ├── core_timing.h       # core_delay_ms/us, core_millis, core_timeout
-│   │   ├── core_rng.h          # Hardware RNG: init/read/fill/deinit (U/W/H)
-│   │   ├── core_rtc.h          # RTC: time, date, alarm A, wakeup timer
-│   │   ├── core_backup.h       # Backup registers: persist through reset/standby
-│   │   └── core_exti.h         # Backward compat shim → core_pad.h
-│   ├── hal/                    # HAL headers + implementations
-│   │   ├── hal_i2c.h/c
-│   │   ├── hal_spi.h/c
-│   │   ├── hal_gpio.h
-│   │   ├── hal_timer.h/c
-│   │   ├── hal_uart.h/c
-│   │   ├── hal_usb_cdc.h/c
-│   │   ├── hal_adc.h/c
-│   │   ├── hal_exti.h/c
-│   │   ├── hal_debug.h/c
-│   │   └── hal_common.h        # Status codes, shared types, IRQ numbers
+│   ├── core/                   # User-facing API (core_ namespace, see Core Layer section)
+│   ├── hal/                    # HAL implementations (see HAL Layer section)
 │   ├── ll/                     # Low-level register access (wraps CMSIS)
 │   ├── tal/                    # Tile abstraction layer (pad→peripheral mapping)
 │   │   ├── tal_adc.h           # Pad → ADC channel resolution
@@ -130,6 +107,35 @@ make distclean                                 # Remove build + coregen output
 1. **coregen** runs → produces `project/coregen/` with generated `.h/.c/.mk` files
 2. **compiler** builds project `main.c` + SDK HAL sources + `core_init.c` + tile drivers
 3. **linker** uses MCU-specific linker script from `sdk/device/`
+
+### coregen — Code Generator
+
+**Entry point:** `tools/coregen/coregen.py`
+**Called by:** `Makefile` during build (or `make generate`)
+
+#### What It Generates (`project/coregen/`)
+
+| File | Always? | Contents |
+|---|---|---|
+| `core_pads.h` | yes | `PAD_n_PORT` / `PAD_n_PIN` macros for every pad |
+| `core_board.h` | yes | Board-level defines (LED pad, power rails) |
+| `core_interfaces.h` | yes | AF constants per signal (e.g. `I2C1_CLK_AF`) |
+| `core_config.h` | project only | `SYSCLK_MHZ`, `PLL_M/N/R`, assigned pad functions |
+| `core_init.h` | project only | Init function declarations, extern bus handles |
+| `core_init.c` | project only | `core_clock_init()`, `core_pads_init()`, I2C/SPI/UART/tile init |
+| `core.h` | project only | Master include (includes all of the above) |
+| `tile_handles.h` | project+tiles | Tile handle variables; preserves edits outside markers |
+| `core_drivers.mk` | project+tiles | Makefile fragment listing tile driver source files |
+
+#### Key Internal Functions
+
+The `build_*_config()` functions in `coregen.py` each parse one section of `project.json` and return a config dict consumed by Jinja2 templates: `build_pad_map/config` (GPIO port/pin/AF), `build_clock_config` (PLL solver, HSE enforcement), `build_i2c/spi/uart/i3c/timer_config` (peripheral setup), `build_tiles_config` (driver paths + bus handles), and `validate_project_config` (cross-section validation).
+
+#### Editing coregen
+
+- `MCU_DB` — add new MCUs (define, family, PLL ranges, APB clock enables)
+- `SPI_CLK_MAP` / `SPI_PRESCALER_MAP` — SPI clock enable + prescaler mappings
+- Templates are Jinja2 in `tools/coregen/templates/`; context comes from the `ctx` dict in `generate()`
 
 ---
 
@@ -200,14 +206,8 @@ Every project in `projects/<name>/` has a `project.json`. It is the single sourc
 - A tile's `bus` must match a key in `interfaces`
 - SPI tiles require a `cs_pad`; I2C tiles do not
 - `ble.enabled` on Core-W-b auto-overrides any HSI16 clock level to the lowest HSE level
-- `bootloader` controls DFU firmware update method:
-  - `"custom"` — 8KB custom DFU 1.1 bootloader at 0x08000000. App linked at 0x08002000 with VTOR relocation. 1200-baud touch triggers custom bootloader (VID:PID 1209:0002). Works on Core.U and Core.H.
-  - `"rom"` — No custom bootloader. App at 0x08000000 (full flash). 1200-baud touch triggers ST ROM bootloader (DfuSe, 0483:DF11). Works fully on Core.U. On Core.H, flash works but requires power cycle after (H5 ROM Go command limitation).
-  - `"none"` (default) — No DFU support. Flash via SWD or BOOT0 only.
-  - `BOOTLOADER` and `ROM_DFU` Make variables are auto-set from this key. Command-line overrides still work.
-- `debug` and `isp` are accepted and validated but only emit comments/defines — no init code
-- `isp.boot0_pad` emits `#define CORE_BOOT0_PAD <n>` in `core_board.h`
-- `isp.method == "uart"` emits a `make flash-uart` hint comment in `core_board.h`
+- `bootloader`: `"custom"` (8KB DFU at 0x08000000, app at 0x08002000, Core.U/H), `"rom"` (ST ROM DfuSe, app at 0x08000000, Core.U fully/Core.H needs power cycle), `"none"` (default, SWD only). `BOOTLOADER`/`ROM_DFU` Make vars auto-set from this key.
+- `debug` and `isp` emit comments/defines only — no init code. `isp.boot0_pad` emits `#define CORE_BOOT0_PAD`.
 
 **Timer / PWM / Capture:**
 ```jsonc
@@ -229,9 +229,9 @@ Every project in `projects/<name>/` has a `project.json`. It is the single sourc
 },
 "iwdg": { "enabled": true, "timeout": "2s" }
 ```
-- Timer functions in `pads` follow `TIMx.y` format (x = peripheral, y = channel 1–4)
+- Timer functions in `pads` follow `TIMx.y` format (x = peripheral, y = channel 1-4)
 - `timers` section sets per-instance frequency and optional tick
-- `pwm.channels` sets per-pad duty (0–100%)
+- `pwm.channels` sets per-pad duty (0-100%)
 - `capture` maps pads to capture channels
 - `iwdg.timeout`: `"1s"` | `"2s"` | `"5s"` | `"10s"`
 
@@ -260,92 +260,15 @@ See `sdk/hal/hal_i3c.h` for the stub API.
 
 ---
 
-## coregen — Code Generator
-
-**Entry point:** `tools/coregen/coregen.py`
-**Called by:** `Makefile` during build (or `make generate`)
-
-### What It Generates (`project/coregen/`)
-
-| File | Always? | Contents |
-|---|---|---|
-| `core_pads.h` | ✓ | `PAD_n_PORT` / `PAD_n_PIN` macros for every pad |
-| `core_board.h` | ✓ | Board-level defines (LED pad, power rails) |
-| `core_interfaces.h` | ✓ | AF constants per signal (e.g. `I2C1_CLK_AF`) |
-| `core_config.h` | project only | `SYSCLK_MHZ`, `PLL_M/N/R`, assigned pad functions |
-| `core_init.h` | project only | Init function declarations, extern bus handles |
-| `core_init.c` | project only | `core_clock_init()`, `core_pads_init()`, I2C/SPI/UART/tile init |
-| `core.h` | project only | Master include (includes all of the above) |
-| `tile_handles.h` | project+tiles | Tile handle variables; preserves edits outside markers |
-| `core_drivers.mk` | project+tiles | Makefile fragment listing tile driver source files |
-
-### Key Internal Functions
-
-| Function | What it does |
-|---|---|
-| `build_pad_map()` | Extracts GPIO port/pin/AF from tile JSON for every pad |
-| `build_pad_config()` | Resolves project pad assignments → GPIO mode, AF or output |
-| `build_clock_config()` | Parses clock level, auto-solves PLL M/N/R; enforces HSE when BLE |
-| `build_i2c_config()` | Calculates TIMINGR constant for target I2C speed |
-| `build_spi_config()` | Detects SPI buses from pads, resolves CPOL/CPHA, CS GPIO |
-| `build_uart_config()` | Detects UART/USART/LPUART buses from pads; reads baud + rx_interrupt |
-| `build_i3c_config()` | Detects I3C buses; returns stub config for TODO comment in init |
-| `build_debug_isp_config()` | Extracts debug/isp keys; normalises with defaults |
-| `extract_timer_channels()` | Extracts TIMx.y PWM channel info from pad functions (excludes complementary/ETR/BKIN) |
-| `build_timer_config()` | Scans assigned pads for TIMx.y patterns; resolves AF numbers for template |
-| `build_tiles_config()` | Maps tile instances to I2C or SPI bus handles; resolves driver paths |
-| `validate_project_config()` | Checks all pads/interfaces/tiles/debug/isp are valid for the core |
-
-### Editing coregen
-
-- `MCU_DB` — add new MCUs here (define, family, PLL ranges, APB clock enables)
-- `SPI_CLK_MAP` — maps (MCU define, SPI instance) → APB clock enable call
-- `SPI_PRESCALER_MAP` — maps divisor → LL constant string
-- Templates are Jinja2 in `tools/coregen/templates/`; context variables come from coregen.py's `ctx` dict
-- UART clock enable is handled inside `hal_uart_init()` — no `UART_CLK_MAP` needed in coregen
-
----
-
-## Configurator Code Snippets (Tiletown)
-
-The Core Configurator's `main.c` generation uses a **prioritized snippet system**. Each subsystem (ADC, GPIO, timers, watchdog, tiles) has its own snippet builder function in `ProjectBuilder.tsx` that emits:
-
-```typescript
-interface CodeSnippet {
-  subsystem: string;
-  includes: string[];       // #include lines
-  declarations: string[];   // file-scope variables and forward declarations
-  init: CodeEntry[];        // { priority: number, lines: string[] }
-  loop: CodeEntry[];        // { priority: number, lines: string[] }
-  afterMain: string[];      // ISR callbacks, etc.
-}
-```
-
-The assembler sorts init/loop entries by priority and concatenates with section separators. Adding a new subsystem = adding one `snippetXxx()` function and registering it in the `generateMainC()` array.
-
-**Current snippets and priorities:**
-
-| Snippet | Init priority | Loop priority | What it generates |
-|---|---|---|---|
-| `snippetWatchdog` | 20 | 90 | `core_watchdog_start()` / `core_watchdog_feed()` |
-| `snippetTimers` | 30 | 70, 80 | Timer init, PWM/capture/tick, duty/capture hints |
-| `snippetGPIO` | 35 | 65 | Output defaults, input read stubs |
-| `snippetADC` | 40 | 60 | ADC init, channel registration, read stubs |
-| `snippetTiles` | 50 | — | Bus init + tile driver init |
-
-**File:** `tiletown/apps/public/app/tools/core-configurator/ProjectBuilder.tsx`
-
----
-
 ## Core Layer (`sdk/core/`) — User-Facing API
 
-The core_ layer is what application code uses. All functions and types use the `core_` prefix. Handle types (`core_timer_t`, `core_adc_t`, `core_i2c_t`) are typedefs for the underlying HAL handles.
+The `core_` layer provides platform-agnostic naming for application code. It is a thin alias over the HAL: each `core_` function delegates to the corresponding `hal_` function, and `core_*_t` handle types are typedefs of `hal_*_t`. This lets user code remain stable even if the underlying HAL implementation changes, and keeps example code readable without exposing STM32-specific details.
 
 **Key headers:**
 
 | Header | Purpose |
 |---|---|
-| `core_timer.h` | `core_timer_init_freq()` (PWM/tick), `core_timer_init_tick()` (capture), `core_timer_pwm_set()` (0–100%), `core_timer_capture_init/read()`, `core_timer_enable_tick()` |
+| `core_timer.h` | `core_timer_init_freq()` (PWM/tick), `core_timer_init_tick()` (capture), `core_timer_pwm_set()` (0-100%), `core_timer_capture_init/read()`, `core_timer_enable_tick()` |
 | `core_gpio.h` | Single include for `core_pad_output/input/read/write/toggle()` + `core_pad_on_change()` (EXTI) |
 | `core_adc.h` | `core_adc_init()`, `core_adc_read()`, `core_adc_read_mv()`, DMA, temp sensor |
 | `core_i2c.h` | `core_i2c_setup()` with auto-timing, `core_i2c_write/read/probe/scan()` |
@@ -357,7 +280,7 @@ The core_ layer is what application code uses. All functions and types use the `
 - `core_timer_init_freq(&t, TIM2, 1000)` — overflow at 1 kHz (for PWM, periodic tick)
 - `core_timer_init_tick(&t, TIM2, 1000000)` — tick at 1 MHz, free-running (for input capture)
 
-**PWM duty is 0–100 integer percent** at the core_ layer. For 0.1% resolution, use `hal_timer_pwm_set_duty()` with 0–1000.
+**PWM duty is 0-100 integer percent** at the core_ layer. For 0.1% resolution, use `hal_timer_pwm_set_duty()` with 0-1000.
 
 **`core.h`** (generated by coregen) includes `core_gpio.h` and `core_timing.h` automatically, so delays and GPIO are always available.
 
@@ -432,7 +355,7 @@ uint16_t hal_adc_read(hal_adc_t *adc, uint8_t channel);        // raw count
 uint32_t hal_adc_read_mv(hal_adc_t *adc, uint8_t channel);     // millivolts (VREFINT-calibrated)
 
 // Internal measurements
-int32_t  hal_adc_read_temp_decidegc(hal_adc_t *adc);           // die temp ×10 (e.g. 253 = 25.3°C)
+int32_t  hal_adc_read_temp_decidegc(hal_adc_t *adc);           // die temp x10 (e.g. 253 = 25.3C)
 uint32_t hal_adc_read_vdda_mv(hal_adc_t *adc);                 // actual VDD supply
 
 // Read all configured channels in one call
@@ -444,19 +367,11 @@ hal_status_t hal_adc_start_dma(hal_adc_t *adc, uint16_t *buf, uint16_t len,
 void hal_adc_stop_dma(hal_adc_t *adc);
 ```
 
-ADC resolution enum: `HAL_ADC_RES_6/8/10/12BIT` (all families); `HAL_ADC_RES_14BIT` (H5 only).
+Enums: `HAL_ADC_RES_6/8/10/12BIT` (all families, plus `14BIT` on H5). Sampling: `HAL_ADC_SAMP_FAST/MED/SLOW/VERY_SLOW`. Oversampling: `HAL_ADC_OVERSAMPLE_1X/4X/16X/64X/256X` (plus `1024X` on H5).
 
-Sampling time presets: `HAL_ADC_SAMP_FAST / MED / SLOW / VERY_SLOW`.
+`hal_adc_read_mv()` uses VREFINT factory calibration to derive true VDDA, so millivolt results are correct even when VDD differs from 3.3 V. VDDA is cached in `adc->vdda_mv` after first measurement.
 
-Oversampling ratios: `HAL_ADC_OVERSAMPLE_1X / 4X / 16X / 64X / 256X` (all families); `1024X` (H5 only).
-
-**VREFINT calibration approach** — `hal_adc_read_mv()` derives the actual VDDA voltage from the
-VREFINT factory calibration stored in flash, then scales raw counts by that actual supply voltage.
-This means millivolt results are correct even when VDD differs from 3.3 V (e.g. on battery).
-VDDA is cached in `adc->vdda_mv` after the first call, with zero indicating "not yet measured".
-
-**Per-family internal channel numbers** (used with `hal_adc_add_channel` or auto-added by
-`hal_adc_read_temp_decidegc` / `hal_adc_read_vdda_mv`):
+**Per-family internal channel numbers:**
 
 | Family     | VREFINT ch | TEMP ch | CAL voltage |
 |------------|-----------|---------|-------------|
@@ -465,9 +380,7 @@ VDDA is cached in `adc->vdda_mv` after the first call, with zero indicating "not
 | WBA (WBA55)| 13        | 12      | 3.3 V       |
 | H5 (H523)  | 19        | 16      | 3.3 V       |
 
-**DMA pattern** — `hal_adc_start_dma` configures ADC in continuous+scan mode, wires DMA1 CH1
-(L0/L4) or GPDMA1 CH0 (WBA/H5) in circular mode, and enables TC+HT interrupts. The callback
-fires on both half-complete and transfer-complete, supporting a double-buffered processing pattern.
+`hal_adc_start_dma` uses DMA1 CH1 (L0/L4) or GPDMA1 CH0 (WBA/H5) in circular mode with HT+TC interrupts for double-buffered processing.
 
 ---
 
@@ -477,7 +390,7 @@ fires on both half-complete and transfer-complete, supporting a double-buffered 
 
 **`tiles.h`** — include in all tile drivers and user code when `KILN_ENABLED=1`:
 - Defines `tile_t` handle: `{ tiles_hal_t* hal, uint8_t id, tile_state_t state, ... }`
-- States: `TILE_STATE_NONE → TILE_STATE_FOUND → TILE_STATE_READY` (or `TILE_STATE_ERROR`)
+- States: `TILE_STATE_NONE -> TILE_STATE_FOUND -> TILE_STATE_READY` (or `TILE_STATE_ERROR`)
 - `TILES_CHECK_VERSION(major, minor)` — compile-time SDK version assertion
 
 **`tiles_hal.h`** — platform abstraction handle (`tiles_hal_t`):
@@ -515,7 +428,7 @@ void tile_sense_i_9_init(tiles_hal_t *hal, uint8_t instance, tile_t *tile);
 void tile_sense_i_9_get_raw_accels(tile_t *tile, int16_t accel[3]);
 ```
 
-- `instance` selects the I2C address variant (0 → primary address, 1 → alternate, etc.)
+- `instance` selects the I2C address variant (0 = primary address, 1 = alternate, etc.)
 - For SPI tiles, `instance` is per-CS-line (each CS = one device = one instance)
 - Drivers access hardware only through `tiles_hal_t` function pointers — never directly
 
@@ -548,7 +461,7 @@ int main(void) {
 
 ---
 
-## Design Rules (Important)
+## Design Rules
 
 1. **No CubeIDE.** Never generate or use STM32CubeMX output. Write clean LL-based init from scratch.
 2. **No STM32Cube HAL.** Use only `sdk/ll/` and `sdk/hal/`. The LL layer wraps CMSIS register access.
@@ -556,8 +469,7 @@ int main(void) {
 4. **project.json is the source of truth.** Never hand-edit generated files inside `coregen:begin/coregen:end` markers.
 5. **CS lines are per-tile, not per-bus.** Each tile on an SPI bus gets its own GPIO CS line.
 6. **`kiln/definitions/` is canonical.** Tile JSON lives there (synced from GitHub). Do not duplicate.
-7. **`sdk/status/` is the source of truth for SDK implementation status.** The Tiletown web app and project builder read from copies of these files. Update `features.json` when adding a feature row, and the relevant `core-*.json` when implementation status changes. The Tiletown web app copies are synced manually via `tiletown/tools/sync_tile_json.py`.
-8. **Update this file** before pushing any change that affects build, project.json schema, HAL API, tile driver conventions, or status JSON format.
+7. **`sdk/status/` is the source of truth for SDK implementation status.** Update `features.json` when adding a feature row, and the relevant `core-*.json` when implementation status changes.
 
 ---
 
@@ -565,11 +477,61 @@ int main(void) {
 
 ### Add a new tile driver
 
-1. Create `kiln/drivers/tile_<family>_<name>.h/c`
-2. Add `TILES_CHECK_VERSION(1, 0)` and the `_find()` / `_init()` / data functions
-3. Add the tile to `TILE_DRIVER_MAP` in `tools/coregen/coregen.py` (maps tile name → driver source/header/prefix)
-4. Add the tile to `kiln/definitions/<TileName>.json` with bus capabilities (if not already in the DB)
-5. coregen uses `TILE_DRIVER_MAP` in `build_tiles_config()` to resolve driver paths — tiles not in the map will cause a build error
+#### Phase 1 — Research
+
+- [ ] Read IC datasheets: register map, I2C/SPI protocol, power-on defaults, device ID register
+- [ ] Check `kiln/definitions/` for the tile JSON (already exists from the DB?)
+- [ ] Check `TILE_DRIVER_MAP` in `tools/coregen/coregen.py` (entry exists?)
+- [ ] Choose a reference driver to follow:
+  - **Sensor (I2C, simple):** `tile_sense_mic.h/c` — config struct, calibration, data reads
+  - **Sensor (I2C, full):** `tile_sense_bp.h/c` — ODR/AVG/FS config, FIFO, one-shot, threshold interrupts, autozero/autorefp, offset calibration
+  - **Sensor (I2C+SPI):** `tile_sense_i_6p6.h/c` — dual-bus dispatch, interrupt callbacks
+  - **Actuator:** `tile_drive_p.h/c` — modes, FIFO, status monitoring
+  - **Audio/multi-IC:** `tile_drive_a_2.h/c` — DAC+amp, safe startup sequence
+
+#### Phase 2 — Driver implementation
+
+Create `kiln/drivers/tile_<family>_<name>.h` and `.c`. All code must be platform-agnostic — no STM32 types, no direct register access. All bus I/O goes through `tile->hal` function pointers.
+
+**Header (.h) structure:**
+
+```
+File-level Doxygen (brief, specs, quick-start @code example, datasheet links)
+Include guard + #include "tiles.h"
+Version macros: TILE_<FAMILY>_<NAME>_VERSION_{MAJOR,MINOR,PATCH}
+TILES_CHECK_VERSION(1, 0)
+Instance mapping table (Doxygen comment showing instance → address)
+IC address defines (#define <IC>_I2C_ADDR_DEFAULT ...)
+Register map defines (#define <IC>_REG_... grouped by function)
+Enums (gain, mode, waveform, etc. — values map to hardware register fields)
+Config structs (optional init config, AGC config, etc.)
+Public API declarations with full Doxygen (@brief, @param, @return, @note)
+```
+
+**Implementation (.c) structure:**
+```
+id_table[] — maps instance index to I2C address (or CS index for SPI)
+resolve_id(instance) — bounds-checked lookup, returns 0 for invalid
+Per-instance state struct (static, private — cached config, addresses)
+state_for(tile_t *) — lookup helper matching tile->id to state slot
+Bus helpers — bus-aware read/write:
+  For I2C+SPI: check tile->hal->buses & TILES_BUS_SPI to dispatch
+  For amp/secondary ICs: use address from state, not tile->id
+Lifecycle: find(), init(), sleep(), wake(), reset()
+Data/control functions
+```
+
+**Init sequence pattern:**
+
+1. Zero tile struct, set `tile->hal` and `tile->id` (resolve from instance)
+2. Probe device (`i2c_is_ready` or SPI test read)
+3. Read device ID register, verify expected value
+4. Configure device (power up outputs, set defaults)
+5. **For tiles with amplifiers/power stages:** settle outputs at safe level (e.g., mid-scale) before enabling the power stage. Put amp in shutdown -> configure -> wake. This prevents AGC gain runaway from DC offset transients.
+6. Cache configuration in per-instance state
+7. Set `tile->state = TILE_STATE_READY` (or `TILE_STATE_ERROR` + `TILE_ON_ERROR()`)
+
+**Do NOT software-reset the device** unless necessary — resets can wipe NVM-stored analog configuration that the tile hardware depends on.
 
 ### Add a new HAL peripheral
 
@@ -583,10 +545,10 @@ int main(void) {
 2. Add linker script + startup to `sdk/device/`
 3. Add `SPI_CLK_MAP` entries for the new MCU's APB assignments
 4. Add the tile JSON to `kiln/definitions/`
-5. Update `TILE` → MCU mapping in `Makefile`
-6. Add a `sdk/status/core-<x>.json` with the new Core's feature statuses (see below)
+5. Update `TILE` -> MCU mapping in `Makefile`
+6. Add a `sdk/status/core-<x>.json` with the new Core's feature statuses
 
-### Update SDK implementation status
+### SDK implementation status
 
 Status files live in `sdk/status/`. `features.json` is the canonical feature manifest; `core-*.json` files hold per-subfamily statuses.
 
@@ -621,8 +583,6 @@ Layer values: `"LL"`, `"HAL"`, `"TAL"`, `"Core"` — implies all layers below ar
 }
 ```
 
-After editing, sync to the Tiletown web app by running `tiletown/tools/sync_tile_json.py` (that script handles tile JSONs; status files are copied manually to `apps/public/app/docs/sdk/cores/data/`).
-
 ### Debug a coregen issue
 
 ```bash
@@ -630,38 +590,3 @@ make generate TILE=Core-W-b PROJECT=my-project V=1
 # Check projects/my-project/coregen/ for generated files
 # coregen prints validation errors to stderr
 ```
-
----
-
-## Pre-Commit Checklist
-
-Run through this before pushing changes to the SDK:
-
-### Always
-- [ ] **Build all targets** — `make TILE=Core-U-2-a`, `make TILE=Core-W-b`, `make TILE=Core-L-1-a`, `make TILE=Core-H-1-a` (at minimum with the blink example)
-- [ ] **Update AI.md** — if you changed repo structure, project.json format, HAL/core_ APIs, coregen behaviour, or tile driver conventions
-
-### If you changed core_ or HAL APIs
-- [ ] **core_ type aliases** — new handles get a `typedef hal_x_t core_x_t` in the core_ header
-- [ ] **Function naming** — core_ functions use `core_<subsystem>_<verb>()` pattern
-- [ ] **Docs consistency** — core_ API examples use `core_*_t` types; HAL examples use `hal_*_t`
-- [ ] **Tiletown docs updated** — update the relevant page in `tiletown/apps/public/app/docs/sdk/`
-- [ ] **Tiletown configurator updated** — if the generated main.c calls changed functions
-- [ ] **Code snippet updated** — update the relevant `snippetXxx()` function in `ProjectBuilder.tsx` to emit the new/changed API calls. If adding a new subsystem, create a new snippet builder and register it in the `generateMainC()` array.
-
-### If you changed coregen
-- [ ] **Regenerate test projects** — `make generate` on at least one project per affected core
-- [ ] **Template syntax** — Jinja2 templates in `tools/coregen/templates/` render without errors
-- [ ] **New context variables** — added to `ctx` dict in `generate()` function
-
-### If you changed HAL timer code
-- [ ] **MOE** — `hal_timer_pwm_init()` enables MOE unconditionally (required for TIM1/15/16/17)
-- [ ] **ISR handlers** — every timer in `_tim_index()` has a matching ISR handler function
-- [ ] **IRQ numbers** — every timer in `_tim_irq()` has a matching `HAL_IRQ_*` define in `hal_common.h`
-- [ ] **Clock enables** — every timer in `_tim_clk_enable()` enables the correct APB clock
-
-### If you changed implementation status
-- [ ] **features.json** — new feature rows added with correct `id`, `layer`, `name`, `desc`
-- [ ] **All four core-*.json** — new feature IDs present in every core status file
-- [ ] **Layer labels accurate** — reflects the highest implemented layer (Core > HAL > LL)
-- [ ] **Tiletown copies synced** — copy updated status files to `tiletown/apps/public/data/sdk-status/`
