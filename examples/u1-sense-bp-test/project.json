@@ -1,0 +1,24 @@
+{
+  "project": {
+    "name": "u1-sense-bp-test",
+    "core": "Core-U-1-a",
+    "description": "Hardware test: Sense.BP (ILPS22QS) on I2C3 with Disp.RGBW indicator on I2C1"
+  },
+  "clock": "max",
+  "pads": {
+    "4": "I2C1.CLK",
+    "5": "I2C1.DAT",
+    "2": "I2C3.CLK",
+    "8": "I2C3.DAT"
+  },
+  "interfaces": {
+    "I2C1": { "speed": 400000 },
+    "I2C3": { "speed": 400000 }
+  },
+  "tiles": [
+    { "tile": "Disp.RGBW", "bus": "I2C1", "instance": 0 },
+    { "tile": "Sense.BP",  "bus": "I2C3", "instance": 0 }
+  ],
+  "bootloader": "custom",
+  "usb": { "enabled": true }
+}
