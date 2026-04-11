@@ -24,12 +24,18 @@
 #include "tile_disp_rgbw.h"
 #include "tile_drive_dc_h.h"
 
-/* USB-safe motor config: 0.5A sense range, ~2.8V target */
+/* USB-safe motor config with ripple counting enabled.
+ * RS PRO 834-7644 (gearhead removed, direct drive):
+ *   ~6 ohm winding, 3-pole/2-brush (6 ripples/rev),
+ *   Kv ≈ 187 uV/RPM (from 3V / 16014 RPM no-load).           */
 static const drive_dc_h_cfg_t motor_cfg = {
-    .mode    = DRIVE_DC_H_MODE_VOLTAGE,
-    .vm_gain = 1,     /* 0-3.92V range */
-    .cs_gain = 3,     /* 0.5A max sense, 800 mA OCP */
-    .target  = 180,   /* 3.92 * 180/255 ≈ 2.8V */
+    .mode            = DRIVE_DC_H_MODE_RIPPLE_COUNT,
+    .vm_gain         = 1,     /* 0-3.92V range */
+    .cs_gain         = 3,     /* 0.5A max sense, 800 mA OCP */
+    .target          = 180,   /* 3.92 * 180/255 ≈ 2.8V */
+    .motor_mohm      = 6000,  /* estimated 6 ohm winding */
+    .ripples_per_rev = 12,    /* estimated from ripple count vs expected RPM */
+    .kv_uv_per_rpm   = 187,   /* estimated from no-load speed */
 };
 
 static tile_t led;
@@ -265,16 +271,31 @@ static void test_ripple_and_speed(void)
     /* Clear counter and drive forward to generate ripples */
     tile_drive_dc_h_clear_ripple_count(&motor);
     tile_drive_dc_h_forward(&motor);
-    core_delay_ms(1000);
+    core_delay_ms(500);  /* let motor spin up */
 
-    uint16_t count = tile_drive_dc_h_get_ripple_count(&motor);
-    uint8_t  speed = tile_drive_dc_h_get_speed(&motor);
-    core_usb_printf("  Ripple count = %u\r\n", count);
-    core_usb_printf("  Speed = %u\r\n", speed);
+    /* Sample speed and count a few times */
+    for (uint8_t i = 0; i < 4; i++) {
+        core_delay_ms(500);
+        uint16_t count = tile_drive_dc_h_get_ripple_count(&motor);
+        uint8_t  speed = tile_drive_dc_h_get_speed(&motor);
+        uint16_t mv    = tile_drive_dc_h_get_voltage_mv(&motor);
+        uint16_t ma    = tile_drive_dc_h_get_current_ma(&motor);
+        core_usb_printf("  [%u] count=%u  speed=%u  V=%u mV  I=%u mA\r\n",
+                        i, count, speed, mv, ma);
+    }
 
+    uint16_t final_count = tile_drive_dc_h_get_ripple_count(&motor);
     safe_stop();
 
-    if (count > 0) {
+    if (final_count > 0) {
+        /* Estimate RPM: count was over ~2.5s of driving.
+         * RPM = (count / ripples_per_rev) / time_s * 60
+         * With 12 ripples/rev and 2.5s:
+         *   RPM = count * 60 / (12 * 2.5) = count * 2             */
+        uint32_t est_rpm = (uint32_t)final_count * 2;
+        core_usb_printf("  Total ripples in ~2.5s: %u\r\n", final_count);
+        core_usb_printf("  Estimated RPM: ~%lu (assuming 12 ripples/rev)\r\n",
+                        (unsigned long)est_rpm);
         pass("ripple counting active");
     } else {
         info("ripple count", "0 (motor may not be connected or ripple counting not tuned)");
