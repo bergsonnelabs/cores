@@ -1,0 +1,18 @@
+{
+  "project": {
+    "name": "val-drive-h",
+    "core": "Core-U-1-a",
+    "description": "Validation: Drive.H tile driver (DRV2605L haptic) compile check"
+  },
+  "clock": "max",
+  "pads": {
+    "4": "I2C1.CLK",
+    "5": "I2C1.DAT"
+  },
+  "interfaces": {
+    "I2C1": { "speed": 400000 }
+  },
+  "tiles": [
+    { "tile": "Drive.H", "bus": "I2C1", "instance": 0 }
+  ]
+}
