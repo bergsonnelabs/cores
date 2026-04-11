@@ -1,0 +1,17 @@
+# Project Makefile
+# Place this project folder inside cores/projects/ and run `make` from here.
+# If your project lives elsewhere, set SDK_ROOT to the path of your cores clone:
+#   SDK_ROOT := /path/to/cores
+
+TILE         := Core-W-b
+KILN_ENABLED := 0
+BLE_ENABLED  := 1
+BOOTLOADER   := 0
+PROJECT      := $(notdir $(CURDIR))
+PROJECT_DIR  := $(abspath $(CURDIR))
+SDK_ROOT     := $(abspath $(dir $(lastword $(MAKEFILE_LIST)))/../..)
+V            ?= 0
+
+.PHONY: all clean distclean flash flash-dfu size generate
+all clean distclean flash flash-dfu size generate:
+	$(MAKE) --no-print-directory -C $(SDK_ROOT) TILE=$(TILE) PROJECT=$(PROJECT) PROJECT_DIR=$(PROJECT_DIR) KILN_ENABLED=$(KILN_ENABLED) BLE_ENABLED=$(BLE_ENABLED) BOOTLOADER=$(BOOTLOADER) V=$(V) $@

@@ -1,8 +1,8 @@
 {
   "project": {
-    "name": "u1-sense-bp-test",
+    "name": "u1-i2c-find",
     "core": "Core-U-1-a",
-    "description": "Hardware test: Sense.BP (ILPS22QS) on I2C3 with Disp.RGBW indicator on I2C1"
+    "description": "I2C tile validation with visual RGBW feedback"
   },
   "clock": "max",
   "pads": {
@@ -13,12 +13,11 @@
   },
   "interfaces": {
     "I2C1": { "speed": 400000 },
-    "I2C3": { "speed": 400000 }
+    "I2C3": { "speed": 100000 }
   },
   "tiles": [
     { "tile": "Disp.RGBW", "bus": "I2C1", "instance": 0 },
-    { "tile": "Sense.BP",  "bus": "I2C3", "instance": 0 }
-  ],
-  "bootloader": "custom",
-  "usb": { "enabled": true }
+    { "tile": "Sense.I.6P6", "bus": "I2C3", "instance": 1 },
+    { "tile": "Sense.T.C", "bus": "I2C3", "instance": 0 }
+  ]
 }

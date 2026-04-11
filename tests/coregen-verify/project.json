@@ -1,0 +1,26 @@
+{
+  "project": {
+    "name": "coregen-verify",
+    "core": "Core-W-b",
+    "description": "Verify coregen UART, SPI, and timer pad generation"
+  },
+  "clock": "max",
+  "programming": {
+    "methods": ["swd"],
+    "swd_dedicated": true
+  },
+  "pads": {
+    "8":  "USART2.TX",
+    "9":  "USART2.RX",
+    "2":  "SPI3.CLK",
+    "3":  "SPI3.CS",
+    "6":  "SPI3.MOSI",
+    "7":  "SPI3.MISO",
+    "4":  "TIM2.4",
+    "5":  "TIM2.3"
+  },
+  "interfaces": {
+    "USART2": { "baud": 115200 },
+    "SPI3": {}
+  }
+}

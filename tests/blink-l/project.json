@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "blink-l",
+    "core": "Core-L-1-a",
+    "description": "First light — blink LED on Core.L"
+  },
+  "clock": "max",
+  "pads": {}
+}

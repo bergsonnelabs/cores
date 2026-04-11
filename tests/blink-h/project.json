@@ -1,0 +1,10 @@
+{
+  "project": {
+    "name": "blink-h",
+    "core": "Core-H-1-a",
+    "description": "First light — blink LED on Core.H"
+  },
+  "clock": "low",
+  "_note": "high = HSI 64MHz + PLL ÷4 ×32 ÷4 = 128MHz",
+  "pads": {}
+}

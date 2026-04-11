@@ -1,0 +1,9 @@
+{
+  "project": {
+    "name": "usb-h",
+    "core": "Core-H-1-a",
+    "description": "USB CDC virtual serial port test on Core.H"
+  },
+  "clock": "low",
+  "pads": {}
+}
