@@ -34,14 +34,28 @@ int main(void)
     };
     tile_drive_dc_h_init(hal, 0, &motor, &cfg_v);
 
-    /* Init with speed-mode config */
+    /* Init with speed-mode config (full motor params) */
     drive_dc_h_cfg_t cfg_s = {
-        .mode    = DRIVE_DC_H_MODE_SPEED,
-        .vm_gain = 0,
-        .cs_gain = 2,
-        .target  = 128,
+        .mode            = DRIVE_DC_H_MODE_SPEED,
+        .vm_gain         = 0,
+        .cs_gain         = 2,
+        .target          = 128,
+        .motor_mohm      = 5000,
+        .ripples_per_rev = 12,
+        .kv_uv_per_rpm   = 417,
     };
     tile_drive_dc_h_init(hal, 0, &motor, &cfg_s);
+
+    /* Init with ripple-count mode (position tracking) */
+    drive_dc_h_cfg_t cfg_r = {
+        .mode            = DRIVE_DC_H_MODE_RIPPLE_COUNT,
+        .vm_gain         = 1,
+        .cs_gain         = 3,
+        .target          = 180,
+        .motor_mohm      = 10000,
+        .ripples_per_rev = 6,
+    };
+    tile_drive_dc_h_init(hal, 0, &motor, &cfg_r);
 
     /* ---- Motor control ---- */
     tile_drive_dc_h_forward(&motor);
