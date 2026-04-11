@@ -330,7 +330,7 @@ def build_interface_map(tile, pad_map):
 
 # ---- Project config validation ----
 
-def validate_project_config(config, tile, pad_map):
+def validate_project_config(config, tile, pad_map, mcu=None):
     """Validate a project config against a tile definition.
 
     Returns (warnings, errors) where each is a list of strings.
@@ -408,7 +408,7 @@ def validate_project_config(config, tile, pad_map):
             f"Options: {', '.join(sorted(valid_boot_modes))}"
         )
     if bootloader != "none":
-        mcu_define = tile.get("processor", {}).get("define", "")
+        mcu_define = mcu["define"] if mcu else ""
         usb_capable = {"STM32L422xx", "STM32H523xx"}
         if mcu_define not in usb_capable:
             warnings.append(
@@ -910,7 +910,7 @@ TILE_DRIVER_MAP = {
     "Power.L.1N":  {"header": "tile_power_l_1n.h",   "source": "tile_power_l_1n",   "prefix": "tile_power_l_1n"},
     "Power.L.1T":  {"header": "tile_power_l_1t.h",   "source": "tile_power_l_1t",   "prefix": "tile_power_l_1t"},
     "Power.P.N":   {"header": "tile_power_p_n.h",    "source": "tile_power_p_n",    "prefix": "tile_power_p_n"},
-    "Disp.RGBW":   {"header": "tile_disp_rgbw.h",   "source": "tile_disp_rgbw",   "prefix": "tile_disp_rgbw"},
+    "Display.RGBW": {"header": "tile_disp_rgbw.h",   "source": "tile_disp_rgbw",   "prefix": "tile_disp_rgbw"},
     "Sense.T.C":   {"header": "tile_sense_t_c.h",  "source": "tile_sense_t_c",  "prefix": "tile_sense_t_c"},
     "Sense.MIC":   {"header": "tile_sense_mic.h",  "source": "tile_sense_mic",  "prefix": "tile_sense_mic"},
     "Sense.BP":    {"header": "tile_sense_bp.h",  "source": "tile_sense_bp",  "prefix": "tile_sense_bp"},
@@ -1156,7 +1156,7 @@ def generate(tile_path, output_dir, project_path=None):
             # Allow override — this is the multi-tile portability path
 
         # Validate pin/interface/clock assignments
-        warnings, errors = validate_project_config(project, tile, pad_map)
+        warnings, errors = validate_project_config(project, tile, pad_map, mcu)
         for w in warnings:
             print(f"  WARNING: {w}")
         if errors:
