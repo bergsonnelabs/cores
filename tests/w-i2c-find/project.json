@@ -1,0 +1,20 @@
+{
+  "project": {
+    "name": "w-i2c-find",
+    "core": "Core-W-b",
+    "description": "Simple I2C bus scan on Core.W — find Sense.I.6P6"
+  },
+  "clock": "default",
+  "pads": {
+    "10": "I2C1.CLK",
+    "11": "I2C1.DAT"
+  },
+  "interfaces": {
+    "I2C1": {
+      "speed": 100000
+    }
+  },
+  "tiles": [
+    { "tile": "Sense.I.6P6", "bus": "I2C1", "instance": 1 }
+  ]
+}

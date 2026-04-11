@@ -1,0 +1,13 @@
+{
+  "project": {
+    "name": "peripheral-verify",
+    "core": "Core-W-b",
+    "description": "Systematic peripheral verification for Core.W"
+  },
+  "clock": "max",
+  "programming": {
+    "methods": ["swd"],
+    "swd_dedicated": true
+  },
+  "pads": {}
+}

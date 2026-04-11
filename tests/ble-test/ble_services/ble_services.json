@@ -1,0 +1,25 @@
+{
+  "services": [
+    {
+      "name": "aqua",
+      "characteristics": [
+        {
+          "name": "counter",
+          "access": [
+            "read",
+            "notify"
+          ],
+          "type": "uint8"
+        },
+        {
+          "name": "led",
+          "access": [
+            "write"
+          ],
+          "type": "uint8",
+          "callback": "on_aqua_led_write"
+        }
+      ]
+    }
+  ]
+}
