@@ -68,7 +68,7 @@ void core_pads_init(void);
  *
  *   // Find and initialize each tile
 {% for tile in tiles_config %}
- *   {{ tile.prefix }}_init({{ tile.pal_handle }}, {{ tile.instance }}, &{{ tile.handle }});
+ *   {{ tile.prefix }}_init({{ tile.pal_handle }}, {{ tile.instance }}, &{{ tile.handle }}, NULL);
 {% endfor %}
  */
 {% endif %}

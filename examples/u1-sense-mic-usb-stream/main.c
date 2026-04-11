@@ -49,7 +49,7 @@ int main(void)
     core_delay_ms(500);
 
     /* Init RGBW on I2C1 */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
 
     /* Find and init Sense.MIC on I2C3 with retries */
     uint8_t mic_found = 0;
