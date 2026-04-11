@@ -4,11 +4,13 @@
  * Captures the exception stack frame and:
  *   1. Calls an optional user callback
  *   2. Dumps registers over USB CDC (polled, works with interrupts disabled)
- *   3. Blinks SOS on the LED forever
+ *   3. If a DFU bootloader is configured (APP_OFFSET or ROM_DFU):
+ *      blinks one SOS cycle, then reboots into DFU — prevents a hard
+ *      fault from permanently bricking a board without BOOT0/SWD access.
+ *   4. Otherwise: blinks SOS on the LED forever.
  *
  * The USB dump uses direct PMA writes and endpoint polling — no ISR needed.
- * If USB CDC was never initialized, the dump is silently skipped and only
- * the LED SOS runs.
+ * If USB CDC was never initialized, the dump is silently skipped.
  */
 
 #include "hal_fault.h"
@@ -18,6 +20,10 @@
 
 #if defined(STM32L422xx)
 #include "ll_usb.h"
+#endif
+
+#if defined(APP_OFFSET) || defined(ROM_DFU)
+#include "hal_dfu.h"
 #endif
 
 /* ---- User callback ---- */
@@ -156,6 +162,7 @@ static void fault_blink(int n, uint32_t on_ticks, uint32_t off_ticks)
     }
 }
 
+#if !defined(APP_OFFSET) && !defined(ROM_DFU)
 static void fault_sos(void) __attribute__((noreturn));
 static void fault_sos(void)
 {
@@ -167,6 +174,7 @@ static void fault_sos(void)
         fault_delay(1500000);
     }
 }
+#endif
 
 /* ---- Fault type names ---- */
 
@@ -228,8 +236,20 @@ static void fault_handler(hal_fault_type_t type, uint32_t *stack)
     fault_usb_puts("\r\nSOS...\r\n");
 #endif
 
-    /* Blink SOS forever */
+#if defined(APP_OFFSET) || defined(ROM_DFU)
+    /* DFU recovery: blink SOS once so the fault is visible, then reboot
+     * into the bootloader.  This prevents a hard fault from permanently
+     * bricking a board that has no BOOT0 or SWD access. */
+    fault_led_init();
+    fault_blink(3, 80000, 80000);    /* S */
+    fault_blink(3, 300000, 300000);  /* O */
+    fault_blink(3, 80000, 80000);    /* S */
+    fault_delay(500000);
+    hal_dfu_reboot();  /* does not return */
+#else
+    /* No bootloader — blink SOS forever */
     fault_sos();
+#endif
 }
 
 /* ---- Exception entry — extract the correct stack pointer ---- */
