@@ -17,7 +17,7 @@
     "I2C3": { "speed": 400000 }
   },
   "tiles": [
-    { "tile": "Disp.RGBW", "bus": "I2C1", "instance": 0 },
+    { "tile": "Display.RGBW", "bus": "I2C1", "instance": 0 },
     { "tile": "Drive.H",   "bus": "I2C3", "instance": 0 }
   ]
 }

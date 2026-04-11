@@ -16,7 +16,7 @@
     "I2C3": { "speed": 100000 }
   },
   "tiles": [
-    { "tile": "Disp.RGBW", "bus": "I2C1", "instance": 0 },
+    { "tile": "Display.RGBW", "bus": "I2C1", "instance": 0 },
     { "tile": "Sense.I.6P6", "bus": "I2C3", "instance": 1 },
     { "tile": "Sense.T.C", "bus": "I2C3", "instance": 0 }
   ]
