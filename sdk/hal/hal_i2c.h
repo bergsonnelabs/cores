@@ -18,6 +18,8 @@
 typedef struct hal_i2c {
     I2C_TypeDef *instance;
     uint32_t timeout_ms;    /* Default: 100 */
+    uint32_t timing;        /* Saved for bus recovery re-init */
+    uint8_t  fmp;           /* Saved for bus recovery re-init */
 } hal_i2c_t;
 
 typedef struct {
@@ -39,6 +41,14 @@ hal_status_t hal_i2c_init(hal_i2c_t *h, I2C_TypeDef *instance,
                           const hal_i2c_config_t *cfg);
 
 void hal_i2c_deinit(hal_i2c_t *h);
+
+/**
+ * Attempt bus recovery when I2C is stuck (SDA held low).
+ * Disables the peripheral, bit-bangs SCL as GPIO to clock out the
+ * stuck slave, generates a STOP condition, then re-initializes I2C.
+ * Returns HAL_OK if SDA was released, HAL_ERROR if still stuck.
+ */
+hal_status_t hal_i2c_recover(hal_i2c_t *h);
 
 /* ---- Raw master operations ---- */
 
