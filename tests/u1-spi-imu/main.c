@@ -39,7 +39,7 @@ int main(void)
     core_usb_init();
     core_delay_ms(500);
 
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
 
     sense_i_6p6_cfg_t cfg = {
         .on_event = on_imu_event,

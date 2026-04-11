@@ -37,7 +37,7 @@ int main(void)
     core_usb_printf("Scan done.\r\n");
 
     /* Init the RGBW display on I2C1 */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led);
+    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
 
     /* Probe for Sense.MIC on I2C3 — retry a few times with delay,
      * since the MAX11645 may need extra time after power-on */
