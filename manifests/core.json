@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@38faf90",
+  "source": "cores@c5bf9ec",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -13,6 +13,10 @@
     "pad": {
       "label": "Core.Pad",
       "icon": "◼"
+    },
+    "pwm": {
+      "label": "Core.PWM",
+      "icon": "◲"
     },
     "timing": {
       "label": "Core.Timing",
@@ -237,6 +241,37 @@
             64
           ],
           "description": "Tile pad number."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "pwm",
+        "duty"
+      ],
+      "symbol": "core_pwm_duty",
+      "header": "core_pwm.h",
+      "category": "pwm",
+      "description": "Set PWM duty cycle on a pad. Timer handle resolved from project.json.",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number configured as a TIMx.<ch> in project.json."
+        },
+        {
+          "name": "duty_permil",
+          "type": "int",
+          "range": [
+            0,
+            1000
+          ],
+          "description": "0 = off, 500 = 50%, 1000 = fully on."
         }
       ],
       "returns": "void"

@@ -36,6 +36,22 @@ extern hal_spi_t {{ bus.handle }};
 extern hal_uart_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
+{% if pwm_timers %}
+
+#include "hal_timer.h"
+
+/* ---- Auto-generated Timer/PWM handles ---- */
+{% for t in pwm_timers %}
+extern hal_timer_t {{ t.handle }};
+{% endfor %}
+
+/**
+ * Resolve a pad number to the timer handle that drives its PWM channel.
+ * Returns NULL for pads that aren't bound to a timer in project.json.
+ * Used by the handle-free pad-oriented wrappers in core_pwm.h.
+ */
+hal_timer_t *core_pwm_timer_for_pad(uint8_t pad);
+{% endif %}
 {% if adc_config %}
 
 #include "hal_adc.h"

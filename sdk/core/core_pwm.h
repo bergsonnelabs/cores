@@ -1,15 +1,20 @@
 /**
  * core_pwm.h — PWM output and periodic timers
  *
- * Two usage modes:
+ * Three usage modes:
  *
- *   1. Pad-centric (recommended — requires coregen):
- *        core_pwm_init_pad(&pwm, 7, 1000);   // pad → TIM + channel auto-resolved
- *        core_pwm_set_pad(&pwm, 7, 500);      // 50% duty on pad 7
+ *   0. Project-centric (simplest — coregen owns handle + init):
+ *        core_pwm_duty(7, 500);   // 50% duty on pad 7; timer resolved from project.json
+ *
+ *   1. Pad-centric (manual init):
+ *        core_pwm_init_pad(&pwm, 7, 1000);
+ *        core_pwm_set_pad(&pwm, 7, 500);
  *
  *   2. Explicit instance (no coregen needed):
  *        core_pwm_init(&pwm, TIM2, SYSCLK_HZ, 1000);
- *        core_pwm_set(&pwm, 3, 500);           // channel 3 directly
+ *        core_pwm_set(&pwm, 3, 500);
+ *
+ * @tessera category pwm label=Core.PWM icon=◲
  */
 
 #ifndef CORE_PWM_H
@@ -91,6 +96,38 @@ static inline void core_pwm_set_pad(core_timer_t *h, uint8_t pad,
     tal_pwm_set(h, pad, duty_permil);
 }
 #endif
+
+/* ============================================================
+ * Project-centric PWM (default-instance convention)
+ * ============================================================
+ *
+ * Coregen emits one `core_tim<n>` handle per timer declared in
+ * project.json and a `core_pwm_timer_for_pad(pad)` dispatch function.
+ * These wrappers use the dispatch to set duty cycles without the
+ * caller having to pick a timer. Timers are initialized and started
+ * automatically during `core_init()`.
+ *
+ * If the pad is not bound to a timer in project.json, the wrapper
+ * silently does nothing — DSL code running on the wrong project
+ * won't fault, it just won't produce output.
+ */
+
+/** Prototype emitted by coregen into core_init.c when any TIM<n> pad is
+ * configured. Returns NULL for pads not bound to a timer in project.json. */
+hal_timer_t *core_pwm_timer_for_pad(uint8_t pad);
+
+/**
+ * Set PWM duty cycle on a pad. Timer handle resolved from project.json.
+ *
+ * @tessera expose category=pwm name=duty
+ * @param pad [1..64] Tile pad number configured as a TIMx.<ch> in project.json.
+ * @param duty_permil [0..1000] 0 = off, 500 = 50%, 1000 = fully on.
+ */
+static inline void core_pwm_duty(uint8_t pad, uint16_t duty_permil)
+{
+    hal_timer_t *h = core_pwm_timer_for_pad(pad);
+    if (h) tal_pwm_set(h, pad, duty_permil);
+}
 
 /* ============================================================
  * Periodic tick ("every")

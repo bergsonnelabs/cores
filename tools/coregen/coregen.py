@@ -775,6 +775,86 @@ def build_usart_config(config, mcu):
     return buses
 
 
+# ---- Timer / PWM config ----
+#
+# Scans pads for TIM<n>.<ch> assignments, groups by timer, and emits one
+# handle per used timer with an auto-init in core_pads_init(). Also emits
+# a pad→timer lookup function so the pad-oriented DSL wrappers in
+# core_pwm.h can dispatch without the caller touching a handle.
+
+TIMER_CLK_MAP = {
+    # (family_define, timer_num) → (clk_func, clk_mask)
+    ("STM32L011xx", 2):  ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM2"),
+    ("STM32L011xx", 21): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM21"),
+
+    ("STM32L422xx", 1):  ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM1"),
+    ("STM32L422xx", 2):  ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM2"),
+    ("STM32L422xx", 15): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM15"),
+    ("STM32L422xx", 16): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM16"),
+
+    ("STM32WBA55xx", 1):  ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM1"),
+    ("STM32WBA55xx", 2):  ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM2"),
+    ("STM32WBA55xx", 3):  ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM3"),
+    ("STM32WBA55xx", 16): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM16"),
+    ("STM32WBA55xx", 17): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM17"),
+
+    ("STM32H523xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_TIM1"),
+    ("STM32H523xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM2"),
+    ("STM32H523xx", 3): ("ll_rcc_apb1_clk_enable", "LL_APB1_TIM3"),
+}
+
+
+def build_pwm_config(config, mcu):
+    """Detect timer PWM usage from pad assignments and build a config list.
+
+    Scans `project.pads` for functions matching `TIM<n>.<ch>` and returns
+    one dict per used timer peripheral. All channels on the same timer
+    share a frequency (hardware constraint); frequency comes from
+    `interfaces.TIM<n>.freq` in project.json if specified, otherwise
+    defaults to 1 kHz — a sensible starting point for LEDs and motors.
+    """
+    family_define = mcu["define"]
+    iface_cfg = config.get("interfaces", {})
+    pads = config.get("pads", config.get("pins", {}))
+
+    # Collect pads per timer
+    timer_pads = {}
+    for pad_num, func in pads.items():
+        m = re.match(r'^TIM(\d+)\.\d+$', func)
+        if m:
+            num = int(m.group(1))
+            timer_pads.setdefault(num, []).append(pad_num)
+
+    if not timer_pads:
+        return []
+
+    timers = []
+    for num in sorted(timer_pads.keys()):
+        name = f"TIM{num}"
+        tcfg = iface_cfg.get(name, {})
+        freq = tcfg.get("freq", 1000)
+
+        key = (family_define, num)
+        clk_info = TIMER_CLK_MAP.get(key)
+        if clk_info is None:
+            print(f"  ERROR: {name} clock mapping not defined for {family_define}")
+            sys.exit(1)
+        clk_func, clk_mask = clk_info
+
+        timers.append({
+            "num": num,
+            "instance": name,
+            "handle": f"core_tim{num}",
+            "clk_func": clk_func,
+            "clk_mask": clk_mask,
+            "freq": freq,
+            # Sort pads numerically so the generated lookup-switch is readable.
+            "pads": sorted(timer_pads[num], key=int),
+        })
+
+    return timers
+
+
 # ---- ADC config ----
 
 # Pattern matches ADC function names in tile JSON / project.json:
@@ -1293,6 +1373,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
         ctx["spi_buses"] = build_spi_config(project, mcu, pad_map)
         ctx["usart_buses"] = build_usart_config(project, mcu)
+        ctx["pwm_timers"] = build_pwm_config(project, mcu)
         ctx["adc_config"] = build_adc_config(project)
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.

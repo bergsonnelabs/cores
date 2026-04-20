@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@38faf90",
+  "source": "cores@c5bf9ec",
   "category": "timing",
   "label": "Core.Timing",
   "icon": "⏱",
