@@ -3,6 +3,8 @@
  *
  * Printf-style output, byte-level TX/RX, and receive callbacks
  * over the USB CDC (virtual COM port) interface.
+ *
+ * @tessera category usb label=Core.USB icon=❝
  */
 
 #ifndef CORE_USB_H
@@ -37,25 +39,45 @@ static inline int core_usb_write(const uint8_t *buf, uint16_t len)
 /** Printf over USB CDC (blocking). */
 #define core_usb_printf  hal_usb_cdc_printf
 
-/** Print a string followed by a newline. Thin wrapper for DSL-style callers. */
+/**
+ * Print a string followed by a newline. Thin wrapper for DSL-style callers.
+ *
+ * @tessera expose category=usb icon=❝ name=print availability=Core.U,Core.H
+ * @param text The message to print.
+ */
 static inline void core_usb_print(const char *s)
 {
     core_usb_printf("%s\n", s ? s : "");
 }
 
-/** Print a signed integer followed by a newline. */
+/**
+ * Print a signed integer followed by a newline.
+ *
+ * @tessera expose category=usb name=print_int availability=Core.U,Core.H
+ * @param value The integer to print (decimal).
+ */
 static inline void core_usb_print_int(int v)
 {
     core_usb_printf("%d\n", v);
 }
 
-/** Print a double with a newline. %g trims trailing zeros for readability. */
+/**
+ * Print a double with a newline. %g trims trailing zeros for readability.
+ *
+ * @tessera expose category=usb name=print_float availability=Core.U,Core.H
+ * @param value The float to print.
+ */
 static inline void core_usb_print_float(double v)
 {
     core_usb_printf("%g\n", v);
 }
 
-/** Print "true" / "false" followed by a newline. */
+/**
+ * Print "true" / "false" followed by a newline.
+ *
+ * @tessera expose category=usb name=print_bool availability=Core.U,Core.H
+ * @param value {bool} The boolean to print.
+ */
 static inline void core_usb_print_bool(int v)
 {
     core_usb_printf("%s\n", v ? "true" : "false");

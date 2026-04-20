@@ -1,0 +1,179 @@
+{
+  "schema": "tessera-manifest/v1",
+  "source": "cores@51f47eb",
+  "categories": {
+    "led": {
+      "label": "Core.LED",
+      "icon": "☀"
+    },
+    "usb": {
+      "label": "Core.USB",
+      "icon": "❝"
+    }
+  },
+  "hosts": [
+    {
+      "qname": [
+        "led",
+        "blink"
+      ],
+      "symbol": "core_led_blink",
+      "header": "core_led.h",
+      "category": "led",
+      "description": "Blink the LED n times. Each cycle turns the LED on for on_ms milliseconds and off for off_ms milliseconds. Blocking — returns after the last off period.",
+      "params": [
+        {
+          "name": "n",
+          "type": "int",
+          "range": [
+            1,
+            100
+          ],
+          "description": "Number of times to blink."
+        },
+        {
+          "name": "on_ms",
+          "type": "int",
+          "range": [
+            1,
+            5000
+          ],
+          "unit": "ms",
+          "description": "LED-on duration per blink."
+        },
+        {
+          "name": "off_ms",
+          "type": "int",
+          "range": [
+            1,
+            5000
+          ],
+          "unit": "ms",
+          "description": "LED-off duration per blink."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "led",
+        "heartbeat"
+      ],
+      "symbol": "core_led_heartbeat",
+      "header": "core_led.h",
+      "category": "led",
+      "description": "Toggle the LED and delay for period_ms. Call this in your main loop for a continuous alive indicator. Vary the period to signal different states (e.g., 50ms = fast/active, 500ms = idle).",
+      "params": [
+        {
+          "name": "period_ms",
+          "type": "int",
+          "range": [
+            0,
+            60000
+          ],
+          "unit": "ms",
+          "description": "Delay after the toggle. 0 toggles without waiting."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "usb",
+        "print"
+      ],
+      "symbol": "core_usb_print",
+      "header": "core_usb.h",
+      "category": "usb",
+      "description": "Print a string followed by a newline. Thin wrapper for DSL-style callers.",
+      "params": [
+        {
+          "name": "text",
+          "type": "string",
+          "description": "The message to print."
+        }
+      ],
+      "returns": "void",
+      "icon": "❝",
+      "availability": {
+        "cores": [
+          "Core.U",
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "usb",
+        "print_int"
+      ],
+      "symbol": "core_usb_print_int",
+      "header": "core_usb.h",
+      "category": "usb",
+      "description": "Print a signed integer followed by a newline.",
+      "params": [
+        {
+          "name": "value",
+          "type": "int",
+          "description": "The integer to print (decimal)."
+        }
+      ],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.U",
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "usb",
+        "print_float"
+      ],
+      "symbol": "core_usb_print_float",
+      "header": "core_usb.h",
+      "category": "usb",
+      "description": "Print a double with a newline. %g trims trailing zeros for readability.",
+      "params": [
+        {
+          "name": "value",
+          "type": "float",
+          "description": "The float to print."
+        }
+      ],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.U",
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "usb",
+        "print_bool"
+      ],
+      "symbol": "core_usb_print_bool",
+      "header": "core_usb.h",
+      "category": "usb",
+      "description": "Print \"true\" / \"false\" followed by a newline.",
+      "params": [
+        {
+          "name": "value",
+          "type": "bool",
+          "description": "The boolean to print."
+        }
+      ],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.U",
+          "Core.H"
+        ]
+      }
+    }
+  ],
+  "events": []
+}
