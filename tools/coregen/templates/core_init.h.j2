@@ -27,6 +27,15 @@ extern hal_i2c_t {{ bus.handle }};
 extern hal_spi_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
+{% if usart_buses %}
+
+#include "hal_uart.h"
+
+/* ---- Auto-generated USART handles ---- */
+{% for bus in usart_buses %}
+extern hal_uart_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
 {% if adc_config %}
 
 #include "hal_adc.h"

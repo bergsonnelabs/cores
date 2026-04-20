@@ -25,6 +25,9 @@
 {% if spi_buses %}
 #include "hal_spi.h"
 {% endif %}
+{% if usart_buses %}
+#include "hal_uart.h"
+{% endif %}
 {% if adc_config %}
 #include "hal_adc.h"
 #include "tal_adc.h"
@@ -50,6 +53,12 @@ hal_i2c_t {{ bus.handle }};
 /* ---- SPI handles ---- */
 {% for bus in spi_buses %}
 hal_spi_t {{ bus.handle }};
+{% endfor %}
+{% endif %}
+{% if usart_buses %}
+/* ---- USART handles ---- */
+{% for bus in usart_buses %}
+hal_uart_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
 {% if adc_config %}
@@ -278,6 +287,17 @@ void core_pads_init(void)
     {
         hal_spi_config_t _{{ bus.handle }}_cfg = { .prescaler = {{ bus.prescaler }}, .cpol = {{ bus.cpol }}, .cpha = {{ bus.cpha }} };
         hal_spi_init(&{{ bus.handle }}, {{ bus.instance }}, &_{{ bus.handle }}_cfg);
+    }
+{% endfor %}
+{% endif %}
+{% if usart_buses %}
+
+    /* ---- USART peripheral init ---- */
+{% for bus in usart_buses %}
+    {{ bus.clk_func }}({{ bus.clk_mask }});
+    {
+        hal_uart_config_t _{{ bus.handle }}_cfg = { .baud = {{ bus.baud }}, .rx_interrupt = {{ bus.rx_interrupt }} };
+        hal_uart_init(&{{ bus.handle }}, {{ bus.instance }}, {{ bus.pclk_symbol }}, &_{{ bus.handle }}_cfg);
     }
 {% endfor %}
 {% endif %}
