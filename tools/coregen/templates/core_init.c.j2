@@ -28,6 +28,9 @@
 {% if usart_buses %}
 #include "hal_uart.h"
 {% endif %}
+{% if pwm_timers %}
+#include "hal_timer.h"
+{% endif %}
 {% if adc_config %}
 #include "hal_adc.h"
 #include "tal_adc.h"
@@ -60,6 +63,25 @@ hal_spi_t {{ bus.handle }};
 {% for bus in usart_buses %}
 hal_uart_t {{ bus.handle }};
 {% endfor %}
+{% endif %}
+{% if pwm_timers %}
+/* ---- Timer/PWM handles ---- */
+{% for t in pwm_timers %}
+hal_timer_t {{ t.handle }};
+{% endfor %}
+
+/* Pad → timer handle dispatch (used by core_pwm.h's handle-free wrappers). */
+hal_timer_t *core_pwm_timer_for_pad(uint8_t pad)
+{
+    switch (pad) {
+{% for t in pwm_timers %}
+{% for pad_num in t.pads %}
+    case {{ pad_num }}: return &{{ t.handle }};
+{% endfor %}
+{% endfor %}
+    default: return (hal_timer_t *)0;
+    }
+}
 {% endif %}
 {% if adc_config %}
 /* ---- ADC handle ---- */
@@ -299,6 +321,15 @@ void core_pads_init(void)
         hal_uart_config_t _{{ bus.handle }}_cfg = { .baud = {{ bus.baud }}, .rx_interrupt = {{ bus.rx_interrupt }} };
         hal_uart_init(&{{ bus.handle }}, {{ bus.instance }}, {{ bus.pclk_symbol }}, &_{{ bus.handle }}_cfg);
     }
+{% endfor %}
+{% endif %}
+{% if pwm_timers %}
+
+    /* ---- Timer/PWM peripheral init ---- */
+{% for t in pwm_timers %}
+    {{ t.clk_func }}({{ t.clk_mask }});
+    hal_timer_pwm_init(&{{ t.handle }}, {{ t.instance }}, SYSCLK_HZ, {{ t.freq }});
+    hal_timer_pwm_start(&{{ t.handle }});
 {% endfor %}
 {% endif %}
 {% if adc_config %}
