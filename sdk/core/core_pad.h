@@ -3,6 +3,8 @@
  *
  * The primary GPIO API. All functions take tile pad numbers
  * (matching silkscreen) and resolve to hardware automatically.
+ *
+ * @tessera category pad label=Core.Pad icon=◼
  */
 
 #ifndef CORE_PAD_H
@@ -58,19 +60,35 @@ static inline void core_pad_input(uint8_t pad, uint32_t pull)
     hal_pad_input(pad, pull);
 }
 
-/** Set a pad high (ON) or low (OFF). */
+/**
+ * Set a pad high (ON) or low (OFF).
+ *
+ * @tessera expose category=pad name=write
+ * @param pad [1..64] Tile pad number.
+ * @param state [0..1] 0 for low, 1 for high.
+ */
 static inline void core_pad_write(uint8_t pad, int state)
 {
     hal_pad_write(pad, state);
 }
 
-/** Read a pad. Returns 0 or 1. */
+/**
+ * Read a pad. Returns 0 or 1.
+ *
+ * @tessera expose category=pad name=read returns=bool
+ * @param pad [1..64] Tile pad number.
+ */
 static inline int core_pad_read(uint8_t pad)
 {
     return hal_pad_read(pad);
 }
 
-/** Toggle a pad output. */
+/**
+ * Toggle a pad output.
+ *
+ * @tessera expose category=pad name=toggle
+ * @param pad [1..64] Tile pad number.
+ */
 static inline void core_pad_toggle(uint8_t pad)
 {
     hal_pad_toggle(pad);

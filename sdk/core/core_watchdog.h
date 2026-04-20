@@ -37,6 +37,9 @@
  * Common values: 1000, 2000, 5000, 10000 (max ~28000).
  *
  * WARNING: Once started, the IWDG cannot be stopped.
+ *
+ * @tessera expose category=watchdog name=start
+ * @param timeout_ms [100..28000] Timeout in milliseconds before reset.
  */
 static inline void core_watchdog_start(uint32_t timeout_ms)
 {

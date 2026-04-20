@@ -1,0 +1,77 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@806eae3",
+  "category": "timing",
+  "label": "Core.Timing",
+  "icon": "⏱",
+  "header": "core_timing.h",
+  "functions": [
+    {
+      "name": "core_delay_ms",
+      "signature": "core_delay_ms(uint32_t ms)",
+      "returns": "void",
+      "brief": "Blocking delay in milliseconds.",
+      "params": [
+        {
+          "name": "ms",
+          "ctype": "uint32_t",
+          "range": [
+            1,
+            60000
+          ],
+          "description": "Delay duration in milliseconds."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_delay_us",
+      "signature": "core_delay_us(uint32_t us)",
+      "returns": "void",
+      "brief": "Blocking delay in microseconds. For delays > 1 ms prefer `delay_ms` — it won't starve the rest of the system as long.",
+      "params": [
+        {
+          "name": "us",
+          "ctype": "uint32_t",
+          "range": [
+            1,
+            10000
+          ],
+          "description": "Delay duration in microseconds."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_millis",
+      "signature": "core_millis(void)",
+      "returns": "uint32_t",
+      "brief": "Milliseconds since boot (wraps at ~49 days).",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_timeout",
+      "signature": "core_timeout(uint32_t start, uint32_t ms)",
+      "returns": "int",
+      "brief": "Check if a timeout has elapsed. start: value returned by core_millis() at the beginning ms:    timeout duration in milliseconds Returns 1 if expired, 0 otherwise.",
+      "params": [
+        {
+          "name": "start",
+          "ctype": "uint32_t",
+          "description": "Value previously returned from `millis()`."
+        },
+        {
+          "name": "ms",
+          "ctype": "uint32_t",
+          "range": [
+            1,
+            3600000
+          ],
+          "description": "Timeout duration in milliseconds."
+        }
+      ],
+      "tessera_exposed": true
+    }
+  ]
+}

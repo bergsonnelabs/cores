@@ -1,0 +1,192 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@806eae3",
+  "category": "pad",
+  "label": "Core.Pad",
+  "icon": "◼",
+  "header": "core_pad.h",
+  "functions": [
+    {
+      "name": "core_pad_output",
+      "signature": "core_pad_output(uint8_t pad)",
+      "returns": "void",
+      "brief": "Configure a pad as push-pull output (default).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_output_od",
+      "signature": "core_pad_output_od(uint8_t pad, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pad as open-drain output with optional pull resistor. Use PULL_UP for a wired-AND / I2C-style bus, PULL_NONE for external pull.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_input",
+      "signature": "core_pad_input(uint8_t pad, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pad as input with pull resistor.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_write",
+      "signature": "core_pad_write(uint8_t pad, int state)",
+      "returns": "void",
+      "brief": "Set a pad high (ON) or low (OFF).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        },
+        {
+          "name": "state",
+          "ctype": "int",
+          "range": [
+            0,
+            1
+          ],
+          "description": "0 for low, 1 for high."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_pad_read",
+      "signature": "core_pad_read(uint8_t pad)",
+      "returns": "int",
+      "brief": "Read a pad. Returns 0 or 1.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_pad_toggle",
+      "signature": "core_pad_toggle(uint8_t pad)",
+      "returns": "void",
+      "brief": "Toggle a pad output.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_pad_analog",
+      "signature": "core_pad_analog(uint8_t pad)",
+      "returns": "void",
+      "brief": "Configure a pad as analog (for ADC, DAC, comparator).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_speed",
+      "signature": "core_pad_speed(uint8_t pad, uint32_t speed)",
+      "returns": "void",
+      "brief": "Set the output speed (slew rate) of a pad. Use SPEED_LOW / SPEED_MED / SPEED_HIGH / SPEED_VHIGH. Only affects outputs — input pads ignore this setting.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "speed",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_on_change",
+      "signature": "core_pad_on_change(uint8_t pad, uint32_t edge, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Register an edge-triggered callback on a pad. The pad is automatically configured as input with a sensible pull resistor based on edge direction: rising  → pull-down (idle low) falling → pull-up   (idle high) both    → no pull   (external bias expected)",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "description": "Tile pad number"
+        },
+        {
+          "name": "edge",
+          "ctype": "uint32_t",
+          "description": "EDGE_RISING, EDGE_FALLING, or EDGE_BOTH"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t",
+          "description": "Callback (called from ISR context)"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "Opaque pointer passed to cb"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_pad_on_change_stop",
+      "signature": "core_pad_on_change_stop(uint8_t pad)",
+      "returns": "void",
+      "brief": "Stop the interrupt on a pad.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    }
+  ]
+}
