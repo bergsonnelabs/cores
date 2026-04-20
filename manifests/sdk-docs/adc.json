@@ -1,0 +1,223 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@a56d854",
+  "category": "adc",
+  "label": "Core.ADC",
+  "icon": "◐",
+  "header": "core_adc.h",
+  "functions": [
+    {
+      "name": "core_adc_init",
+      "signature": "core_adc_init(core_adc_t * adc, uint32_t resolution)",
+      "returns": "hal_status_t",
+      "brief": "Initialise the ADC at the given resolution.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        },
+        {
+          "name": "resolution",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_add",
+      "signature": "core_adc_add(core_adc_t * adc, uint8_t pad, uint32_t samp)",
+      "returns": "hal_status_t",
+      "brief": "Register a pad as an ADC input with the given sampling speed.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "samp",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_read",
+      "signature": "core_adc_read(core_adc_t * adc, uint8_t pad)",
+      "returns": "uint16_t",
+      "brief": "Single-shot read — returns raw ADC count.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_read_mv",
+      "signature": "core_adc_read_mv(core_adc_t * adc, uint8_t pad)",
+      "returns": "uint32_t",
+      "brief": "Single-shot read — returns calibrated millivolts.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_read_pad",
+      "signature": "core_adc_read_pad(uint8_t pad)",
+      "returns": "int",
+      "brief": "Read a pad as raw ADC counts (0–4095 at 12-bit resolution).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number configured as an ADC input in project.json."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_adc_read_mv_pad",
+      "signature": "core_adc_read_mv_pad(uint8_t pad)",
+      "returns": "int",
+      "brief": "Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number configured as an ADC input in project.json."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_adc_temp_decidegc",
+      "signature": "core_adc_temp_decidegc(void)",
+      "returns": "int",
+      "brief": "Die temperature in tenths of deg C (e.g. 253 = 25.3 C). Dispatches to the default ADC instance.",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_adc_vdd_mv",
+      "signature": "core_adc_vdd_mv(void)",
+      "returns": "int",
+      "brief": "VDD supply voltage in millivolts (via VREFINT). Dispatches to the default ADC instance.",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_adc_temp",
+      "signature": "core_adc_temp(core_adc_t * adc)",
+      "returns": "int32_t",
+      "brief": "Die temperature in tenths of deg C (e.g. 253 = 25.3 C).",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_vdd",
+      "signature": "core_adc_vdd(core_adc_t * adc)",
+      "returns": "uint32_t",
+      "brief": "Actual VDD supply voltage in millivolts via VREFINT.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_start_dma",
+      "signature": "core_adc_start_dma(core_adc_t * adc, uint16_t * buf, uint16_t len, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Start continuous conversion with DMA circular buffer.",
+      "params": [
+        {
+          "name": "cb",
+          "ctype": "core_adc_t *",
+          "description": "Called on half-transfer and transfer-complete; may be NULL"
+        },
+        {
+          "name": "ctx",
+          "ctype": "uint16_t *",
+          "description": "User context passed to callback; may be NULL"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t",
+          "description": "Called on half-transfer and transfer-complete; may be NULL"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context passed to callback; may be NULL"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_stop_dma",
+      "signature": "core_adc_stop_dma(core_adc_t * adc)",
+      "returns": "void",
+      "brief": "Stop continuous DMA conversion.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_adc_dma_read",
+      "signature": "core_adc_dma_read(core_adc_t * adc, uint8_t pad)",
+      "returns": "uint16_t",
+      "brief": "Read most recent DMA result for a pad.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "core_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    }
+  ]
+}
