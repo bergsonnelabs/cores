@@ -1,10 +1,18 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@ae52eb1",
+  "source": "cores@806eae3",
   "categories": {
     "led": {
       "label": "Core.LED",
       "icon": "☀"
+    },
+    "pad": {
+      "label": "Core.Pad",
+      "icon": "◼"
+    },
+    "timing": {
+      "label": "Core.Timing",
+      "icon": "⏱"
     },
     "usb": {
       "label": "Core.USB",
@@ -80,6 +88,167 @@
         }
       ],
       "returns": "void"
+    },
+    {
+      "qname": [
+        "pad",
+        "write"
+      ],
+      "symbol": "core_pad_write",
+      "header": "core_pad.h",
+      "category": "pad",
+      "description": "Set a pad high (ON) or low (OFF).",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        },
+        {
+          "name": "state",
+          "type": "int",
+          "range": [
+            0,
+            1
+          ],
+          "description": "0 for low, 1 for high."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "pad",
+        "read"
+      ],
+      "symbol": "core_pad_read",
+      "header": "core_pad.h",
+      "category": "pad",
+      "description": "Read a pad. Returns 0 or 1.",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "bool"
+    },
+    {
+      "qname": [
+        "pad",
+        "toggle"
+      ],
+      "symbol": "core_pad_toggle",
+      "header": "core_pad.h",
+      "category": "pad",
+      "description": "Toggle a pad output.",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "timing",
+        "delay_ms"
+      ],
+      "symbol": "core_delay_ms",
+      "header": "core_timing.h",
+      "category": "timing",
+      "description": "Blocking delay in milliseconds.",
+      "params": [
+        {
+          "name": "ms",
+          "type": "int",
+          "range": [
+            1,
+            60000
+          ],
+          "description": "Delay duration in milliseconds."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "timing",
+        "delay_us"
+      ],
+      "symbol": "core_delay_us",
+      "header": "core_timing.h",
+      "category": "timing",
+      "description": "Blocking delay in microseconds. For delays > 1 ms prefer `delay_ms` — it won't starve the rest of the system as long.",
+      "params": [
+        {
+          "name": "us",
+          "type": "int",
+          "range": [
+            1,
+            10000
+          ],
+          "description": "Delay duration in microseconds."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "timing",
+        "millis"
+      ],
+      "symbol": "core_millis",
+      "header": "core_timing.h",
+      "category": "timing",
+      "description": "Milliseconds since boot (wraps at ~49 days).",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "timing",
+        "timeout"
+      ],
+      "symbol": "core_timeout",
+      "header": "core_timing.h",
+      "category": "timing",
+      "description": "Check if a timeout has elapsed. start: value returned by core_millis() at the beginning ms:    timeout duration in milliseconds Returns 1 if expired, 0 otherwise.",
+      "params": [
+        {
+          "name": "start",
+          "type": "int",
+          "description": "Value previously returned from `millis()`."
+        },
+        {
+          "name": "ms",
+          "type": "int",
+          "range": [
+            1,
+            3600000
+          ],
+          "description": "Timeout duration in milliseconds."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "bool"
     },
     {
       "qname": [
@@ -177,6 +346,28 @@
           "Core.H"
         ]
       }
+    },
+    {
+      "qname": [
+        "watchdog",
+        "start"
+      ],
+      "symbol": "core_watchdog_start",
+      "header": "core_watchdog.h",
+      "category": "watchdog",
+      "description": "Start the independent watchdog with a timeout in milliseconds. Selects the best prescaler/reload combination automatically. Common values: 1000, 2000, 5000, 10000 (max ~28000). WARNING: Once started, the IWDG cannot be stopped.",
+      "params": [
+        {
+          "name": "timeout_ms",
+          "type": "int",
+          "range": [
+            100,
+            28000
+          ],
+          "description": "Timeout in milliseconds before reset."
+        }
+      ],
+      "returns": "void"
     },
     {
       "qname": [

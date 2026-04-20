@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@ae52eb1",
+  "source": "cores@806eae3",
   "category": "watchdog",
   "label": "Core.Watchdog",
   "icon": "🐕",
@@ -14,10 +14,15 @@
       "params": [
         {
           "name": "timeout_ms",
-          "ctype": "uint32_t"
+          "ctype": "uint32_t",
+          "range": [
+            100,
+            28000
+          ],
+          "description": "Timeout in milliseconds before reset."
         }
       ],
-      "tessera_exposed": false
+      "tessera_exposed": true
     },
     {
       "name": "core_watchdog_feed",
