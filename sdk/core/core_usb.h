@@ -37,6 +37,30 @@ static inline int core_usb_write(const uint8_t *buf, uint16_t len)
 /** Printf over USB CDC (blocking). */
 #define core_usb_printf  hal_usb_cdc_printf
 
+/** Print a string followed by a newline. Thin wrapper for DSL-style callers. */
+static inline void core_usb_print(const char *s)
+{
+    core_usb_printf("%s\n", s ? s : "");
+}
+
+/** Print a signed integer followed by a newline. */
+static inline void core_usb_print_int(int v)
+{
+    core_usb_printf("%d\n", v);
+}
+
+/** Print a double with a newline. %g trims trailing zeros for readability. */
+static inline void core_usb_print_float(double v)
+{
+    core_usb_printf("%g\n", v);
+}
+
+/** Print "true" / "false" followed by a newline. */
+static inline void core_usb_print_bool(int v)
+{
+    core_usb_printf("%s\n", v ? "true" : "false");
+}
+
 /**
  * Set a callback for received data.
  * Called from USB ISR. When set, data is NOT buffered for polling reads.
