@@ -319,6 +319,17 @@ def parse_header(path, scope):
                     # bitmask to detect this event firing. Typically a #define
                     # from the tile driver header (e.g., ICM42686P_INT_TILT_DET).
                     entry["mask"] = attrs["mask"]
+                if "read" in attrs:
+                    # Driver function that populates a payload struct. The
+                    # dispatcher calls it when the event fires and passes
+                    # the struct fields as handler arguments by name.
+                    # Signature is `void read(tile_t *, <read_type> *)`.
+                    entry["read"] = attrs["read"]
+                if "read_type" in attrs:
+                    # C struct type whose fields match the event's payload
+                    # parameter names. Declared as a stack local inside the
+                    # dispatch branch before calling `read`.
+                    entry["read_type"] = attrs["read_type"]
                 events.append(entry)
 
         sig = extract_signature(source, m.end())
