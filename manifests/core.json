@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@2b75c82",
+  "source": "cores@81a030d",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -861,5 +861,26 @@
       "returns": "void"
     }
   ],
-  "events": []
+  "events": [
+    {
+      "name": "rising",
+      "payload": [
+        {
+          "name": "pad",
+          "type": "int"
+        }
+      ],
+      "category": "pad"
+    },
+    {
+      "name": "falling",
+      "payload": [
+        {
+          "name": "pad",
+          "type": "int"
+        }
+      ],
+      "category": "pad"
+    }
+  ]
 }

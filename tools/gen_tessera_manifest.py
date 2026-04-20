@@ -268,10 +268,12 @@ def parse_header(path, scope):
     `docs` — docs-facing entries for every documented function in the file,
              whether or not it's Tessera-exposed. This is what feeds the
              SDK reference pages on the website.
-    `events` — tile-event declarations from `@tessera event name=<id>
-               [description="..."] [payload=n:t,n:t,...]`. Produced only
-               for tile-scope headers; core headers currently don't own
-               events.
+    `events` — event declarations from `@tessera event name=<id>
+               [description="..."] [payload=n:t,n:t,...]`. Valid in both
+               scopes; tile events carry extra `mask`/`read`/`read_type`
+               attributes tied to the tile driver's on_event ABI, core
+               events rely on coregen emitting a subsystem-specific
+               dispatcher (see core_pad.h → pad-edge dispatcher).
 
     Core-scope returns `sections = {"<category>": {label, icon}, ...}`.
     Tile-scope returns `sections = {"<tile>": {label, icon}}` with a single
@@ -298,7 +300,7 @@ def parse_header(path, scope):
                     "label": label,
                     "icon": attrs.get("icon", ""),
                 }
-            elif verb == "event" and scope == "tile":
+            elif verb == "event":
                 name = attrs.get("name")
                 if not name:
                     print(
@@ -469,14 +471,32 @@ def main():
     # simply by adding the tag. No hand-maintained source list.
     core_sources = sorted((ROOT / "sdk/core").glob("core_*.h"))
     core_hosts = []
+    core_events = []
     core_categories = {}
     # Per-category docs — functions documented in each tagged header,
     # keyed by the category's canonical name (led, usb, adc, ...). The
     # website SDK pages consume these JSON files directly.
     sdk_docs = {}
     for p in core_sources:
-        hosts, sections, docs, _events = parse_header(p, scope="core")
+        hosts, sections, docs, events = parse_header(p, scope="core")
         core_hosts.extend(hosts)
+        # Attach the surrounding category to each event so Tessera's DSL
+        # codegen + block palette can group them under the right header.
+        # Core events declared outside a `@tessera category` block are
+        # skipped with a warning — the palette needs somewhere to show them.
+        if events:
+            if len(sections) == 1:
+                cat = next(iter(sections.keys()))
+                for e in events:
+                    e["category"] = cat
+                core_events.extend(events)
+            else:
+                print(
+                    f"warn: {p.name}: {len(events)} @tessera event(s) but "
+                    f"{len(sections)} @tessera category declarations — "
+                    f"events dropped (need exactly one category per file)",
+                    file=sys.stderr,
+                )
         for name, meta in sections.items():
             # First declaration wins — later duplicates are ignored so two
             # files claiming the same category don't silently clobber each
@@ -500,7 +520,7 @@ def main():
         "source": f"cores@{commit}",
         "categories": core_categories,
         "hosts": core_hosts,
-        "events": [],
+        "events": core_events,
     }
 
     tile_sources = [

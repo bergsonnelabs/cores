@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@2b75c82",
+  "source": "cores@81a030d",
   "category": "dac",
   "label": "Core.DAC",
   "icon": "◓",
