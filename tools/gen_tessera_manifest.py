@@ -71,17 +71,32 @@ def strip_doxy(body):
     return out
 
 
-def parse_tessera_tag(lines):
+def parse_tessera_tags(lines):
+    """Return every @tessera tag in the block as a list of (verb, positional, attrs)."""
+    out = []
     for line in lines:
-        m = re.match(r"@tessera\s+expose\s*(.*)", line.strip())
+        m = re.match(r"@tessera\s+(\w+)\s*(.*)", line.strip())
         if not m:
             continue
+        verb = m.group(1)
+        rest = m.group(2)
+        positional = None
         attrs = {}
-        for tok in m.group(1).split():
+        for tok in rest.split():
             if "=" in tok:
                 k, v = tok.split("=", 1)
                 attrs[k] = v
-        return attrs
+            elif positional is None:
+                positional = tok
+        out.append((verb, positional, attrs))
+    return out
+
+
+def parse_tessera_tag(lines):
+    """Back-compat helper — return the first @tessera expose tag's attrs."""
+    for verb, _pos, attrs in parse_tessera_tags(lines):
+        if verb == "expose":
+            return attrs
     return None
 
 
@@ -224,19 +239,45 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope):
 
 
 def parse_header(path, scope):
+    """Return (hosts, sections).
+
+    `sections` aggregates file-scope metadata declared via:
+      - `@tessera category <name> label=... icon=...`  (core scope)
+      - `@tessera tile label=... icon=...`             (tile scope)
+
+    Core-scope returns `sections = {"<category>": {label, icon}, ...}`.
+    Tile-scope returns `sections = {"<tile>": {label, icon}}` with a single
+    entry keyed by the tile palette label.
+    """
     source = path.read_text()
-    entries = []
+    hosts = []
+    sections = {}
     for m in DOXY_BLOCK_RE.finditer(source):
         lines = strip_doxy(m.group(1))
-        tag = parse_tessera_tag(lines)
-        if not tag:
+        tags = parse_tessera_tags(lines)
+
+        for verb, positional, attrs in tags:
+            if verb == "category" and scope == "core" and positional:
+                sections[positional] = {
+                    "label": attrs.get("label", positional),
+                    "icon": attrs.get("icon", ""),
+                }
+            elif verb == "tile" and scope == "tile":
+                label = attrs.get("label", path.stem)
+                sections[label] = {
+                    "label": label,
+                    "icon": attrs.get("icon", ""),
+                }
+
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        if not expose:
             continue
         sig = extract_signature(source, m.end())
         if not sig:
             print(f"warn: {path.name}: no signature after doxy block", file=sys.stderr)
             continue
-        entries.append(build_host_entry(tag, lines, sig, path.name, scope))
-    return entries
+        hosts.append(build_host_entry(expose, lines, sig, path.name, scope))
+    return hosts, sections
 
 
 def source_commit():
@@ -266,12 +307,23 @@ def main():
         ROOT / "sdk/core/core_usb.h",
     ]
     core_hosts = []
+    core_categories = {}
     for p in core_sources:
-        core_hosts.extend(parse_header(p, scope="core"))
+        hosts, sections = parse_header(p, scope="core")
+        core_hosts.extend(hosts)
+        for name, meta in sections.items():
+            # First declaration wins — later duplicates are ignored so two
+            # files claiming the same category don't silently clobber each
+            # other. Logged for visibility.
+            if name in core_categories and core_categories[name] != meta:
+                print(f"warn: category '{name}' redeclared in {p.name}", file=sys.stderr)
+                continue
+            core_categories[name] = meta
 
     core_manifest = {
         "schema": "tessera-manifest/v1",
         "source": f"cores@{commit}",
+        "categories": core_categories,
         "hosts": core_hosts,
         "events": [],
     }
@@ -279,7 +331,6 @@ def main():
     tile_sources = [
         {
             "path": ROOT / "kiln/drivers/tile_disp_rgbw.h",
-            "tile": "Disp.RGBW",
             "prefix": "tile_disp_rgbw",
             "init": "tile_disp_rgbw_init",
             "version": "1.0.0",
@@ -288,17 +339,28 @@ def main():
 
     targets = [(CORE_OUT_DIR / "core.json", core_manifest)]
     for t in tile_sources:
+        hosts, sections = parse_header(t["path"], scope="tile")
+        if len(sections) != 1:
+            print(
+                f"warn: {t['path'].name}: expected exactly one @tessera tile tag, "
+                f"found {len(sections)}",
+                file=sys.stderr,
+            )
+        palette = next(iter(sections.values())) if sections else {
+            "label": t["path"].stem, "icon": "",
+        }
         manifest = {
             "schema": "tessera-manifest/v1",
             "source": f"cores@{commit}",
-            "tile": t["tile"],
+            "tile": palette["label"],
+            "palette": palette,
             "driver": {
                 "prefix": t["prefix"],
                 "header": t["path"].name,
                 "version": t["version"],
             },
             "handle": {"type": "tile_t", "init": t["init"]},
-            "hosts": parse_header(t["path"], scope="tile"),
+            "hosts": hosts,
             "events": [],
         }
         targets.append((TILE_OUT_DIR / f"{t['path'].stem}.json", manifest))
