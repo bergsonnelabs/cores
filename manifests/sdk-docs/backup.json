@@ -1,0 +1,59 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@2b75c82",
+  "category": "backup",
+  "label": "Core.Backup",
+  "icon": "◫",
+  "header": "core_backup.h",
+  "functions": [
+    {
+      "name": "_core_backup_ensure_clk",
+      "signature": "_core_backup_ensure_clk(void)",
+      "returns": "void",
+      "brief": "Ensure the RTC/backup register clock domain is accessible. On L0/L4 the backup registers live inside the RTC peripheral block, so RTCEN (and a clock source) must be active for reads AND writes. On WBA/H5 they're in TAMP, which only needs PWR+DBP.",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_backup_read",
+      "signature": "core_backup_read(uint8_t index)",
+      "returns": "uint32_t",
+      "brief": "Read a backup register.",
+      "params": [
+        {
+          "name": "index",
+          "ctype": "uint8_t",
+          "range": [
+            0,
+            31
+          ],
+          "description": "Register index (Core.L caps at 4; others at 31)."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_backup_write",
+      "signature": "core_backup_write(uint8_t index, uint32_t value)",
+      "returns": "void",
+      "brief": "Write a backup register. Backup domain write access is enabled automatically.",
+      "params": [
+        {
+          "name": "index",
+          "ctype": "uint8_t",
+          "range": [
+            0,
+            31
+          ],
+          "description": "Register index (Core.L caps at 4; others at 31)."
+        },
+        {
+          "name": "value",
+          "ctype": "uint32_t",
+          "description": "32-bit value to store."
+        }
+      ],
+      "tessera_exposed": true
+    }
+  ]
+}

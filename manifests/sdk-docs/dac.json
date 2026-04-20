@@ -1,0 +1,62 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@2b75c82",
+  "category": "dac",
+  "label": "Core.DAC",
+  "icon": "◓",
+  "header": "core_dac.h",
+  "functions": [
+    {
+      "name": "core_dac_init",
+      "signature": "core_dac_init(void)",
+      "returns": "void",
+      "brief": "Initialize the DAC (clock, GPIO, peripheral). Call once from `on start` before any writes.",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_dac_write",
+      "signature": "core_dac_write(uint16_t val)",
+      "returns": "void",
+      "brief": "Write a raw 12-bit value. Output = val / 4095 × VREF+.",
+      "params": [
+        {
+          "name": "val",
+          "ctype": "uint16_t",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Raw DAC value."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_dac_write_mv",
+      "signature": "core_dac_write_mv(uint16_t mv)",
+      "returns": "void",
+      "brief": "Write a voltage in millivolts.",
+      "params": [
+        {
+          "name": "mv",
+          "ctype": "uint16_t",
+          "range": [
+            0,
+            3300
+          ],
+          "description": "Output voltage in millivolts."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_dac_read",
+      "signature": "core_dac_read(void)",
+      "returns": "uint16_t",
+      "brief": "Read back the current DAC output register value (12-bit).",
+      "params": [],
+      "tessera_exposed": true
+    }
+  ]
+}

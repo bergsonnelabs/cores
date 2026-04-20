@@ -12,6 +12,8 @@
  *   uint32_t val = core_backup_read(0);  // read it back
  *
  * No init required — the RTC clock domain is enabled automatically.
+ *
+ * @tessera category backup label=Core.Backup icon=◫
  */
 
 #ifndef CORE_BACKUP_H
@@ -62,8 +64,9 @@ static inline void _core_backup_ensure_clk(void)
 
 /**
  * Read a backup register.
- * @param index  Register index (0 to CORE_BACKUP_COUNT-1)
- * @return       32-bit value, or 0 if index is out of range
+ *
+ * @tessera expose category=backup name=read returns=int
+ * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  */
 static inline uint32_t core_backup_read(uint8_t index)
 {
@@ -73,11 +76,11 @@ static inline uint32_t core_backup_read(uint8_t index)
 }
 
 /**
- * Write a backup register.
- * @param index  Register index (0 to CORE_BACKUP_COUNT-1)
- * @param value  32-bit value to store
+ * Write a backup register. Backup domain write access is enabled automatically.
  *
- * Backup domain write access is enabled automatically.
+ * @tessera expose category=backup name=write
+ * @param index [0..31] Register index (Core.L caps at 4; others at 31).
+ * @param value 32-bit value to store.
  */
 static inline void core_backup_write(uint8_t index, uint32_t value)
 {

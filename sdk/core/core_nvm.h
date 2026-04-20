@@ -16,6 +16,8 @@
  * On EEPROM-equipped cores, writes are byte-granular and require
  * no erase. On flash-emulated cores, wear-leveling is handled
  * internally (not yet implemented).
+ *
+ * @tessera category nvm label=Core.NVM icon=▤
  */
 
 #ifndef CORE_NVM_H
@@ -117,7 +119,11 @@ static inline int core_nvm_write(uint32_t offset, const void *data, uint32_t len
 #endif
 }
 
-/** Returns the total NVM size in bytes. */
+/**
+ * Returns the total NVM size in bytes for this Core.
+ *
+ * @tessera expose category=nvm name=size returns=int
+ */
 static inline uint32_t core_nvm_size(void)
 {
     return CORE_NVM_SIZE;

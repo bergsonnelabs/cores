@@ -1,0 +1,60 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@2b75c82",
+  "category": "nvm",
+  "label": "Core.NVM",
+  "icon": "▤",
+  "header": "core_nvm.h",
+  "functions": [
+    {
+      "name": "core_nvm_read",
+      "signature": "core_nvm_read(uint32_t offset, void * buf, uint32_t len)",
+      "returns": "int",
+      "brief": "Read bytes from NVM. offset: byte offset within NVM region (0 to CORE_NVM_SIZE-1) buf:    destination buffer len:    number of bytes to read Returns 0 on success, -1 if out of range.",
+      "params": [
+        {
+          "name": "offset",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "buf",
+          "ctype": "void *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_nvm_write",
+      "signature": "core_nvm_write(uint32_t offset, const void * data, uint32_t len)",
+      "returns": "int",
+      "brief": "Write bytes to NVM. offset: byte offset within NVM region (0 to CORE_NVM_SIZE-1) data:   source buffer len:    number of bytes to write Returns 0 on success, -1 if out of range or write error.",
+      "params": [
+        {
+          "name": "offset",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "data",
+          "ctype": "const void *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_nvm_size",
+      "signature": "core_nvm_size(void)",
+      "returns": "uint32_t",
+      "brief": "Returns the total NVM size in bytes for this Core.",
+      "params": [],
+      "tessera_exposed": true
+    }
+  ]
+}

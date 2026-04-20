@@ -1,14 +1,26 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@c5bf9ec",
+  "source": "cores@2b75c82",
   "categories": {
     "adc": {
       "label": "Core.ADC",
       "icon": "◐"
     },
+    "backup": {
+      "label": "Core.Backup",
+      "icon": "◫"
+    },
+    "dac": {
+      "label": "Core.DAC",
+      "icon": "◓"
+    },
     "led": {
       "label": "Core.LED",
       "icon": "☀"
+    },
+    "nvm": {
+      "label": "Core.NVM",
+      "icon": "▤"
     },
     "pad": {
       "label": "Core.Pad",
@@ -17,6 +29,10 @@
     "pwm": {
       "label": "Core.PWM",
       "icon": "◲"
+    },
+    "rtc": {
+      "label": "Core.RTC",
+      "icon": "◴"
     },
     "timing": {
       "label": "Core.Timing",
@@ -106,6 +122,145 @@
     },
     {
       "qname": [
+        "backup",
+        "read"
+      ],
+      "symbol": "core_backup_read",
+      "header": "core_backup.h",
+      "category": "backup",
+      "description": "Read a backup register.",
+      "params": [
+        {
+          "name": "index",
+          "type": "int",
+          "range": [
+            0,
+            31
+          ],
+          "description": "Register index (Core.L caps at 4; others at 31)."
+        }
+      ],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "backup",
+        "write"
+      ],
+      "symbol": "core_backup_write",
+      "header": "core_backup.h",
+      "category": "backup",
+      "description": "Write a backup register. Backup domain write access is enabled automatically.",
+      "params": [
+        {
+          "name": "index",
+          "type": "int",
+          "range": [
+            0,
+            31
+          ],
+          "description": "Register index (Core.L caps at 4; others at 31)."
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "description": "32-bit value to store."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "dac",
+        "init"
+      ],
+      "symbol": "core_dac_init",
+      "header": "core_dac.h",
+      "category": "dac",
+      "description": "Initialize the DAC (clock, GPIO, peripheral). Call once from `on start` before any writes.",
+      "params": [],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "dac",
+        "write"
+      ],
+      "symbol": "core_dac_write",
+      "header": "core_dac.h",
+      "category": "dac",
+      "description": "Write a raw 12-bit value. Output = val / 4095 × VREF+.",
+      "params": [
+        {
+          "name": "val",
+          "type": "int",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Raw DAC value."
+        }
+      ],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "dac",
+        "write_mv"
+      ],
+      "symbol": "core_dac_write_mv",
+      "header": "core_dac.h",
+      "category": "dac",
+      "description": "Write a voltage in millivolts.",
+      "params": [
+        {
+          "name": "mv",
+          "type": "int",
+          "range": [
+            0,
+            3300
+          ],
+          "description": "Output voltage in millivolts."
+        }
+      ],
+      "returns": "void",
+      "availability": {
+        "cores": [
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
+        "dac",
+        "read"
+      ],
+      "symbol": "core_dac_read",
+      "header": "core_dac.h",
+      "category": "dac",
+      "description": "Read back the current DAC output register value (12-bit).",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "availability": {
+        "cores": [
+          "Core.H"
+        ]
+      }
+    },
+    {
+      "qname": [
         "led",
         "blink"
       ],
@@ -168,6 +323,19 @@
         }
       ],
       "returns": "void"
+    },
+    {
+      "qname": [
+        "nvm",
+        "size"
+      ],
+      "symbol": "core_nvm_size",
+      "header": "core_nvm.h",
+      "category": "nvm",
+      "description": "Returns the total NVM size in bytes for this Core.",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
     },
     {
       "qname": [
@@ -275,6 +443,206 @@
         }
       ],
       "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "init"
+      ],
+      "symbol": "core_rtc_init",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Initialize the RTC using LSI (~32kHz internal RC). Call once from `on start` before setting time, date, or alarms. For LSE, call ll_rtc_init(1) directly in hand-written C.",
+      "params": [],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "set_time"
+      ],
+      "symbol": "core_rtc_set_time",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Set the time (24h format).",
+      "params": [
+        {
+          "name": "h",
+          "type": "int",
+          "range": [
+            0,
+            23
+          ],
+          "description": "Hours."
+        },
+        {
+          "name": "m",
+          "type": "int",
+          "range": [
+            0,
+            59
+          ],
+          "description": "Minutes."
+        },
+        {
+          "name": "s",
+          "type": "int",
+          "range": [
+            0,
+            59
+          ],
+          "description": "Seconds."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "set_date"
+      ],
+      "symbol": "core_rtc_set_date",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Set the date.",
+      "params": [
+        {
+          "name": "y",
+          "type": "int",
+          "range": [
+            0,
+            99
+          ],
+          "description": "2-digit year (2025 = 25)."
+        },
+        {
+          "name": "mo",
+          "type": "int",
+          "range": [
+            1,
+            12
+          ],
+          "description": "Month."
+        },
+        {
+          "name": "d",
+          "type": "int",
+          "range": [
+            1,
+            31
+          ],
+          "description": "Day of month."
+        },
+        {
+          "name": "wd",
+          "type": "int",
+          "range": [
+            1,
+            7
+          ],
+          "description": "Weekday (1 = Mon, 7 = Sun)."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "wakeup"
+      ],
+      "symbol": "core_rtc_wakeup",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Configure a periodic wakeup timer.",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "range": [
+            1,
+            65535
+          ],
+          "description": "Wakeup interval in seconds."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "wakeup_stop"
+      ],
+      "symbol": "core_rtc_wakeup_stop",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Disable the periodic wakeup timer.",
+      "params": [],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "set_alarm"
+      ],
+      "symbol": "core_rtc_set_alarm",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Set Alarm A to trigger at a specific time. Pass 0xFF for hours, minutes, or seconds to ignore that field. The alarm fires when all non-masked fields match the RTC time.",
+      "params": [
+        {
+          "name": "hours",
+          "type": "int",
+          "range": [
+            0,
+            255
+          ],
+          "description": "0-23, or 255 (0xFF) to match any hour."
+        },
+        {
+          "name": "minutes",
+          "type": "int",
+          "range": [
+            0,
+            255
+          ],
+          "description": "0-59, or 255 (0xFF) to match any minute."
+        },
+        {
+          "name": "seconds",
+          "type": "int",
+          "range": [
+            0,
+            255
+          ],
+          "description": "0-59, or 255 (0xFF) to match any second."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "clear_alarm"
+      ],
+      "symbol": "core_rtc_clear_alarm",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Clear the alarm (disable Alarm A).",
+      "params": [],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "rtc",
+        "alarm_fired"
+      ],
+      "symbol": "core_rtc_alarm_fired",
+      "header": "core_rtc.h",
+      "category": "rtc",
+      "description": "Check if the alarm has fired (poll mode). Clears the flag on read.",
+      "params": [],
+      "returns": "int",
+      "dsl_returns": "bool"
     },
     {
       "qname": [
