@@ -243,6 +243,14 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope):
         "params": dsl_params,
         "returns": sig["returns"],
     }
+    # DSL-visible return type — explicitly declared on the @tessera expose
+    # tag via `returns=<int|bool|float|string>`. Drives the DSL's import
+    # return-type clause (`import X.Y() -> int`) and makes the host
+    # callable as a CallExpr. Void hosts (no `returns=`) stay statement-
+    # only; this is orthogonal to the C-level `returns` field above which
+    # records the underlying C return type verbatim.
+    if "returns" in tag:
+        host["dsl_returns"] = tag["returns"]
     if "icon" in tag:
         host["icon"] = tag["icon"]
     if receiver:
