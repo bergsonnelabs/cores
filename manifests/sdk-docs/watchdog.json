@@ -1,0 +1,47 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@ae52eb1",
+  "category": "watchdog",
+  "label": "Core.Watchdog",
+  "icon": "🐕",
+  "header": "core_watchdog.h",
+  "functions": [
+    {
+      "name": "core_watchdog_start",
+      "signature": "core_watchdog_start(uint32_t timeout_ms)",
+      "returns": "void",
+      "brief": "Start the independent watchdog with a timeout in milliseconds. Selects the best prescaler/reload combination automatically. Common values: 1000, 2000, 5000, 10000 (max ~28000). WARNING: Once started, the IWDG cannot be stopped.",
+      "params": [
+        {
+          "name": "timeout_ms",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_watchdog_feed",
+      "signature": "core_watchdog_feed(void)",
+      "returns": "void",
+      "brief": "Feed the watchdog. Must be called before the timeout expires.",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_watchdog_caused_reset",
+      "signature": "core_watchdog_caused_reset(void)",
+      "returns": "int",
+      "brief": "Check if the last reset was caused by the watchdog.",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_watchdog_clear_flags",
+      "signature": "core_watchdog_clear_flags(void)",
+      "returns": "void",
+      "brief": "Clear all reset flags (call after checking cause).",
+      "params": [],
+      "tessera_exposed": false
+    }
+  ]
+}
