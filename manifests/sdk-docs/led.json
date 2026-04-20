@@ -1,0 +1,86 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@058457a",
+  "category": "led",
+  "label": "Core.LED",
+  "icon": "☀",
+  "header": "core_led.h",
+  "functions": [
+    {
+      "name": "core_led_init",
+      "signature": "core_led_init(void)",
+      "returns": "void",
+      "brief": "Enable the GPIO clock and configure the LED pin as a push-pull output. Call once after core_init(). The LED starts in the off state.",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_led_blink",
+      "signature": "core_led_blink(int n, int on_ms, int off_ms)",
+      "returns": "void",
+      "brief": "Blink the LED n times. Each cycle turns the LED on for on_ms milliseconds and off for off_ms milliseconds. Blocking — returns after the last off period.",
+      "params": [
+        {
+          "name": "n",
+          "ctype": "int",
+          "range": [
+            1,
+            100
+          ],
+          "description": "Number of times to blink."
+        },
+        {
+          "name": "on_ms",
+          "ctype": "int",
+          "range": [
+            1,
+            5000
+          ],
+          "unit": "ms",
+          "description": "LED-on duration per blink."
+        },
+        {
+          "name": "off_ms",
+          "ctype": "int",
+          "range": [
+            1,
+            5000
+          ],
+          "unit": "ms",
+          "description": "LED-off duration per blink."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_led_sos",
+      "signature": "core_led_sos(void)",
+      "returns": "void",
+      "brief": "Blink the SOS pattern (3 short, 3 long, 3 short) in an infinite loop. Use for unrecoverable errors. This function never returns.",
+      "params": [],
+      "tessera_exposed": false,
+      "attributes": [
+        "noreturn"
+      ]
+    },
+    {
+      "name": "core_led_heartbeat",
+      "signature": "core_led_heartbeat(int period_ms)",
+      "returns": "void",
+      "brief": "Toggle the LED and delay for period_ms. Call this in your main loop for a continuous alive indicator. Vary the period to signal different states (e.g., 50ms = fast/active, 500ms = idle).",
+      "params": [
+        {
+          "name": "period_ms",
+          "ctype": "int",
+          "range": [
+            0,
+            60000
+          ],
+          "unit": "ms",
+          "description": "Delay after the toggle. 0 toggles without waiting."
+        }
+      ],
+      "tessera_exposed": true
+    }
+  ]
+}

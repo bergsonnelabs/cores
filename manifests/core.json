@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@f726ee1",
+  "source": "cores@058457a",
   "categories": {
     "led": {
       "label": "Core.LED",
@@ -18,9 +18,9 @@
         "blink"
       ],
       "symbol": "core_led_blink",
-      "header": "hal_led.h",
+      "header": "core_led.h",
       "category": "led",
-      "description": "Blink the LED n times.",
+      "description": "Blink the LED n times. Each cycle turns the LED on for on_ms milliseconds and off for off_ms milliseconds. Blocking — returns after the last off period.",
       "params": [
         {
           "name": "n",
@@ -29,7 +29,7 @@
             1,
             100
           ],
-          "description": "Number of blinks."
+          "description": "Number of times to blink."
         },
         {
           "name": "on_ms",
@@ -60,9 +60,9 @@
         "heartbeat"
       ],
       "symbol": "core_led_heartbeat",
-      "header": "hal_led.h",
+      "header": "core_led.h",
       "category": "led",
-      "description": "Single heartbeat toggle — call in main loop for alive indicator.",
+      "description": "Toggle the LED and delay for period_ms. Call this in your main loop for a continuous alive indicator. Vary the period to signal different states (e.g., 50ms = fast/active, 500ms = idle).",
       "params": [
         {
           "name": "period_ms",
@@ -72,7 +72,7 @@
             60000
           ],
           "unit": "ms",
-          "description": "Time between LED toggles."
+          "description": "Delay after the toggle. 0 toggles without waiting."
         }
       ],
       "returns": "void"

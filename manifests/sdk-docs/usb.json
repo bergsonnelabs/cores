@@ -1,0 +1,164 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@058457a",
+  "category": "usb",
+  "label": "Core.USB",
+  "icon": "❝",
+  "header": "core_usb.h",
+  "functions": [
+    {
+      "name": "core_usb_init",
+      "signature": "core_usb_init(void)",
+      "returns": "void",
+      "brief": "Initialize USB CDC. Device appears as /dev/tty.usbmodem* on the host.",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_connected",
+      "signature": "core_usb_connected(void)",
+      "returns": "int",
+      "brief": "Returns 1 if a host terminal is connected (DTR set).",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_write",
+      "signature": "core_usb_write(const uint8_t * buf, uint16_t len)",
+      "returns": "int",
+      "brief": "Transmit data (blocking). Returns bytes sent, or -1 if not configured.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_print",
+      "signature": "core_usb_print(const char * s)",
+      "returns": "void",
+      "brief": "Print a string followed by a newline. Thin wrapper for DSL-style callers.",
+      "params": [
+        {
+          "name": "text",
+          "ctype": "const char *",
+          "description": "The message to print."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_usb_print_int",
+      "signature": "core_usb_print_int(int v)",
+      "returns": "void",
+      "brief": "Print a signed integer followed by a newline.",
+      "params": [
+        {
+          "name": "value",
+          "ctype": "int",
+          "description": "The integer to print (decimal)."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_usb_print_float",
+      "signature": "core_usb_print_float(double v)",
+      "returns": "void",
+      "brief": "Print a double with a newline. %g trims trailing zeros for readability.",
+      "params": [
+        {
+          "name": "value",
+          "ctype": "double",
+          "description": "The float to print."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_usb_print_bool",
+      "signature": "core_usb_print_bool(int v)",
+      "returns": "void",
+      "brief": "Print \"true\" / \"false\" followed by a newline.",
+      "params": [
+        {
+          "name": "value",
+          "ctype": "int",
+          "description": "The boolean to print."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_usb_on_receive",
+      "signature": "core_usb_on_receive(hal_usb_cdc_rx_cb_t cb, void * ctx)",
+      "returns": "void",
+      "brief": "Set a callback for received data. Called from USB ISR. When set, data is NOT buffered for polling reads.",
+      "params": [
+        {
+          "name": "cb",
+          "ctype": "hal_usb_cdc_rx_cb_t",
+          "description": "Callback: void cb(const uint8_t *data, uint16_t len, void *ctx)"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context passed to callback; may be NULL"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_available",
+      "signature": "core_usb_available(void)",
+      "returns": "uint16_t",
+      "brief": "Returns the number of bytes available to read (ring buffer mode).",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_getc",
+      "signature": "core_usb_getc(void)",
+      "returns": "uint8_t",
+      "brief": "Read a single byte (blocking — waits for data).",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_read",
+      "signature": "core_usb_read(uint8_t * buf, uint16_t max)",
+      "returns": "uint16_t",
+      "brief": "Read available bytes into buf (non-blocking). Returns bytes read.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "max",
+          "ctype": "uint16_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_usb_try_read",
+      "signature": "core_usb_try_read(uint8_t * byte)",
+      "returns": "int",
+      "brief": "Non-blocking single byte read. Returns 1 if a byte was read, 0 if empty.",
+      "params": [
+        {
+          "name": "byte",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "tessera_exposed": false
+    }
+  ]
+}

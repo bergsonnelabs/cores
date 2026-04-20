@@ -34,6 +34,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 CORE_OUT_DIR = ROOT / "manifests"
 TILE_OUT_DIR = ROOT / "kiln" / "manifests"
+SDK_DOCS_OUT_DIR = ROOT / "manifests" / "sdk-docs"
 
 C_TO_DSL = {
     "int": "int",
@@ -55,8 +56,7 @@ UNIT_VOCAB = {
 
 DOXY_BLOCK_RE = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 SIG_RE = re.compile(
-    r"^[ \t]*(?:static\s+inline\s+)?([\w\s\*]+?)\s+(\w+)\s*\(([^;{]*)\)",
-    re.MULTILINE,
+    r"(?:static\s+inline\s+)?([\w\s\*]+?)\s+(\w+)\s*\(([^;{]*)\)",
 )
 PARAM_RE = re.compile(
     r"^@param\s+(\S+)\s*(?:\{(\w+)\})?\s*(?:\[(-?[\d.]+)\.\.(-?[\d.]+)\])?\s*(.*)$"
@@ -145,8 +145,22 @@ def first_brief(lines):
 
 
 def extract_signature(source, after_offset):
-    tail = source[after_offset:]
-    m = SIG_RE.search(tail)
+    # Skip whitespace past the closing `*/` of the doxy block. The next
+    # non-whitespace character must be the start of a C declaration — not
+    # another comment, not a preprocessor directive. If it is, the doxy
+    # block wasn't attached to a declaration (e.g., a file-level header
+    # comment sitting above `#ifndef GUARD`) and we bail out. This stops
+    # the regex from skipping forward and matching text _inside_ a later
+    # doxygen block.
+    i = after_offset
+    while i < len(source) and source[i].isspace():
+        i += 1
+    if i >= len(source):
+        return None
+    head = source[i:i + 2]
+    if head.startswith("/") or head.startswith("#"):
+        return None
+    m = SIG_RE.match(source, i)
     if not m:
         return None
     ret = re.sub(r"\s+", " ", m.group(1)).strip()
@@ -239,11 +253,13 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope):
 
 
 def parse_header(path, scope):
-    """Return (hosts, sections).
+    """Return (hosts, sections, docs).
 
-    `sections` aggregates file-scope metadata declared via:
-      - `@tessera category <name> label=... icon=...`  (core scope)
-      - `@tessera tile label=... icon=...`             (tile scope)
+    `hosts` — palette-facing entries for functions tagged `@tessera expose`.
+    `sections` — file-scope metadata from `@tessera category`/`@tessera tile`.
+    `docs` — docs-facing entries for every documented function in the file,
+             whether or not it's Tessera-exposed. This is what feeds the
+             SDK reference pages on the website.
 
     Core-scope returns `sections = {"<category>": {label, icon}, ...}`.
     Tile-scope returns `sections = {"<tile>": {label, icon}}` with a single
@@ -252,6 +268,7 @@ def parse_header(path, scope):
     source = path.read_text()
     hosts = []
     sections = {}
+    docs = []
     for m in DOXY_BLOCK_RE.finditer(source):
         lines = strip_doxy(m.group(1))
         tags = parse_tessera_tags(lines)
@@ -269,15 +286,96 @@ def parse_header(path, scope):
                     "icon": attrs.get("icon", ""),
                 }
 
-        expose = next((a for v, _, a in tags if v == "expose"), None)
-        if not expose:
-            continue
         sig = extract_signature(source, m.end())
         if not sig:
-            print(f"warn: {path.name}: no signature after doxy block", file=sys.stderr)
+            # Floating doxygen block with no following function — fine,
+            # probably a file-level comment. Skip silently.
             continue
-        hosts.append(build_host_entry(expose, lines, sig, path.name, scope))
-    return hosts, sections
+
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        if expose:
+            hosts.append(build_host_entry(expose, lines, sig, path.name, scope))
+
+        # Docs entry: collect every function with a preceding doxygen block
+        # so the SDK reference page includes init / sos / etc. even though
+        # they're not palette-exposed.
+        docs.append(build_doc_entry(lines, sig, bool(expose), source, m.end()))
+    return hosts, sections, docs
+
+
+def build_doc_entry(doxy_lines, sig, tessera_exposed, source, doxy_end_offset):
+    """Build a docs-facing entry for the SDK reference pages.
+
+    Carries richer C-level detail than the palette `host` entry: C parameter
+    types (not DSL-mapped), attributes like `noreturn` pulled off the
+    declaration line, and the signature as a single string the website can
+    format. Params without `@param` lines still appear — their description
+    is empty — so hidden-but-documented functions (e.g., no-arg init) land
+    cleanly on the page.
+    """
+    description = first_brief(doxy_lines)
+    doxy_params = parse_params(doxy_lines)
+    by_name = {p["name"]: p for p in doxy_params}
+
+    doc_params = []
+    for i, cp in enumerate(sig["params"]):
+        # Prefer name-matched doxy meta; fall back to positional; fall back
+        # to the C param name when no doxy exists at all (e.g., a void-init).
+        meta = by_name.get(cp["name"]) or (
+            doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
+        )
+        entry = {
+            "name": meta.get("name", cp["name"]),
+            "ctype": cp["ctype"],
+        }
+        if "range" in meta:
+            entry["range"] = meta["range"]
+        if "unit" in meta:
+            entry["unit"] = meta["unit"]
+        if "description" in meta:
+            entry["description"] = meta["description"]
+        doc_params.append(entry)
+
+    signature = f"{sig['name']}(" + format_c_params(sig["params"]) + ")"
+    attributes = detect_attributes(source, doxy_end_offset, sig["name"])
+
+    entry = {
+        "name": sig["name"],
+        "signature": signature,
+        "returns": sig["returns"],
+        "brief": description,
+        "params": doc_params,
+        "tessera_exposed": tessera_exposed,
+    }
+    if attributes:
+        entry["attributes"] = attributes
+    return entry
+
+
+def format_c_params(params):
+    if not params:
+        return "void"
+    return ", ".join(f"{p['ctype']} {p['name']}" for p in params)
+
+
+def detect_attributes(source, after_offset, _fn_name):
+    """Pick up `__attribute__((...))` annotations on the declaration that
+    immediately follows the doxy block. Scans only up to the next `;` or
+    `{` — that's the end of this declaration. A wider window would leak
+    attributes from later functions (e.g., core_led_blink catching the
+    noreturn off a later forward-declared core_led_sos)."""
+    end = len(source)
+    for ch in (";", "{"):
+        idx = source.find(ch, after_offset)
+        if idx != -1 and idx < end:
+            end = idx
+    window = source[after_offset:end]
+    attrs = []
+    for match in re.finditer(r"__attribute__\s*\(\s*\(\s*(\w+)\s*\)\s*\)", window):
+        name = match.group(1)
+        if name == "noreturn" and "noreturn" not in attrs:
+            attrs.append("noreturn")
+    return attrs
 
 
 def source_commit():
@@ -302,14 +400,18 @@ def main():
 
     commit = source_commit()
 
-    core_sources = [
-        ROOT / "sdk/hal/hal_led.h",
-        ROOT / "sdk/core/core_usb.h",
-    ]
+    # Auto-discover every `sdk/core/core_*.h` header; anything without a
+    # `@tessera category` tag contributes nothing, so new modules opt in
+    # simply by adding the tag. No hand-maintained source list.
+    core_sources = sorted((ROOT / "sdk/core").glob("core_*.h"))
     core_hosts = []
     core_categories = {}
+    # Per-category docs — functions documented in each tagged header,
+    # keyed by the category's canonical name (led, usb, adc, ...). The
+    # website SDK pages consume these JSON files directly.
+    sdk_docs = {}
     for p in core_sources:
-        hosts, sections = parse_header(p, scope="core")
+        hosts, sections, docs = parse_header(p, scope="core")
         core_hosts.extend(hosts)
         for name, meta in sections.items():
             # First declaration wins — later duplicates are ignored so two
@@ -319,6 +421,15 @@ def main():
                 print(f"warn: category '{name}' redeclared in {p.name}", file=sys.stderr)
                 continue
             core_categories[name] = meta
+            sdk_docs[name] = {
+                "schema": "tessera-sdk-docs/v1",
+                "source": f"cores@{commit}",
+                "category": name,
+                "label": meta["label"],
+                "icon": meta["icon"],
+                "header": p.name,
+                "functions": docs,
+            }
 
     core_manifest = {
         "schema": "tessera-manifest/v1",
@@ -338,8 +449,13 @@ def main():
     ]
 
     targets = [(CORE_OUT_DIR / "core.json", core_manifest)]
+
+    # Per-category SDK docs JSONs — one file per `@tessera category`.
+    for category, doc in sdk_docs.items():
+        targets.append((SDK_DOCS_OUT_DIR / f"{category}.json", doc))
+
     for t in tile_sources:
-        hosts, sections = parse_header(t["path"], scope="tile")
+        hosts, sections, _docs = parse_header(t["path"], scope="tile")
         if len(sections) != 1:
             print(
                 f"warn: {t['path'].name}: expected exactly one @tessera tile tag, "
@@ -382,10 +498,12 @@ def main():
     for path, data in targets:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(serialize(data))
-        print(
-            f"wrote {path.relative_to(ROOT)}  "
-            f"({len(data['hosts'])} hosts, {len(data.get('events', []))} events)"
-        )
+        # Palette manifests carry `hosts`; SDK-docs carry `functions`.
+        if "hosts" in data:
+            summary = f"{len(data['hosts'])} hosts, {len(data.get('events', []))} events"
+        else:
+            summary = f"{len(data.get('functions', []))} functions"
+        print(f"wrote {path.relative_to(ROOT)}  ({summary})")
 
 
 if __name__ == "__main__":
