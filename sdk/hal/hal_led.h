@@ -24,7 +24,14 @@ static inline void core_led_init(void)
     LED_OFF();
 }
 
-/** Blink the LED n times. */
+/**
+ * Blink the LED n times.
+ *
+ * @tessera expose category=led icon=☀ name=blink
+ * @param n [1..100] Number of blinks.
+ * @param on_ms [1..5000] ms LED-on duration per blink.
+ * @param off_ms [1..5000] ms LED-off duration per blink.
+ */
 static inline void core_led_blink(int n, int on_ms, int off_ms)
 {
     for (int i = 0; i < n; i++) {
@@ -45,7 +52,12 @@ static inline void core_led_sos(void)
     }
 }
 
-/** Single heartbeat toggle — call in main loop for alive indicator. */
+/**
+ * Single heartbeat toggle — call in main loop for alive indicator.
+ *
+ * @tessera expose category=led icon=☀ name=heartbeat
+ * @param period_ms [0..60000] ms Time between LED toggles.
+ */
 static inline void core_led_heartbeat(int period_ms)
 {
     LED_TOGGLE();
