@@ -1,5 +1,7 @@
 /**
  * core_rtc.h — Real-time clock
+ *
+ * @tessera category rtc label=Core.RTC icon=◴
  */
 
 #ifndef CORE_RTC_H
@@ -12,8 +14,11 @@
  * ============================================================ */
 
 /**
- * Initialize the RTC using LSI (~32kHz internal RC).
- * For LSE, call ll_rtc_init(1) directly.
+ * Initialize the RTC using LSI (~32kHz internal RC). Call once from
+ * `on start` before setting time, date, or alarms.
+ * For LSE, call ll_rtc_init(1) directly in hand-written C.
+ *
+ * @tessera expose category=rtc name=init
  */
 static inline void core_rtc_init(void)
 {
@@ -24,7 +29,14 @@ static inline void core_rtc_init(void)
  * Time
  * ============================================================ */
 
-/** Set the time (24h format). */
+/**
+ * Set the time (24h format).
+ *
+ * @tessera expose category=rtc name=set_time
+ * @param h [0..23] Hours.
+ * @param m [0..59] Minutes.
+ * @param s [0..59] Seconds.
+ */
 static inline void core_rtc_set_time(uint8_t h, uint8_t m, uint8_t s)
 {
     ll_rtc_set_time(h, m, s);
@@ -40,7 +52,15 @@ static inline void core_rtc_get_time(uint8_t *h, uint8_t *m, uint8_t *s)
  * Date
  * ============================================================ */
 
-/** Set the date (year = 2-digit, weekday = 1–7 Mon–Sun). */
+/**
+ * Set the date.
+ *
+ * @tessera expose category=rtc name=set_date
+ * @param y [0..99] 2-digit year (2025 = 25).
+ * @param mo [1..12] Month.
+ * @param d [1..31] Day of month.
+ * @param wd [1..7] Weekday (1 = Mon, 7 = Sun).
+ */
 static inline void core_rtc_set_date(uint8_t y, uint8_t mo, uint8_t d,
                                       uint8_t wd)
 {
@@ -58,13 +78,22 @@ static inline void core_rtc_get_date(uint8_t *y, uint8_t *mo, uint8_t *d,
  * Periodic wakeup timer
  * ============================================================ */
 
-/** Configure a periodic wakeup timer (1–65535 seconds). */
+/**
+ * Configure a periodic wakeup timer.
+ *
+ * @tessera expose category=rtc name=wakeup
+ * @param seconds [1..65535] Wakeup interval in seconds.
+ */
 static inline void core_rtc_wakeup(uint32_t seconds)
 {
     ll_rtc_wakeup_config(seconds);
 }
 
-/** Disable the periodic wakeup timer. */
+/**
+ * Disable the periodic wakeup timer.
+ *
+ * @tessera expose category=rtc name=wakeup_stop
+ */
 static inline void core_rtc_wakeup_stop(void)
 {
     ll_rtc_wakeup_disable();
@@ -91,9 +120,10 @@ static inline void core_rtc_wakeup_stop(void)
  * Pass 0xFF for hours, minutes, or seconds to ignore that field.
  * The alarm fires when all non-masked fields match the RTC time.
  *
- * @param hours    0–23, or 0xFF to match any hour
- * @param minutes  0–59, or 0xFF to match any minute
- * @param seconds  0–59, or 0xFF to match any second
+ * @tessera expose category=rtc name=set_alarm
+ * @param hours   [0..255] 0-23, or 255 (0xFF) to match any hour.
+ * @param minutes [0..255] 0-59, or 255 (0xFF) to match any minute.
+ * @param seconds [0..255] 0-59, or 255 (0xFF) to match any second.
  */
 static inline void core_rtc_set_alarm(uint8_t hours, uint8_t minutes,
                                        uint8_t seconds)
@@ -101,13 +131,21 @@ static inline void core_rtc_set_alarm(uint8_t hours, uint8_t minutes,
     ll_rtc_alarm_a_set(hours, minutes, seconds);
 }
 
-/** Clear the alarm (disable Alarm A). */
+/**
+ * Clear the alarm (disable Alarm A).
+ *
+ * @tessera expose category=rtc name=clear_alarm
+ */
 static inline void core_rtc_clear_alarm(void)
 {
     ll_rtc_alarm_a_disable();
 }
 
-/** Check if the alarm has fired (poll mode). Clears the flag. */
+/**
+ * Check if the alarm has fired (poll mode). Clears the flag on read.
+ *
+ * @tessera expose category=rtc name=alarm_fired returns=bool
+ */
 static inline int core_rtc_alarm_fired(void)
 {
     if (ll_rtc_alarm_a_flag()) {

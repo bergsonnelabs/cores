@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@c5bf9ec",
+  "source": "cores@2b75c82",
   "category": "led",
   "label": "Core.LED",
   "icon": "☀",
