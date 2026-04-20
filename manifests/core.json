@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@97248fb",
+  "source": "cores@f1b74f9",
   "categories": {
     "led": {
       "label": "Core.LED",

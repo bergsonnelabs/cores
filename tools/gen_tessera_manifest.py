@@ -306,6 +306,11 @@ def parse_header(path, scope):
                     entry["description"] = attrs["description"]
                 if "icon" in attrs:
                     entry["icon"] = attrs["icon"]
+                if "mask" in attrs:
+                    # C expression the dispatcher AND's against the `events`
+                    # bitmask to detect this event firing. Typically a #define
+                    # from the tile driver header (e.g., ICM42686P_INT_TILT_DET).
+                    entry["mask"] = attrs["mask"]
                 events.append(entry)
 
         sig = extract_signature(source, m.end())
