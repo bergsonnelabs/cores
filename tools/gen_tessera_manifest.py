@@ -253,13 +253,17 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope):
 
 
 def parse_header(path, scope):
-    """Return (hosts, sections, docs).
+    """Return (hosts, sections, docs, events).
 
     `hosts` — palette-facing entries for functions tagged `@tessera expose`.
     `sections` — file-scope metadata from `@tessera category`/`@tessera tile`.
     `docs` — docs-facing entries for every documented function in the file,
              whether or not it's Tessera-exposed. This is what feeds the
              SDK reference pages on the website.
+    `events` — tile-event declarations from `@tessera event name=<id>
+               [description="..."] [payload=n:t,n:t,...]`. Produced only
+               for tile-scope headers; core headers currently don't own
+               events.
 
     Core-scope returns `sections = {"<category>": {label, icon}, ...}`.
     Tile-scope returns `sections = {"<tile>": {label, icon}}` with a single
@@ -269,6 +273,7 @@ def parse_header(path, scope):
     hosts = []
     sections = {}
     docs = []
+    events = []
     for m in DOXY_BLOCK_RE.finditer(source):
         lines = strip_doxy(m.group(1))
         tags = parse_tessera_tags(lines)
@@ -285,6 +290,23 @@ def parse_header(path, scope):
                     "label": label,
                     "icon": attrs.get("icon", ""),
                 }
+            elif verb == "event" and scope == "tile":
+                name = attrs.get("name")
+                if not name:
+                    print(
+                        f"warn: {path.name}: @tessera event missing name=",
+                        file=sys.stderr,
+                    )
+                    continue
+                entry = {
+                    "name": name,
+                    "payload": parse_event_payload(attrs.get("payload", "")),
+                }
+                if "description" in attrs:
+                    entry["description"] = attrs["description"]
+                if "icon" in attrs:
+                    entry["icon"] = attrs["icon"]
+                events.append(entry)
 
         sig = extract_signature(source, m.end())
         if not sig:
@@ -300,7 +322,25 @@ def parse_header(path, scope):
         # so the SDK reference page includes init / sos / etc. even though
         # they're not palette-exposed.
         docs.append(build_doc_entry(lines, sig, bool(expose), source, m.end()))
-    return hosts, sections, docs
+    return hosts, sections, docs, events
+
+
+def parse_event_payload(spec):
+    """Split a `payload=name:type,name:type,...` attribute into a list of
+    {name, type} dicts. Empty spec returns []; types default to int."""
+    if not spec:
+        return []
+    out = []
+    for part in spec.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if ":" in part:
+            name, typ = part.split(":", 1)
+            out.append({"name": name.strip(), "type": typ.strip()})
+        else:
+            out.append({"name": part, "type": "int"})
+    return out
 
 
 def build_doc_entry(doxy_lines, sig, tessera_exposed, source, doxy_end_offset):
@@ -411,7 +451,7 @@ def main():
     # website SDK pages consume these JSON files directly.
     sdk_docs = {}
     for p in core_sources:
-        hosts, sections, docs = parse_header(p, scope="core")
+        hosts, sections, docs, _events = parse_header(p, scope="core")
         core_hosts.extend(hosts)
         for name, meta in sections.items():
             # First declaration wins — later duplicates are ignored so two
@@ -461,7 +501,7 @@ def main():
         targets.append((SDK_DOCS_OUT_DIR / f"{category}.json", doc))
 
     for t in tile_sources:
-        hosts, sections, _docs = parse_header(t["path"], scope="tile")
+        hosts, sections, _docs, events = parse_header(t["path"], scope="tile")
         if len(sections) != 1:
             print(
                 f"warn: {t['path'].name}: expected exactly one @tessera tile tag, "
@@ -483,7 +523,7 @@ def main():
             },
             "handle": {"type": "tile_t", "init": t["init"]},
             "hosts": hosts,
-            "events": [],
+            "events": events,
         }
         targets.append((TILE_OUT_DIR / f"{t['path'].stem}.json", manifest))
 
