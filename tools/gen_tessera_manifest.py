@@ -446,6 +446,12 @@ def main():
             "init": "tile_disp_rgbw_init",
             "version": "1.0.0",
         },
+        {
+            "path": ROOT / "kiln/drivers/tile_sense_i_6p6.h",
+            "prefix": "tile_sense_i_6p6",
+            "init": "tile_sense_i_6p6_init",
+            "version": "1.0.0",
+        },
     ]
 
     targets = [(CORE_OUT_DIR / "core.json", core_manifest)]
