@@ -1,7 +1,11 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@806eae3",
+  "source": "cores@a56d854",
   "categories": {
+    "adc": {
+      "label": "Core.ADC",
+      "icon": "◐"
+    },
     "led": {
       "label": "Core.LED",
       "icon": "☀"
@@ -24,6 +28,78 @@
     }
   },
   "hosts": [
+    {
+      "qname": [
+        "adc",
+        "read"
+      ],
+      "symbol": "core_adc_read_pad",
+      "header": "core_adc.h",
+      "category": "adc",
+      "description": "Read a pad as raw ADC counts (0–4095 at 12-bit resolution).",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number configured as an ADC input in project.json."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "adc",
+        "read_mv"
+      ],
+      "symbol": "core_adc_read_mv_pad",
+      "header": "core_adc.h",
+      "category": "adc",
+      "description": "Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).",
+      "params": [
+        {
+          "name": "pad",
+          "type": "int",
+          "range": [
+            1,
+            64
+          ],
+          "description": "Tile pad number configured as an ADC input in project.json."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "adc",
+        "temp_decidegc"
+      ],
+      "symbol": "core_adc_temp_decidegc",
+      "header": "core_adc.h",
+      "category": "adc",
+      "description": "Die temperature in tenths of deg C (e.g. 253 = 25.3 C). Dispatches to the default ADC instance.",
+      "params": [],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "adc",
+        "vdd_mv"
+      ],
+      "symbol": "core_adc_vdd_mv",
+      "header": "core_adc.h",
+      "category": "adc",
+      "description": "VDD supply voltage in millivolts (via VREFINT). Dispatches to the default ADC instance.",
+      "params": [],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
     {
       "qname": [
         "led",

@@ -25,6 +25,10 @@
 {% if spi_buses %}
 #include "hal_spi.h"
 {% endif %}
+{% if adc_config %}
+#include "hal_adc.h"
+#include "tal_adc.h"
+{% endif %}
 {% if usb_capable %}
 #include "hal_usb_cdc.h"
 #include "hal_dfu.h"
@@ -47,6 +51,10 @@ hal_i2c_t {{ bus.handle }};
 {% for bus in spi_buses %}
 hal_spi_t {{ bus.handle }};
 {% endfor %}
+{% endif %}
+{% if adc_config %}
+/* ---- ADC handle ---- */
+hal_adc_t {{ adc_config.handle }};
 {% endif %}
 {% if dac_enabled %}
 /* ---- DAC handle ---- */
@@ -271,6 +279,14 @@ void core_pads_init(void)
         hal_spi_config_t _{{ bus.handle }}_cfg = { .prescaler = {{ bus.prescaler }}, .cpol = {{ bus.cpol }}, .cpha = {{ bus.cpha }} };
         hal_spi_init(&{{ bus.handle }}, {{ bus.instance }}, &_{{ bus.handle }}_cfg);
     }
+{% endfor %}
+{% endif %}
+{% if adc_config %}
+
+    /* ---- ADC peripheral init ---- */
+    tal_adc_init(&{{ adc_config.handle }}, {{ adc_config.resolution }});
+{% for p in adc_config.pads %}
+    tal_adc_add_pad(&{{ adc_config.handle }}, {{ p.pad }}, {{ adc_config.sampling }});
 {% endfor %}
 {% endif %}
 }

@@ -27,6 +27,13 @@ extern hal_i2c_t {{ bus.handle }};
 extern hal_spi_t {{ bus.handle }};
 {% endfor %}
 {% endif %}
+{% if adc_config %}
+
+#include "hal_adc.h"
+
+/* ---- Auto-generated ADC handle ---- */
+extern hal_adc_t {{ adc_config.handle }};
+{% endif %}
 
 /**
  * Initialize the core: clock tree, flash latency, and configured pads.

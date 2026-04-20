@@ -4,6 +4,8 @@
  * The primary ADC API. All functions use tile pad numbers.
  * Channels, instances, and clocks are resolved automatically
  * from the project configuration.
+ *
+ * @tessera category adc label=Core.ADC icon=◐
  */
 
 #ifndef CORE_ADC_H
@@ -13,6 +15,11 @@
 
 /** Core-level ADC handle. Alias for hal_adc_t — use this in application code. */
 typedef hal_adc_t core_adc_t;
+
+/** Default ADC instance — emitted by coregen into core_init.c when the
+ * project declares any ADC pad. Today this is always `core_adc1`; multi-ADC
+ * (Core.H) lands when tile JSON grows per-pad peripheral tagging. */
+extern core_adc_t core_adc1;
 
 /* ============================================================
  * Sampling speed aliases
@@ -67,6 +74,61 @@ static inline uint16_t core_adc_read(core_adc_t *adc, uint8_t pad)
 static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
 {
     return tal_adc_read_pad_mv(adc, pad);
+}
+
+/* ============================================================
+ * Pad-oriented wrappers (default-instance convention)
+ * ============================================================
+ *
+ * These dispatch to the coregen-emitted default handle (`core_adc1`) so
+ * the caller never has to pick an ADC peripheral. project.json drives the
+ * handle into existence via `build_adc_config()` + `core_pads_init()`;
+ * if no ADC pad is configured, calling these wrappers fails to link
+ * — the correct outcome.
+ */
+
+/**
+ * Read a pad as raw ADC counts (0–4095 at 12-bit resolution).
+ *
+ * @tessera expose category=adc name=read returns=int
+ * @param pad [1..64] Tile pad number configured as an ADC input in project.json.
+ */
+static inline int core_adc_read_pad(uint8_t pad)
+{
+    return (int)tal_adc_read_pad(&core_adc1, pad);
+}
+
+/**
+ * Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).
+ *
+ * @tessera expose category=adc name=read_mv returns=int
+ * @param pad [1..64] Tile pad number configured as an ADC input in project.json.
+ */
+static inline int core_adc_read_mv_pad(uint8_t pad)
+{
+    return (int)tal_adc_read_pad_mv(&core_adc1, pad);
+}
+
+/**
+ * Die temperature in tenths of deg C (e.g. 253 = 25.3 C).
+ * Dispatches to the default ADC instance.
+ *
+ * @tessera expose category=adc name=temp_decidegc returns=int
+ */
+static inline int core_adc_temp_decidegc(void)
+{
+    return (int)tal_adc_read_temp_decidegc(&core_adc1);
+}
+
+/**
+ * VDD supply voltage in millivolts (via VREFINT).
+ * Dispatches to the default ADC instance.
+ *
+ * @tessera expose category=adc name=vdd_mv returns=int
+ */
+static inline int core_adc_vdd_mv(void)
+{
+    return (int)tal_adc_read_vdda_mv(&core_adc1);
 }
 
 /* ============================================================

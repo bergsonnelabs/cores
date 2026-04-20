@@ -701,6 +701,51 @@ I2C_TIMING_MAP = {
 I2C_MIN_CLOCK = {100000: 1, 400000: 4, 1000000: 16}
 
 
+# ---- ADC config ----
+
+# Pattern matches ADC function names in tile JSON / project.json:
+#   "ADC"        (bare peripheral name, channel inferred from pad)
+#   "ADC7"       (channel number, Core.L/U-style)
+#   "ADC7+"      (single-ended positive input, Core.H-style)
+#   "ADC_IN3"    (legacy alias)
+#   "ADCIN3"     (another legacy alias)
+# Intentionally rejects the negative-input variant ("ADC3-") since single-ended
+# differential mode isn't DSL-safe today.
+_ADC_FUNC_RE = re.compile(r'^ADC(?:_?IN)?\d*\+?$')
+
+
+def build_adc_config(config):
+    """Detect ADC use from pad assignments and build the ADC config dict.
+
+    Scans `config.pads` for analog functions whose name starts with "ADC"
+    (single-ended positive inputs only — differential "-" variants are
+    excluded until the HAL exposes them). Returns a dict shaped for the
+    `core_init.{h,c}.j2` templates, or None when no ADC pad is configured.
+
+    Today emits exactly one handle (`core_adc1`) regardless of which ADC
+    peripheral a given pad is actually wired to. Correct for Core.L / Core.U /
+    Core.W (single ADC). For Core.H the two ADC peripherals share channel-
+    number namespaces and the tile JSON doesn't yet tag which peripheral
+    each pad belongs to; when a multi-ADC project lands we'll extend this
+    to emit `core_adc1` + `core_adc2` and dispatch per-pad. Until then this
+    comment is the migration flag.
+    """
+    pads = config.get("pads", config.get("pins", {}))
+    adc_pads = []
+    for pad_num, func in sorted(pads.items(), key=lambda kv: int(kv[0])):
+        if _ADC_FUNC_RE.match(func):
+            adc_pads.append({"pad": pad_num, "function": func})
+    if not adc_pads:
+        return None
+    return {
+        "handle": "core_adc1",
+        "instance_var": "core_adc1",  # same as handle for single-ADC mode
+        "resolution": "HAL_ADC_RES_12BIT",
+        "sampling": "HAL_ADC_SAMP_MED",
+        "pads": adc_pads,
+    }
+
+
 def build_i2c_config(config, mcu, clock_config):
     """Detect I2C buses from pin assignments and build I2C config list.
 
@@ -1173,6 +1218,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
         ctx["spi_buses"] = build_spi_config(project, mcu, pad_map)
+        ctx["adc_config"] = build_adc_config(project)
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
         _hsi16_i2c_parts = {"STM32WBA55xx"}
