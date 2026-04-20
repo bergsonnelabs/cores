@@ -21,6 +21,8 @@
  *       do_work();
  *       core_watchdog_feed();
  *   }
+ *
+ * @tessera category watchdog label=Core.Watchdog icon=🐕
  */
 
 #ifndef CORE_WATCHDOG_H
@@ -59,7 +61,11 @@ static inline void core_watchdog_start(uint32_t timeout_ms)
     ll_iwdg_init(LL_IWDG_PSC_256, 4095);
 }
 
-/** Feed the watchdog. Must be called before the timeout expires. */
+/**
+ * Feed the watchdog. Must be called before the timeout expires.
+ *
+ * @tessera expose category=watchdog name=feed
+ */
 static inline void core_watchdog_feed(void)
 {
     ll_iwdg_refresh();

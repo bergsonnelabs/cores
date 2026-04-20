@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@51f47eb",
+  "source": "cores@ae52eb1",
   "categories": {
     "led": {
       "label": "Core.LED",
@@ -9,6 +9,10 @@
     "usb": {
       "label": "Core.USB",
       "icon": "❝"
+    },
+    "watchdog": {
+      "label": "Core.Watchdog",
+      "icon": "🐕"
     }
   },
   "hosts": [
@@ -173,6 +177,18 @@
           "Core.H"
         ]
       }
+    },
+    {
+      "qname": [
+        "watchdog",
+        "feed"
+      ],
+      "symbol": "core_watchdog_feed",
+      "header": "core_watchdog.h",
+      "category": "watchdog",
+      "description": "Feed the watchdog. Must be called before the timeout expires.",
+      "params": [],
+      "returns": "void"
     }
   ],
   "events": []
