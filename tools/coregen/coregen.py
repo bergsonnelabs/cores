@@ -701,6 +701,80 @@ I2C_TIMING_MAP = {
 I2C_MIN_CLOCK = {100000: 1, 400000: 4, 1000000: 16}
 
 
+# ---- UART (USART) config ----
+#
+# Scope for the first pilot: USART1/2/3 only. LPUART has separate clock
+# mux rules (wake-from-Stop, HSI16 vs PCLK) that deserve their own pass.
+# Once that lands, add an LPUART_CLK_MAP alongside this one.
+
+USART_CLK_MAP = {
+    # (family_define, usart_num) → (clk_enable_func, clk_bitmask, pclk_symbol)
+    ("STM32L011xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_USART2", "PCLK1_HZ"),
+
+    ("STM32L422xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_USART1", "PCLK2_HZ"),
+    ("STM32L422xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_USART2", "PCLK1_HZ"),
+
+    ("STM32WBA55xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_USART1", "PCLK2_HZ"),
+    ("STM32WBA55xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_USART2", "PCLK1_HZ"),
+
+    ("STM32H523xx", 1): ("ll_rcc_apb2_clk_enable", "LL_APB2_USART1", "PCLK2_HZ"),
+    ("STM32H523xx", 2): ("ll_rcc_apb1_clk_enable", "LL_APB1_USART2", "PCLK1_HZ"),
+    ("STM32H523xx", 3): ("ll_rcc_apb1_clk_enable", "LL_APB1_USART3", "PCLK1_HZ"),
+}
+
+
+def build_usart_config(config, mcu):
+    """Detect USART peripherals from pad assignments and build a config list.
+
+    Scans `config.pads` for functions matching `USART<n>.(TX|RX)` and returns
+    one dict per used peripheral. Per-peripheral baud (and any future
+    parameters like parity / word-length) come from `interfaces.USART<n>`
+    in project.json; default baud is 115200.
+
+    Returns [] when no USART pad is configured. LPUART is intentionally
+    out of scope for this pilot — its clock mux deserves its own pass.
+    """
+    family_define = mcu["define"]
+    iface_cfg = config.get("interfaces", {})
+    pads = config.get("pads", config.get("pins", {}))
+
+    usart_numbers = set()
+    for _, func in pads.items():
+        m = re.match(r'^USART(\d+)\.(TX|RX)$', func)
+        if m:
+            usart_numbers.add(int(m.group(1)))
+
+    if not usart_numbers:
+        return []
+
+    buses = []
+    for num in sorted(usart_numbers):
+        name = f"USART{num}"
+        cfg = iface_cfg.get(name, {})
+        baud = cfg.get("baud", 115200)
+        rx_int = 1 if cfg.get("rx_interrupt", False) else 0
+
+        key = (family_define, num)
+        clk_info = USART_CLK_MAP.get(key)
+        if clk_info is None:
+            print(f"  ERROR: {name} clock mapping not defined for {family_define}")
+            sys.exit(1)
+        clk_func, clk_mask, pclk_symbol = clk_info
+
+        buses.append({
+            "num": num,
+            "instance": name,
+            "handle": f"core_usart{num}",
+            "clk_func": clk_func,
+            "clk_mask": clk_mask,
+            "pclk_symbol": pclk_symbol,
+            "baud": baud,
+            "rx_interrupt": rx_int,
+        })
+
+    return buses
+
+
 # ---- ADC config ----
 
 # Pattern matches ADC function names in tile JSON / project.json:
@@ -1218,6 +1292,7 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
         ctx["spi_buses"] = build_spi_config(project, mcu, pad_map)
+        ctx["usart_buses"] = build_usart_config(project, mcu)
         ctx["adc_config"] = build_adc_config(project)
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
