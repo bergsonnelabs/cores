@@ -72,7 +72,13 @@ def strip_doxy(body):
 
 
 def parse_tessera_tags(lines):
-    """Return every @tessera tag in the block as a list of (verb, positional, attrs)."""
+    """Return every @tessera tag in the block as a list of (verb, positional, attrs).
+
+    Brace-delimited bodies (e.g. `enum {KEY=label, ...}`) are extracted
+    before the rest of the line is split on whitespace so commas inside
+    the braces don't tear the body apart. The parsed body appears in
+    `attrs` under the key named by the token preceding the `{`.
+    """
     out = []
     for line in lines:
         m = re.match(r"@tessera\s+(\w+)\s*(.*)", line.strip())
@@ -80,6 +86,28 @@ def parse_tessera_tags(lines):
             continue
         verb = m.group(1)
         rest = m.group(2)
+
+        # Extract a single `<key> {...}` block so its contents (which
+        # may include commas) survive the whitespace split below.
+        # Only `enum` is recognised today; future brace keys (e.g.,
+        # `range { ... }` for explicit value lists) can slot in here
+        # without changing the outer tag shape.
+        brace_attrs = {}
+        brace_match = re.search(r"(\w+)\s*\{([^}]*)\}", rest)
+        if brace_match:
+            brace_key = brace_match.group(1)
+            brace_body = brace_match.group(2)
+            if brace_key == "enum":
+                brace_attrs["enum"] = parse_enum_body(brace_body)
+            else:
+                # Unknown brace key — surface via stderr so a typo doesn't
+                # silently disappear into the void.
+                print(
+                    f"warn: @tessera {verb}: unknown brace key '{brace_key}' — only 'enum' is recognised",
+                    file=sys.stderr,
+                )
+            rest = (rest[:brace_match.start()] + rest[brace_match.end():]).strip()
+
         positional = None
         attrs = {}
         for tok in rest.split():
@@ -88,7 +116,29 @@ def parse_tessera_tags(lines):
                 attrs[k] = v
             elif positional is None:
                 positional = tok
+        attrs.update(brace_attrs)
         out.append((verb, positional, attrs))
+    return out
+
+
+def parse_enum_body(body):
+    """Parse `K1=label1, K2=label2` into [{c_name, label}, ...].
+
+    Entries with no `=` use the C identifier as its own label. Whitespace
+    around keys and labels is stripped. Empty entries (trailing comma,
+    etc.) are ignored silently — they're a formatting artifact, not a
+    meaningful declaration.
+    """
+    out = []
+    for part in body.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "=" in part:
+            k, v = part.split("=", 1)
+            out.append({"c_name": k.strip(), "label": v.strip()})
+        else:
+            out.append({"c_name": part, "label": part})
     return out
 
 
@@ -196,9 +246,19 @@ def dsl_type_of(ctype, override):
     return f"?{ctype}"
 
 
-def build_host_entry(tag, doxy_lines, sig, header_name, scope):
+def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     description = first_brief(doxy_lines)
     doxy_params = parse_params(doxy_lines)
+
+    # Per-parameter tessera annotations — currently only `@tessera param
+    # <cname> enum {...}` carries useful metadata, but this is the seam
+    # for future per-param attributes (e.g., bitmasks, unit hints).
+    # Indexed by the positional C identifier so we can merge into the
+    # dsl_params loop below without altering doxy_params shape.
+    tessera_params = {}
+    for verb, positional, attrs in all_tags:
+        if verb == "param" and positional:
+            tessera_params[positional] = attrs
 
     receiver = None
     c_params = []
@@ -228,6 +288,14 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope):
             entry["unit"] = meta["unit"]
         if "description" in meta:
             entry["description"] = meta["description"]
+        # Attach enum labels when the author tagged this C param with
+        # `@tessera param <cname> enum {...}`. Matched by either the C
+        # identifier (`cp["name"]`) or the DSL-facing name — the latter
+        # catches the common pattern where @param renames a parameter
+        # for DSL friendliness.
+        tp = tessera_params.get(cp["name"]) or tessera_params.get(entry["name"])
+        if tp and "enum" in tp:
+            entry["enum"] = tp["enum"]
         dsl_params.append(entry)
 
     category = tag.get("category", "?")
@@ -342,7 +410,7 @@ def parse_header(path, scope):
 
         expose = next((a for v, _, a in tags if v == "expose"), None)
         if expose:
-            hosts.append(build_host_entry(expose, lines, sig, path.name, scope))
+            hosts.append(build_host_entry(expose, lines, sig, path.name, scope, tags))
 
         # Docs entry: collect every function with a preceding doxygen block
         # so the SDK reference page includes init / sos / etc. even though
