@@ -536,6 +536,18 @@ def main():
             "init": "tile_sense_i_6p6_init",
             "version": "1.0.0",
         },
+        {
+            "path": ROOT / "kiln/drivers/tile_drive_h.h",
+            "prefix": "tile_drive_h",
+            "init": "tile_drive_h_init",
+            "version": "1.0.0",
+        },
+        {
+            "path": ROOT / "kiln/drivers/tile_sense_mic.h",
+            "prefix": "tile_sense_mic",
+            "init": "tile_sense_mic_init",
+            "version": "1.0.0",
+        },
     ]
 
     targets = [(CORE_OUT_DIR / "core.json", core_manifest)]
