@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@c6ec669",
+  "source": "cores@73acef9",
   "category": "watchdog",
   "label": "Core.Watchdog",
   "icon": "🐕",
