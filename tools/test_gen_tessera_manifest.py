@@ -13,7 +13,9 @@ Run:
     python3 -m unittest tools.test_gen_tessera_manifest
 """
 
+import json
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -22,6 +24,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from gen_tessera_manifest import (  # noqa: E402
     build_host_entry,
+    load_bus_addresses,
     parse_enum_body,
     parse_tessera_tags,
 )
@@ -311,6 +314,103 @@ class DoxyParamNameAlignmentAfterStripping(unittest.TestCase):
         # meta on channel and drop the [0..3] range.
         self.assertEqual(by_name["channel"].get("range"), [0, 3])
         self.assertIn("ADC channel", by_name["channel"].get("description", ""))
+
+
+class LoadBusAddresses(unittest.TestCase):
+    """`load_bus_addresses` reads a kiln tile-definition JSON and
+    surfaces `interfaces[].parameters.addresses` onto the manifest,
+    keyed by bus name."""
+
+    def _write_def(self, payload):
+        tmp = Path(tempfile.mkstemp(suffix=".json")[1])
+        tmp.write_text(json.dumps(payload))
+        self.addCleanup(tmp.unlink)
+        return tmp
+
+    def test_none_path_returns_empty(self):
+        self.assertEqual(load_bus_addresses(None), {})
+
+    def test_missing_file_returns_empty(self):
+        missing = Path("/tmp/does-not-exist-tessera-test.json")
+        self.assertEqual(load_bus_addresses(missing), {})
+
+    def test_invalid_json_returns_empty(self):
+        tmp = Path(tempfile.mkstemp(suffix=".json")[1])
+        tmp.write_text("{not valid")
+        self.addCleanup(tmp.unlink)
+        self.assertEqual(load_bus_addresses(tmp), {})
+
+    def test_extracts_i2c_addresses_with_default(self):
+        tmp = self._write_def({
+            "interfaces": [
+                {
+                    "name": "I2C",
+                    "parameters": {
+                        "addresses": [
+                            {"address": "0x69", "is_default": True},
+                            {"address": "0x68"},
+                        ],
+                    },
+                }
+            ]
+        })
+        self.assertEqual(
+            load_bus_addresses(tmp),
+            {"I2C": [
+                {"address": "0x69", "is_default": True},
+                {"address": "0x68"},
+            ]},
+        )
+
+    def test_strips_extra_fields_from_address_entries(self):
+        # Schema-growth safety: if the tile-def format adds fields per
+        # address (e.g., a future `pad_select`), we don't leak them
+        # into the manifest until we explicitly surface them. Keeps
+        # the manifest shape stable across tile-def schema bumps.
+        tmp = self._write_def({
+            "interfaces": [
+                {
+                    "name": "I2C",
+                    "parameters": {
+                        "addresses": [
+                            {"address": "0x50", "future_field": "ignored"},
+                        ],
+                    },
+                }
+            ]
+        })
+        self.assertEqual(
+            load_bus_addresses(tmp),
+            {"I2C": [{"address": "0x50"}]},
+        )
+
+    def test_skips_interfaces_without_addresses(self):
+        # I3C (dynamic address assignment) and SPI (CS-based) typically
+        # carry no `addresses` list. Omitting them from the output lets
+        # the frontend treat "bus key present" as a positive signal
+        # that an address variant is selectable for this bus.
+        tmp = self._write_def({
+            "interfaces": [
+                {"name": "I3C", "parameters": {"max_clock_speed": "12.5MHz"}},
+                {"name": "SPI", "parameters": {}},
+                {
+                    "name": "I2C",
+                    "parameters": {"addresses": [{"address": "0x42"}]},
+                },
+            ]
+        })
+        result = load_bus_addresses(tmp)
+        self.assertIn("I2C", result)
+        self.assertNotIn("I3C", result)
+        self.assertNotIn("SPI", result)
+
+    def test_empty_interfaces_list_returns_empty(self):
+        tmp = self._write_def({"interfaces": []})
+        self.assertEqual(load_bus_addresses(tmp), {})
+
+    def test_no_interfaces_key_returns_empty(self):
+        tmp = self._write_def({"name": "x"})
+        self.assertEqual(load_bus_addresses(tmp), {})
 
 
 if __name__ == "__main__":
