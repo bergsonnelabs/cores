@@ -260,24 +260,76 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         if verb == "param" and positional:
             tessera_params[positional] = attrs
 
+    # `@tessera out_buffer <cname> type=... length=...` identifies which
+    # C parameter is actually an output buffer — the driver writes into
+    # it and returns void. The DSL wants to see this as an array return,
+    # not a pointer-in, so we strip the param from the DSL-visible list
+    # and emit `c_out_buffer` metadata for the frontend resolver.
+    out_buffers = {}
+    for verb, positional, attrs in all_tags:
+        if verb != "out_buffer" or not positional:
+            continue
+        if "type" not in attrs or "length" not in attrs:
+            print(
+                f"warn: {sig['name']}: @tessera out_buffer {positional} missing type= or length=",
+                file=sys.stderr,
+            )
+            continue
+        try:
+            length = int(attrs["length"])
+        except ValueError:
+            print(
+                f"warn: {sig['name']}: @tessera out_buffer {positional} length={attrs['length']!r} must be an integer",
+                file=sys.stderr,
+            )
+            continue
+        out_buffers[positional] = {"type": attrs["type"], "length": length}
+
     receiver = None
     c_params = []
     for sp in sig["params"]:
         norm = sp["ctype"].replace(" *", "*").replace("* ", "*").strip()
         if norm == "tile_t*":
             receiver = sp["ctype"]
+        elif sp["name"] in out_buffers:
+            # Drop the out-buffer param from the DSL-facing list; its
+            # presence is carried by host["c_out_buffer"] below.
+            continue
         else:
             c_params.append(sp)
 
-    if len(doxy_params) != len(c_params):
+    # Warn when out_buffer annotations don't line up with the C
+    # signature — catches typos (`@tessera out_buffer buf` when the
+    # param is named `buffer`).
+    c_param_names = {sp["name"] for sp in sig["params"]}
+    for cname in out_buffers:
+        if cname not in c_param_names:
+            print(
+                f"warn: {sig['name']}: @tessera out_buffer {cname} doesn't match any C parameter",
+                file=sys.stderr,
+            )
+
+    if len(doxy_params) != len(c_params) + len(out_buffers):
+        # out_buffer params usually have their own @param line (useful
+        # for docs), but they're stripped from the DSL-visible count.
+        # We still emit the warning if the totals don't match even
+        # accounting for stripped buffers.
         print(
-            f"warn: {sig['name']}: @param count {len(doxy_params)} != C arg count {len(c_params)}",
+            f"warn: {sig['name']}: @param count {len(doxy_params)} != C arg count {len(c_params)} + out_buffer count {len(out_buffers)}",
             file=sys.stderr,
         )
 
+    # Index doxy params by their declared C name so we survive a
+    # stripped out_buffer in the middle of the list (positional index
+    # would misalign). Fall back to positional alignment for params
+    # that don't match by name (e.g., author renamed the DSL param in
+    # the @param line without touching the C signature).
+    doxy_by_name = {p["name"]: p for p in doxy_params}
     dsl_params = []
     for i, cp in enumerate(c_params):
-        meta = doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
+        meta = doxy_by_name.get(cp["name"])
+        if meta is None:
+            meta = doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
         entry = {
             "name": meta["name"],
             "type": dsl_type_of(cp["ctype"], meta.get("type_override")),
@@ -288,14 +340,23 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             entry["unit"] = meta["unit"]
         if "description" in meta:
             entry["description"] = meta["description"]
-        # Attach enum labels when the author tagged this C param with
-        # `@tessera param <cname> enum {...}`. Matched by either the C
-        # identifier (`cp["name"]`) or the DSL-facing name — the latter
-        # catches the common pattern where @param renames a parameter
-        # for DSL friendliness.
+        # Attach per-param tessera annotations when present. Matched by
+        # either the C identifier (`cp["name"]`) or the DSL-facing name
+        # — the latter catches the common pattern where @param renames
+        # a parameter for DSL friendliness.
+        #
+        #   - `type=<dsl_type>` overrides the C-inferred DSL type. Used
+        #     for array-in-param annotations like `type=int[16]` where
+        #     the C type is a pointer but the DSL sees a fixed-length
+        #     array.
+        #   - `enum {K=label, ...}` attaches friendly labels for
+        #     int-valued enum C params.
         tp = tessera_params.get(cp["name"]) or tessera_params.get(entry["name"])
-        if tp and "enum" in tp:
-            entry["enum"] = tp["enum"]
+        if tp:
+            if "type" in tp:
+                entry["type"] = tp["type"]
+            if "enum" in tp:
+                entry["enum"] = tp["enum"]
         dsl_params.append(entry)
 
     category = tag.get("category", "?")
@@ -321,6 +382,19 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         host["dsl_returns"] = tag["returns"]
     if "icon" in tag:
         host["icon"] = tag["icon"]
+    # Array-returning hosts: the frontend needs the element type +
+    # length to declare the right stack buffer before the call. We
+    # only support one out-buffer per host (matching the manifest
+    # schema on the consumer side). Multiple annotations collapse
+    # to the first with a warning.
+    if out_buffers:
+        if len(out_buffers) > 1:
+            print(
+                f"warn: {sig['name']}: multiple @tessera out_buffer annotations — only one out-buffer per host is supported (using the first)",
+                file=sys.stderr,
+            )
+        first_name = next(iter(out_buffers))
+        host["c_out_buffer"] = out_buffers[first_name]
     if receiver:
         host["receiver"] = receiver.strip()
     if "availability" in tag:
