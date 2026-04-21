@@ -182,5 +182,136 @@ class BuildHostEntryEnum(unittest.TestCase):
         self.assertNotIn("enum", host["params"][0])
 
 
+class BuildHostEntryOutBuffer(unittest.TestCase):
+    """`@tessera out_buffer <cname> type=... length=...` strips the
+    param from the DSL-facing list and emits `c_out_buffer` on the host.
+    """
+
+    def _build(self, extra_lines=None):
+        doxy_lines = [
+            "@brief Read raw accelerometer [X, Y, Z].",
+            "@tessera expose category=tile name=get_raw_accels returns=int[3]",
+            "@tessera out_buffer buffer type=int16_t length=3",
+            "@param buffer Caller-owned buffer receiving the 3 axes.",
+        ]
+        if extra_lines:
+            doxy_lines.extend(extra_lines)
+        tags = parse_tessera_tags(doxy_lines)
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        sig = {
+            "returns": "void",
+            "name": "tile_sense_i_6p6_get_raw_accels",
+            "params": [
+                {"name": "tile", "ctype": "tile_t *"},
+                {"name": "buffer", "ctype": "int16_t *"},
+            ],
+        }
+        return build_host_entry(
+            expose, doxy_lines, sig, "tile_sense_i_6p6.h",
+            scope="tile", all_tags=tags,
+        )
+
+    def test_out_buffer_stripped_from_params(self):
+        host = self._build()
+        # Buffer param should not appear in DSL-facing params.
+        param_names = [p["name"] for p in host["params"]]
+        self.assertNotIn("buffer", param_names)
+
+    def test_c_out_buffer_metadata_emitted(self):
+        host = self._build()
+        self.assertEqual(
+            host["c_out_buffer"],
+            {"type": "int16_t", "length": 3},
+        )
+
+    def test_dsl_returns_carries_array_type(self):
+        host = self._build()
+        self.assertEqual(host["dsl_returns"], "int[3]")
+
+    def test_no_out_buffer_no_field(self):
+        # Without @tessera out_buffer, c_out_buffer must be absent even
+        # on void-returning hosts. Gatekeeps against a future default
+        # that would emit it unconditionally.
+        doxy_lines = [
+            "@tessera expose category=tile name=sleep",
+        ]
+        tags = parse_tessera_tags(doxy_lines)
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        sig = {
+            "returns": "void",
+            "name": "tile_x_sleep",
+            "params": [{"name": "tile", "ctype": "tile_t *"}],
+        }
+        host = build_host_entry(expose, doxy_lines, sig, "x.h", scope="tile", all_tags=tags)
+        self.assertNotIn("c_out_buffer", host)
+
+
+class BuildHostEntryArrayInParam(unittest.TestCase):
+    """`@tessera param <cname> type=int[N]` overrides the DSL type for
+    a pointer-typed C param so it appears as a fixed-length array in
+    the manifest."""
+
+    def test_array_in_param_type_override(self):
+        doxy_lines = [
+            "@tessera expose category=tile name=play_sequence",
+            "@tessera param effects type=int[16]",
+            "@param effects Array of effect indices.",
+            "@param count Number of effects.",
+        ]
+        tags = parse_tessera_tags(doxy_lines)
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        sig = {
+            "returns": "void",
+            "name": "tile_drive_h_play_sequence",
+            "params": [
+                {"name": "tile", "ctype": "tile_t *"},
+                {"name": "effects", "ctype": "const uint8_t *"},
+                {"name": "count", "ctype": "uint8_t"},
+            ],
+        }
+        host = build_host_entry(
+            expose, doxy_lines, sig, "tile_drive_h.h",
+            scope="tile", all_tags=tags,
+        )
+        by_name = {p["name"]: p for p in host["params"]}
+        self.assertEqual(by_name["effects"]["type"], "int[16]")
+        # count stays int (no override)
+        self.assertEqual(by_name["count"]["type"], "int")
+
+
+class DoxyParamNameAlignmentAfterStripping(unittest.TestCase):
+    """When @tessera out_buffer strips a param from the middle of the C
+    signature, remaining dsl_params still pick up the correct @param
+    metadata — aligned by name, not position."""
+
+    def test_out_buffer_doesnt_misalign_neighbour(self):
+        doxy_lines = [
+            "@tessera expose category=tile name=sample_many returns=int[3]",
+            "@tessera out_buffer buffer type=int16_t length=3",
+            "@param buffer Caller-owned buffer.",
+            "@param channel [0..3] ADC channel to sample.",
+        ]
+        tags = parse_tessera_tags(doxy_lines)
+        expose = next((a for v, _, a in tags if v == "expose"), None)
+        sig = {
+            "returns": "void",
+            "name": "tile_x_sample_many",
+            "params": [
+                {"name": "tile", "ctype": "tile_t *"},
+                {"name": "buffer", "ctype": "int16_t *"},
+                {"name": "channel", "ctype": "uint8_t"},
+            ],
+        }
+        host = build_host_entry(
+            expose, doxy_lines, sig, "x.h", scope="tile", all_tags=tags,
+        )
+        by_name = {p["name"]: p for p in host["params"]}
+        # channel should carry its own @param metadata, not buffer's.
+        # Without by-name alignment this would land the buffer's empty
+        # meta on channel and drop the [0..3] range.
+        self.assertEqual(by_name["channel"].get("range"), [0, 3])
+        self.assertIn("ADC channel", by_name["channel"].get("description", ""))
+
+
 if __name__ == "__main__":
     unittest.main()
