@@ -600,6 +600,54 @@ def serialize(data):
     return json.dumps(data, indent=2, ensure_ascii=False) + "\n"
 
 
+def load_bus_addresses(def_path):
+    """Extract per-bus address variants from a kiln tile-definition JSON.
+
+    Returns a dict keyed by bus name (upper-cased, e.g. "I2C"), each
+    value a list of `{address, is_default}` entries pulled verbatim
+    from `interfaces[name=<bus>].parameters.addresses`. Buses without
+    an `addresses` list (I3C's dynamic assignment, SPI's CS-based
+    selection) are omitted. Empty dict when the file is missing, the
+    JSON has no interfaces, or no interface carries addresses — the
+    frontend treats that as "one fixed address, no user choice".
+
+    No schema change to the tile-def format; the data is already
+    present for every tile with `parameters.addresses`. This helper
+    just surfaces it onto the tile manifest so Tessera can cap bus
+    capacity and render an address selector per-row.
+    """
+    if def_path is None:
+        return {}
+    try:
+        raw = json.loads(Path(def_path).read_text())
+    except FileNotFoundError:
+        print(f"warn: tile definition not found: {def_path}", file=sys.stderr)
+        return {}
+    except json.JSONDecodeError as err:
+        print(f"warn: tile definition {def_path} is invalid JSON: {err}", file=sys.stderr)
+        return {}
+
+    out = {}
+    for iface in raw.get("interfaces", []) or []:
+        name = iface.get("name")
+        if not isinstance(name, str):
+            continue
+        addrs = iface.get("parameters", {}).get("addresses", []) or []
+        if not addrs:
+            continue
+        # Copy each entry to strip any extra fields the tile-def schema
+        # may add later (keeps the manifest shape stable).
+        out[name] = [
+            {
+                "address": a["address"],
+                **({"is_default": True} if a.get("is_default") else {}),
+            }
+            for a in addrs
+            if isinstance(a, dict) and "address" in a
+        ]
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--check", action="store_true",
@@ -668,24 +716,32 @@ def main():
     tile_sources = [
         {
             "path": ROOT / "kiln/drivers/tile_disp_rgbw.h",
+            # No matching `Display.RGBW` tile definition in kiln/definitions/
+            # today — the placeholder `Display-RGB-a.json` has no
+            # interfaces populated. When the real Display.RGBW def lands,
+            # point `definition` at it and the address data flows.
+            "definition": None,
             "prefix": "tile_disp_rgbw",
             "init": "tile_disp_rgbw_init",
             "version": "1.0.0",
         },
         {
             "path": ROOT / "kiln/drivers/tile_sense_i_6p6.h",
+            "definition": ROOT / "kiln/definitions/Sense-I-6P6-a.json",
             "prefix": "tile_sense_i_6p6",
             "init": "tile_sense_i_6p6_init",
             "version": "1.0.0",
         },
         {
             "path": ROOT / "kiln/drivers/tile_drive_h.h",
+            "definition": ROOT / "kiln/definitions/Drive-H-a.json",
             "prefix": "tile_drive_h",
             "init": "tile_drive_h_init",
             "version": "1.0.0",
         },
         {
             "path": ROOT / "kiln/drivers/tile_sense_mic.h",
+            "definition": ROOT / "kiln/definitions/Sense-MIC-a.json",
             "prefix": "tile_sense_mic",
             "init": "tile_sense_mic_init",
             "version": "1.0.0",
@@ -723,6 +779,16 @@ def main():
             "hosts": hosts,
             "events": events,
         }
+        # Carry per-bus address variants from the kiln tile-def JSON so
+        # the frontend can cap how many instances of this tile fit on a
+        # bus (I2C: one per address) and surface a variant selector when
+        # the tile supports more than one. Absent/empty when the tile
+        # has no definition file or none of its interfaces declare
+        # addresses — the frontend treats that as "one fixed address,
+        # no user choice".
+        bus_addrs = load_bus_addresses(t.get("definition"))
+        if bus_addrs:
+            manifest["bus_addresses"] = bus_addrs
         targets.append((TILE_OUT_DIR / f"{t['path'].stem}.json", manifest))
 
     if args.check:
