@@ -79,6 +79,13 @@ void core_clock_init(void);
  * assigned in project.json.
  */
 void core_pads_init(void);
+
+/**
+ * Drain pending pad-edge events and dispatch DSL handlers. Called from
+ * the Tessera shim's main loop every iteration. Always safe to call —
+ * no-op when no pads have EXTI configured in project.json.
+ */
+void tessera_dispatch_core_pad(void);
 {% if tiles_config %}
 
 /* ---- Tile driver init recipe ----

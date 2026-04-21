@@ -44,6 +44,7 @@
 {% endif %}
 {% if pad_config and pad_config | selectattr("exti") | list %}
 #include "hal_exti.h"
+#include "hal_gpio.h"
 {% endif %}
 
 {% if i2c_buses %}
@@ -86,6 +87,56 @@ hal_timer_t *core_pwm_timer_for_pad(uint8_t pad)
 {% if adc_config %}
 /* ---- ADC handle ---- */
 hal_adc_t {{ adc_config.handle }};
+{% endif %}
+{% set exti_pads_global = pad_config | selectattr("exti") | list if pad_config else [] %}
+{% if exti_pads_global %}
+
+/* ---- Tessera pad-edge events ----
+ * Pending bitmaps latched by EXTI ISRs; drained by tessera_dispatch_core_pad()
+ * from the main loop. Weak default handlers let the DSL override when
+ * `on Core.Pad.rising/falling` blocks are present; absent, the dispatcher
+ * still runs but fires no-op handlers.
+ */
+static volatile uint32_t _tessera_pad_rising_pending;
+static volatile uint32_t _tessera_pad_falling_pending;
+
+static void _tessera_pad_edge_isr(void *ctx)
+{
+    uint32_t pad = (uint32_t)(uintptr_t)ctx;
+    if (hal_pad_read((uint8_t)pad)) {
+        _tessera_pad_rising_pending |= (1u << pad);
+    } else {
+        _tessera_pad_falling_pending |= (1u << pad);
+    }
+}
+
+/* Weak defaults — the DSL program overrides these when it has a
+ * matching `on Core.Pad.rising/falling` handler. With no handler, the
+ * dispatcher still runs (cheap — two 32-bit drains) and fires no-op. */
+__attribute__((weak)) void tessera_evt_Core_Pad_rising(int pad) { (void)pad; }
+__attribute__((weak)) void tessera_evt_Core_Pad_falling(int pad) { (void)pad; }
+
+void tessera_dispatch_core_pad(void)
+{
+    uint32_t mask = __atomic_exchange_n(&_tessera_pad_rising_pending, 0u, __ATOMIC_SEQ_CST);
+    while (mask) {
+        uint32_t pad = __builtin_ctz(mask);
+        mask &= ~(1u << pad);
+        tessera_evt_Core_Pad_rising((int)pad);
+    }
+    mask = __atomic_exchange_n(&_tessera_pad_falling_pending, 0u, __ATOMIC_SEQ_CST);
+    while (mask) {
+        uint32_t pad = __builtin_ctz(mask);
+        mask &= ~(1u << pad);
+        tessera_evt_Core_Pad_falling((int)pad);
+    }
+}
+{% else %}
+
+/* No pads with `exti` configured in project.json — dispatcher is a no-op.
+ * Always-callable contract lets the Tessera shim invoke it without
+ * caring about project contents. */
+void tessera_dispatch_core_pad(void) { }
 {% endif %}
 {% if dac_enabled %}
 /* ---- DAC handle ---- */
@@ -274,7 +325,7 @@ void core_pads_init(void)
 
     /* ---- EXTI (external interrupt) init ---- */
 {% for pin in exti_pads %}
-    hal_exti_enable({{ pin.pad }}, {{ "HAL_EXTI_RISING" if pin.exti == "rising" else ("HAL_EXTI_FALLING" if pin.exti == "falling" else "HAL_EXTI_BOTH") }}, NULL, NULL);
+    hal_exti_enable({{ pin.pad }}, {{ "HAL_EXTI_RISING" if pin.exti == "rising" else ("HAL_EXTI_FALLING" if pin.exti == "falling" else "HAL_EXTI_BOTH") }}, _tessera_pad_edge_isr, (void *)(uintptr_t){{ pin.pad }});
 {% endfor %}
 {% endif %}
 {% else %}
