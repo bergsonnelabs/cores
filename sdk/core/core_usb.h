@@ -4,7 +4,15 @@
  * Printf-style output, byte-level TX/RX, and receive callbacks
  * over the USB CDC (virtual COM port) interface.
  *
+ * Received bytes are drained from the ring buffer by coregen's
+ * `tessera_dispatch_core_usb()` each main-loop iteration (capped to
+ * 64 bytes per iteration so burst traffic doesn't starve the DSL
+ * loop). The DSL-facing `Core.USB.receive(byte)` event fires once
+ * per byte. Gated on `usb.enabled` in project.json — emits a no-op
+ * stub when USB isn't enabled.
+ *
  * @tessera category usb label=Core.USB icon=❝
+ * @tessera event name=receive payload=byte:int
  */
 
 #ifndef CORE_USB_H
