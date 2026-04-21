@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@81a030d",
+  "source": "cores@c6ec669",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -33,6 +33,10 @@
     "rtc": {
       "label": "Core.RTC",
       "icon": "◴"
+    },
+    "timer": {
+      "label": "Core.Timer",
+      "icon": "◷"
     },
     "timing": {
       "label": "Core.Timing",
@@ -881,6 +885,21 @@
         }
       ],
       "category": "pad"
+    },
+    {
+      "name": "tick",
+      "payload": [],
+      "category": "timer"
+    },
+    {
+      "name": "receive",
+      "payload": [
+        {
+          "name": "byte",
+          "type": "int"
+        }
+      ],
+      "category": "usb"
     }
   ]
 }

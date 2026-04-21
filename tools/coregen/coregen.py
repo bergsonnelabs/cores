@@ -1375,6 +1375,10 @@ def generate(tile_path, output_dir, project_path=None):
         ctx["usart_buses"] = build_usart_config(project, mcu)
         ctx["pwm_timers"] = build_pwm_config(project, mcu)
         ctx["adc_config"] = build_adc_config(project)
+        # Tessera tick dispatcher — polled from main loop via hal_tick().
+        # Null means "no tick configured" → coregen emits a no-op stub.
+        _timer_cfg = project.get("timer", {})
+        ctx["tessera_tick_ms"] = _timer_cfg.get("tick_ms")
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
         _hsi16_i2c_parts = {"STM32WBA55xx"}

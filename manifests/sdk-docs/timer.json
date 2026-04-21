@@ -1,0 +1,213 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@c6ec669",
+  "category": "timer",
+  "label": "Core.Timer",
+  "icon": "◷",
+  "header": "core_timer.h",
+  "functions": [
+    {
+      "name": "core_timer_init_freq",
+      "signature": "core_timer_init_freq(core_timer_t * h, TIM_TypeDef * instance, uint32_t freq_hz)",
+      "returns": "hal_status_t",
+      "brief": "Initialize a timer at a given overflow frequency. Use for PWM output and periodic tick — the frequency is how often the counter wraps (= the PWM frequency). core_timer_init_freq(&t, TIM2, 1000);   // overflows at 1 kHz",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "freq_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_init_tick",
+      "signature": "core_timer_init_tick(core_timer_t * h, TIM_TypeDef * instance, uint32_t tick_hz)",
+      "returns": "hal_status_t",
+      "brief": "Initialize a timer at a given tick rate, free-running to max count. Use for input capture — the tick rate sets the measurement resolution, and the counter runs as long as possible before wrapping (0xFFFF for 16-bit, 0xFFFFFFFF for 32-bit TIM2). core_timer_init_tick(&t, TIM2, 1000000);  // 1 us per tick core_timer_capture_init(&t, 1); core_timer_start(&t);",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "tick_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_start",
+      "signature": "core_timer_start(core_timer_t * h)",
+      "returns": "void",
+      "brief": "Start the timer counter.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_stop",
+      "signature": "core_timer_stop(core_timer_t * h)",
+      "returns": "void",
+      "brief": "Stop the timer counter.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_set_freq",
+      "signature": "core_timer_set_freq(core_timer_t * h, uint32_t freq_hz)",
+      "returns": "void",
+      "brief": "Change the timer frequency (recalculates PSC/ARR).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "freq_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_pwm_set",
+      "signature": "core_timer_pwm_set(core_timer_t * h, uint8_t channel, uint16_t duty_permil)",
+      "returns": "void",
+      "brief": "Set PWM duty cycle for a channel. channel:      1–4 duty_permil:  0–1000 (0 = off, 500 = 50%, 1000 = always on)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "duty_permil",
+          "ctype": "uint16_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_capture_init",
+      "signature": "core_timer_capture_init(core_timer_t * h, uint8_t channel)",
+      "returns": "void",
+      "brief": "Configure a channel for input capture (rising edge). The timer must already be initialized with core_timer_init().",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_capture_read",
+      "signature": "core_timer_capture_read(core_timer_t * h, uint8_t channel)",
+      "returns": "uint32_t",
+      "brief": "Read the last captured value from a channel.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_enable_tick",
+      "signature": "core_timer_enable_tick(core_timer_t * h, core_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Enable periodic tick on an already-initialized timer. Does NOT touch PSC/ARR — the timer keeps its existing timebase. The callback fires on each counter overflow at the timer's frequency. Typical pattern: core_timer_init(&t, TIM2, 1000);         // 1 kHz timebase core_timer_pwm_set(&t, 1, 500);          // CH1 = 50% PWM (permil) core_timer_enable_tick(&t, on_tick, NULL); // also fire ISR at 1 kHz core_timer_start(&t);",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "cb",
+          "ctype": "core_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_timer_disable_tick",
+      "signature": "core_timer_disable_tick(core_timer_t * h)",
+      "returns": "void",
+      "brief": "Disable the tick callback (clears UIE, keeps timer running).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_tick_init",
+      "signature": "core_tick_init(core_timer_t * h, TIM_TypeDef * instance, uint32_t period_us, core_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Convenience: initialize a timer as a tick-only source. Sets up the timebase AND enables the update interrupt. Use this when the timer's only job is a periodic callback. core_tick_init(&t, TIM3, 500000, on_tick, NULL);  // 2 Hz core_timer_start(&t);",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_timer_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "period_us",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cb",
+          "ctype": "core_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "tessera_exposed": false
+    }
+  ]
+}

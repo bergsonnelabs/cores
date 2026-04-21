@@ -86,6 +86,18 @@ void core_pads_init(void);
  * no-op when no pads have EXTI configured in project.json.
  */
 void tessera_dispatch_core_pad(void);
+
+/**
+ * Fire the Tessera tick handler once per configured `timer.tick_ms`.
+ * No-op when no tick period is set. Always safe to call.
+ */
+void tessera_dispatch_core_timer(void);
+
+/**
+ * Drain the USB CDC RX ring and fire the Tessera byte-receive handler
+ * (capped at 64 bytes per call). No-op when USB isn't enabled.
+ */
+void tessera_dispatch_core_usb(void);
 {% if tiles_config %}
 
 /* ---- Tile driver init recipe ----
