@@ -32,6 +32,40 @@ static inline void core_led_init(void)
 }
 
 /**
+ * Turn the onboard LED on. Simplest possible light control — useful
+ * alongside blink/heartbeat when the user wants explicit on/off state
+ * rather than a timed pattern.
+ *
+ * @tessera expose category=led name=on
+ */
+static inline void core_led_on(void)
+{
+    LED_ON();
+}
+
+/**
+ * Turn the onboard LED off.
+ *
+ * @tessera expose category=led name=off
+ */
+static inline void core_led_off(void)
+{
+    LED_OFF();
+}
+
+/**
+ * Flip the onboard LED's current state. Non-blocking — no delay.
+ * Good for driving the LED from an event handler that fires at a
+ * rate you've already chosen (e.g., a pad-edge ISR on a button).
+ *
+ * @tessera expose category=led name=toggle
+ */
+static inline void core_led_toggle(void)
+{
+    LED_TOGGLE();
+}
+
+/**
  * Blink the LED n times. Each cycle turns the LED on for on_ms
  * milliseconds and off for off_ms milliseconds. Blocking — returns
  * after the last off period.
