@@ -11,7 +11,7 @@ For operational workflows (driver authoring checklist, commit procedures, CI/CD)
 The **Cores SDK** is a firmware development kit for the Tiletown **Core** family of STM32-based tiles. It provides:
 
 - A **HAL** (hardware abstraction layer) over STM32 LL drivers — no CubeIDE, no STM32Cube HAL
-- A **code generator** (`coregen`) that turns a declarative `project.json` into initialisation C code
+- A **code generator** (`coregen`) that turns a declarative `config.json` into initialisation C code
 - The **Kiln tile driver framework** — platform-agnostic drivers for Tiletown sensor/actuator/power tiles
 - A clean **build system** (Make + arm-none-eabi-gcc) targeting four Core MCU families
 
@@ -62,10 +62,10 @@ cores/
 │   └── coregen/
 │       ├── coregen.py          # Main generator — entry point
 │       ├── templates/          # Jinja2 templates (see below)
-│       └── project-config-schema.json
-├── projects/                   # User projects (each has project.json)
+│       └── config-schema.json
+├── projects/                   # User projects (each has config.json)
 │   └── my-project/
-└── examples/                   # Reference projects (no project.json changes needed)
+└── examples/                   # Reference projects (no config.json changes needed)
     ├── blink/
     ├── sdk-demo/               # SPI + I2C + tiles example
     └── ...
@@ -83,8 +83,8 @@ cores/
 | `PROJECT` | `blink` | Project name (looks in `examples/` or `projects/`) |
 | `PROJECT_DIR` | `examples/$(PROJECT)` | Override if project lives elsewhere |
 | `KILN_ENABLED` | `0` or `1` | Auto-set: 1 if project has tiles configured |
-| `BOOTLOADER` | from project.json | `1` = custom DFU bootloader (app at 0x08002000) |
-| `ROM_DFU` | from project.json | `1` = ROM DfuSe bootloader (app at 0x08000000) |
+| `BOOTLOADER` | from config.json | `1` = custom DFU bootloader (app at 0x08002000) |
+| `ROM_DFU` | from config.json | `1` = ROM DfuSe bootloader (app at 0x08000000) |
 | `V` | `0` | Verbosity (1 = show all commands) |
 
 ### Common Commands
@@ -127,7 +127,7 @@ make distclean                                 # Remove build + coregen output
 
 #### Key Internal Functions
 
-The `build_*_config()` functions in `coregen.py` each parse one section of `project.json` and return a config dict consumed by Jinja2 templates: `build_pad_map/config` (GPIO port/pin/AF), `build_clock_config` (PLL solver, HSE enforcement), `build_i2c/spi/uart/i3c/timer_config` (peripheral setup), `build_tiles_config` (driver paths + bus handles), and `validate_project_config` (cross-section validation).
+The `build_*_config()` functions in `coregen.py` each parse one section of `config.json` and return a config dict consumed by Jinja2 templates: `build_pad_map/config` (GPIO port/pin/AF), `build_clock_config` (PLL solver, HSE enforcement), `build_i2c/spi/uart/i3c/timer_config` (peripheral setup), `build_tiles_config` (driver paths + bus handles), and `validate_project_config` (cross-section validation).
 
 #### Editing coregen
 
@@ -137,17 +137,13 @@ The `build_*_config()` functions in `coregen.py` each parse one section of `proj
 
 ---
 
-## project.json Format
+## config.json Format
 
-Every project in `projects/<name>/` has a `project.json`. It is the single source of truth for hardware configuration. coregen derives all generated code from it.
+Every project in `projects/<name>/` has a `config.json`. It is the single source of truth for hardware configuration. coregen derives all generated code from it. The filename is literal — coregen looks for `config.json` in the project directory; the project's human name comes from the directory name itself.
 
 ```jsonc
 {
-  "project": {
-    "name": "my-project",
-    "core": "Core-W-b",          // Must match a kiln/definitions/<name>.json
-    "description": "..."
-  },
+  "core": "Core-W-b",            // Must match a kiln/definitions/<name>.json
   "clock": "default",            // "low" | "default" | "max"  (see tile JSON for MHz values)
   "pads": {
     // Pad number (string) → function
@@ -456,7 +452,7 @@ int main(void) {
 1. **No CubeIDE.** Never generate or use STM32CubeMX output. Write clean LL-based init from scratch.
 2. **No STM32Cube HAL.** Use only `sdk/ll/` and `sdk/hal/`. The LL layer wraps CMSIS register access.
 3. **Platform-agnostic tile drivers.** Drivers must compile on Arduino/ESP-IDF/Zephyr. No STM32 types in `tile_*.h`.
-4. **project.json is the source of truth.** Never hand-edit generated files inside `coregen:begin/coregen:end` markers.
+4. **config.json is the source of truth.** Never hand-edit generated files inside `coregen:begin/coregen:end` markers.
 5. **CS lines are per-tile, not per-bus.** Each tile on an SPI bus gets its own GPIO CS line.
 6. **`kiln/definitions/` is canonical.** Tile JSON lives there (synced from GitHub). Do not duplicate.
 7. **`sdk/status/` is the source of truth for SDK implementation status.** Update `features.json` when adding a feature row, and the relevant `core-*.json` when implementation status changes.

@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "fault-test",
-    "core": "Core-U-2-a",
-    "description": "Fault handler test — triggers faults on serial command"
-  },
-  "clock": "max",
-  "pads": {}
-}

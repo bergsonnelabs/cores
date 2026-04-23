@@ -8,7 +8,7 @@
  * `tessera_dispatch_core_usb()` each main-loop iteration (capped to
  * 64 bytes per iteration so burst traffic doesn't starve the DSL
  * loop). The DSL-facing `Core.USB.receive(byte)` event fires once
- * per byte. Gated on `usb.enabled` in project.json — emits a no-op
+ * per byte. Gated on `usb.enabled` in config.json — emits a no-op
  * stub when USB isn't enabled.
  *
  * @tessera category usb label=Core.USB icon=❝

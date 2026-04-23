@@ -69,7 +69,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as an ADC input in project.json."
+          "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
       "returns": "int",
@@ -92,7 +92,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as an ADC input in project.json."
+          "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
       "returns": "int",
@@ -461,7 +461,7 @@
       "symbol": "core_pwm_duty",
       "header": "core_pwm.h",
       "category": "pwm",
-      "description": "Set PWM duty cycle on a pad. Timer handle resolved from project.json.",
+      "description": "Set PWM duty cycle on a pad. Timer handle resolved from config.json.",
       "params": [
         {
           "name": "pad",
@@ -470,7 +470,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as a TIMx.<ch> in project.json."
+          "description": "Tile pad number configured as a TIMx.<ch> in config.json."
         },
         {
           "name": "duty_permil",

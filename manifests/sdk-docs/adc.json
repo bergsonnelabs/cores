@@ -91,7 +91,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as an ADC input in project.json."
+          "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
       "tessera_exposed": true
@@ -109,7 +109,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as an ADC input in project.json."
+          "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
       "tessera_exposed": true

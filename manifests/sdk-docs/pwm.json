@@ -120,7 +120,7 @@
       "name": "core_pwm_init_pad",
       "signature": "core_pwm_init_pad(core_timer_t * h, uint8_t pad, uint32_t freq_hz)",
       "returns": "hal_status_t",
-      "brief": "Initialize PWM on a pad. Timer instance resolved from project.json.",
+      "brief": "Initialize PWM on a pad. Timer instance resolved from config.json.",
       "params": [
         {
           "name": "h",
@@ -162,7 +162,7 @@
       "name": "core_pwm_duty",
       "signature": "core_pwm_duty(uint8_t pad, uint16_t duty_permil)",
       "returns": "void",
-      "brief": "Set PWM duty cycle on a pad. Timer handle resolved from project.json.",
+      "brief": "Set PWM duty cycle on a pad. Timer handle resolved from config.json.",
       "params": [
         {
           "name": "pad",
@@ -171,7 +171,7 @@
             1,
             64
           ],
-          "description": "Tile pad number configured as a TIMx.<ch> in project.json."
+          "description": "Tile pad number configured as a TIMx.<ch> in config.json."
         },
         {
           "name": "duty_permil",

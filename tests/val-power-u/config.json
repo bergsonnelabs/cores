@@ -1,0 +1,14 @@
+{
+  "core": "Core-U-2-a",
+  "clock": "max",
+  "pads": {
+    "8": "GPIO.IN"
+  },
+  "gpio": {
+    "8": {
+      "direction": "in",
+      "pull": "up",
+      "exti": "falling"
+    }
+  }
+}

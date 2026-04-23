@@ -1,0 +1,14 @@
+{
+  "core": "Core-L-1-a",
+  "clock": "high",
+  "pads": {
+    "6": "ADC1",
+    "7": "USART2.TX",
+    "2": "USART2.RX"
+  },
+  "interfaces": {
+    "USART2": {
+      "baud": 115200
+    }
+  }
+}

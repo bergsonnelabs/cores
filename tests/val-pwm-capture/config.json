@@ -1,0 +1,8 @@
+{
+  "core": "Core-U-2-a",
+  "clock": "max",
+  "pads": {
+    "7": "TIM15.1",
+    "8": "TIM2.1"
+  }
+}

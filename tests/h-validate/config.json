@@ -1,0 +1,8 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "low",
+  "pads": {
+    "8": "ADC7+",
+    "9": "DAC1.OUT"
+  }
+}

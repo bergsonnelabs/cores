@@ -51,7 +51,7 @@ GDB     = $(PREFIX)gdb
 # Coregen
 COREGEN      = python3 $(SDK_DIR)tools/coregen/coregen.py
 TILE_JSON    = $(SDK_DIR)kiln/definitions/$(TILE).json
-PROJECT_JSON = $(PROJECT_DIR)/project.json
+CONFIG_JSON = $(PROJECT_DIR)/config.json
 GEN_DIR      = $(PROJECT_DIR)/coregen
 
 # ---- Tile → MCU mapping ----
@@ -98,7 +98,7 @@ else
 endif
 
 # ---- Bootloader support ----
-# Bootloader mode is read from project.json: "bootloader": "custom"|"rom"|"none"
+# Bootloader mode is read from config.json: "bootloader": "custom"|"rom"|"none"
 #
 #   "custom" — Custom DFU 1.1 bootloader at 0x08000000, app at 0x08002000.
 #   "rom"    — ROM DfuSe bootloader (0483:DF11), app at 0x08000000.
@@ -107,7 +107,7 @@ endif
 # The mode maps to BOOTLOADER/ROM_DFU flags below. Command-line overrides
 # still work (e.g. make BOOTLOADER=1) because ?= defers to explicit values.
 
-_BOOT_MODE := $(shell python3 -c "import json; print(json.load(open('$(PROJECT_JSON)')).get('bootloader','none'))" 2>/dev/null || echo none)
+_BOOT_MODE := $(shell python3 -c "import json; print(json.load(open('$(CONFIG_JSON)')).get('bootloader','none'))" 2>/dev/null || echo none)
 
 ifeq ($(_BOOT_MODE),custom)
   BOOTLOADER ?= 1
@@ -157,7 +157,7 @@ FLASH_TOOL ?= openocd
 # ---- Extract SYSCLK for SWO baud rate calc ----
 SYSCLK_MHZ = $(shell python3 -c "\
 import json; \
-level = json.load(open('$(PROJECT_JSON)'))['clock']; \
+level = json.load(open('$(CONFIG_JSON)'))['clock']; \
 configs = json.load(open('$(TILE_JSON)')).get('clock',{}).get('configurations',[]); \
 print(next((c['sysclk_mhz'] for c in configs if c['name']==level), 80))" 2>/dev/null || echo 80)
 SYSCLK_HZ  = $(shell echo $$(($(SYSCLK_MHZ) * 1000000)))
@@ -266,10 +266,10 @@ endif
 
 GEN_HEADERS = $(GEN_DIR)/core_pads.h $(GEN_DIR)/core_board.h $(GEN_DIR)/core_interfaces.h
 
-ifneq ($(wildcard $(PROJECT_JSON)),)
+ifneq ($(wildcard $(CONFIG_JSON)),)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
-  COREGEN_FLAGS = --project $(PROJECT_JSON)
+  COREGEN_FLAGS = --config $(CONFIG_JSON)
 else
   GEN_SOURCES   =
   COREGEN_FLAGS =
@@ -277,7 +277,7 @@ endif
 
 # core_drivers.mk is an included makefile — it must have its own recipe so
 # GNU Make detects it was remade and restarts (picking up KILN_DRIVERS).
-$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(PROJECT_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
+$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
 	@mkdir -p $(GEN_DIR)
 	@echo "  GEN   $(TILE)"
 	$(Q)$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS) $(COREGEN_QUIET)

@@ -3,7 +3,7 @@
  *
  * Wraps hal_uart with friendlier names. Instance and clock
  * resolution still requires explicit init (auto-resolve from
- * project.json is planned).
+ * config.json is planned).
  */
 
 #ifndef CORE_SERIAL_H

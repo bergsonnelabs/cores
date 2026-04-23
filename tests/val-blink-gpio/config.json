@@ -1,0 +1,8 @@
+{
+  "core": "Core-L-1-a",
+  "clock": "max",
+  "pads": {
+    "11": "GPIO.OUT",
+    "8": "GPIO.IN"
+  }
+}

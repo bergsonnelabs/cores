@@ -3,7 +3,7 @@
 coregen — Generate C headers from Mosaic tile JSON definitions.
 
 Usage:
-    python3 coregen.py <tile.json> [output_dir] [--project project.json]
+    python3 coregen.py <tile.json> [output_dir] [--config config.json]
 
 Reads a tile JSON file and produces:
     core_pads.h        Pad-to-GPIO mapping defines
@@ -729,7 +729,7 @@ def build_usart_config(config, mcu):
     Scans `config.pads` for functions matching `USART<n>.(TX|RX)` and returns
     one dict per used peripheral. Per-peripheral baud (and any future
     parameters like parity / word-length) come from `interfaces.USART<n>`
-    in project.json; default baud is 115200.
+    in config.json; default baud is 115200.
 
     Returns [] when no USART pad is configured. LPUART is intentionally
     out of scope for this pilot — its clock mux deserves its own pass.
@@ -810,7 +810,7 @@ def build_pwm_config(config, mcu):
     Scans `project.pads` for functions matching `TIM<n>.<ch>` and returns
     one dict per used timer peripheral. All channels on the same timer
     share a frequency (hardware constraint); frequency comes from
-    `interfaces.TIM<n>.freq` in project.json if specified, otherwise
+    `interfaces.TIM<n>.freq` in config.json if specified, otherwise
     defaults to 1 kHz — a sensible starting point for LEDs and motors.
     """
     family_define = mcu["define"]
@@ -857,7 +857,7 @@ def build_pwm_config(config, mcu):
 
 # ---- ADC config ----
 
-# Pattern matches ADC function names in tile JSON / project.json:
+# Pattern matches ADC function names in tile JSON / config.json:
 #   "ADC"        (bare peripheral name, channel inferred from pad)
 #   "ADC7"       (channel number, Core.L/U-style)
 #   "ADC7+"      (single-ended positive input, Core.H-style)
@@ -907,7 +907,7 @@ def build_i2c_config(config, mcu, clock_config):
     of dicts with bus configuration for template rendering.
 
     Per-bus speed and pullup settings come from the 'interfaces' section
-    of project.json.  Defaults: speed=400000 (400kHz), pullups=true.
+    of config.json.  Defaults: speed=400000 (400kHz), pullups=true.
 
     On WBA55, I2C kernel clock is routed to HSI16 (16MHz) so timing is
     always computed for 16MHz regardless of SYSCLK.
@@ -1012,7 +1012,7 @@ def build_spi_config(config, mcu, pad_map):
     and returns a list of dicts with bus configuration for template rendering.
 
     Per-bus mode and prescaler settings come from the 'interfaces' section
-    of project.json.  Defaults: mode=0 (CPOL=0/CPHA=0), prescaler=8 (÷8).
+    of config.json.  Defaults: mode=0 (CPOL=0/CPHA=0), prescaler=8 (÷8).
 
     SPI1.CS pads are configured as GPIO output (software CS management via
     hal_spi_set_cs) rather than the hardware NSS alternate function.
@@ -1299,7 +1299,7 @@ def generate_tiles_h(env, ctx, project_dir):
 
 # ---- Generation ----
 
-def generate(tile_path, output_dir, project_path=None):
+def generate(tile_path, output_dir, config_path=None):
     """Generate all headers from a tile JSON and optional project config."""
     with open(tile_path) as f:
         tile = json.load(f)
@@ -1342,16 +1342,15 @@ def generate(tile_path, output_dir, project_path=None):
     # Load and validate project config if provided
     templates = ["core_pads.h.j2", "core_board.h.j2", "core_interfaces.h.j2"]
 
-    if project_path:
-        with open(project_path) as f:
+    if config_path:
+        with open(config_path) as f:
             project = json.load(f)
 
-        # Validate core matches ("core" preferred, "tile" accepted for compat)
-        proj_meta = project.get("project", {})
-        proj_core = proj_meta.get("core", proj_meta.get("tile", ""))
+        # Validate core matches
+        proj_core = project.get("core", "")
         tile_file_stem = os.path.basename(tile_path).replace(".json", "")
         if proj_core and proj_core != tile_file_stem:
-            print(f"  NOTE: project.json targets '{proj_core}', building for '{tile_file_stem}' (TILE= override)")
+            print(f"  NOTE: config.json targets '{proj_core}', building for '{tile_file_stem}' (TILE= override)")
             # Allow override — this is the multi-tile portability path
 
         # Validate pin/interface/clock assignments
@@ -1363,12 +1362,15 @@ def generate(tile_path, output_dir, project_path=None):
                 print(f"  ERROR: {e}")
             sys.exit(1)
 
-        # Build resolved configs
-        ctx["project"] = project.get("project", {})
+        # Build resolved configs.
+        # Project name is sourced from the parent directory — config.json no
+        # longer carries it (name + description are project identity, not
+        # hardware configuration; see Tessera X1a).
+        ctx["project_name"] = os.path.basename(os.path.dirname(os.path.abspath(config_path)))
         ctx["pad_config"] = build_pad_config(project, pad_map)
         ctx["clock_config"] = build_clock_config(project, tile, mcu)
         ctx["iface_config"] = project.get("interfaces", {})
-        ctx["project_file"] = os.path.basename(project_path)
+        ctx["config_file"] = os.path.basename(config_path)
         ctx["i2c_buses"] = build_i2c_config(project, mcu, ctx["clock_config"])
         ctx["i2c_pullups"] = {bus["instance"]: bus["pullups"] for bus in ctx["i2c_buses"]}
         ctx["spi_buses"] = build_spi_config(project, mcu, pad_map)
@@ -1390,7 +1392,7 @@ def generate(tile_path, output_dir, project_path=None):
         # when main.c forgets to call core_usb_init().
         _usb_capable_parts = {"STM32L422xx", "STM32H523xx"}
         ctx["usb_capable"] = mcu["define"] in _usb_capable_parts
-        # Bootloader mode: "none", "custom", or "rom" (from project.json)
+        # Bootloader mode: "none", "custom", or "rom" (from config.json)
         ctx["bootloader_mode"] = project.get("bootloader", "none")
         ctx["timer_pads"] = build_timer_config(project, pad_map)
 
@@ -1437,8 +1439,8 @@ def generate(tile_path, output_dir, project_path=None):
         output = template.render(**ctx)
 
         # core.h goes next to main.c (project dir), everything else to generated dir
-        if out_name == "core.h" and project_path:
-            out_path = os.path.join(os.path.dirname(project_path), out_name)
+        if out_name == "core.h" and config_path:
+            out_path = os.path.join(os.path.dirname(config_path), out_name)
         else:
             out_path = os.path.join(output_dir, out_name)
 
@@ -1455,13 +1457,13 @@ def generate(tile_path, output_dir, project_path=None):
         print(f"  core_drivers.mk")
 
     # Generate or update tiles.h (smart merge) in the project directory
-    if project_path and ctx.get("tiles_config"):
-        project_dir = os.path.dirname(project_path)
+    if config_path and ctx.get("tiles_config"):
+        project_dir = os.path.dirname(config_path)
         generate_tiles_h(env, ctx, project_dir)
 
     # Generate project Makefile (once — skip if already exists)
-    if project_path:
-        project_dir = os.path.dirname(project_path)
+    if config_path:
+        project_dir = os.path.dirname(config_path)
         makefile_path = os.path.join(project_dir, "Makefile")
         if not os.path.exists(makefile_path):
             tile_stem = os.path.basename(tile_path).replace(".json", "")
@@ -1489,8 +1491,8 @@ def main():
     parser.add_argument("tile_json", help="Path to the tile JSON definition")
     parser.add_argument("output_dir", nargs="?", default="generated",
                         help="Output directory (default: generated)")
-    parser.add_argument("--project", "-p", metavar="FILE",
-                        help="Path to project.json config file")
+    parser.add_argument("--config", "-c", metavar="FILE",
+                        help="Path to config.json hardware definition")
 
     args = parser.parse_args()
 
@@ -1498,13 +1500,13 @@ def main():
         print(f"ERROR: File not found: {args.tile_json}")
         sys.exit(1)
 
-    if args.project and not os.path.exists(args.project):
-        print(f"ERROR: Project config not found: {args.project}")
+    if args.config and not os.path.exists(args.config):
+        print(f"ERROR: Config file not found: {args.config}")
         sys.exit(1)
 
     tile_name = os.path.basename(args.tile_json).replace(".json", "")
     print(f"coregen: {tile_name}")
-    generate(args.tile_json, args.output_dir, args.project)
+    generate(args.tile_json, args.output_dir, args.config)
 
 
 if __name__ == "__main__":

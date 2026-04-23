@@ -1,0 +1,11 @@
+{
+  "core": "Core-W-b",
+  "clock": "max",
+  "programming": {
+    "methods": [
+      "swd"
+    ],
+    "swd_dedicated": true
+  },
+  "pads": {}
+}

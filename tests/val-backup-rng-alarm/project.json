@@ -1,8 +1,0 @@
-{
-  "project": {
-    "name": "val-backup-rng-alarm",
-    "core": "Core-H-1-a",
-    "description": "Validation: backup registers, hardware RNG, RTC alarm A"
-  },
-  "clock": "default"
-}
