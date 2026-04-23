@@ -1,0 +1,14 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "high",
+  "pads": {
+    "8": "GPIO.IN"
+  },
+  "gpio": {
+    "8": {
+      "direction": "in",
+      "pull": "up",
+      "exti": "falling"
+    }
+  }
+}

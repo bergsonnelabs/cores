@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "val-nvm-eeprom",
-    "core": "Core-L-1-a",
-    "description": "Validation: NVM (EEPROM) read/write/size on Core.L"
-  },
-  "clock": "default",
-  "pads": {}
-}

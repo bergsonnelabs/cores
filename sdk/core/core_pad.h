@@ -4,13 +4,13 @@
  * The primary GPIO API. All functions take tile pad numbers
  * (matching silkscreen) and resolve to hardware automatically.
  *
- * Edge-triggered events fire for any pad whose project.json
+ * Edge-triggered events fire for any pad whose config.json
  * `gpio.<pad>.exti` is set to `rising`, `falling`, or `both`. Coregen
  * wires the EXTI interrupts into a pending-bit bitmap; the Tessera
  * main loop drains it and calls the DSL `on Core.Pad.*` handler once
  * per pending pad with the pad number as payload.
  *
- * Fires once per rising edge on any pad whose project.json gpio.<pad>.exti
+ * Fires once per rising edge on any pad whose config.json gpio.<pad>.exti
  * is set to "rising" or "both". Likewise for falling. Coregen wires the
  * EXTI callbacks; the Tessera main loop drains the pending bitmap and
  * calls the DSL handler with the pad number as payload.

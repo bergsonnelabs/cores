@@ -1,6 +1,6 @@
 # DFU Bootloader for Core.H (STM32H523HE)
 #
-# Standalone build — no coregen, no project.json.
+# Standalone build — no coregen, no config.json.
 # Produces a minimal bootloader binary (<8KB) that checks noinit SRAM
 # for the DFU magic and either enters USB DFU or jumps to the app.
 #

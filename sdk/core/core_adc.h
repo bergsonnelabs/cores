@@ -81,7 +81,7 @@ static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
  * ============================================================
  *
  * These dispatch to the coregen-emitted default handle (`core_adc1`) so
- * the caller never has to pick an ADC peripheral. project.json drives the
+ * the caller never has to pick an ADC peripheral. config.json drives the
  * handle into existence via `build_adc_config()` + `core_pads_init()`;
  * if no ADC pad is configured, calling these wrappers fails to link
  * — the correct outcome.
@@ -91,7 +91,7 @@ static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
  * Read a pad as raw ADC counts (0–4095 at 12-bit resolution).
  *
  * @tessera expose category=adc name=read returns=int
- * @param pad [1..64] Tile pad number configured as an ADC input in project.json.
+ * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_pad(uint8_t pad)
 {
@@ -102,7 +102,7 @@ static inline int core_adc_read_pad(uint8_t pad)
  * Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).
  *
  * @tessera expose category=adc name=read_mv returns=int
- * @param pad [1..64] Tile pad number configured as an ADC input in project.json.
+ * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_mv_pad(uint8_t pad)
 {

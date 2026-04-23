@@ -97,8 +97,8 @@
       "id": "coregen",
       "name": "Project Generation (Coregen)",
       "features": [
-        { "id": "coregen.gpio",   "layer": "Core", "name": "GPIO pad auto-init",    "desc": "Generates GPIO init code in core_init.c for all pads assigned in project.json." },
-        { "id": "coregen.i2c",    "layer": "Core", "name": "I2C auto-init",         "desc": "Generates I2C peripheral init, kernel clock selection, and pull-up config from project.json." },
+        { "id": "coregen.gpio",   "layer": "Core", "name": "GPIO pad auto-init",    "desc": "Generates GPIO init code in core_init.c for all pads assigned in config.json." },
+        { "id": "coregen.i2c",    "layer": "Core", "name": "I2C auto-init",         "desc": "Generates I2C peripheral init, kernel clock selection, and pull-up config from config.json." },
         { "id": "coregen.analog", "layer": "Core", "name": "analog pad init",       "desc": "Sets ADC-assigned pads to analog input mode (MODER=11) to prevent digital noise on ADC inputs." },
         { "id": "coregen.spi",    "layer": "Core", "name": "SPI auto-init"          },
         { "id": "coregen.uart",   "layer": "Core", "name": "UART auto-init"         },

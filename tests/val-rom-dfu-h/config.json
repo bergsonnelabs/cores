@@ -1,0 +1,9 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "default",
+  "bootloader": "rom",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {}
+}

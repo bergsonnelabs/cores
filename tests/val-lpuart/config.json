@@ -1,0 +1,8 @@
+{
+  "core": "Core-L-1-a",
+  "clock": "high",
+  "pads": {
+    "4": "LPUART1.TX",
+    "2": "LPUART1.RX"
+  }
+}

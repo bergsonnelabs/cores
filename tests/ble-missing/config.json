@@ -1,0 +1,18 @@
+{
+  "core": "Core-W-b",
+  "clock": "default",
+  "programming": {
+    "methods": [
+      "swd"
+    ],
+    "swd_dedicated": true
+  },
+  "ble": {
+    "enabled": true,
+    "device_name": "Core.W",
+    "pairing": "none",
+    "tx_power": "medium",
+    "adv_interval": 100
+  },
+  "pads": {}
+}

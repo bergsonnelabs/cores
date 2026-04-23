@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "usb-hid",
-    "core": "Core-H-1-a",
-    "description": "USB HID generic vendor reports test"
-  },
-  "clock": "low",
-  "pads": {}
-}

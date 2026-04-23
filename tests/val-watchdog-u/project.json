@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "val-watchdog-u",
-    "core": "Core-U-2-a",
-    "description": "Validation: Watchdog start/feed/reset-check on Core.U"
-  },
-  "clock": "max",
-  "pads": {}
-}

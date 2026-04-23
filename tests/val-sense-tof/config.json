@@ -1,0 +1,20 @@
+{
+  "core": "Core-U-1-a",
+  "clock": "max",
+  "pads": {
+    "2": "I2C3.CLK",
+    "8": "I2C3.DAT"
+  },
+  "interfaces": {
+    "I2C3": {
+      "speed": 400000
+    }
+  },
+  "tiles": [
+    {
+      "tile": "Sense.TOF",
+      "bus": "I2C3",
+      "instance": 0
+    }
+  ]
+}

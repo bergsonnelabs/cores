@@ -1,9 +1,0 @@
-{
-  "project": {
-    "name": "power-test",
-    "core": "Core-U-2-a",
-    "description": "Power management test — sleep, stop, standby, wakeup"
-  },
-  "clock": "max",
-  "pads": {}
-}

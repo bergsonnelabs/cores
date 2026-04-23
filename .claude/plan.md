@@ -52,7 +52,7 @@ And update `tile_init.c.j2` template so that when a project uses USB, tilegen au
 - Setup packet handler (GET_DESCRIPTOR, SET_ADDRESS, SET_CONFIGURATION)
 - EP0 control transfer state machine (SETUP → DATA IN/OUT → STATUS)
 - USB descriptors: Device, Configuration, Interface (CDC Control + Data), Endpoint, CDC functional descriptors
-- VID/PID: Use a test VID/PID initially (configurable via project.json later)
+- VID/PID: Use a test VID/PID initially (configurable via config.json later)
 
 **CDC Class:**
 - CDC-specific requests: SET_LINE_CODING, GET_LINE_CODING, SET_CONTROL_LINE_STATE
@@ -110,7 +110,7 @@ int main(void) {
 }
 ```
 
-project.json adds USB pin assignments and enables HSI48:
+config.json adds USB pin assignments and enables HSI48:
 ```json
 {
   "clock": {
@@ -164,4 +164,4 @@ Offset  Size  Purpose
 
 - `hal_usb_cdc.c` goes into `sdk/hal/` and gets compiled automatically (wildcard already picks up `sdk/hal/*.c`)
 - USB IRQ number added to `hal_common.h` (`HAL_IRQ_USB = 67` for L422)
-- `project.json` `"usb": true` flag tells tilegen to generate HSI48 + CRS init in `tile_init.c`
+- `config.json` `"usb": true` flag tells tilegen to generate HSI48 + CRS init in `tile_init.c`

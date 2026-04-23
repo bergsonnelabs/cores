@@ -1,0 +1,25 @@
+{
+  "core": "Core-U-2-a",
+  "clock": "max",
+  "pads": {
+    "2": "SPI1.MOSI",
+    "10": "SPI1.CLK",
+    "18": "SPI1.MISO",
+    "19": "GPIO.OUT"
+  },
+  "interfaces": {
+    "SPI1": {
+      "prescaler": 16,
+      "cpol": 0,
+      "cpha": 0
+    }
+  },
+  "tiles": [
+    {
+      "tile": "Sense.I.6P6",
+      "bus": "SPI1",
+      "instance": 0,
+      "cs_pad": 19
+    }
+  ]
+}

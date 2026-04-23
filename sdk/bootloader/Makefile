@@ -1,6 +1,6 @@
 # DFU Bootloader for Core.U (STM32L422TB)
 #
-# Standalone build — no coregen, no project.json.
+# Standalone build — no coregen, no config.json.
 # Produces a minimal bootloader binary (<8KB) that checks RTC BKP0
 # for the DFU magic and either enters USB DFU or jumps to the app.
 #

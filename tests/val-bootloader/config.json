@@ -1,0 +1,9 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "default",
+  "bootloader": "custom",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {}
+}

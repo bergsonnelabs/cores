@@ -7,7 +7,7 @@
  * orthogonal — it piggybacks on the same timebase.
  *
  * The DSL-facing `Core.Timer.tick` event fires at a fixed period set
- * by project.json's `timer.tick_ms`. Coregen bakes the period into a
+ * by config.json's `timer.tick_ms`. Coregen bakes the period into a
  * main-loop dispatcher that polls `hal_tick()` — no hardware timer
  * consumed, no ISR context to manage. When no `tick_ms` is set the
  * dispatcher is a no-op stub.

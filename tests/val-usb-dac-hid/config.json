@@ -1,0 +1,11 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "default",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {
+    "9": "DAC1.OUT",
+    "8": "ADC7+"
+  }
+}

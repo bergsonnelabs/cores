@@ -1,0 +1,8 @@
+{
+  "core": "Core-U-2-a",
+  "clock": "max",
+  "usb": {
+    "enabled": true
+  },
+  "bootloader": "rom"
+}

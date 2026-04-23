@@ -14,12 +14,12 @@
 
 /* ---- coregen:begin ---- */
 #include "tiles.h"
-#include "tiles_hal.h"
-#include "tiles_hal_core.h"
+#include "tiles_pal.h"
+#include "core_tiles.h"
 #include "tile_sense_i_6p6.h"
 
-/* Tile HAL handles (one per bus used by tiles) */
-tiles_hal_t core_hal_spi1;
+/* Tile PAL handles (one per bus used by tiles) */
+tiles_pal_t core_pal_spi1;
 
 /* Tile instance handles */
 tile_t tile_sense_i_6p6_spi1_0;

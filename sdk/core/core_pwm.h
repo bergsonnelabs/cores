@@ -4,7 +4,7 @@
  * Three usage modes:
  *
  *   0. Project-centric (simplest — coregen owns handle + init):
- *        core_pwm_duty(7, 500);   // 50% duty on pad 7; timer resolved from project.json
+ *        core_pwm_duty(7, 500);   // 50% duty on pad 7; timer resolved from config.json
  *
  *   1. Pad-centric (manual init):
  *        core_pwm_init_pad(&pwm, 7, 1000);
@@ -82,7 +82,7 @@ static inline void core_pwm_stop(core_timer_t *h)
 #if __has_include("core_pads.h") && __has_include("core_config.h")
 #include "tal_timer.h"
 
-/** Initialize PWM on a pad. Timer instance resolved from project.json. */
+/** Initialize PWM on a pad. Timer instance resolved from config.json. */
 static inline hal_status_t core_pwm_init_pad(core_timer_t *h, uint8_t pad,
                                               uint32_t freq_hz)
 {
@@ -102,25 +102,25 @@ static inline void core_pwm_set_pad(core_timer_t *h, uint8_t pad,
  * ============================================================
  *
  * Coregen emits one `core_tim<n>` handle per timer declared in
- * project.json and a `core_pwm_timer_for_pad(pad)` dispatch function.
+ * config.json and a `core_pwm_timer_for_pad(pad)` dispatch function.
  * These wrappers use the dispatch to set duty cycles without the
  * caller having to pick a timer. Timers are initialized and started
  * automatically during `core_init()`.
  *
- * If the pad is not bound to a timer in project.json, the wrapper
+ * If the pad is not bound to a timer in config.json, the wrapper
  * silently does nothing — DSL code running on the wrong project
  * won't fault, it just won't produce output.
  */
 
 /** Prototype emitted by coregen into core_init.c when any TIM<n> pad is
- * configured. Returns NULL for pads not bound to a timer in project.json. */
+ * configured. Returns NULL for pads not bound to a timer in config.json. */
 hal_timer_t *core_pwm_timer_for_pad(uint8_t pad);
 
 /**
- * Set PWM duty cycle on a pad. Timer handle resolved from project.json.
+ * Set PWM duty cycle on a pad. Timer handle resolved from config.json.
  *
  * @tessera expose category=pwm name=duty
- * @param pad [1..64] Tile pad number configured as a TIMx.<ch> in project.json.
+ * @param pad [1..64] Tile pad number configured as a TIMx.<ch> in config.json.
  * @param duty_permil [0..1000] 0 = off, 500 = 50%, 1000 = fully on.
  */
 static inline void core_pwm_duty(uint8_t pad, uint16_t duty_permil)

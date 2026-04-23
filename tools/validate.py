@@ -29,18 +29,18 @@ ARM_PATH = "/Applications/ArmGNUToolchain/15.2.rel1/arm-none-eabi/bin"
 
 
 def find_tests(filter_name=None):
-    """Find all test directories with a project.json."""
+    """Find all test directories with a config.json."""
     tests = []
     for d in sorted(TESTS_DIR.iterdir()):
         if not d.is_dir():
             continue
-        if not (d / "project.json").exists():
+        if not (d / "config.json").exists():
             continue
         if filter_name and d.name != filter_name:
             continue
-        with open(d / "project.json") as f:
+        with open(d / "config.json") as f:
             proj = json.load(f)
-        core = proj.get("project", {}).get("core", "?")
+        core = proj.get("core", "?")
         # Check for negative test marker
         negative = (d / "main.c").read_text().startswith("/* NEGATIVE TEST")
         tests.append({

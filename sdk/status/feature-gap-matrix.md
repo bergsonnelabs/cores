@@ -43,7 +43,7 @@ These are features in `features.json` that exist on the hardware but are **not y
 | **SPI DMA** | . | . | . | . | 4 | 3 | Not started. Essential for display tiles, large flash transfers. |
 | **SPI slave mode** | . | . | . | . | 2 | 3 | Not started. Niche: Core as SPI peripheral. |
 | **UART flow control** | . | . | . | . | 2 | 1 | Not started. CTS/RTS. Simple register config, useful for BT modules. |
-| **UART coregen auto-init** | C | C | C | C | 4 | 2 | Compile on all. Needed for project.json-driven UART setup. |
+| **UART coregen auto-init** | C | C | C | C | 4 | 2 | Compile on all. Needed for config.json-driven UART setup. |
 
 ### 1b. Analog
 
@@ -170,7 +170,7 @@ These are IC capabilities discovered in the reference manuals that don't appear 
 | # | Feature | Cores | Effort | Why |
 |---|---------|-------|--------|-----|
 | 1 | **SPI master (fix W, test U/H)** | W,U,H | 3 | Blocks ALL SPI-only tiles. W's SPI v2 CSTART bug is the #1 blocker. |
-| 2 | **SPI coregen auto-init** | U,W,H | 2 | Prerequisite for SPI tiles in project.json. |
+| 2 | **SPI coregen auto-init** | U,W,H | 2 | Prerequisite for SPI tiles in config.json. |
 | 3 | **LPTIM** | all | 3 | Runs in Stop mode. Enables periodic low-power wakeup without RTC complexity. |
 | 4 | **UART IRQ + coregen** | all | 2+2 | Non-blocking serial. Compile-only everywhere; just needs testing and coregen hookup. |
 | 5 | **Hardware RNG** | ~~U~~,H | 2 | **U done.** 6/6 tests pass (tests/val-backup-rng-alarm-u). H still needs testing. |

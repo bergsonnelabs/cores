@@ -1,0 +1,10 @@
+{
+  "core": "Core-W-b",
+  "clock": "default",
+  "ble": {
+    "enabled": true
+  },
+  "pads": {
+    "5": "ADC2"
+  }
+}

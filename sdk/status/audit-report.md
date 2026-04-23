@@ -251,7 +251,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] Core-H-1-a.json USB.SOF wrong pad**: Interface says pad 3 = USB.SOF, but pad 2 has USB.SOF (AF10). Pad 3 has no USB.SOF function.
 
-- **[GAP] No USB availability validation in coregen**: `usb_enabled` is blindly read from project.json. A project targeting Core.L with `"usb": {"enabled": true}` would generate HSI48/CRS init code that won't compile.
+- **[GAP] No USB availability validation in coregen**: `usb_enabled` is blindly read from config.json. A project targeting Core.L with `"usb": {"enabled": true}` would generate HSI48/CRS init code that won't compile.
 
 - **[GAP] Silent absence on L/W**: Including `core_usb.h` on Core.L or Core.W produces an empty header. No `#error` or `#warning`.
 
@@ -437,9 +437,9 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 ## 17. COREGEN
 
-**[BUG] project-config-schema.json stale**: Schema defines `clock` as object but all real projects use a string. Schema uses `pins` but code uses `pads`. Missing `tiles`, `usb`, `ble`, `programming` sections entirely.
+**[BUG] config-schema.json stale**: Schema defines `clock` as object but all real projects use a string. Schema uses `pins` but code uses `pads`. Missing `tiles`, `usb`, `ble`, `programming` sections entirely.
 
-**[GAP] No USB availability validation**: `usb_enabled` read from project.json with no check that the tile has USB.
+**[GAP] No USB availability validation**: `usb_enabled` read from config.json with no check that the tile has USB.
 
 **[GAP] No conflicting pad assignment detection**: Same pad can be assigned to multiple functions.
 
@@ -476,7 +476,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 | 14 | Silent absence: DAC, USB, BLE — no `#error` on wrong core | All | 2h |
 | 15 | Coregen: no USB/DAC/peripheral availability validation | Coregen | 2h |
 | 16 | Coregen: no pad conflict detection | Coregen | 3h |
-| 17 | Coregen: project-config-schema.json completely stale | Coregen | 2h |
+| 17 | Coregen: config-schema.json completely stale | Coregen | 2h |
 | 18 | Configurator: LPUART type not recognized | Web | 30m |
 | 19 | Configurator: PWM pads not in `padIsClaimed()` | Web | 1h |
 | 20 | Cross-repo sync: features.json diverged | Sync | 2h |
