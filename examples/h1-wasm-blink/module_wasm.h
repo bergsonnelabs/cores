@@ -1,15 +1,21 @@
 /*
  * Precompiled Wasm module for h1-wasm-blink.
  *
- * Generated from `module.wat` via:
+ * Hand-built from `module.wat` during A4c Phase 3 to bring up the
+ * WAMR runtime on Core.H. Rebuild path options:
+ *
+ *   # From a Tessera DSL program (Phase 6 — preferred):
+ *   cd ~/Documents/local/source/tessera
+ *   npm run dsl-to-wasm -- path/to/program.dsl \\
+ *       --header=$OLDPWD/module_wasm.h --core=Core.H
+ *
+ *   # From this example's WAT directly (hand path):
  *   wat2wasm module.wat -o module.wasm
- *   xxd -i module.wasm > module_wasm.h
+ *   xxd -i module.wasm > module_wasm.h  # then wrap in const + guard
  *
- * (Post-processing: wrap in const + include guard + real types.)
- *
- * The byte array is the literal `.wasm` binary. Rebuild this header
- * after editing `module.wat`. Check it in — the cores build chain
- * shouldn't require the wabt toolchain at firmware-build time.
+ * The byte array is the literal `.wasm` binary. Checked in so the
+ * firmware build chain doesn't depend on a JS/Python toolchain;
+ * regenerate locally when you change the program.
  */
 
 #ifndef MODULE_WASM_H
