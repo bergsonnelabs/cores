@@ -19,34 +19,21 @@
 #include "core_usb.h"
 
 #include "wasm_export.h"
+#include "tessera_natives.h"
 
 #include "module_wasm.h"
 
 /* -------------------------------------------------------------------
  * Host-import bridge.
  *
- * The Wasm module declares `(import "env" "core_led_heartbeat"
- *  (func (param i32)))` and calls it from its `tessera_loop` body.
- * WAMR's native-call convention puts `wasm_exec_env_t` first, then
- * the declared args in order. We ignore the exec env and forward
- * the period to the real SDK function.
- *
- * The native-signature string `"(i)"` means one i32 parameter, no
- * return value. Each char inside the parens is a param kind, the
- * char after the close-paren (absent here → void) is the return
- * kind. See WAMR's `native_symbol` docs for the full grammar.
+ * The Wasm module imports symbols from `env` — `core_led_heartbeat`
+ * here; a real DSL program might pull in ADC reads, pad writes,
+ * timers, etc. Rather than hand-wiring every possible host symbol
+ * in each project, we generate a catalog once from the manifests
+ * (see `tools/gen_tessera_natives.py`) and register the full table
+ * in one call. Wasm modules only trigger the wrappers they actually
+ * import; unused table entries just sit there, statically linked.
  * ----------------------------------------------------------------- */
-
-static void
-core_led_heartbeat_native(wasm_exec_env_t env, int32_t period_ms)
-{
-    (void)env;
-    core_led_heartbeat(period_ms);
-}
-
-static NativeSymbol g_natives[] = {
-    { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
-};
 
 /* WAMR's wasm_runtime_common.c pulls in a stubbed wasm-c-api
  * dispatcher even when we've disabled the full c-api build. The
@@ -146,10 +133,11 @@ main(void)
         fatal("wasm_runtime_full_init", "returned false");
     }
 
-    core_usb_printf("  wasm_runtime_register_natives...\r\n");
+    core_usb_printf("  wasm_runtime_register_natives... (%u hosts)\r\n",
+                    (unsigned)g_tessera_natives_count);
     if (!wasm_runtime_register_natives(
-            "env", g_natives,
-            sizeof(g_natives) / sizeof(g_natives[0]))) {
+            "env", (NativeSymbol *)g_tessera_natives,
+            g_tessera_natives_count)) {
         fatal("wasm_runtime_register_natives", "returned false");
     }
 

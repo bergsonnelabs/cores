@@ -87,7 +87,10 @@ WAMR_INCS := \
 # User code (a project's main.c) needs the embedder-facing header
 # set — just `wasm_export.h` and friends. Tacked onto CFLAGS so
 # projects with WAMR_ENABLED=1 can `#include "wasm_export.h"`.
+# `sdk/wamr/` goes on too so projects can reach `tessera_natives.h`
+# for the generated host-import catalog.
 CFLAGS += -I$(WAMR_CORE)/iwasm/include
+CFLAGS += -I$(WAMR_PAL_DIR)
 
 # ---- Source set (interpreter-only) ----
 # iwasm/interpreter — loader + fast interpreter. Fast interp is a
@@ -122,7 +125,8 @@ WAMR_SRCS := \
   $(WAMR_CORE)/shared/mem-alloc/ems/ems_alloc.c \
   $(WAMR_CORE)/shared/mem-alloc/ems/ems_kfc.c \
   $(WAMR_CORE)/shared/mem-alloc/ems/ems_hmu.c \
-  $(WAMR_PAL_DIR)/platform_stubs.c
+  $(WAMR_PAL_DIR)/platform_stubs.c \
+  $(WAMR_PAL_DIR)/tessera_natives.c
 
 # thumb-VFP native-call trampoline — used when Wasm calls into a
 # registered C host function. The .s suffix matters: the top-level
@@ -161,7 +165,16 @@ $(BUILD_DIR)/third_party/wasm-micro-runtime/%.o: $(WAMR_DIR)/%.s
 $(BUILD_DIR)/sdk/wamr/%.o: $(WAMR_PAL_DIR)/%.c
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
-	$(Q)$(CC) $(CFLAGS) $(WAMR_DEFS) $(WAMR_INCS) $(WAMR_WARN_SILENCE) -c $< -o $@
+	# `tessera_natives.c` pulls in every tessera_exposed `core_*.h`
+	# for adapter wrapping. Some of those headers reach through
+	# tal_* into coregen-generated accessors (e.g. `core_pad_timer_info`
+	# declared in the project's generated `core_pads.h`) — the
+	# prototype is only visible when the project's GEN_DIR is on
+	# the include path, which it is at build time. Suppress the
+	# `-Wimplicit-function-declaration` noise since the symbol
+	# resolves fine at link time.
+	$(Q)$(CC) $(CFLAGS) $(WAMR_DEFS) $(WAMR_INCS) $(WAMR_WARN_SILENCE) \
+	    -Wno-implicit-function-declaration -c $< -o $@
 
 # WAMR's codebase triggers a lot of warnings under cores' -Wall
 # -Wextra -Wshadow -Wdouble-promotion baseline. We silence the ones
