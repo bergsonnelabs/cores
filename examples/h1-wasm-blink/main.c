@@ -96,6 +96,36 @@ fatal(const char *tag, const char *detail)
     }
 }
 
+/* WAMR's internal heap. Using a pool (vs. system allocator) sidesteps
+ * newlib's malloc — which under -specs=nosys.specs has a stub _sbrk
+ * that always fails, silently bricking any runtime that depends on
+ * malloc(). 32 KB is enough for our 99-byte module + instance state
+ * + operand stack + exec env. Bump if a larger program exhausts it. */
+#define WAMR_HEAP_BYTES (32 * 1024)
+__attribute__((aligned(8)))
+static uint8_t g_wamr_heap[WAMR_HEAP_BYTES];
+
+/* ---------------------------------------------------------------------
+ * CRITICAL: the module buffer MUST be writable.
+ *
+ * WAMR's loader does an in-place optimization during load — see
+ * `wasm_const_str_list_insert` in `core/iwasm/interpreter/wasm_runtime.c`.
+ * For each import/export name it shifts the string one byte backward
+ * in the source buffer (overwriting the leb128 length prefix) and
+ * null-terminates it, so the stored `name` can be used as a plain
+ * C string with zero allocation.
+ *
+ * If the buffer is in flash (`.rodata`, typical for an xxd-embedded
+ * blob), the writes silently no-op on a Cortex-M — no fault, just no
+ * change — and every lookup returns NULL because `name` points at the
+ * still-intact length byte. Symptoms: `wasm_runtime_lookup_function`
+ * can't find any export, even though `wasm_runtime_get_export_count`
+ * reports the right number.
+ *
+ * Fix: copy the blob into RAM before `wasm_runtime_load`.
+ * -------------------------------------------------------------------- */
+static uint8_t g_wasm_blob[sizeof(module_wasm)] __attribute__((aligned(4)));
+
 int
 main(void)
 {
@@ -108,24 +138,35 @@ main(void)
                     (unsigned)module_wasm_len);
 
     RuntimeInitArgs init_args = { 0 };
-    init_args.mem_alloc_type = Alloc_With_System_Allocator;
+    init_args.mem_alloc_type = Alloc_With_Pool;
+    init_args.mem_alloc_option.pool.heap_buf = g_wamr_heap;
+    init_args.mem_alloc_option.pool.heap_size = sizeof(g_wamr_heap);
+    core_usb_printf("  wasm_runtime_full_init...\r\n");
     if (!wasm_runtime_full_init(&init_args)) {
         fatal("wasm_runtime_full_init", "returned false");
     }
 
+    core_usb_printf("  wasm_runtime_register_natives...\r\n");
     if (!wasm_runtime_register_natives(
             "env", g_natives,
             sizeof(g_natives) / sizeof(g_natives[0]))) {
         fatal("wasm_runtime_register_natives", "returned false");
     }
 
+    /* Flash → RAM copy so WAMR's in-place name-rewrite can work. */
+    for (size_t i = 0; i < module_wasm_len; i++) {
+        g_wasm_blob[i] = module_wasm[i];
+    }
+
+    core_usb_printf("  wasm_runtime_load...\r\n");
     char err_buf[96];
     wasm_module_t module = wasm_runtime_load(
-        (uint8_t *)module_wasm, module_wasm_len, err_buf, sizeof(err_buf));
+        g_wasm_blob, module_wasm_len, err_buf, sizeof(err_buf));
     if (!module) {
         fatal("wasm_runtime_load", err_buf);
     }
 
+    core_usb_printf("  wasm_runtime_instantiate...\r\n");
     wasm_module_inst_t inst = wasm_runtime_instantiate(
         module, /* stack */ 4096, /* heap */ 4096,
         err_buf, sizeof(err_buf));
@@ -134,6 +175,7 @@ main(void)
         fatal("wasm_runtime_instantiate", err_buf);
     }
 
+    core_usb_printf("  wasm_runtime_create_exec_env...\r\n");
     wasm_exec_env_t exec = wasm_runtime_create_exec_env(inst, 4096);
     if (!exec) {
         wasm_runtime_deinstantiate(inst);
@@ -141,6 +183,7 @@ main(void)
         fatal("wasm_runtime_create_exec_env", "returned NULL");
     }
 
+    core_usb_printf("  wasm_runtime_lookup_function...\r\n");
     wasm_function_inst_t fn_start =
         wasm_runtime_lookup_function(inst, "tessera_start");
     wasm_function_inst_t fn_loop =
@@ -153,6 +196,7 @@ main(void)
     /* tessera_start runs once at boot. Empty in this module, but the
      * infrastructure has to call it anyway — real DSL programs will
      * do one-shot init here (Core.PWM.duty, etc.). */
+    core_usb_printf("  calling tessera_start...\r\n");
     if (!wasm_runtime_call_wasm(exec, fn_start, 0, NULL)) {
         fatal("tessera_start",
               wasm_runtime_get_exception(inst));
