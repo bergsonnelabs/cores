@@ -210,7 +210,15 @@ def emit_wrapper(fn: HostFn) -> str:
 
 def emit_table(fns: list[HostFn]) -> str:
     lines = [
-        "const NativeSymbol g_tessera_natives[] = {",
+        "/* NOT const: WAMR's `wasm_runtime_register_natives` calls",
+        " * `qsort` on the table in place (see wasm_native.c's",
+        " * register_natives). If the array sits in .rodata the",
+        " * qsort writes silently no-op on Cortex-M and WAMR's",
+        " * bsearch lookup then fails with \"failed to call unlinked",
+        " * import function\" — even though every symbol is present.",
+        " * Leaving it writable puts the table in .data (RAM-backed)",
+        " * where the sort runs correctly at startup. */",
+        "NativeSymbol g_tessera_natives[] = {",
     ]
     for fn in fns:
         # Signature strings need one layer of parentheses exactly —
@@ -287,7 +295,7 @@ def emit_h(fns: list[HostFn]) -> str:
         "#endif",
         "",
         f"/* {len(fns)} Tessera-exposed host symbols wired from manifests. */",
-        "extern const NativeSymbol g_tessera_natives[];",
+        "extern NativeSymbol g_tessera_natives[];",
         "extern const size_t g_tessera_natives_count;",
         "",
         "#ifdef __cplusplus",

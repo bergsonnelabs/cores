@@ -136,7 +136,7 @@ main(void)
     core_usb_printf("  wasm_runtime_register_natives... (%u hosts)\r\n",
                     (unsigned)g_tessera_natives_count);
     if (!wasm_runtime_register_natives(
-            "env", (NativeSymbol *)g_tessera_natives,
+            "env", g_tessera_natives,
             g_tessera_natives_count)) {
         fatal("wasm_runtime_register_natives", "returned false");
     }
@@ -198,7 +198,10 @@ main(void)
             fatal("tessera_loop",
                   wasm_runtime_get_exception(inst));
         }
-        if ((++tick % 20) == 0) {
+        /* Tick every 2 iterations (~1 s at heartbeat=500 ms) so the
+         * user gets visible liveness without waiting forever.
+         * Bump higher when a fast-cycling loop floods the log. */
+        if ((++tick % 2) == 0) {
             core_usb_printf("  tick=%-6lu\r\n", (unsigned long)tick);
         }
     }

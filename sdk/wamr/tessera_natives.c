@@ -159,7 +159,15 @@ static void core_watchdog_feed_native(wasm_exec_env_t env)
 
 /* ---- NativeSymbol table ----------------------------------------------- */
 
-const NativeSymbol g_tessera_natives[] = {
+/* NOT const: WAMR's `wasm_runtime_register_natives` calls
+ * `qsort` on the table in place (see wasm_native.c's
+ * register_natives). If the array sits in .rodata the
+ * qsort writes silently no-op on Cortex-M and WAMR's
+ * bsearch lookup then fails with "failed to call unlinked
+ * import function" — even though every symbol is present.
+ * Leaving it writable puts the table in .data (RAM-backed)
+ * where the sort runs correctly at startup. */
+NativeSymbol g_tessera_natives[] = {
     { "core_led_on", (void *)core_led_on_native, "()", NULL },
     { "core_led_off", (void *)core_led_off_native, "()", NULL },
     { "core_led_toggle", (void *)core_led_toggle_native, "()", NULL },
