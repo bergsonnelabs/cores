@@ -2,3 +2,9 @@
 	path = kiln
 	url = https://github.com/bergsonnelabs/kiln.git
 	branch = main
+[submodule "third_party/wasm-micro-runtime"]
+	path = third_party/wasm-micro-runtime
+	url = https://github.com/bytecodealliance/wasm-micro-runtime.git
+	# Pinned at the WAMR-2.4.4 tag. WAMR's master churns; we only bump
+	# intentionally because a bad bump can silently change runtime
+	# semantics or blow up the footprint on Core-sized MCUs.
