@@ -72,6 +72,7 @@ WAMR_DEFS := \
   -DBH_FREE=wasm_runtime_free
 
 # ---- Include paths ----
+# Internal paths needed to build WAMR itself.
 WAMR_INCS := \
   -I$(WAMR_PAL_DIR) \
   -I$(WAMR_CORE) \
@@ -82,6 +83,11 @@ WAMR_INCS := \
   -I$(WAMR_CORE)/shared/utils \
   -I$(WAMR_CORE)/shared/utils/uncommon \
   -I$(WAMR_CORE)/shared/mem-alloc
+
+# User code (a project's main.c) needs the embedder-facing header
+# set — just `wasm_export.h` and friends. Tacked onto CFLAGS so
+# projects with WAMR_ENABLED=1 can `#include "wasm_export.h"`.
+CFLAGS += -I$(WAMR_CORE)/iwasm/include
 
 # ---- Source set (interpreter-only) ----
 # iwasm/interpreter — loader + fast interpreter. Fast interp is a
