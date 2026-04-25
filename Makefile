@@ -206,6 +206,20 @@ ifeq ($(KILN_ENABLED),1)
   endif
 endif
 
+# ---- WAMR runtime support (optional; A4c) ----
+# Opt-in via `WAMR_ENABLED=1`. When enabled, links the WAMR
+# interpreter into the firmware so a user's DSL-compiled `.wasm`
+# blob can execute on-device. Gated only to Cortex-M33 targets
+# (Core.H, Core.W) — Core.U's M4 footprint is over budget per the
+# A4b spike and routes through a separate interpreter path.
+WAMR_ENABLED ?= 0
+ifeq ($(WAMR_ENABLED),1)
+  ifneq ($(CPU),cortex-m33)
+    $(error WAMR_ENABLED=1 is only supported on Cortex-M33 Cores (Core-H-1-a, Core-W-b))
+  endif
+  include $(SDK_DIR)sdk/wamr/wamr.mk
+endif
+
 # ---- BLE support (Core.W only) ----
 BLE_ENABLED ?= 0
 ifeq ($(BLE_ENABLED),1)
@@ -256,6 +270,10 @@ endif
 
 ifeq ($(BLE_ENABLED),1)
   OBJECTS += $(BLE_OBJS)
+endif
+
+ifeq ($(WAMR_ENABLED),1)
+  OBJECTS += $(WAMR_ALL_OBJS)
 endif
 
 # ---- Default goal ----

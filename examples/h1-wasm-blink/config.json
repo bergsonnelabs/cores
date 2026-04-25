@@ -1,0 +1,19 @@
+{
+  "core": "Core-H-1-a",
+  "clock": "default",
+  "programming": {
+    "methods": [
+      "usb-dfu"
+    ],
+    "usb_dedicated": true,
+    "boot0_pad": "11"
+  },
+  "bootloader": "rom",
+  "usb": {
+    "enabled": true
+  },
+  "pads": {
+    "6": "USB.DP",
+    "7": "USB.DM"
+  }
+}
