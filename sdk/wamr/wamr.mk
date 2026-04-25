@@ -91,6 +91,15 @@ WAMR_INCS := \
 # for the generated host-import catalog.
 CFLAGS += -I$(WAMR_CORE)/iwasm/include
 CFLAGS += -I$(WAMR_PAL_DIR)
+# Bump CDC RX ringbuffer for WAMR runtime builds. Default (256 B,
+# defined in sdk/hal/hal_usb_cdc.h) is fine for line-oriented
+# console use, but the bytecode hot-swap protocol pushes whole
+# .wasm modules in one burst — a 280-byte module + 12-byte header
+# overflows 256, the firmware drops bytes mid-frame, and WAMR's
+# loader rejects the truncated module with "junk after last
+# section." 4 KB absorbs typical DSL programs; bump higher if a
+# real program approaches the ceiling. Power of two required.
+CFLAGS += -DHAL_USB_CDC_RX_BUF_SIZE=4096
 
 # ---- Source set (interpreter-only) ----
 # iwasm/interpreter — loader + fast interpreter. Fast interp is a
