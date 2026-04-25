@@ -1,0 +1,284 @@
+# `@tessera` annotation reference
+
+Tessera builds its block palette, DSL imports, and SDK reference docs from C headers in this repo. The bridge is a small set of `@tessera` directives placed inside Doxygen blocks. The generator that reads them is [`tools/gen_tessera_manifest.py`](../tools/gen_tessera_manifest.py); this file is the human-readable companion.
+
+If you're authoring a new `core_*.h` module or a Kiln tile driver and want it to show up in Tessera, this is the doc. If you're adding directives the generator doesn't yet understand, edit `gen_tessera_manifest.py` and update this file in the same change.
+
+## How the generator finds tags
+
+The generator scans every `/** … */` Doxygen block in the file. Inside a block, any line beginning with `@tessera <verb>` is a directive. Lines beginning with `@brief`, `@param`, `@return` are standard Doxygen and feed both palette metadata and the SDK reference docs.
+
+A function is exposed to Tessera **only** if its preceding Doxygen block contains an `@tessera expose` directive. Functions without `@tessera expose` still appear on the SDK reference page (so users can read about `core_pwm_init` / `core_pwm_set` even though Tessera doesn't call them) — they just don't show up in the palette.
+
+## File-level directives
+
+These go in the file's top-of-file Doxygen block (one per header).
+
+### `@tessera category <name> [label=<str>] [icon=<glyph>]` — core headers
+
+Declares this header as a Tessera category. Required on every `sdk/core/core_*.h` that exposes anything; otherwise the generator skips the file entirely.
+
+```c
+/**
+ * core_pwm.h — PWM output and periodic timers
+ *
+ * @tessera category pwm label=Core.PWM icon=◲
+ */
+```
+
+- `<name>` (positional, required): canonical category id used as the manifest filename (`manifests/sdk-docs/<name>.json`) and the first segment of every `qname` in this file.
+- `label=`: human-readable name shown in the palette and on the docs page (default: `<name>`).
+- `icon=`: single glyph shown in the palette (default: empty).
+
+A header may declare at most one `@tessera category`. A second declaration with different attributes is a warning and is ignored.
+
+### `@tessera tile [label=<str>] [icon=<glyph>]` — Kiln drivers
+
+The tile-driver counterpart. Goes at the top of `Kiln/drivers/tile_*.h`.
+
+```c
+/**
+ * tile_sense_mic.h — MAX11645 ADC + AMM-2742 MEMS mic
+ *
+ * @tessera tile label=Sense.MIC icon=◉
+ */
+```
+
+- `label=`: palette name (default: file stem, e.g. `tile_sense_mic`).
+- `icon=`: single glyph (default: empty).
+
+Each tile driver must have exactly one `@tessera tile`.
+
+### `@tessera event name=<id> [payload=<spec>] [description=<str>] [icon=<glyph>] [mask=<expr>] [read=<fn>] [read_type=<struct>]`
+
+Declares an event the user can write a handler for. Lives at file scope (alongside the category/tile tag, not on a function).
+
+```c
+/**
+ * @tessera category pad label=Core.Pad icon=⎓
+ * @tessera event name=rising payload=pad:int
+ * @tessera event name=falling payload=pad:int
+ */
+```
+
+- `name=` (required): event id. Becomes `on Core.Pad.rising(pad: int) { … }` in the DSL.
+- `payload=`: comma-separated `name:type` pairs declaring handler arguments. Types are DSL-level (`int`, `bool`, `float`, `string`). Empty for no-arg events.
+- `description=`, `icon=`: shown in the palette.
+- **Tile events only** (`mask=`, `read=`, `read_type=`): wire the event into the tile's `on_event` ABI. `mask` is a C expression the dispatcher AND's against the tile's `events` bitmask. `read` is a `void read(tile_t *, <read_type> *)` function the dispatcher calls to populate payload values. `read_type` is the struct type whose field names match the payload parameter names.
+
+Example with all three (Sense.I.6P6 tap detection):
+
+```c
+/**
+ * @tessera tile label=Sense.I.6P6 icon=▦
+ * @tessera event name=tap mask=ICM42686P_INT_STATUS3_TAP_DET payload=count:int,axis:int,direction:int read=tile_sense_i_6p6_get_tap_result read_type=sense_i_6p6_tap_result_t
+ */
+```
+
+## Function-level directives
+
+These go in the Doxygen block immediately before a function declaration.
+
+### `@tessera expose category=<name> name=<dsl_name> [returns=<dsl_type>] [icon=<glyph>] [availability=<cores>]`
+
+Marks a function as palette-exposed and DSL-callable. The single most important directive — without it a function only appears on the docs page, not in Tessera.
+
+```c
+/**
+ * Set PWM duty cycle on a pad. Timer handle resolved from config.json.
+ *
+ * @tessera expose category=pwm name=duty
+ * @param pad [1..64] Tile pad number configured as a TIMx.<ch> in config.json.
+ * @param duty_permil [0..1000] 0 = off, 500 = 50%, 1000 = fully on.
+ */
+static inline void core_pwm_duty(uint8_t pad, uint16_t duty_permil) { ... }
+```
+
+- `category=`: must match the file's `@tessera category` (or be `tile` for Kiln drivers). Drives the DSL qname (`Core.<category>.<name>`).
+- `name=`: DSL-facing name. Convention: lowercase snake_case, short. The generated qname is `Core.PWM.duty`, not `Core.PWM.core_pwm_duty`.
+- `returns=`: DSL-level return type. Required for non-void hosts so Tessera can use the call as an expression. Values: `int`, `bool`, `float`, `string`, `int[N]` / `bool[N]` / `float[N]` (fixed-length array). Omit for void hosts (statement-only).
+- `icon=`: per-host glyph in the palette (rare; usually inherited from the category).
+- `availability=`: comma-separated list of Cores this host runs on (e.g. `availability=Core.H,Core.W`). Omit when the host runs on every Core in the SDK.
+
+### `@tessera param <cname> enum {KEY=label, ...}`
+
+Attaches friendly enum labels to an int-valued parameter. The DSL renders the labels in the block editor; codegen still passes the C identifier.
+
+```c
+/**
+ * Set the accelerometer full-scale range.
+ *
+ * @tessera expose category=tile name=set_accel_range
+ * @tessera param range enum {FSR_2G=±2g, FSR_4G=±4g, FSR_8G=±8g, FSR_16G=±16g}
+ * @param range Accelerometer full-scale range.
+ */
+void tile_sense_i_6p6_set_accel_range(tile_t *tile, uint8_t range);
+```
+
+- `<cname>` (positional): C parameter name (matches the function signature).
+- Values inside `{ … }`: comma-separated `KEY=label` pairs. `KEY` is the C identifier the codegen emits; `label` is what the user sees. A bare `KEY` (no `=`) uses the C identifier as its own label.
+
+### `@tessera param <cname> type=<dsl_type>`
+
+Override the DSL type for a parameter the C signature describes as a pointer. Used for fixed-length array inputs.
+
+```c
+/**
+ * Apply a 16-bin equalizer profile.
+ *
+ * @tessera expose category=tile name=apply_eq
+ * @tessera param effects type=int[16]
+ */
+void tile_audio_apply_eq(tile_t *tile, int16_t *effects);
+```
+
+Without the override, `int16_t *` would map to `?int16_t*` (an unknown DSL type). With it, the user passes a 16-element int array and the DSL handles the buffer.
+
+### `@tessera out_buffer <cname> type=<ctype> length=<N>`
+
+Promote a pointer-out parameter into a typed array return. The driver writes into the buffer and returns void; Tessera presents the call as if it returns `int[N]`.
+
+```c
+/**
+ * Read raw accelerometer [X, Y, Z]. Convert: g = raw / sensitivity.
+ *
+ * @tessera expose category=tile name=get_raw_accels returns=int[3]
+ * @tessera out_buffer buffer type=int16_t length=3
+ */
+void tile_sense_i_6p6_get_raw_accels(tile_t *tile, int16_t *buffer);
+```
+
+- `<cname>` (positional, required): the C parameter the driver writes into (here `buffer`).
+- `type=` (required): C element type. Must be one of `int8_t`, `int16_t`, `int32_t`, `uint8_t`, `uint16_t`, `uint32_t`, `float`.
+- `length=` (required): integer, the fixed buffer length.
+
+The annotated parameter is stripped from the DSL-visible parameter list. Pair with `returns=int[N]` (or `float[N]`) on the `@tessera expose` so the manifest carries both the DSL return type and the underlying C-buffer shape.
+
+Only one `@tessera out_buffer` per function. Multiple are dropped with a warning.
+
+## Standard Doxygen the generator consumes
+
+These are not `@tessera` directives but the generator reads them and they directly affect what the user sees.
+
+### `@brief <one-liner>`
+
+First sentence shown on the SDK docs page and as the palette tooltip. If absent, the generator falls back to the first non-tag line of the Doxygen block.
+
+### `@param <cname> [{<dsl_type>}] [[lo..hi]] [<unit>] <description>`
+
+```c
+/**
+ * @param period_ms {int} [0..60000] ms Time between LED toggles.
+ */
+```
+
+- `<cname>`: C parameter name.
+- `{<dsl_type>}`: optional, override the DSL-mapped type (similar to `@tessera param … type=`). Prefer the `@tessera param` form for new code; this brace form is older syntax.
+- `[lo..hi]`: numeric range, surfaced as min/max in the palette + docs.
+- `<unit>`: one of the recognised unit tokens (`ms`, `us`, `s`, `hz`, `mv`, `v`, `pct`, `°c`, …; full list in `gen_tessera_manifest.py:UNIT_VOCAB`). Shown next to the parameter.
+- `<description>`: free text.
+
+The DSL parameter name **is the C identifier**. There is no rename mechanism — if the C param is `duty_permil`, the DSL block label says `duty_permil`. Pick C names that read well in the palette.
+
+### `@return <description>`
+
+Shown on the SDK docs page. Not consumed by Tessera codegen — return semantics come from `returns=` on the expose tag.
+
+## Putting it all together — a complete header
+
+Here is an annotated `core_*.h` showing every directive at once:
+
+```c
+/**
+ * core_widget.h — example module
+ *
+ * @tessera category widget label=Core.Widget icon=◯
+ * @tessera event name=ready
+ * @tessera event name=overflow payload=count:int
+ */
+
+/**
+ * Initialize the widget. Not Tessera-exposed — coregen calls this from core_init().
+ */
+hal_status_t core_widget_init(void);
+
+/**
+ * Set the widget intensity.
+ *
+ * @tessera expose category=widget name=set_intensity
+ * @tessera param mode enum {SOFT=soft, HARD=hard}
+ * @param mode Intensity ramp mode.
+ * @param level [0..100] pct Intensity percentage.
+ */
+void core_widget_set(uint8_t mode, uint8_t level);
+
+/**
+ * Read the current widget reading.
+ *
+ * @tessera expose category=widget name=read returns=int
+ */
+int core_widget_read(void);
+
+/**
+ * Capture a 16-sample trace.
+ *
+ * @tessera expose category=widget name=capture returns=int[16]
+ * @tessera out_buffer out type=int16_t length=16
+ */
+void core_widget_capture(int16_t *out);
+```
+
+This header generates:
+- A `Core.Widget` palette entry with three blocks (`set_intensity`, `read`, `capture`) and two events (`ready`, `overflow`).
+- A `manifests/sdk-docs/widget.json` carrying all four functions (init included, marked `tessera_exposed: false`).
+- An `int[16]` return type for `capture` with a transparently-managed stack buffer.
+
+## Validating your driver
+
+Once the header has annotations, run the generator:
+
+```sh
+tools/gen_tessera_manifest.py
+```
+
+It writes:
+- `manifests/core.json` — palette manifest used by Tessera's frontend.
+- `manifests/sdk-docs/<category>.json` — per-category SDK reference doc.
+- `kiln/manifests/tile_<name>.json` — per-tile manifest (for Kiln drivers).
+
+To verify the manifests on disk match the headers without overwriting (CI-friendly):
+
+```sh
+tools/gen_tessera_manifest.py --check
+```
+
+The Python test suite `tools/test_gen_tessera_manifest.py` covers each directive's parsing rules. If you add a directive, add a test there.
+
+A "minimum viable Tessera project" template that imports a single host and verifies it on hardware lives at TODO — link once the template lands.
+
+## Common warnings and what they mean
+
+The generator prints warnings to stderr without failing the build. Watch for:
+
+- `@param count N != C arg count M + out_buffer count K` — your `@param` lines don't cover every C argument. Either add a missing `@param` or check that `@tessera out_buffer` matches the parameter you intended.
+- `@tessera out_buffer <name> doesn't match any C parameter` — typo'd the parameter name.
+- `category '<name>' redeclared in <file>` — two headers claim the same category. The first wins; rename or merge.
+- `N @tessera event(s) but K @tessera category declarations — events dropped` — events live on a category, so the file must have exactly one `@tessera category`.
+- `unknown brace key '<key>' — only 'enum' is recognised` — typo on `@tessera param … enum {…}`.
+
+## Driver authoring checklist
+
+When adding `@tessera` annotations to an existing driver:
+
+1. File-level: add `@tessera category <name>` (cores) or `@tessera tile label=<Name>` (Kiln). Pick a category name that's unique across the repo.
+2. For each function the user should be able to call from Tessera, add `@tessera expose category=<name> name=<dsl_name>` plus `returns=` if non-void.
+3. Add `@param` lines with ranges and units for every C parameter.
+4. For pointer-output parameters: add `@tessera out_buffer <param> type=<ctype> length=<N>` and `returns=int[N]` (or `float[N]`) on the expose tag.
+5. For enum-coded parameters: add `@tessera param <param> enum {…}`.
+6. Run `tools/gen_tessera_manifest.py` and check stderr for warnings.
+7. Commit the regenerated `manifests/` files alongside the header changes — the manifests are checked in.
+
+Reference patterns:
+- Default-instance helper (most common): [`core_pwm_duty`](../sdk/core/core_pwm.h) in `sdk/core/core_pwm.h`.
+- Tile driver with events: [`tile_sense_i_6p6.h`](../kiln/drivers/tile_sense_i_6p6.h) — five events, two with payload, two with read functions.
+- Array-returning host: `tile_sense_i_6p6_get_raw_accels` in the same file.
