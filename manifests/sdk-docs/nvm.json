@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@7b590aa",
+  "source": "cores@77b3a40",
   "category": "nvm",
   "label": "Core.NVM",
   "icon": "▤",
@@ -55,14 +55,6 @@
       "brief": "Returns the total NVM size in bytes for this Core.",
       "params": [],
       "tessera_exposed": true
-    },
-    {
-      "name": "core_nvm_erase",
-      "signature": "core_nvm_erase(void)",
-      "returns": "int",
-      "brief": "Erase the entire NVM region. Touches every backing sector with a flash erase, no reads — the post-condition is the platform's erased pattern (0xFF for STM32 internal flash). Why this exists separately from `core_nvm_write`: - core_nvm_write does read-modify-write, so if existing NVM contents trigger an ECC fault (e.g., a half-programmed qword from older firmware that used the wrong programming granularity), the write path can't even start. - core_nvm_erase doesn't read, so it always succeeds on a responsive flash controller. Use this: - During development to recover from a corrupt NVM state. - On first boot of a freshly-provisioned device where you don't trust the factory pattern. Returns 0 on success, -1 if any sector erase fails.",
-      "params": [],
-      "tessera_exposed": false
     }
   ]
 }

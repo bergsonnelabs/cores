@@ -21,7 +21,7 @@
 #include "core.h"
 #include "core_usb.h"
 #include "core_tiles.h"
-#include "tile_disp_rgbw.h"
+#include "tile_display_rgbw.h"
 #include "tile_drive_dc_h.h"
 
 /* USB-safe motor config with ripple counting enabled.
@@ -45,9 +45,9 @@ static uint8_t test_fail = 0;
 
 /* ---- Helpers ---- */
 
-static void led_yellow(void) { tile_disp_rgbw_set(&led, 24, 12, 0, 0); }
-static void led_green(void)  { tile_disp_rgbw_set(&led, 0, 24, 0, 0); }
-static void led_red(void)    { tile_disp_rgbw_set(&led, 24, 0, 0, 0); }
+static void led_yellow(void) { tile_display_rgbw_set(&led, 24, 12, 0, 0); }
+static void led_green(void)  { tile_display_rgbw_set(&led, 0, 24, 0, 0); }
+static void led_red(void)    { tile_display_rgbw_set(&led, 24, 0, 0, 0); }
 
 static void pass(const char *name)
 {
@@ -381,7 +381,7 @@ int main(void)
     tiles_pal_t *hal_led   = core_tiles_pal(&core_i2c1);
     tiles_pal_t *hal_motor = core_tiles_pal(&core_i2c3);
 
-    tile_disp_rgbw_init(hal_led, 0, &led, NULL);
+    tile_display_rgbw_init(hal_led, 0, &led, NULL);
     led_yellow();
 
     /* I2C scan */

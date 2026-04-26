@@ -9,7 +9,7 @@
 #include "core.h"
 #include "core_tiles.h"
 #include "core_usb.h"
-#include "tile_disp_rgbw.h"
+#include "tile_display_rgbw.h"
 #include "tile_sense_mic.h"
 
 static tile_t led;
@@ -37,7 +37,7 @@ int main(void)
     core_usb_printf("Scan done.\r\n");
 
     /* Init the RGBW display on I2C1 */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
+    tile_display_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
 
     /* Probe for Sense.MIC on I2C3 — retry a few times with delay,
      * since the MAX11645 may need extra time after power-on */
@@ -59,7 +59,7 @@ int main(void)
 
         if (tile_is_ready(&mic)) {
             /* Green — found and initialized */
-            tile_disp_rgbw_set(&led, 0, 24, 0, 0);
+            tile_display_rgbw_set(&led, 0, 24, 0, 0);
             core_usb_printf("Sense.MIC initialized OK\r\n");
 
             /* Demo: read a few samples */
@@ -78,12 +78,12 @@ int main(void)
             core_usb_printf("  DC level: %u  peak-to-peak: %u\r\n", dc, pp);
         } else {
             /* Yellow — found but init failed */
-            tile_disp_rgbw_set(&led, 24, 12, 0, 0);
+            tile_display_rgbw_set(&led, 24, 12, 0, 0);
             core_usb_printf("Sense.MIC found but init failed\r\n");
         }
     } else {
         /* Red — not found */
-        tile_disp_rgbw_set(&led, 24, 0, 0, 0);
+        tile_display_rgbw_set(&led, 24, 0, 0, 0);
         core_usb_printf("Sense.MIC NOT found on I2C3\r\n");
     }
 

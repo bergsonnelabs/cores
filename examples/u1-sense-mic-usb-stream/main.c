@@ -19,7 +19,7 @@
 #include "core.h"
 #include "core_tiles.h"
 #include "core_usb.h"
-#include "tile_disp_rgbw.h"
+#include "tile_display_rgbw.h"
 #include "tile_sense_mic.h"
 
 /* Packet layout */
@@ -49,7 +49,7 @@ int main(void)
     core_delay_ms(500);
 
     /* Init RGBW on I2C1 */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
+    tile_display_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
 
     /* Find and init Sense.MIC on I2C3 with retries */
     uint8_t mic_found = 0;
@@ -62,14 +62,14 @@ int main(void)
     }
 
     if (!mic_found) {
-        tile_disp_rgbw_set(&led, 24, 0, 0, 0);  /* Red */
+        tile_display_rgbw_set(&led, 24, 0, 0, 0);  /* Red */
         core_usb_printf("# error: Sense.MIC not found\r\n");
         while (1) core_delay_ms(1000);
     }
 
     tile_sense_mic_init(core_tiles_pal(&core_i2c3), 0, &mic, NULL);
     if (!tile_is_ready(&mic)) {
-        tile_disp_rgbw_set(&led, 24, 12, 0, 0);  /* Yellow */
+        tile_display_rgbw_set(&led, 24, 12, 0, 0);  /* Yellow */
         core_usb_printf("# error: Sense.MIC init failed\r\n");
         while (1) core_delay_ms(1000);
     }
@@ -81,7 +81,7 @@ int main(void)
     core_usb_on_receive(on_usb_rx, NULL);
 
     /* Blue = idle, waiting for 's' */
-    tile_disp_rgbw_set(&led, 0, 0, 24, 0);
+    tile_display_rgbw_set(&led, 0, 0, 24, 0);
     core_usb_printf("# ready (send 's' to stream, 'x' to stop)\r\n");
 
     /* Streaming state */
@@ -98,7 +98,7 @@ int main(void)
     while (1) {
         if (!streaming) {
             if (was_streaming) {
-                tile_disp_rgbw_set(&led, 0, 0, 24, 0);  /* Blue = idle */
+                tile_display_rgbw_set(&led, 0, 0, 24, 0);  /* Blue = idle */
                 core_usb_printf("# stopped\r\n");
                 was_streaming = 0;
             }
@@ -107,7 +107,7 @@ int main(void)
         }
 
         if (!was_streaming) {
-            tile_disp_rgbw_set(&led, 0, 24, 0, 0);  /* Green = streaming */
+            tile_display_rgbw_set(&led, 0, 24, 0, 0);  /* Green = streaming */
             was_streaming = 1;
         }
 

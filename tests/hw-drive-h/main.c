@@ -19,7 +19,7 @@
 #include "core_usb.h"
 #include "core_gpio.h"
 #include "core_tiles.h"
-#include "tile_disp_rgbw.h"
+#include "tile_display_rgbw.h"
 #include "tile_drive_h.h"
 
 #define TRIG_PAD  3  /* Core.U.1 pad 3 → Drive.H IN/TRIG */
@@ -31,9 +31,9 @@ static uint8_t test_fail = 0;
 
 /* ---- Helpers ---- */
 
-static void led_yellow(void) { tile_disp_rgbw_set(&led, 24, 12, 0, 0); }
-static void led_green(void)  { tile_disp_rgbw_set(&led, 0, 24, 0, 0); }
-static void led_red(void)    { tile_disp_rgbw_set(&led, 24, 0, 0, 0); }
+static void led_yellow(void) { tile_display_rgbw_set(&led, 24, 12, 0, 0); }
+static void led_green(void)  { tile_display_rgbw_set(&led, 0, 24, 0, 0); }
+static void led_red(void)    { tile_display_rgbw_set(&led, 24, 0, 0, 0); }
 
 static void pass(const char *name)
 {
@@ -390,7 +390,7 @@ int main(void)
     core_usb_printf("========================================\r\n");
 
     /* Init LED */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
+    tile_display_rgbw_init(core_tiles_pal(&core_i2c1), 0, &led, NULL);
     led_yellow();
 
     /* Init haptic driver */
