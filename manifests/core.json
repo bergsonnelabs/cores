@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@d45dfd0",
+  "source": "cores@7b590aa",
   "categories": {
     "adc": {
       "label": "Core.ADC",
