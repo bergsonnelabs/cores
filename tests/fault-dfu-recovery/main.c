@@ -29,7 +29,7 @@ int main(void)
     core_usb_init();
 
     /* Init the RGBW LED on I2C1 */
-    tile_disp_rgbw_init(core_tiles_pal(&core_i2c1), 0, &tile_disp_rgbw_i2c1_0, NULL);
+    tile_display_rgbw_init(core_tiles_pal(&core_i2c1), 0, &tile_display_rgbw_i2c1_0, NULL);
 
     /* Give USB time to enumerate so the serial monitor can connect */
     delay(2000000);
@@ -39,9 +39,9 @@ int main(void)
 
     /* Blink green twice */
     for (int i = 0; i < 2; i++) {
-        tile_disp_rgbw_set(&tile_disp_rgbw_i2c1_0, 0, 64, 0, 0);
+        tile_display_rgbw_set(&tile_display_rgbw_i2c1_0, 0, 64, 0, 0);
         delay(300000);
-        tile_disp_rgbw_off(&tile_disp_rgbw_i2c1_0);
+        tile_display_rgbw_off(&tile_display_rgbw_i2c1_0);
         delay(300000);
     }
 

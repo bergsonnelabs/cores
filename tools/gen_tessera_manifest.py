@@ -715,14 +715,14 @@ def main():
 
     tile_sources = [
         {
-            "path": ROOT / "kiln/drivers/tile_disp_rgbw.h",
+            "path": ROOT / "kiln/drivers/tile_display_rgbw.h",
             # No matching `Display.RGBW` tile definition in kiln/definitions/
             # today — the placeholder `Display-RGB-a.json` has no
             # interfaces populated. When the real Display.RGBW def lands,
             # point `definition` at it and the address data flows.
             "definition": None,
-            "prefix": "tile_disp_rgbw",
-            "init": "tile_disp_rgbw_init",
+            "prefix": "tile_display_rgbw",
+            "init": "tile_display_rgbw_init",
             "version": "1.0.0",
         },
         {
