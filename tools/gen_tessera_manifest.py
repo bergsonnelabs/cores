@@ -913,7 +913,7 @@ def main():
             "definition": ROOT / "kiln/definitions/Drive-P-a.json",
             "prefix": "tile_drive_p",
             "init": "tile_drive_p_init",
-            "version": "2.0.0",
+            "version": "3.0.0",
         },
         {
             "path": ROOT / "kiln/drivers/tile_power_l_1t.h",
