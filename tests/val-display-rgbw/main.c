@@ -69,6 +69,14 @@ int main(void)
      * for the rest of the run. Keep referenced for compile check. */
     (void)tile_display_rgbw_reset;
 
+    /* ---- v2.1 tier-2 runtime helpers ---- */
+    tile_display_rgbw_set_color(&led, 255, 0, 0);
+    tile_display_rgbw_pulse(&led, 0, 255, 0, 200);
+    tile_display_rgbw_breathe(&led, 0, 0, 255, 1000);
+    tile_display_rgbw_flash(&led, 255, 255, 0, 3);
+    uint8_t faulted = tile_display_rgbw_is_faulted(&led);
+    (void)faulted;
+
     /* ---- State checks ---- */
     uint8_t ready = tile_is_ready(&led);
     (void)ready;

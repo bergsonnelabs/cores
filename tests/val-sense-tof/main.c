@@ -144,6 +144,16 @@ int main(void)
                                                      /*timeout_ms=*/500);
     (void)hist_ok;
 
+    /* ---- tier-2 presence helpers ---- */
+    uint8_t within = tile_sense_tof_is_object_within(&tof, 500);
+    (void)within;
+    uint8_t saw = tile_sense_tof_wait_for_object(&tof, 500, 5);
+    (void)saw;
+    uint16_t mm_out = 0;
+    uint8_t conf = 0;
+    uint8_t got = tile_sense_tof_read_distance_with_confidence(&tof, &mm_out, &conf);
+    (void)got; (void)mm_out; (void)conf;
+
     /* ---- State checks ---- */
 
     uint8_t is_ready = tile_is_ready(&tof);

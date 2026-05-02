@@ -71,6 +71,17 @@ int main(void)
     (void)tile_sense_t_c_read_reg(&touch, IQS323_REG_PRODUCT_NUM);
     tile_sense_t_c_write_reg(&touch, IQS323_REG_GESTURE_ENABLE, 0x003F);
 
+    /* ---- v1.2 tier-2 runtime helpers ---- */
+    uint8_t any_touch = tile_sense_t_c_is_touched_any(&touch);
+    (void)any_touch;
+    uint8_t touched = tile_sense_t_c_wait_for_touch(&touch, 5);
+    (void)touched;
+    uint16_t gesture = tile_sense_t_c_wait_for_gesture(&touch, 5);
+    (void)gesture;
+    uint8_t pct = 0;
+    uint8_t slider_ok = tile_sense_t_c_read_slider_pct(&touch, &pct);
+    (void)slider_ok; (void)pct;
+
     while (1) {
         core_delay_ms(1000);
     }

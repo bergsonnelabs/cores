@@ -97,6 +97,14 @@ int main(void)
      * for the rest of the run. Keep it referenced for compile check. */
     (void)tile_power_l_1t_enter_ship_mode;
 
+    /* ---- v3.1 tier-2 runtime helpers ---- */
+    uint8_t charging  = tile_power_l_1t_is_charging(&battery);
+    uint8_t done      = tile_power_l_1t_is_charge_done(&battery);
+    uint8_t low       = tile_power_l_1t_is_battery_low(&battery, 10);
+    uint8_t powered   = tile_power_l_1t_is_powered(&battery);
+    uint8_t wait_done = tile_power_l_1t_wait_for_charge_done(&battery, 5);
+    (void)charging; (void)done; (void)low; (void)powered; (void)wait_done;
+
     while (1) {
         core_delay_ms(1000);
     }
