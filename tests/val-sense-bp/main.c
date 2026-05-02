@@ -133,6 +133,9 @@ int main(void)
     uint8_t int_src = tile_sense_bp_get_int_source(&baro);
     (void)int_src;
 
+    uint8_t booted = tile_sense_bp_is_boot_complete(&baro);
+    (void)booted;
+
     /* Clear interrupt config */
     tile_sense_bp_set_interrupt_cfg(&baro, 0);
 
