@@ -24,12 +24,14 @@ int main(void)
 
     tile_sense_mic_init(hal, 0, &mic, NULL);
 
-    /* Init with config */
+    /* Init with full config — exercises every cfg field */
     sense_mic_cfg_t cfg = {
-        .ref     = SENSE_MIC_REF_INTERNAL,
-        .channel = SENSE_MIC_CH_AIN0,
-        .scan    = SENSE_MIC_SCAN_SINGLE,
-        .vref_mv = 2048,
+        .ref      = SENSE_MIC_REF_INTERNAL,
+        .channel  = SENSE_MIC_CH_AIN0,
+        .scan     = SENSE_MIC_SCAN_SINGLE,
+        .clock    = SENSE_MIC_CLOCK_INTERNAL,
+        .polarity = SENSE_MIC_POLARITY_UNIPOLAR,
+        .vref_mv  = 2048,
     };
     tile_sense_mic_init(hal, 0, &mic, &cfg);
 
@@ -44,6 +46,12 @@ int main(void)
     tile_sense_mic_set_reference(&mic, SENSE_MIC_REF_VDD);
     tile_sense_mic_set_channel(&mic, SENSE_MIC_CH_AIN1);
     tile_sense_mic_set_scan_mode(&mic, SENSE_MIC_SCAN_8X);
+
+    /* New in v2: clock + polarity setters */
+    tile_sense_mic_set_clock_mode(&mic, SENSE_MIC_CLOCK_EXTERNAL);
+    tile_sense_mic_set_clock_mode(&mic, SENSE_MIC_CLOCK_INTERNAL);
+    tile_sense_mic_set_polarity(&mic, SENSE_MIC_POLARITY_BIPOLAR);
+    tile_sense_mic_set_polarity(&mic, SENSE_MIC_POLARITY_UNIPOLAR);
 
     uint16_t vref = tile_sense_mic_get_vref_mv(&mic);
     (void)vref;
