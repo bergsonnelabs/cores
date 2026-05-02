@@ -57,15 +57,70 @@ int main(void)
     };
     tile_drive_dc_h_init(hal, 0, &motor, &cfg_r);
 
+    /* Init in pad-control modes (PMODE/I2C_BC paths) */
+    drive_dc_h_cfg_t cfg_phen = {
+        .mode    = DRIVE_DC_H_MODE_PAD_PHEN,
+        .vm_gain = 1,
+        .cs_gain = 0,
+    };
+    tile_drive_dc_h_init(hal, 0, &motor, &cfg_phen);
+
+    drive_dc_h_cfg_t cfg_in1in2 = {
+        .mode    = DRIVE_DC_H_MODE_PAD_IN1IN2,
+        .vm_gain = 1,
+        .cs_gain = 0,
+    };
+    tile_drive_dc_h_init(hal, 0, &motor, &cfg_in1in2);
+
+    /* Restore I²C-controlled mode for the rest of the test */
+    tile_drive_dc_h_init(hal, 0, &motor, NULL);
+
     /* ---- Motor control ---- */
     tile_drive_dc_h_forward(&motor);
     tile_drive_dc_h_reverse(&motor);
     tile_drive_dc_h_brake(&motor);
     tile_drive_dc_h_coast(&motor);
 
+    /* ---- Bridge control source ---- */
+    tile_drive_dc_h_set_control_mode(&motor, DRIVE_DC_H_CTRL_PAD_PHEN);
+    tile_drive_dc_h_set_control_mode(&motor, DRIVE_DC_H_CTRL_PAD_IN1IN2);
+    tile_drive_dc_h_set_control_mode(&motor, DRIVE_DC_H_CTRL_I2C);
+
     /* ---- Regulation ---- */
     tile_drive_dc_h_set_target(&motor, 200);
     tile_drive_dc_h_set_target(&motor, 0);
+
+    tile_drive_dc_h_set_regulation_mode(&motor, DRIVE_DC_H_REG_OPEN_LOOP);
+    tile_drive_dc_h_set_regulation_mode(&motor, DRIVE_DC_H_REG_CYCLE_BY_CYCLE);
+    tile_drive_dc_h_set_regulation_mode(&motor, DRIVE_DC_H_REG_VOLTAGE);
+    tile_drive_dc_h_set_regulation_mode(&motor, DRIVE_DC_H_REG_SPEED);
+
+    /* ---- Current regulation ---- */
+    tile_drive_dc_h_set_current_regulation_mode(&motor, DRIVE_DC_H_IMODE_DISABLED);
+    tile_drive_dc_h_set_current_regulation_mode(&motor, DRIVE_DC_H_IMODE_INRUSH);
+    tile_drive_dc_h_set_current_regulation_mode(&motor, DRIVE_DC_H_IMODE_ALWAYS);
+
+    tile_drive_dc_h_set_current_sense_gain(&motor, 0);   /* 4 A */
+    tile_drive_dc_h_set_current_sense_gain(&motor, 5);   /* 0.125 A */
+    tile_drive_dc_h_set_current_sense_gain(&motor, 99);  /* clamped */
+
+    /* ---- Stall detection tuning ---- */
+    tile_drive_dc_h_set_stall_enabled(&motor, 1);
+    tile_drive_dc_h_set_stall_enabled(&motor, 0);
+    tile_drive_dc_h_set_inrush_time_ms(&motor, 100);
+    tile_drive_dc_h_set_inrush_time_ms(&motor, 1500);
+    tile_drive_dc_h_set_inrush_time_ms(&motor, 8000);  /* clamps */
+    tile_drive_dc_h_set_stall_recovery(&motor, DRIVE_DC_H_STALL_LATCH);
+    tile_drive_dc_h_set_stall_recovery(&motor, DRIVE_DC_H_STALL_REPORT);
+
+    /* ---- Ripple counter tuning ---- */
+    tile_drive_dc_h_set_ripple_threshold(&motor, 50);     /* small */
+    tile_drive_dc_h_set_ripple_threshold(&motor, 5000);   /* mid */
+    tile_drive_dc_h_set_ripple_threshold(&motor, 60000);  /* near-max */
+    tile_drive_dc_h_set_ripple_threshold(&motor, 65535);  /* clamps */
+
+    tile_drive_dc_h_set_ripple_filter_gain(&motor, 0);   /* x2 */
+    tile_drive_dc_h_set_ripple_filter_gain(&motor, 3);   /* x16 */
 
     /* ---- Monitoring ---- */
     uint8_t fault = tile_drive_dc_h_get_fault(&motor);
