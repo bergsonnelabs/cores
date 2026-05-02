@@ -93,6 +93,50 @@ int main(void)
     uint16_t res_hz = tile_drive_h_get_resonance_hz(&haptic);
     (void)res_hz;
 
+    /* ---- Sequencer slot wait ---- */
+    tile_drive_h_set_sequence_wait(&haptic, 1, 20);   /* 200 ms wait */
+    tile_drive_h_set_sequence_wait(&haptic, 9, 20);   /* out-of-range slot, ignored */
+    tile_drive_h_set_sequence_wait(&haptic, 2, 0xFF); /* clipped to 0x7F */
+
+    /* ---- Library + actuator tuning runtime setters ---- */
+    tile_drive_h_set_library(&haptic, DRIVE_H_LIB_LRA);
+    tile_drive_h_set_library(&haptic, DRIVE_H_LIB_ERM_C);
+    tile_drive_h_set_library(&haptic, DRIVE_H_LIB_EMPTY);
+
+    tile_drive_h_set_actuator_params(&haptic, 0x1A, 0x25, 2, 1);
+    tile_drive_h_set_actuator_params(&haptic, 0,    0,    0xFF, 0xFF); /* no-op */
+
+    tile_drive_h_set_resonance_params(&haptic, 3, 1, 1);
+    tile_drive_h_set_resonance_params(&haptic, 0xFF, 0xFF, 0xFF); /* no-op */
+
+    /* ---- Library waveform timing offsets ---- */
+    tile_drive_h_set_waveform_timing(&haptic, 0, 0, 0, 0);
+    tile_drive_h_set_waveform_timing(&haptic, 4, -2, 1, 8);
+
+    /* ---- RTP format ---- */
+    tile_drive_h_set_rtp_format(&haptic, 1, 1);  /* unsigned, bidirectional */
+    tile_drive_h_set_rtp_format(&haptic, 0, 0);  /* signed, unidirectional */
+
+    /* ---- PWM / analog input modes ---- */
+    tile_drive_h_pwm_input_start(&haptic);
+    tile_drive_h_pwm_input_stop(&haptic);
+
+    tile_drive_h_analog_input_start(&haptic);
+    tile_drive_h_pwm_input_stop(&haptic);
+
+    /* ---- Audio-to-vibe ---- */
+    tile_drive_h_audio_start(&haptic);
+    tile_drive_h_set_audio_params(&haptic, 1, 1, 0x19, 0xFF, 0x19, 0xFF);
+    tile_drive_h_set_audio_params(&haptic, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
+    tile_drive_h_audio_stop(&haptic);
+
+    /* ---- OTP status (read-only is safe; do NOT call program_otp) ---- */
+    uint8_t otp_done = tile_drive_h_get_otp_status(&haptic);
+    (void)otp_done;
+
+    /* Reference (not invoked) — destructive, C-only. */
+    (void)&tile_drive_h_program_otp;
+
     /* ---- Standby / wake ---- */
     tile_drive_h_standby(&haptic);
     tile_drive_h_wake(&haptic);
