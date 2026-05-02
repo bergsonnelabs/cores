@@ -1,6 +1,6 @@
 {
   "core": "Core-W-b",
-  "clock": "default",
+  "clock": "medium",
   "pads": {
     "10": "I2C1.CLK",
     "11": "I2C1.DAT"

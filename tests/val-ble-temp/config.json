@@ -1,6 +1,6 @@
 {
   "core": "Core-W-b",
-  "clock": "default",
+  "clock": "medium",
   "ble": {
     "enabled": true
   },

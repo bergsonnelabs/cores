@@ -1,6 +1,6 @@
 {
   "core": "Core-U-2-a",
-  "clock": "default",
+  "clock": "medium",
   "bootloader": "rom",
   "usb": {
     "enabled": true

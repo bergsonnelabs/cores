@@ -1,5 +1,5 @@
 {
-  "clock": "default",
+  "clock": "medium",
   "pads": {},
   "ble": {
     "enabled": true

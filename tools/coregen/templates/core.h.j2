@@ -36,5 +36,14 @@
 {% if dac_enabled %}
 #include "core_dac.h"
 {% endif %}
+{% if i2c_buses %}
+#include "core_i2c.h"
+{% endif %}
+{% if spi_buses %}
+#include "core_spi.h"
+{% endif %}
+{% if tiles_config %}
+#include "core_tiles.h"
+{% endif %}
 
 #endif /* CORE_H */
