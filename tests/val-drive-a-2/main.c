@@ -67,6 +67,33 @@ int main(void)
     tile_drive_a_2_stop_waveform(&dac, 0);
     tile_drive_a_2_stop_waveform(&dac, 1);
 
+    /* ---- Slew / margin / phase / waveform synthesis ---- */
+    tile_drive_a_2_set_slew_rate(&dac, 0, DRIVE_A_2_SLEW_NONE);
+    tile_drive_a_2_set_slew_rate(&dac, 0, DRIVE_A_2_SLEW_4_US);
+    tile_drive_a_2_set_slew_rate(&dac, 1, DRIVE_A_2_SLEW_5128_US);
+
+    tile_drive_a_2_set_code_step(&dac, 0, DRIVE_A_2_STEP_1_LSB);
+    tile_drive_a_2_set_code_step(&dac, 1, DRIVE_A_2_STEP_32_LSB);
+
+    tile_drive_a_2_set_margins(&dac, 0, 1024, 3072);
+    tile_drive_a_2_set_margins(&dac, 1, 0, 4095);
+    /* Caller passing low > high should be silently swapped */
+    tile_drive_a_2_set_margins(&dac, 0, 3000, 1000);
+
+    tile_drive_a_2_set_phase(&dac, 0, DRIVE_A_2_PHASE_0);
+    tile_drive_a_2_set_phase(&dac, 1, DRIVE_A_2_PHASE_90);
+    tile_drive_a_2_set_phase(&dac, 1, DRIVE_A_2_PHASE_120);
+    tile_drive_a_2_set_phase(&dac, 1, DRIVE_A_2_PHASE_240);
+
+    tile_drive_a_2_set_waveform_params(&dac, 0,
+                                       DRIVE_A_2_WAVE_SINE,
+                                       DRIVE_A_2_STEP_1_LSB,
+                                       DRIVE_A_2_SLEW_4_US);
+    tile_drive_a_2_set_waveform_params(&dac, 1,
+                                       DRIVE_A_2_WAVE_TRIANGLE,
+                                       DRIVE_A_2_STEP_8_LSB,
+                                       DRIVE_A_2_SLEW_27_US);
+
     /* ---- Amplifier control ---- */
     tile_drive_a_2_amp_set_gain(&dac, 12);
     tile_drive_a_2_amp_set_gain(&dac, -10);
@@ -96,6 +123,18 @@ int main(void)
     /* ---- Status ---- */
     uint16_t dac_status = tile_drive_a_2_read_status(&dac);
     (void)dac_status;
+
+    /* ---- NVM (shadow flash) ---- */
+    /* nvm_save is destructive — don't actually call it on hardware,
+     * but verify the symbol resolves via a taken pointer. */
+    void (*save_fp)(tile_t *) = tile_drive_a_2_nvm_save;
+    (void)save_fp;
+    tile_drive_a_2_nvm_reload(&dac);
+
+    /* ---- Raw register escape hatches ---- */
+    uint16_t raw = tile_drive_a_2_read_reg(&dac, 0x22);  /* GENERAL-STATUS */
+    (void)raw;
+    tile_drive_a_2_write_reg(&dac, 0x1F, 0x0201);        /* COMMON-CONFIG default */
 
     /* ---- State checks ---- */
     uint8_t ready = tile_is_ready(&dac);
