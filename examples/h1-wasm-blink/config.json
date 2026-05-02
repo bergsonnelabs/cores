@@ -1,6 +1,6 @@
 {
   "core": "Core-H-1-a",
-  "clock": "default",
+  "clock": "medium",
   "programming": {
     "methods": [
       "usb-dfu"

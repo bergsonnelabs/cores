@@ -171,6 +171,35 @@ def extract_system_pads(pads):
     return system
 
 
+def resolve_clock_block(tile):
+    """Read the tile's clock data from the post-2026-05-01 schema.
+
+    Capability (sources, boot_source) lives under `features.clock`; the
+    user-pickable configurations live as options on the `config.clock`
+    select knob, with each option's clock-tree state declared as a
+    `firmware_contract` entry of type "clock". This helper rebuilds the
+    legacy `(sources, configurations, knob_default)` shape for the rest
+    of coregen to consume.
+    """
+    features_clock = (tile.get("features") or {}).get("clock") or {}
+    config_clock = (tile.get("config") or {}).get("clock") or {}
+    sources = features_clock.get("sources", [])
+    configurations = []
+    for opt in config_clock.get("options", []):
+        # Pull clock state from firmware_contract[type=clock]; fall back
+        # to legacy `derived` for tiles that haven't been migrated yet.
+        clock_entry = next(
+            (fc for fc in (opt.get("firmware_contract") or []) if fc.get("type") == "clock"),
+            None,
+        )
+        cfg = dict(clock_entry or opt.get("derived") or {})
+        cfg.pop("type", None)
+        cfg["name"] = opt.get("value")
+        configurations.append(cfg)
+    knob_default = config_clock.get("default", "medium")
+    return sources, configurations, knob_default
+
+
 def extract_led_info(tile):
     """Extract LED pin info from application_notes."""
     for note in tile.get("application_notes", []):
@@ -388,10 +417,10 @@ def validate_project_config(config, tile, pad_map, mcu=None):
         )
 
     # Validate clock performance level
-    clock = config.get("clock", "default")
+    _sources, _configurations, _knob_default = resolve_clock_block(tile)
+    clock = config.get("clock", _knob_default)
     if clock:
-        tile_clocks = tile.get("clock", {})
-        configs = {c["name"]: c for c in tile_clocks.get("configurations", [])}
+        configs = {c["name"]: c for c in _configurations}
         if clock not in configs:
             available = ", ".join(sorted(configs.keys())) if configs else "(none defined)"
             errors.append(
@@ -536,16 +565,16 @@ def build_timer_config(config, pad_map):
 def build_clock_config(config, tile, mcu):
     """Build resolved clock configuration from a performance level.
 
-    Accepts a performance level string ("low", "default", "high", "max")
-    which is resolved from the tile JSON's clock.configurations array.
+    Accepts a performance level string ("low", "medium", "high", "max")
+    which is resolved from the tile JSON's config.clock select knob.
 
     Auto-calculates PLL M/N/R if the target frequency requires it.
     """
-    level = config.get("clock", "default")
-    tile_clock = tile.get("clock", {})
+    sources, configurations, knob_default = resolve_clock_block(tile)
+    level = config.get("clock", knob_default)
 
     # Resolve performance level to clock config
-    configs = {c["name"]: c for c in tile_clock.get("configurations", [])}
+    configs = {c["name"]: c for c in configurations}
     if level not in configs:
         available = ", ".join(sorted(configs.keys())) if configs else "(none defined)"
         print(f"  ERROR: Clock level '{level}' not available. Options: {available}")
@@ -560,7 +589,7 @@ def build_clock_config(config, tile, mcu):
     # For MSI, the tile JSON records the reset-default frequency (4MHz) but the
     # oscillator can be tuned to any range value — treat target_mhz as the MSI freq.
     source_mhz = target_mhz if source == "msi" else 16
-    for src in tile_clock.get("sources", []):
+    for src in sources:
         if src["type"] == source and source != "msi":
             source_mhz = src["frequency_mhz"]
             break
