@@ -285,6 +285,43 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             continue
         out_buffers[positional] = {"type": attrs["type"], "length": length}
 
+    # `@tessera in_buffer <cname> type=<element> length=<N> length_param=<other_cname>`
+    # identifies which C parameter is a caller-passed array buffer + which
+    # adjacent param carries its length. The DSL sees a single fixed-
+    # length array param (`int[N]`); codegen emits (data_ptr, N) at the
+    # call site, where N is the literal `length=` value. Both the buffer
+    # param and the length param are stripped from the DSL-facing list:
+    # the array supplies the length implicitly via its declared shape.
+    #
+    # Variable-length form (omit `length=`) is reserved for a follow-up;
+    # for now `length=` is required so the DSL type stays a fixed-length
+    # `int[N]` that the existing array type system handles natively.
+    in_buffers = {}      # cname → { type, length, length_param }
+    in_buffer_lengths = set()  # cnames of length params (stripped from DSL)
+    for verb, positional, attrs in all_tags:
+        if verb != "in_buffer" or not positional:
+            continue
+        if "type" not in attrs or "length" not in attrs or "length_param" not in attrs:
+            print(
+                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type= / length= / length_param=",
+                file=sys.stderr,
+            )
+            continue
+        try:
+            length = int(attrs["length"])
+        except ValueError:
+            print(
+                f"warn: {sig['name']}: @tessera in_buffer {positional} length={attrs['length']!r} must be an integer",
+                file=sys.stderr,
+            )
+            continue
+        in_buffers[positional] = {
+            "type": attrs["type"],
+            "length": length,
+            "length_param": attrs["length_param"],
+        }
+        in_buffer_lengths.add(attrs["length_param"])
+
     receiver = None
     c_params = []
     for sp in sig["params"]:
@@ -295,12 +332,16 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             # Drop the out-buffer param from the DSL-facing list; its
             # presence is carried by host["c_out_buffer"] below.
             continue
+        elif sp["name"] in in_buffer_lengths:
+            # The length param paired with an `@tessera in_buffer` is
+            # implicit at the DSL layer (array.length supplies it).
+            continue
         else:
             c_params.append(sp)
 
-    # Warn when out_buffer annotations don't line up with the C
-    # signature — catches typos (`@tessera out_buffer buf` when the
-    # param is named `buffer`).
+    # Warn when out_buffer / in_buffer annotations don't line up with
+    # the C signature — catches typos (`@tessera out_buffer buf` when
+    # the param is named `buffer`).
     c_param_names = {sp["name"] for sp in sig["params"]}
     for cname in out_buffers:
         if cname not in c_param_names:
@@ -308,14 +349,27 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 f"warn: {sig['name']}: @tessera out_buffer {cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
+    for cname in in_buffers:
+        if cname not in c_param_names:
+            print(
+                f"warn: {sig['name']}: @tessera in_buffer {cname} doesn't match any C parameter",
+                file=sys.stderr,
+            )
+    for cname in in_buffer_lengths:
+        if cname not in c_param_names:
+            print(
+                f"warn: {sig['name']}: @tessera in_buffer length_param={cname} doesn't match any C parameter",
+                file=sys.stderr,
+            )
 
-    if len(doxy_params) != len(c_params) + len(out_buffers):
-        # out_buffer params usually have their own @param line (useful
-        # for docs), but they're stripped from the DSL-visible count.
-        # We still emit the warning if the totals don't match even
-        # accounting for stripped buffers.
+    expected_doxy = len(c_params) + len(out_buffers) + len(in_buffer_lengths)
+    if len(doxy_params) != expected_doxy:
+        # buffer + length params usually have their own @param line
+        # (useful for docs) but get stripped from the DSL-visible count.
+        # We only warn when totals don't match even after accounting.
         print(
-            f"warn: {sig['name']}: @param count {len(doxy_params)} != C arg count {len(c_params)} + out_buffer count {len(out_buffers)}",
+            f"warn: {sig['name']}: @param count {len(doxy_params)} != C arg count "
+            f"{len(c_params)} + out_buffer {len(out_buffers)} + in_buffer length params {len(in_buffer_lengths)}",
             file=sys.stderr,
         )
 
@@ -330,9 +384,18 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         meta = doxy_by_name.get(cp["name"])
         if meta is None:
             meta = doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
+        # Array IN params get DSL type `<element>[<N>]` from the
+        # @tessera in_buffer annotation, overriding the underlying C
+        # pointer type.
+        if cp["name"] in in_buffers:
+            ib = in_buffers[cp["name"]]
+            element_dsl = dsl_type_of(ib["type"], None)
+            entry_type = f"{element_dsl}[{ib['length']}]"
+        else:
+            entry_type = dsl_type_of(cp["ctype"], meta.get("type_override"))
         entry = {
             "name": meta["name"],
-            "type": dsl_type_of(cp["ctype"], meta.get("type_override")),
+            "type": entry_type,
         }
         if "range" in meta:
             entry["range"] = meta["range"]
@@ -395,6 +458,22 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             )
         first_name = next(iter(out_buffers))
         host["c_out_buffer"] = out_buffers[first_name]
+    if in_buffers:
+        if len(in_buffers) > 1:
+            print(
+                f"warn: {sig['name']}: multiple @tessera in_buffer annotations — only one in-buffer per host is supported (using the first)",
+                file=sys.stderr,
+            )
+        first_name = next(iter(in_buffers))
+        # `name` is the DSL-facing param name, which equals the C param
+        # name for any in_buffer flow that survived the doxy reconciliation.
+        # `length_param` carries the C name of the count slot so codegen
+        # can splice the literal length value into the C call in the right
+        # position. `length` is the fixed array length (the array's `[N]`).
+        host["c_in_buffer"] = {
+            "name": first_name,
+            **in_buffers[first_name],
+        }
     if receiver:
         host["receiver"] = receiver.strip()
     if "availability" in tag:
@@ -716,11 +795,7 @@ def main():
     tile_sources = [
         {
             "path": ROOT / "kiln/drivers/tile_display_rgbw.h",
-            # No matching `Display.RGBW` tile definition in kiln/definitions/
-            # today — the placeholder `Display-RGB-a.json` has no
-            # interfaces populated. When the real Display.RGBW def lands,
-            # point `definition` at it and the address data flows.
-            "definition": None,
+            "definition": ROOT / "kiln/definitions/Display-RGBW-a.json",
             "prefix": "tile_display_rgbw",
             "init": "tile_display_rgbw_init",
             "version": "1.0.0",
