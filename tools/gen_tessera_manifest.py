@@ -260,66 +260,97 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         if verb == "param" and positional:
             tessera_params[positional] = attrs
 
-    # `@tessera out_buffer <cname> type=... length=...` identifies which
-    # C parameter is actually an output buffer — the driver writes into
-    # it and returns void. The DSL wants to see this as an array return,
-    # not a pointer-in, so we strip the param from the DSL-visible list
-    # and emit `c_out_buffer` metadata for the frontend resolver.
+    # `@tessera out_buffer <cname> type=...` identifies which C parameter
+    # is an output buffer the driver writes into. Two flavours:
+    #
+    #   Fixed-length:   length=<N>             → DSL sees `int[N]` return
+    #   Cap (variable): cap_param=<other_cname> → DSL sees `int[]` writable
+    #                                              param + scalar return for
+    #                                              the actual count
+    #
+    # Fixed-length collapses the buffer param into a return value entirely
+    # (the function's C return type is void; DSL sees an `int[N]` return).
+    # Cap mode keeps the function returning a scalar count and exposes the
+    # buffer as a writable array param the DSL caller hands in.
     out_buffers = {}
+    out_buffer_caps = set()  # cnames of cap params (stripped from DSL)
     for verb, positional, attrs in all_tags:
         if verb != "out_buffer" or not positional:
             continue
-        if "type" not in attrs or "length" not in attrs:
+        if "type" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {positional} missing type= or length=",
+                f"warn: {sig['name']}: @tessera out_buffer {positional} missing type=",
                 file=sys.stderr,
             )
             continue
-        try:
-            length = int(attrs["length"])
-        except ValueError:
+        has_length = "length" in attrs
+        has_cap_param = "cap_param" in attrs
+        if not has_length and not has_cap_param:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {positional} length={attrs['length']!r} must be an integer",
+                f"warn: {sig['name']}: @tessera out_buffer {positional} needs either length=<N> (fixed) or cap_param=<name> (variable)",
                 file=sys.stderr,
             )
             continue
-        out_buffers[positional] = {"type": attrs["type"], "length": length}
+        if has_length and has_cap_param:
+            print(
+                f"warn: {sig['name']}: @tessera out_buffer {positional} can't carry both length= and cap_param=",
+                file=sys.stderr,
+            )
+            continue
+        entry = {"type": attrs["type"]}
+        if has_length:
+            try:
+                entry["length"] = int(attrs["length"])
+            except ValueError:
+                print(
+                    f"warn: {sig['name']}: @tessera out_buffer {positional} length={attrs['length']!r} must be an integer",
+                    file=sys.stderr,
+                )
+                continue
+        else:
+            entry["cap_param"] = attrs["cap_param"]
+            out_buffer_caps.add(attrs["cap_param"])
+        out_buffers[positional] = entry
 
-    # `@tessera in_buffer <cname> type=<element> length=<N> length_param=<other_cname>`
+    # `@tessera in_buffer <cname> type=<element> length_param=<other_cname>
+    #     [length=<N>]`
     # identifies which C parameter is a caller-passed array buffer + which
-    # adjacent param carries its length. The DSL sees a single fixed-
-    # length array param (`int[N]`); codegen emits (data_ptr, N) at the
-    # call site, where N is the literal `length=` value. Both the buffer
-    # param and the length param are stripped from the DSL-facing list:
-    # the array supplies the length implicitly via its declared shape.
+    # adjacent param carries its length. Both flavours strip the buffer
+    # param + length param from the DSL-facing list and emit a single
+    # array DSL param in the buffer's position:
     #
-    # Variable-length form (omit `length=`) is reserved for a follow-up;
-    # for now `length=` is required so the DSL type stays a fixed-length
-    # `int[N]` that the existing array type system handles natively.
-    in_buffers = {}      # cname → { type, length, length_param }
+    #   Fixed-length (length=<N>):    DSL sees `int[N]`. Codegen splices
+    #                                 the literal N at the call site
+    #                                 regardless of caller's array.
+    #   Variable (no length=):        DSL sees `int[]`. Codegen reads the
+    #                                 caller's array length at the call
+    #                                 site and splices that into the C
+    #                                 count slot.
+    in_buffers = {}      # cname → { type, length?, length_param }
     in_buffer_lengths = set()  # cnames of length params (stripped from DSL)
     for verb, positional, attrs in all_tags:
         if verb != "in_buffer" or not positional:
             continue
-        if "type" not in attrs or "length" not in attrs or "length_param" not in attrs:
+        if "type" not in attrs or "length_param" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type= / length= / length_param=",
+                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type= or length_param=",
                 file=sys.stderr,
             )
             continue
-        try:
-            length = int(attrs["length"])
-        except ValueError:
-            print(
-                f"warn: {sig['name']}: @tessera in_buffer {positional} length={attrs['length']!r} must be an integer",
-                file=sys.stderr,
-            )
-            continue
-        in_buffers[positional] = {
+        entry = {
             "type": attrs["type"],
-            "length": length,
             "length_param": attrs["length_param"],
         }
+        if "length" in attrs:
+            try:
+                entry["length"] = int(attrs["length"])
+            except ValueError:
+                print(
+                    f"warn: {sig['name']}: @tessera in_buffer {positional} length={attrs['length']!r} must be an integer",
+                    file=sys.stderr,
+                )
+                continue
+        in_buffers[positional] = entry
         in_buffer_lengths.add(attrs["length_param"])
 
     receiver = None
@@ -329,12 +360,22 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         if norm == "tile_t*":
             receiver = sp["ctype"]
         elif sp["name"] in out_buffers:
-            # Drop the out-buffer param from the DSL-facing list; its
-            # presence is carried by host["c_out_buffer"] below.
-            continue
+            # Fixed-length out-buffer collapses entirely into a return
+            # value; cap-mode out-buffer surfaces as a writable DSL array
+            # param (handled in the dsl_params loop further down).
+            ob = out_buffers[sp["name"]]
+            if "length" in ob:
+                continue
+            else:
+                c_params.append(sp)
         elif sp["name"] in in_buffer_lengths:
-            # The length param paired with an `@tessera in_buffer` is
-            # implicit at the DSL layer (array.length supplies it).
+            # Length params paired with an `@tessera in_buffer` are
+            # implicit at the DSL layer (array.length supplies them).
+            continue
+        elif sp["name"] in out_buffer_caps:
+            # Cap params paired with a cap-mode `@tessera out_buffer`
+            # are implicit (the writable array's declared length supplies
+            # them).
             continue
         else:
             c_params.append(sp)
@@ -362,16 +403,25 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 file=sys.stderr,
             )
 
-    expected_doxy = len(c_params) + len(out_buffers) + len(in_buffer_lengths)
+    # Cap-mode out_buffers stay in `c_params` (they're DSL-visible as
+    # writable arrays); fixed-length out_buffers were stripped above.
+    fixed_out_buffer_count = sum(1 for ob in out_buffers.values() if "length" in ob)
+    expected_doxy = len(c_params) + fixed_out_buffer_count + len(in_buffer_lengths) + len(out_buffer_caps)
     if len(doxy_params) != expected_doxy:
-        # buffer + length params usually have their own @param line
-        # (useful for docs) but get stripped from the DSL-visible count.
-        # We only warn when totals don't match even after accounting.
         print(
             f"warn: {sig['name']}: @param count {len(doxy_params)} != C arg count "
-            f"{len(c_params)} + out_buffer {len(out_buffers)} + in_buffer length params {len(in_buffer_lengths)}",
+            f"{len(c_params)} + fixed out_buffer {fixed_out_buffer_count} "
+            f"+ in_buffer length params {len(in_buffer_lengths)} "
+            f"+ out_buffer cap params {len(out_buffer_caps)}",
             file=sys.stderr,
         )
+
+    for cname in out_buffer_caps:
+        if cname not in c_param_names:
+            print(
+                f"warn: {sig['name']}: @tessera out_buffer cap_param={cname} doesn't match any C parameter",
+                file=sys.stderr,
+            )
 
     # Index doxy params by their declared C name so we survive a
     # stripped out_buffer in the middle of the list (positional index
@@ -384,13 +434,21 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         meta = doxy_by_name.get(cp["name"])
         if meta is None:
             meta = doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
-        # Array IN params get DSL type `<element>[<N>]` from the
-        # @tessera in_buffer annotation, overriding the underlying C
-        # pointer type.
+        # Array IN / cap-mode OUT params get a DSL array type from the
+        # @tessera in_buffer / @tessera out_buffer annotation,
+        # overriding the underlying C pointer type. Fixed-length renders
+        # as `int[N]`; variable / cap-mode renders as `int[]`.
         if cp["name"] in in_buffers:
             ib = in_buffers[cp["name"]]
             element_dsl = dsl_type_of(ib["type"], None)
-            entry_type = f"{element_dsl}[{ib['length']}]"
+            if "length" in ib:
+                entry_type = f"{element_dsl}[{ib['length']}]"
+            else:
+                entry_type = f"{element_dsl}[]"
+        elif cp["name"] in out_buffers and "length" not in out_buffers[cp["name"]]:
+            ob = out_buffers[cp["name"]]
+            element_dsl = dsl_type_of(ob["type"], None)
+            entry_type = f"{element_dsl}[]"
         else:
             entry_type = dsl_type_of(cp["ctype"], meta.get("type_override"))
         entry = {
@@ -457,7 +515,15 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 file=sys.stderr,
             )
         first_name = next(iter(out_buffers))
-        host["c_out_buffer"] = out_buffers[first_name]
+        ob = out_buffers[first_name]
+        # Cap-mode out_buffers are DSL-visible writable params; the
+        # frontend resolver needs to know the param's name. Fixed-length
+        # out_buffers collapse into the host's return value, so the
+        # name is irrelevant there.
+        if "cap_param" in ob:
+            host["c_out_buffer"] = {"name": first_name, **ob}
+        else:
+            host["c_out_buffer"] = ob
     if in_buffers:
         if len(in_buffers) > 1:
             print(
