@@ -312,6 +312,27 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             out_buffer_caps.add(attrs["cap_param"])
         out_buffers[positional] = entry
 
+    # `@tessera out_scalar <cname> type=<ctype>` identifies a scalar pointer
+    # parameter (`Type *<cname>`) that the driver writes into. The DSL caller
+    # passes a *local* (lvalue Ident) into the slot and the value is back-
+    # filled when the call returns. Multiple out_scalars per host are allowed
+    # (this is how multi-out functions like `self_test(*accel, *gyro)` get
+    # exposed faithfully). The param stays in the DSL-visible signature and
+    # the entry carries `out_scalar: True` so consumers (type checker /
+    # codegen) can enforce the lvalue rule and emit `&` (C) or stage memory
+    # (Wasm) at the call site.
+    out_scalars = {}
+    for verb, positional, attrs in all_tags:
+        if verb != "out_scalar" or not positional:
+            continue
+        if "type" not in attrs:
+            print(
+                f"warn: {sig['name']}: @tessera out_scalar {positional} missing type=",
+                file=sys.stderr,
+            )
+            continue
+        out_scalars[positional] = {"type": attrs["type"]}
+
     # `@tessera in_buffer <cname> type=<element> length_param=<other_cname>
     #     [length=<N>]`
     # identifies which C parameter is a caller-passed array buffer + which
@@ -396,6 +417,12 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 f"warn: {sig['name']}: @tessera in_buffer {cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
+    for cname in out_scalars:
+        if cname not in c_param_names:
+            print(
+                f"warn: {sig['name']}: @tessera out_scalar {cname} doesn't match any C parameter",
+                file=sys.stderr,
+            )
     for cname in in_buffer_lengths:
         if cname not in c_param_names:
             print(
@@ -449,12 +476,17 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             ob = out_buffers[cp["name"]]
             element_dsl = dsl_type_of(ob["type"], None)
             entry_type = f"{element_dsl}[]"
+        elif cp["name"] in out_scalars:
+            os_ = out_scalars[cp["name"]]
+            entry_type = dsl_type_of(os_["type"], None)
         else:
             entry_type = dsl_type_of(cp["ctype"], meta.get("type_override"))
         entry = {
             "name": meta["name"],
             "type": entry_type,
         }
+        if cp["name"] in out_scalars:
+            entry["out_scalar"] = True
         if "range" in meta:
             entry["range"] = meta["range"]
         if "unit" in meta:
@@ -524,6 +556,16 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             host["c_out_buffer"] = {"name": first_name, **ob}
         else:
             host["c_out_buffer"] = ob
+    if out_scalars:
+        # Preserve C-signature order (dict iteration follows insertion =
+        # parse order, but the parse loop visits @tessera tags in source
+        # order — sort by C param position so codegen emits args in the
+        # right slot).
+        order = {sp["name"]: i for i, sp in enumerate(sig["params"])}
+        host["c_out_scalars"] = [
+            {"name": n, **out_scalars[n]}
+            for n in sorted(out_scalars.keys(), key=lambda n: order.get(n, 1 << 30))
+        ]
     if in_buffers:
         if len(in_buffers) > 1:
             print(
