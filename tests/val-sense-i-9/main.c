@@ -100,6 +100,11 @@ int main(void)
     tile_sense_i_9_fifo_read_packet_flat(&imu, pkt_flat);
     (void)pkt_flat[0];
 
+    /* ---- DMP3 firmware load (Phase 1) ---- */
+    uint8_t dmp_ok = tile_sense_i_9_dmp_load(&imu);
+    uint8_t dmp_loaded = tile_sense_i_9_dmp_is_loaded(&imu);
+    (void)dmp_ok; (void)dmp_loaded;
+
     while (1) {
         core_delay_ms(1000);
     }

@@ -1127,7 +1127,7 @@ def build_spi_config(config, mcu, pad_map):
 # ---- Tile peripheral driver mapping ----
 
 TILE_DRIVER_MAP = {
-    "Sense.I.9":   {"header": "tile_sense_i_9.h",    "source": "tile_sense_i_9",    "prefix": "tile_sense_i_9"},
+    "Sense.I.9":   {"header": "tile_sense_i_9.h",    "source": "tile_sense_i_9",    "prefix": "tile_sense_i_9", "extra_sources": ["tile_sense_i_9_dmp3"]},
     "Sense.I.6P8": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
     "Sense.I.6P6": {"header": "tile_sense_i_6p6.h",  "source": "tile_sense_i_6p6",  "prefix": "tile_sense_i_6p6"},
     "Sense.I.6D":  {"header": "tile_sense_i_6d.h",   "source": "tile_sense_i_6d",   "prefix": "tile_sense_i_6d"},
@@ -1241,6 +1241,12 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
             })
 
         seen_drivers.add(driver["source"])
+        # Some tiles ship multiple .c files (e.g., Sense.I.9 carries
+        # the ICM-20948 DMP3 firmware blob in a separate translation
+        # unit so it can be lazy-included by build flags later). Pick
+        # them up from the optional `extra_sources` field.
+        for extra in driver.get("extra_sources", []):
+            seen_drivers.add(extra)
 
         tiles_config.append({
             "type": tile_type,
