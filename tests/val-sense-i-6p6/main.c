@@ -139,6 +139,10 @@ int main(void)
                                          &tap_dir, &tap_timing);
     (void)tap_count; (void)tap_axis; (void)tap_dir; (void)tap_timing;
 
+    int32_t pkts_buf[16] = {0};  /* 2 packets × 8 ints */
+    uint16_t n_pkts = tile_sense_i_6p6_fifo_read_packets_flat(&imu, pkts_buf, 16);
+    (void)n_pkts; (void)pkts_buf[0];
+
     while (1) {
         core_delay_ms(1000);
     }
