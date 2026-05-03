@@ -347,22 +347,33 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     #                                 caller's array length at the call
     #                                 site and splices that into the C
     #                                 count slot.
-    in_buffers = {}      # cname → { type, length?, length_param }
+    in_buffers = {}      # cname → { type, length?, length_param? }
     in_buffer_lengths = set()  # cnames of length params (stripped from DSL)
     for verb, positional, attrs in all_tags:
         if verb != "in_buffer" or not positional:
             continue
-        if "type" not in attrs or "length_param" not in attrs:
+        if "type" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type= or length_param=",
+                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type=",
                 file=sys.stderr,
             )
             continue
-        entry = {
-            "type": attrs["type"],
-            "length_param": attrs["length_param"],
-        }
-        if "length" in attrs:
+        has_length = "length" in attrs
+        has_length_param = "length_param" in attrs
+        # Three valid shapes:
+        #   length=N + length_param=<name>  → fixed-length, C count arg present
+        #   length_param=<name> only         → variable-length, count from caller
+        #   length=N only                    → fixed-length, C function has no count arg
+        if not has_length and not has_length_param:
+            print(
+                f"warn: {sig['name']}: @tessera in_buffer {positional} needs length= (fixed without count arg), length_param= (variable), or both (fixed with count arg)",
+                file=sys.stderr,
+            )
+            continue
+        entry = {"type": attrs["type"]}
+        if has_length_param:
+            entry["length_param"] = attrs["length_param"]
+        if has_length:
             try:
                 entry["length"] = int(attrs["length"])
             except ValueError:
@@ -372,7 +383,8 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 )
                 continue
         in_buffers[positional] = entry
-        in_buffer_lengths.add(attrs["length_param"])
+        if has_length_param:
+            in_buffer_lengths.add(attrs["length_param"])
 
     receiver = None
     c_params = []
