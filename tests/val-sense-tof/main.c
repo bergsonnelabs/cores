@@ -164,6 +164,19 @@ int main(void)
                                                        &rel_f, &temp_f, &seq_f, 5);
     (void)ok_f; (void)mm_f; (void)status_f; (void)rel_f; (void)temp_f; (void)seq_f;
 
+    int32_t v_major = 0, v_minor = 0, v_patch = 0;
+    tile_sense_tof_get_app_version_flat(&tof, &v_major, &v_minor, &v_patch);
+    (void)v_major; (void)v_minor; (void)v_patch;
+
+    int32_t serial_flat[4] = {0};
+    tile_sense_tof_get_serial_number_flat(&tof, serial_flat);
+    (void)serial_flat[0];
+
+    int32_t hist_flat[128] = {0};
+    tile_sense_tof_read_histogram_flat(&tof, /*hist_type=*/0x10,
+                                       /*timeout_ms=*/5, hist_flat);
+    (void)hist_flat[0];
+
     /* ---- State checks ---- */
 
     uint8_t is_ready = tile_is_ready(&tof);

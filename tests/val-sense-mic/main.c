@@ -74,14 +74,14 @@ int main(void)
     uint16_t samples[64];
     tile_sense_mic_get_samples(&mic, samples, 64);
 
-    /* Audio analysis utilities */
-    uint16_t level = tile_sense_mic_dc_level(samples, 64);
+    /* Audio analysis utilities (now tile-bound for DSL exposure) */
+    uint16_t level = tile_sense_mic_dc_level(&mic, samples, 64);
     (void)level;
 
-    uint16_t pp = tile_sense_mic_peak_to_peak(samples, 64);
+    uint16_t pp = tile_sense_mic_peak_to_peak(&mic, samples, 64);
     (void)pp;
 
-    uint16_t rms = tile_sense_mic_rms(samples, 64, 750);
+    uint16_t rms = tile_sense_mic_rms(&mic, samples, 64, 750);
     (void)rms;
 
     uint16_t amp_mv = tile_sense_mic_amplitude_mv(&mic, pp);

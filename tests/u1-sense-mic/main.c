@@ -73,8 +73,8 @@ int main(void)
             /* Burst capture for sound level */
             uint16_t samples[128];
             tile_sense_mic_get_samples(&mic, samples, 128);
-            uint16_t dc = tile_sense_mic_dc_level(samples, 128);
-            uint16_t pp = tile_sense_mic_peak_to_peak(samples, 128);
+            uint16_t dc = tile_sense_mic_dc_level(&mic, samples, 128);
+            uint16_t pp = tile_sense_mic_peak_to_peak(&mic, samples, 128);
             core_usb_printf("  DC level: %u  peak-to-peak: %u\r\n", dc, pp);
         } else {
             /* Yellow — found but init failed */
