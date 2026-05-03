@@ -129,6 +129,16 @@ int main(void)
     uint8_t mot_seen = tile_sense_i_6p6_wait_for_motion(&imu, 5);
     (void)tap_seen; (void)mot_seen;
 
+    /* ---- DSL flat-output wrappers (Bucket D) ---- */
+    int32_t pkt_flat[8] = {0};
+    tile_sense_i_6p6_fifo_read_packet_flat(&imu, pkt_flat);
+    (void)pkt_flat[0];
+
+    int32_t tap_count = 0, tap_axis = 0, tap_dir = 0, tap_timing = 0;
+    tile_sense_i_6p6_get_tap_result_flat(&imu, &tap_count, &tap_axis,
+                                         &tap_dir, &tap_timing);
+    (void)tap_count; (void)tap_axis; (void)tap_dir; (void)tap_timing;
+
     while (1) {
         core_delay_ms(1000);
     }

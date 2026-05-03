@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@cb66c74",
+  "source": "cores@088bb49",
   "category": "pwm",
   "label": "Core.PWM",
   "icon": "◲",

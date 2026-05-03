@@ -154,6 +154,16 @@ int main(void)
     uint8_t got = tile_sense_tof_read_distance_with_confidence(&tof, &mm_out, &conf);
     (void)got; (void)mm_out; (void)conf;
 
+    /* ---- DSL flat-output wrappers (Bucket D) ---- */
+    int32_t res_flat[5] = {0};
+    tile_sense_tof_get_result_flat(&tof, res_flat);
+    (void)res_flat[0];
+
+    int32_t mm_f = 0, status_f = 0, rel_f = 0, temp_f = 0, seq_f = 0;
+    uint8_t ok_f = tile_sense_tof_measure_single_flat(&tof, &mm_f, &status_f,
+                                                       &rel_f, &temp_f, &seq_f, 5);
+    (void)ok_f; (void)mm_f; (void)status_f; (void)rel_f; (void)temp_f; (void)seq_f;
+
     /* ---- State checks ---- */
 
     uint8_t is_ready = tile_is_ready(&tof);
