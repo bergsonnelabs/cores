@@ -141,6 +141,14 @@ int main(void)
     tile_drive_h_standby(&haptic);
     tile_drive_h_wake(&haptic);
 
+    /* ---- v4.1 tier-2 runtime helpers ---- */
+    tile_drive_h_play_click(&haptic);
+    tile_drive_h_play_double_tap(&haptic);
+    tile_drive_h_play_alert(&haptic);
+    tile_drive_h_play_buzz(&haptic, 200);
+    uint8_t calibrated = tile_drive_h_is_calibrated(&haptic);
+    (void)calibrated;
+
     /* ---- State checks ---- */
     uint8_t ready = tile_is_ready(&haptic);
     (void)ready;

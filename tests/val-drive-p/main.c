@@ -65,6 +65,28 @@ int main(void)
     tile_drive_p_set_upi(&piezo, 1);
     tile_drive_p_set_upi(&piezo, 0);
 
+    /* ---- v3.1 tier-2 runtime helpers ---- */
+    tile_drive_p_play_click(&piezo, 80);
+    tile_drive_p_play_sine(&piezo, 250, 60, 100);
+    tile_drive_p_play_buzz(&piezo, 70, 50);
+    tile_drive_p_play_pulse_train(&piezo, 80, 3, 100);
+
+    uint8_t touched = tile_drive_p_is_touched(&piezo, 200);
+    (void)touched;
+
+    uint8_t fired = tile_drive_p_play_on_touch(&piezo, 80, 200, /*timeout_ms=*/5);
+    (void)fired;
+
+    int16_t custom_samples[16] = {
+        0, 256, 512, 768, 1024, 1280, 1536, 1792,
+        2047, 1792, 1536, 1280, 1024, 768, 512, 256
+    };
+    tile_drive_p_play_samples(&piezo, custom_samples, 16);
+
+    int16_t sense_buf[8];
+    tile_drive_p_read_sense_samples(&piezo, sense_buf, 8);
+    (void)sense_buf[0];
+
     /* ---- Recovery / sleep / reset ---- */
     uint8_t recovered = tile_drive_p_check_and_recover(&piezo,
                                                       DRIVE_P_MODE_IDLE);

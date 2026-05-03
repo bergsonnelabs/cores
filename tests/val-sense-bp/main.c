@@ -153,6 +153,12 @@ int main(void)
     int16_t ref_p = tile_sense_bp_get_ref_pressure(&baro);
     (void)ref_p;
 
+    /* ---- v1.2 tier-2 runtime helpers ---- */
+    int32_t alt_mm = tile_sense_bp_read_altitude_mm(&baro, 101325);
+    (void)alt_mm;
+    uint8_t pressure_changed = tile_sense_bp_wait_for_pressure_change(&baro, 1, 5);
+    (void)pressure_changed;
+
     /* ---- State checks ---- */
 
     uint8_t ready = tile_is_ready(&baro);

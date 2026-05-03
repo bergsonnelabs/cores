@@ -165,6 +165,14 @@ int main(void)
     (void)DRV8214_FAULT_NPOR;
     (void)DRV8214_FAULT_CNT_DONE;
 
+    /* ---- v4.1 tier-2 runtime helpers ---- */
+    tile_drive_dc_h_set_speed_rpm(&motor, 200, DRIVE_DC_H_DIR_FORWARD);
+    tile_drive_dc_h_move_distance(&motor, 50, DRIVE_DC_H_DIR_REVERSE);
+    uint8_t running = tile_drive_dc_h_is_running(&motor);
+    (void)running;
+    uint8_t stopped = tile_drive_dc_h_wait_for_stop(&motor, 500);
+    (void)stopped;
+
     while (1) {
         core_delay_ms(1000);
     }

@@ -117,6 +117,18 @@ int main(void)
     (void)tile_sense_i_6p6_read_reg(&imu, 0, ICM42686P_REG_WHO_AM_I);
     tile_sense_i_6p6_write_reg(&imu, 0, ICM42686P_REG_INT_CONFIG, 0x00);
 
+    /* ---- v1.2 tier-2 motion helpers ---- */
+    uint8_t up   = tile_sense_i_6p6_is_face_up(&imu);
+    uint8_t down = tile_sense_i_6p6_is_face_down(&imu);
+    uint8_t mov  = tile_sense_i_6p6_is_moving(&imu, 200);
+    (void)up; (void)down; (void)mov;
+    int16_t tilt = 0;
+    uint8_t tilt_ok = tile_sense_i_6p6_read_tilt_centi_degrees(&imu, 0, &tilt);
+    (void)tilt_ok; (void)tilt;
+    uint8_t tap_seen = tile_sense_i_6p6_wait_for_tap(&imu, 5);
+    uint8_t mot_seen = tile_sense_i_6p6_wait_for_motion(&imu, 5);
+    (void)tap_seen; (void)mot_seen;
+
     while (1) {
         core_delay_ms(1000);
     }

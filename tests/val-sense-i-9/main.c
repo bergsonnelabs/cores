@@ -81,6 +81,20 @@ int main(void)
     tile_sense_i_9_wake(&imu);
     tile_sense_i_9_reset(&imu);
 
+    /* ---- v3.1 tier-2 motion helpers ---- */
+    uint8_t up   = tile_sense_i_9_is_face_up(&imu);
+    uint8_t down = tile_sense_i_9_is_face_down(&imu);
+    uint8_t mov  = tile_sense_i_9_is_moving(&imu, 200);
+    (void)up; (void)down; (void)mov;
+    int16_t tilt = 0;
+    tile_sense_i_9_read_tilt_centi_degrees(&imu, 0, &tilt);
+    (void)tilt;
+    uint16_t heading = 0;
+    tile_sense_i_9_read_heading_centi_degrees(&imu, &heading);
+    (void)heading;
+    uint8_t mot_seen = tile_sense_i_9_wait_for_motion(&imu, 5);
+    (void)mot_seen;
+
     while (1) {
         core_delay_ms(1000);
     }

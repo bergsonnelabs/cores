@@ -87,6 +87,16 @@ int main(void)
     uint16_t amp_mv = tile_sense_mic_amplitude_mv(&mic, pp);
     (void)amp_mv;
 
+    /* ---- v2.1 tier-2 audio-detection helpers ---- */
+    uint8_t loud = tile_sense_mic_is_loud(&mic, 700);
+    (void)loud;
+    int16_t spl = tile_sense_mic_read_spl_db(&mic);
+    (void)spl;
+    uint8_t heard = tile_sense_mic_wait_for_sound(&mic, 700, 5);
+    (void)heard;
+    uint8_t clap = tile_sense_mic_detect_clap(&mic, 5);
+    (void)clap;
+
     /* State checks */
     uint8_t ready = tile_is_ready(&mic);
     (void)ready;

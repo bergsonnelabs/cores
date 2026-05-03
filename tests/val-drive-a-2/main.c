@@ -136,6 +136,14 @@ int main(void)
     (void)raw;
     tile_drive_a_2_write_reg(&dac, 0x1F, 0x0201);        /* COMMON-CONFIG default */
 
+    /* ---- v3.1 tier-2 runtime helpers ---- */
+    tile_drive_a_2_play_tone(&dac, DRIVE_A_2_CH_LEFT, 1000, 100);
+    tile_drive_a_2_play_silence(&dac, DRIVE_A_2_CH_BOTH, 50);
+    tile_drive_a_2_play_chirp(&dac, DRIVE_A_2_CH_RIGHT, 200, 2000, 250);
+    tile_drive_a_2_set_volume_pct(&dac, DRIVE_A_2_CH_BOTH, 75);
+    tile_drive_a_2_mute(&dac, DRIVE_A_2_CH_LEFT);
+    tile_drive_a_2_unmute(&dac, DRIVE_A_2_CH_LEFT);
+
     /* ---- State checks ---- */
     uint8_t ready = tile_is_ready(&dac);
     (void)ready;
