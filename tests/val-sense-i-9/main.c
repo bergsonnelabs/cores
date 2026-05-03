@@ -95,6 +95,11 @@ int main(void)
     uint8_t mot_seen = tile_sense_i_9_wait_for_motion(&imu, 5);
     (void)mot_seen;
 
+    /* ---- DSL flat-output wrapper (Bucket D) ---- */
+    int32_t pkt_flat[6] = {0};
+    tile_sense_i_9_fifo_read_packet_flat(&imu, pkt_flat);
+    (void)pkt_flat[0];
+
     while (1) {
         core_delay_ms(1000);
     }
