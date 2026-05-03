@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@bc0fb1c",
+  "source": "cores@f4d34f7",
   "category": "rtc",
   "label": "Core.RTC",
   "icon": "◴",

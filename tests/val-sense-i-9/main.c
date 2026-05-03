@@ -105,6 +105,15 @@ int main(void)
     uint8_t dmp_loaded = tile_sense_i_9_dmp_is_loaded(&imu);
     (void)dmp_ok; (void)dmp_loaded;
 
+    /* ---- DMP3 9-axis quaternion (Phase 2) ---- */
+    (void)tile_sense_i_9_dmp_start_quat9(&imu, /*period_ms=*/40);  /* ~25 Hz */
+    (void)tile_sense_i_9_dmp_data_ready(&imu);
+    int32_t q[4] = {0};
+    uint16_t q_acc = 0;
+    (void)tile_sense_i_9_dmp_read_quat9(&imu, q, &q_acc);
+    (void)q[0]; (void)q_acc;
+    tile_sense_i_9_dmp_stop(&imu);
+
     while (1) {
         core_delay_ms(1000);
     }
