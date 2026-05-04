@@ -13,6 +13,17 @@
 
 #include <stdint.h>
 
+/* ---- Per-project capability sentinels ---- *
+ * Set when this project actually uses the corresponding peripheral, so
+ * code that conditionally compiles against per-project externs (the
+ * WAMR per-project natives file is the main caller) can `#ifdef` them. */
+{% if adc_config %}
+#define CORE_HAS_ADC_PADS    1
+{% endif %}
+{% if dac_enabled %}
+#define CORE_HAS_DAC         1
+{% endif %}
+
 /* ---- Core identity ---- */
 
 #define TILE_FAMILY        "{{ tile_family }}"

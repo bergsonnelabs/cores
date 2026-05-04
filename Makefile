@@ -288,6 +288,15 @@ ifneq ($(wildcard $(CONFIG_JSON)),)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
   COREGEN_FLAGS = --config $(CONFIG_JSON)
+  # Per-project WAMR natives ride alongside core_init.c so the adapters
+  # for pad/pwm/adc/dac (which reach into PAD_*_PORT macros, core_dac,
+  # core_adc1, etc.) compile in the same translation-unit scope. Only
+  # link when the project pulled WAMR in — otherwise the symbols are
+  # generated but ignored at link time.
+  ifeq ($(WAMR_ENABLED),1)
+    GEN_HEADERS += $(GEN_DIR)/tessera_natives_project.h
+    GEN_SOURCES += $(GEN_DIR)/tessera_natives_project.c
+  endif
 else
   GEN_SOURCES   =
   COREGEN_FLAGS =
@@ -338,8 +347,12 @@ $(BUILD_DIR)/%.o: $(PROJECT_DIR)/%.c $(GEN_HEADERS)
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
-# Generated C sources (core_init.c etc.)
-$(GEN_DIR)/core_init.o: $(GEN_DIR)/core_init.c $(GEN_HEADERS)
+# Generated C sources (core_init.c, tessera_natives_project.c, etc.).
+# Static pattern: each `<name>.o` in GEN_OBJS pairs with the matching
+# `<name>.c` in GEN_SOURCES. Static-pattern syntax keeps the rule
+# crisp even when GEN_DIR is an absolute path (regular `%` pattern
+# rules silently fail to match in that case on some make builds).
+$(GEN_OBJS): $(GEN_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_HEADERS)
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 

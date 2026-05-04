@@ -93,7 +93,18 @@ PROJECT_INDEPENDENT_CATEGORIES = {
 }
 F64_TYPES = {"double"}
 F32_TYPES = {"float"}  # WAMR uses 'f' for f32, 'F' for f64 in sig strings
-POINTER_TYPES_SKIP = {"const char *", "char *", "void *", "uint8_t *"}
+
+# Null-terminated string params. WAMR's `$` signature char tells the
+# runtime to validate the wasm pointer (find the bounds + the null
+# terminator) and pass a `const char *` straight through to the C
+# adapter. No manual `validate_app_addr` needed; the wrapper just
+# declares the param as `const char *` and forwards.
+STRING_TYPES = {"const char *", "char *"}
+
+# Pointer types we still don't have an ABI for. Buffer / out-pointer
+# params (`uint8_t *`, `void *`) need the multi-scalar-out / array-OUT
+# story already prototyped on the tile-driver side; not in scope here.
+POINTER_TYPES_SKIP = {"void *", "uint8_t *"}
 
 
 @dataclass
@@ -115,9 +126,12 @@ class HostFn:
     def c_return(self) -> str:
         return self.returns.strip()
 
-    def skip_reason(self) -> str | None:
-        if self.category not in PROJECT_INDEPENDENT_CATEGORIES:
+    def skip_reason(self, *, mode: str = "static") -> str | None:
+        in_independent = self.category in PROJECT_INDEPENDENT_CATEGORIES
+        if mode == "static" and not in_independent:
             return f"category '{self.category}' reaches into coregen-generated state; needs per-project generation"
+        if mode == "project" and in_independent:
+            return f"category '{self.category}' is project-independent; wrapped in the static table"
         for p in self.params:
             ct = p.get("ctype", "").strip()
             if ct in POINTER_TYPES_SKIP:
@@ -134,6 +148,8 @@ def wamr_char(ctype: str) -> str | None:
     t = ctype.strip()
     if t in I32_TYPES:
         return "i"
+    if t in STRING_TYPES:
+        return "$"
     if t in F32_TYPES:
         return "f"
     if t in F64_TYPES:
@@ -214,7 +230,12 @@ def emit_wrapper(fn: HostFn) -> str:
     return "\n".join(lines)
 
 
-def emit_table(fns: list[HostFn]) -> str:
+def table_symbol(mode: str) -> str:
+    return "g_tessera_natives_project" if mode == "project" else "g_tessera_natives"
+
+
+def emit_table(fns: list[HostFn], *, mode: str = "static") -> str:
+    sym = table_symbol(mode)
     lines = [
         "/* NOT const: WAMR's `wasm_runtime_register_natives` calls",
         " * `qsort` on the table in place (see wasm_native.c's",
@@ -224,24 +245,34 @@ def emit_table(fns: list[HostFn]) -> str:
         " * import function\" — even though every symbol is present.",
         " * Leaving it writable puts the table in .data (RAM-backed)",
         " * where the sort runs correctly at startup. */",
-        "NativeSymbol g_tessera_natives[] = {",
+        f"NativeSymbol {sym}[] = {{",
     ]
     for fn in fns:
+        guard = adapter_guard(fn) if mode == "project" else None
+        if guard:
+            lines.append(f"#ifdef {guard}")
         # Signature strings need one layer of parentheses exactly —
         # `wamr_signature` already wraps in `()`, so pass through.
         lines.append(
             f'    {{ "{fn.name}", (void *){fn.name}_native, "{fn.wamr_signature}", NULL }},'
         )
+        if guard:
+            lines.append("#endif")
     lines += [
         "};",
         "",
-        "const size_t g_tessera_natives_count =",
-        "    sizeof(g_tessera_natives) / sizeof(g_tessera_natives[0]);",
+        f"const size_t {sym}_count =",
+        f"    sizeof({sym}) / sizeof({sym}[0]);",
     ]
     return "\n".join(lines)
 
 
-def emit_c(fns: list[HostFn], skipped: list[tuple[HostFn, str]]) -> str:
+def emit_c(
+    fns: list[HostFn],
+    skipped: list[tuple[HostFn, str]],
+    *,
+    mode: str = "static",
+) -> str:
     header_includes = sorted({f'#include "core_{fn.category}.h"' for fn in fns})
 
     parts = [
@@ -252,18 +283,50 @@ def emit_c(fns: list[HostFn], skipped: list[tuple[HostFn, str]]) -> str:
         "",
         '#include "wasm_export.h"',
         "",
-        "/* The LL layer's *_BASE macros (RCC_BASE, AHB1_BASE, …) are",
-        " * defined via per-MCU branches in ll_common.h + ll_rcc.h and",
-        " * referenced transitively by ll_pwr.h and friends. Projects",
-        " * normally reach them via their auto-generated `core.h`, but",
-        " * this TU is project-independent so we pull them in directly. */",
-        '#include "ll_common.h"',
-        '#include "ll_rcc.h"',
-        "",
-        "/* SDK headers providing the host symbols we wrap. */",
-        *header_includes,
-        "",
     ]
+
+    if mode == "static":
+        parts += [
+            "/* The LL layer's *_BASE macros (RCC_BASE, AHB1_BASE, …) are",
+            " * defined via per-MCU branches in ll_common.h + ll_rcc.h and",
+            " * referenced transitively by ll_pwr.h and friends. Projects",
+            " * normally reach them via their auto-generated `core.h`, but",
+            " * this TU is project-independent so we pull them in directly. */",
+            '#include "ll_common.h"',
+            '#include "ll_rcc.h"',
+            "",
+        ]
+    else:
+        parts += [
+            "/* Project-side WAMR natives — wraps the Tier 2 functions whose",
+            " * adapters reach into coregen-emitted state (PAD_*_PORT macros,",
+            " * core_dac / core_adc1 externs, core_pwm_timer_for_pad dispatcher).",
+            " * Compiled per project alongside core_init.c so all that state is",
+            " * in scope. Registered via wasm_runtime_register_natives at the",
+            " * same time as the static SDK table. */",
+            '#include "core.h"   /* coregen umbrella: pulls in core_pads.h + externs */',
+            "",
+        ]
+
+    parts.append("/* SDK headers providing the host symbols we wrap. */")
+    if mode == "project":
+        # Each per-project category guards its include with the matching
+        # CORE_HAS_* sentinel. core_dac.h has a hard `#error` on non-H
+        # cores, so guarding the include is mandatory there. PWM is
+        # guarded because tal_timer.h references core_pad_timer_info,
+        # which coregen only emits when the project has TIM pads.
+        cats = sorted({fn.category for fn in fns})
+        for cat in cats:
+            guard = ADAPTER_GUARDS.get(cat)
+            if guard:
+                parts.append(f"#ifdef {guard}")
+                parts.append(f'#include "core_{cat}.h"')
+                parts.append("#endif")
+            else:
+                parts.append(f'#include "core_{cat}.h"')
+    else:
+        parts += header_includes
+    parts.append("")
 
     if skipped:
         parts.append("/* Skipped at generation time:")
@@ -275,22 +338,45 @@ def emit_c(fns: list[HostFn], skipped: list[tuple[HostFn, str]]) -> str:
     parts.append("/* ---- Adapters ---------------------------------------------------------- */")
     parts.append("")
     for fn in fns:
+        guard = adapter_guard(fn) if mode == "project" else None
+        if guard:
+            parts.append(f"#ifdef {guard}")
         parts.append(emit_wrapper(fn))
+        if guard:
+            parts.append("#endif")
         parts.append("")
 
     parts.append("/* ---- NativeSymbol table ----------------------------------------------- */")
     parts.append("")
-    parts.append(emit_table(fns))
+    parts.append(emit_table(fns, mode=mode))
     parts.append("")
     return "\n".join(parts)
 
 
-def emit_h(fns: list[HostFn]) -> str:
+# Per-project adapters compile only when the project actually configures
+# the relevant peripheral. The matching CORE_HAS_* sentinels live in
+# coregen's core_pads.h.j2 (TIMER_PADS / ADC_PADS / DAC). Pad / GPIO has
+# no guard — hal_pad_lookup() returns NULL for unmapped pads, so the
+# adapter compiles cleanly even on projects with no GPIO.OUT pads.
+ADAPTER_GUARDS = {
+    "pwm": "CORE_HAS_TIMER_PADS",
+    "adc": "CORE_HAS_ADC_PADS",
+    "dac": "CORE_HAS_DAC",
+}
+
+
+def adapter_guard(fn: HostFn) -> str | None:
+    return ADAPTER_GUARDS.get(fn.category)
+
+
+def emit_h(fns: list[HostFn], *, mode: str = "static") -> str:
+    sym = table_symbol(mode)
+    guard = "TESSERA_NATIVES_PROJECT_H" if mode == "project" else "TESSERA_NATIVES_H"
     parts = [
         WARNING,
         "",
-        "#ifndef TESSERA_NATIVES_H",
-        "#define TESSERA_NATIVES_H",
+        f"#ifndef {guard}",
+        f"#define {guard}",
         "",
         "#include <stddef.h>",
         "",
@@ -300,15 +386,15 @@ def emit_h(fns: list[HostFn]) -> str:
         'extern "C" {',
         "#endif",
         "",
-        f"/* {len(fns)} Tessera-exposed host symbols wired from manifests. */",
-        "extern NativeSymbol g_tessera_natives[];",
-        "extern const size_t g_tessera_natives_count;",
+        f"/* {len(fns)} Tessera-exposed host symbols ({mode} table). */",
+        f"extern NativeSymbol {sym}[];",
+        f"extern const size_t {sym}_count;",
         "",
         "#ifdef __cplusplus",
         "}",
         "#endif",
         "",
-        "#endif /* TESSERA_NATIVES_H */",
+        f"#endif /* {guard} */",
         "",
     ]
     return "\n".join(parts)
@@ -319,6 +405,13 @@ def main() -> int:
     ap.add_argument("--sdk-docs", type=Path, default=SDK_DOCS)
     ap.add_argument("--out-c", type=Path, default=DEFAULT_OUT_C)
     ap.add_argument("--out-h", type=Path, default=DEFAULT_OUT_H)
+    ap.add_argument(
+        "--mode",
+        choices=("static", "project"),
+        default="static",
+        help="static: project-independent SDK table; project: coregen "
+             "per-project sibling table (pad/pwm/adc/dac).",
+    )
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -326,19 +419,19 @@ def main() -> int:
     kept: list[HostFn] = []
     skipped: list[tuple[HostFn, str]] = []
     for fn in all_fns:
-        reason = fn.skip_reason()
+        reason = fn.skip_reason(mode=args.mode)
         if reason:
             skipped.append((fn, reason))
         else:
             kept.append(fn)
 
-    print(f"[gen_tessera_natives] {len(kept)} exposed, {len(skipped)} skipped",
+    print(f"[gen_tessera_natives:{args.mode}] {len(kept)} exposed, {len(skipped)} skipped",
           file=sys.stderr)
     for fn, reason in skipped:
         print(f"  skip {fn.name}: {reason}", file=sys.stderr)
 
-    c_text = emit_c(kept, skipped)
-    h_text = emit_h(kept)
+    c_text = emit_c(kept, skipped, mode=args.mode)
+    h_text = emit_h(kept, mode=args.mode)
 
     if args.dry_run:
         print("# --- header ---")

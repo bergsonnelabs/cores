@@ -1491,6 +1491,40 @@ def generate(tile_path, output_dir, config_path=None):
             f.write("KILN_DRIVERS = " + " ".join(ctx["tile_driver_sources"]) + "\n")
         print(f"  core_drivers.mk")
 
+    # Per-project WAMR natives: wraps the Tier 2 functions whose adapters
+    # need coregen-emitted state (PAD_*_PORT macros, core_dac extern,
+    # etc.). Always emitted when a config exists; the Makefile decides
+    # whether to compile it (only when WAMR_ENABLED=1). Reuses the same
+    # generator as the static SDK table — just runs it in `--mode project`.
+    if config_path:
+        # Import lazily so coregen.py doesn't carry a hard dependency on
+        # the natives generator for projects that don't use WAMR.
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+        try:
+            import gen_tessera_natives as gtn
+        finally:
+            sys.path.pop(0)
+        all_fns = gtn.load_manifests(gtn.SDK_DOCS)
+        kept = [
+            fn for fn in all_fns
+            if fn.skip_reason(mode="project") is None
+        ]
+        skipped = [
+            (fn, fn.skip_reason(mode="project"))
+            for fn in all_fns
+            if fn.skip_reason(mode="project")
+        ]
+        c_text = gtn.emit_c(kept, skipped, mode="project")
+        h_text = gtn.emit_h(kept, mode="project")
+        c_path = os.path.join(output_dir, "tessera_natives_project.c")
+        h_path = os.path.join(output_dir, "tessera_natives_project.h")
+        with open(c_path, "w") as f:
+            f.write(c_text)
+        with open(h_path, "w") as f:
+            f.write(h_text)
+        print(f"  tessera_natives_project.c ({len(kept)} natives)")
+        print(f"  tessera_natives_project.h")
+
     # Generate or update tiles.h (smart merge) in the project directory
     if config_path and ctx.get("tiles_config"):
         project_dir = os.path.dirname(config_path)

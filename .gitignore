@@ -7,6 +7,9 @@ __pycache__/
 
 # Coregen output (regenerated on build)
 **/coregen/
+# …but not the generator itself, which lives at tools/coregen/.
+!tools/coregen/
+!tools/coregen/**
 tests/**/core.h
 examples/**/core.h
 
