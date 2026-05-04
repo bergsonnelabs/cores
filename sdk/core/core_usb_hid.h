@@ -14,7 +14,7 @@
  *
  * VID:1209 PID:0001, Interface 2 = HID (vendor-defined, usage page 0xFF00).
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    usb_hid
  *   name:  USB HID — vendor reports
  *   blurb: Tier 1 only. Single-function header for sending raw 64-byte
@@ -45,16 +45,16 @@ static inline int core_usb_hid_send(const uint8_t *buf, uint16_t len)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="No DSL surface for HID"
+// @studio unsupported tier=2 value=M title="No DSL surface for HID"
 //   Sending a HID report needs a buffer pointer + length. The DSL's
 //   array-host ABI (used for tile reads) could carry it, but no
 //   default-instance wrapper is wired up.
 //
-// @tessera unsupported tier=1 value=M title="TX only — no HID receive"
+// @studio unsupported tier=1 value=M title="TX only — no HID receive"
 //   Wrapper sends reports; receiving host-to-device reports (Set Report
 //   / output reports) is not exposed. Unidirectional comms only.
 //
-// @tessera unsupported tier=1 value=L title="Vendor descriptor only"
+// @studio unsupported tier=1 value=L title="Vendor descriptor only"
 //   The HID descriptor is hard-coded as a 64-byte vendor report with
 //   usage page 0xFF00. No way to register custom reports (keyboard,
 //   mouse, gamepad) — that needs the full HID descriptor tooling.

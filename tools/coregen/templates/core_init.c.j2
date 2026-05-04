@@ -133,97 +133,97 @@ hal_adc_t {{ adc_config.handle }};
 {% set exti_pads_global = pad_config | selectattr("exti") | list if pad_config else [] %}
 {% if exti_pads_global %}
 
-/* ---- Tessera pad-edge events ----
- * Pending bitmaps latched by EXTI ISRs; drained by tessera_dispatch_core_pad()
+/* ---- Studio pad-edge events ----
+ * Pending bitmaps latched by EXTI ISRs; drained by studio_dispatch_core_pad()
  * from the main loop. Weak default handlers let the DSL override when
  * `on Core.Pad.rising/falling` blocks are present; absent, the dispatcher
  * still runs but fires no-op handlers.
  */
-static volatile uint32_t _tessera_pad_rising_pending;
-static volatile uint32_t _tessera_pad_falling_pending;
+static volatile uint32_t _studio_pad_rising_pending;
+static volatile uint32_t _studio_pad_falling_pending;
 
-static void _tessera_pad_edge_isr(void *ctx)
+static void _studio_pad_edge_isr(void *ctx)
 {
     uint32_t pad = (uint32_t)(uintptr_t)ctx;
     if (hal_pad_read((uint8_t)pad)) {
-        _tessera_pad_rising_pending |= (1u << pad);
+        _studio_pad_rising_pending |= (1u << pad);
     } else {
-        _tessera_pad_falling_pending |= (1u << pad);
+        _studio_pad_falling_pending |= (1u << pad);
     }
 }
 
 /* Weak defaults — the DSL program overrides these when it has a
  * matching `on Core.Pad.rising/falling` handler. With no handler, the
  * dispatcher still runs (cheap — two 32-bit drains) and fires no-op. */
-__attribute__((weak)) void tessera_evt_Core_Pad_rising(int pad) { (void)pad; }
-__attribute__((weak)) void tessera_evt_Core_Pad_falling(int pad) { (void)pad; }
+__attribute__((weak)) void studio_evt_Core_Pad_rising(int pad) { (void)pad; }
+__attribute__((weak)) void studio_evt_Core_Pad_falling(int pad) { (void)pad; }
 
-void tessera_dispatch_core_pad(void)
+void studio_dispatch_core_pad(void)
 {
-    uint32_t mask = __atomic_exchange_n(&_tessera_pad_rising_pending, 0u, __ATOMIC_SEQ_CST);
+    uint32_t mask = __atomic_exchange_n(&_studio_pad_rising_pending, 0u, __ATOMIC_SEQ_CST);
     while (mask) {
         uint32_t pad = __builtin_ctz(mask);
         mask &= ~(1u << pad);
-        tessera_evt_Core_Pad_rising((int)pad);
+        studio_evt_Core_Pad_rising((int)pad);
     }
-    mask = __atomic_exchange_n(&_tessera_pad_falling_pending, 0u, __ATOMIC_SEQ_CST);
+    mask = __atomic_exchange_n(&_studio_pad_falling_pending, 0u, __ATOMIC_SEQ_CST);
     while (mask) {
         uint32_t pad = __builtin_ctz(mask);
         mask &= ~(1u << pad);
-        tessera_evt_Core_Pad_falling((int)pad);
+        studio_evt_Core_Pad_falling((int)pad);
     }
 }
 {% else %}
 
 /* No pads with `exti` configured in config.json — dispatcher is a no-op.
- * Always-callable contract lets the Tessera shim invoke it without
+ * Always-callable contract lets the Studio shim invoke it without
  * caring about project contents. */
-void tessera_dispatch_core_pad(void) { }
+void studio_dispatch_core_pad(void) { }
 {% endif %}
 
-/* ---- Tessera tick dispatcher ----
+/* ---- Studio tick dispatcher ----
  * Polled from the DSL main loop via hal_tick(); fires the weak
- * `tessera_evt_Core_Timer_tick` handler once per configured period.
+ * `studio_evt_Core_Timer_tick` handler once per configured period.
  * Elapsed time is computed in unsigned ms so it's wrap-safe at the
  * ~49-day rollover. DSL overrides the weak default to run user code.
  */
-__attribute__((weak)) void tessera_evt_Core_Timer_tick(void) { }
+__attribute__((weak)) void studio_evt_Core_Timer_tick(void) { }
 
-{% if tessera_tick_ms %}
-#define TESSERA_TICK_PERIOD_MS  {{ tessera_tick_ms }}
-void tessera_dispatch_core_timer(void)
+{% if studio_tick_ms %}
+#define TESSERA_TICK_PERIOD_MS  {{ studio_tick_ms }}
+void studio_dispatch_core_timer(void)
 {
     static uint32_t _last;
     uint32_t now = hal_tick();
     if ((uint32_t)(now - _last) >= TESSERA_TICK_PERIOD_MS) {
         _last = now;
-        tessera_evt_Core_Timer_tick();
+        studio_evt_Core_Timer_tick();
     }
 }
 {% else %}
 /* No `timer.tick_ms` in config.json — dispatcher is a no-op. */
-void tessera_dispatch_core_timer(void) { }
+void studio_dispatch_core_timer(void) { }
 {% endif %}
 
-/* ---- Tessera USB-receive dispatcher ----
+/* ---- Studio USB-receive dispatcher ----
  * Drains the USB CDC RX ring once per main-loop iteration (capped at
  * 64 bytes so burst traffic can't starve the DSL loop). Fires the
- * weak `tessera_evt_Core_USB_receive(int byte)` per byte. Gated on
+ * weak `studio_evt_Core_USB_receive(int byte)` per byte. Gated on
  * `usb.enabled`; emits a no-op when USB isn't enabled.
  */
-__attribute__((weak)) void tessera_evt_Core_USB_receive(int byte) { (void)byte; }
+__attribute__((weak)) void studio_evt_Core_USB_receive(int byte) { (void)byte; }
 
 {% if usb_enabled %}
-void tessera_dispatch_core_usb(void)
+void studio_dispatch_core_usb(void)
 {
     int drained = 0;
     while (drained++ < 64 && hal_usb_cdc_available() > 0) {
-        tessera_evt_Core_USB_receive((int)hal_usb_cdc_getc());
+        studio_evt_Core_USB_receive((int)hal_usb_cdc_getc());
     }
 }
 {% else %}
 /* USB not enabled in config.json — dispatcher is a no-op. */
-void tessera_dispatch_core_usb(void) { }
+void studio_dispatch_core_usb(void) { }
 {% endif %}
 {% if dac_enabled %}
 /* ---- DAC handle ---- */
@@ -412,7 +412,7 @@ void core_pads_init(void)
 
     /* ---- EXTI (external interrupt) init ---- */
 {% for pin in exti_pads %}
-    hal_exti_enable({{ pin.pad }}, {{ "HAL_EXTI_RISING" if pin.exti == "rising" else ("HAL_EXTI_FALLING" if pin.exti == "falling" else "HAL_EXTI_BOTH") }}, _tessera_pad_edge_isr, (void *)(uintptr_t){{ pin.pad }});
+    hal_exti_enable({{ pin.pad }}, {{ "HAL_EXTI_RISING" if pin.exti == "rising" else ("HAL_EXTI_FALLING" if pin.exti == "falling" else "HAL_EXTI_BOTH") }}, _studio_pad_edge_isr, (void *)(uintptr_t){{ pin.pad }});
 {% endfor %}
 {% endif %}
 {% else %}

@@ -1,6 +1,6 @@
 {
-  "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "schema": "studio-sdk-docs/v1",
+  "source": "cores@11dcaf9",
   "category": "watchdog",
   "label": "Core.Watchdog",
   "icon": "🐕",
@@ -22,7 +22,7 @@
           "description": "Timeout in milliseconds before reset."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_watchdog_feed",
@@ -30,7 +30,7 @@
       "returns": "void",
       "brief": "Feed the watchdog. Must be called before the timeout expires.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_watchdog_caused_reset",
@@ -38,7 +38,7 @@
       "returns": "int",
       "brief": "Check if the last reset was caused by the watchdog.",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_watchdog_clear_flags",
@@ -46,7 +46,7 @@
       "returns": "void",
       "brief": "Clear all reset flags (call after checking cause).",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

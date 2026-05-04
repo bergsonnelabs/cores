@@ -1,6 +1,6 @@
 # SDK API tiers — low-level vs default-instance
 
-The Cores SDK ships most peripherals with two tiers of public API. Generated Tessera projects use the upper tier; legacy examples and bring-up tests tend to use the lower one. Both are supported. This doc explains the difference, names the convention, and lists which functions live on each tier so you can read SDK docs and Tessera-generated C without confusion.
+The Cores SDK ships most peripherals with two tiers of public API. Generated Studio projects use the upper tier; legacy examples and bring-up tests tend to use the lower one. Both are supported. This doc explains the difference, names the convention, and lists which functions live on each tier so you can read SDK docs and Studio-generated C without confusion.
 
 ## The two tiers
 
@@ -25,7 +25,7 @@ Used when a `config.json` sits next to the source file. Coregen reads `config.js
 core_pwm_duty(7, 500);             // pad, duty
 ```
 
-The handle is hidden. The instance is resolved automatically. Initialization happens during `core_init()`. This is the API Tessera codegen targets.
+The handle is hidden. The instance is resolved automatically. Initialization happens during `core_init()`. This is the API Studio codegen targets.
 
 ### Why both exist
 
@@ -36,13 +36,13 @@ A user of the SDK should reach for Tier 2 unless they need:
 - A peripheral the project doesn't declare in `config.json`.
 - Fine-grained control over init order, frequency changes mid-flight, or per-channel state the wrapper doesn't expose.
 
-A user of Tessera **always** sees Tier 2 in their generated C. If they then "escape to C" to extend a Tessera project, they should feel the Tier 2 conventions are continuous with what Tessera was emitting.
+A user of Studio **always** sees Tier 2 in their generated C. If they then "escape to C" to extend a Studio project, they should feel the Tier 2 conventions are continuous with what Studio was emitting.
 
 ## Which functions are on which tier?
 
-The authoritative answer is `tessera_exposed: true` in `manifests/sdk-docs/<category>.json`. The summary below is a snapshot — when in doubt, run `tools/gen_tessera_manifest.py` and read the JSON.
+The authoritative answer is `studio_exposed: true` in `manifests/sdk-docs/<category>.json`. The summary below is a snapshot — when in doubt, run `tools/gen_studio_manifest.py` and read the JSON.
 
-Snapshot generated from `manifests/sdk-docs/*.json` on 2026-04-25. "Exposed" means `tessera_exposed: true` and shows up in the Tessera palette / generated C; "Internal" is everything else on the docs page (init helpers, lower-level building blocks, raw-data variants). When in doubt, run `tools/gen_tessera_manifest.py` and read the JSON directly.
+Snapshot generated from `manifests/sdk-docs/*.json` on 2026-04-25. "Exposed" means `studio_exposed: true` and shows up in the Studio palette / generated C; "Internal" is everything else on the docs page (init helpers, lower-level building blocks, raw-data variants). When in doubt, run `tools/gen_studio_manifest.py` and read the JSON directly.
 
 | Category | Exposed (Tier 2) | Internal (Tier 1 / one-shot) |
 |---|---|---|
@@ -50,25 +50,25 @@ Snapshot generated from `manifests/sdk-docs/*.json` on 2026-04-25. "Exposed" mea
 | `timer` | — | `core_timer_init_freq`, `core_timer_init_tick`, `core_timer_start`, `core_timer_stop`, `core_timer_set_freq`, `core_timer_pwm_set`, `core_timer_capture_init`, `core_timer_capture_read`, `core_timer_enable_tick`, `core_timer_disable_tick`, `core_tick_init` |
 | `adc` | `core_adc_read_pad`, `core_adc_read_mv_pad`, `core_adc_temp_decidegc`, `core_adc_vdd_mv` | `core_adc_init`, `core_adc_add`, `core_adc_read`, `core_adc_read_mv`, `core_adc_temp`, `core_adc_vdd`, `core_adc_start_dma`, `core_adc_stop_dma`, `core_adc_dma_read` |
 | `dac` | `core_dac_init`, `core_dac_write`, `core_dac_write_mv`, `core_dac_read` | — (DAC's user-facing surface is small enough that every function is exposed) |
-| `pad` | `core_pad_write`, `core_pad_read`, `core_pad_toggle` | `core_pad_output`, `core_pad_output_od`, `core_pad_input`, `core_pad_analog`, `core_pad_speed`, `core_pad_on_change`, `core_pad_on_change_stop` (events are declared via `@tessera event`, not as exposed functions) |
+| `pad` | `core_pad_write`, `core_pad_read`, `core_pad_toggle` | `core_pad_output`, `core_pad_output_od`, `core_pad_input`, `core_pad_analog`, `core_pad_speed`, `core_pad_on_change`, `core_pad_on_change_stop` (events are declared via `@studio event`, not as exposed functions) |
 | `led` | `core_led_on`, `core_led_off`, `core_led_toggle`, `core_led_blink`, `core_led_heartbeat` | `core_led_init`, `core_led_sos` |
 | `usb` | `core_usb_print`, `core_usb_print_int`, `core_usb_print_float`, `core_usb_print_bool` | `core_usb_init`, `core_usb_connected`, `core_usb_write`, `core_usb_on_receive`, `core_usb_available`, `core_usb_getc`, `core_usb_read`, `core_usb_try_read` |
-| `nvm` | `core_nvm_size` | `core_nvm_read`, `core_nvm_write` (currently Tier 1 only — Tessera-side persistence is the [A4d-3](https://www.notion.so/34994a2cf4c681838739dbbe0adef5a9) item) |
+| `nvm` | `core_nvm_size` | `core_nvm_read`, `core_nvm_write` (currently Tier 1 only — Studio-side persistence is the [A4d-3](https://www.notion.so/34994a2cf4c681838739dbbe0adef5a9) item) |
 | `rtc` | `core_rtc_init`, `core_rtc_set_time`, `core_rtc_set_date`, `core_rtc_wakeup`, `core_rtc_wakeup_stop`, `core_rtc_set_alarm`, `core_rtc_clear_alarm`, `core_rtc_alarm_fired` | `core_rtc_get_time`, `core_rtc_get_date` |
 | `timing` | `core_delay_ms`, `core_delay_us`, `core_millis`, `core_timeout` | — |
 | `watchdog` | `core_watchdog_start`, `core_watchdog_feed` | `core_watchdog_caused_reset`, `core_watchdog_clear_flags` |
 | `backup` | `core_backup_read`, `core_backup_write` | `_core_backup_ensure_clk` (private helper) |
 
-Fixed-singleton peripherals (LED, USB, watchdog) don't have a meaningful Tier 1 — the hardware is not user-configurable, so coregen just emits the init unconditionally. The "Internal" column for those categories is mostly raw-byte read/write paths that Tessera doesn't need but C users do.
+Fixed-singleton peripherals (LED, USB, watchdog) don't have a meaningful Tier 1 — the hardware is not user-configurable, so coregen just emits the init unconditionally. The "Internal" column for those categories is mostly raw-byte read/write paths that Studio doesn't need but C users do.
 
 A few categories worth a closer look:
 
 - **`pwm` is the cleanest two-tier example.** A single Tier 2 entry point (`core_pwm_duty`) sits on top of a full Tier 1 surface. New default-instance peripherals should follow this shape.
-- **`timer` has no Tier 2 yet.** Everything is handle-based; Tessera doesn't currently expose direct timer programming. The `core_every_*` helpers in `core_pwm.h` are the closest thing to a Tier 2 timing primitive.
+- **`timer` has no Tier 2 yet.** Everything is handle-based; Studio doesn't currently expose direct timer programming. The `core_every_*` helpers in `core_pwm.h` are the closest thing to a Tier 2 timing primitive.
 - **`adc` splits the namespace by suffix.** `_pad` variants are Tier 2 (resolve from config.json); the un-suffixed versions are Tier 1 (take a handle). When writing examples, prefer the `_pad` form.
-- **`nvm` Tier 2 is one symbol** (`core_nvm_size`) reporting the available region size. Read/write are Tier 1 only because the Tessera persistence story (A4d-3) is still in design — once that lands, expect a Tier 2 wrapper to follow.
+- **`nvm` Tier 2 is one symbol** (`core_nvm_size`) reporting the available region size. Read/write are Tier 1 only because the Studio persistence story (A4d-3) is still in design — once that lands, expect a Tier 2 wrapper to follow.
 
-## Reading Tessera-generated C
+## Reading Studio-generated C
 
 A typical project's `main.c` looks like:
 
@@ -93,13 +93,13 @@ If you escape to C and want to take over the timer manually, drop down to Tier 1
 
 ## Reading SDK docs
 
-The `/docs/sdk/<category>` pages on the website render every documented function from the matching `manifests/sdk-docs/<category>.json`. Functions marked `tessera_exposed: true` are Tier 2; the rest are Tier 1 (or Tier 0, if the header re-exports HAL/LL signatures).
+The `/docs/sdk/<category>` pages on the website render every documented function from the matching `manifests/sdk-docs/<category>.json`. Functions marked `studio_exposed: true` are Tier 2; the rest are Tier 1 (or Tier 0, if the header re-exports HAL/LL signatures).
 
 Convention: **examples on each docs page should lead with Tier 2 calls**. The Tier 1 reference sits below as a "lower-level building blocks" section. As of 2026-04-25 most pages still open with Tier 1 examples (`core_pwm_init(&pwm, …)` rather than `core_pwm_duty(pad, …)`); fixing this is the [Z1 SDK-docs-consistency](https://www.notion.so/34994a2cf4c681838739dbbe0adef5a9) sweep and is in progress. If you find a page that's drifted, file it against `cores/docs/sdk-api-tiers.md`.
 
 ## Mixing tiers in escape-to-C code
 
-The two tiers are wrappers, not silos. A user who escapes from Tessera to C — exporting `config.json`, `main.c`, and the coregen output — can freely mix Tier 2 and Tier 1 calls in the same program. They share state.
+The two tiers are wrappers, not silos. A user who escapes from Studio to C — exporting `config.json`, `main.c`, and the coregen output — can freely mix Tier 2 and Tier 1 calls in the same program. They share state.
 
 The mechanics: every peripheral declared in `config.json` produces one extern handle in coregen's output (`core_init.c`):
 
@@ -112,7 +112,7 @@ hal_adc_t   core_adc1;
 
 Tier 2 helpers resolve to those same externs internally. `core_pwm_duty(7, …)` calls `core_pwm_timer_for_pad(7)` which returns `&core_tim2` because pad 7 was declared as a `TIM2.<ch>`. So when you escape to C, you can:
 
-**1. Use Tier 2 for everything in `config.json`, ignore Tier 1.** Most users — same calls Tessera generated.
+**1. Use Tier 2 for everything in `config.json`, ignore Tier 1.** Most users — same calls Studio generated.
 
 **2. Mix Tier 2 with Tier 1 on the same coregen-managed handle.** When you need a Tier 1 capability the wrapper doesn't expose (input capture, runtime frequency change, channel-by-channel duty control), include the Tier 1 header and reach into the extern:
 
@@ -144,11 +144,11 @@ core_timer_start(&my_tim5);
 
 ## Adding peripherals or tiles after escaping
 
-A common shape: someone starts in Tessera, escapes to C, and now wants to add a pin or a tile that wasn't in the original project. The runtime work is small — Tier 2 helpers do most of it for you — but the *coregen* work is what makes them possible. Three steps every time:
+A common shape: someone starts in Studio, escapes to C, and now wants to add a pin or a tile that wasn't in the original project. The runtime work is small — Tier 2 helpers do most of it for you — but the *coregen* work is what makes them possible. Three steps every time:
 
 1. **Declare the new thing in `config.json`.** Coregen reads this on every build to decide what handles to allocate, what to initialize, and what dispatchers to emit. If it isn't here, no Tier 2 helper can find it at runtime.
 2. **Rebuild.** `make` re-runs coregen when `config.json` changes; a fresh `core_init.c` and `core_pads.h` land alongside your existing files. You don't edit either by hand — they're build artifacts.
-3. **Call the helper.** `core_init()` is already wired into the `main()` Tessera generated, and it runs the freshly-emitted init code on the next reset. Then call the Tier 2 function. No new init line.
+3. **Call the helper.** `core_init()` is already wired into the `main()` Studio generated, and it runs the freshly-emitted init code on the next reset. Then call the Tier 2 function. No new init line.
 
 Three recipes covering the most common cases:
 
@@ -238,12 +238,12 @@ Both errors mean coregen and your code are looking at different views of the pro
 
 If the generated C wants to call `core_<thing>_<verb>(...)` and the symbol isn't there, two things might be wrong:
 
-1. The Tier 2 wrapper hasn't been written. Add a `static inline` in the relevant `core_*.h`, mark it `@tessera expose`, and run `tools/gen_tessera_manifest.py`. See [tessera-annotations.md](tessera-annotations.md).
-2. The wrapper exists but coregen isn't emitting the supporting scaffold (the dispatcher, the init call, the start). This is the [Z1 high-priority "Tessera C codegen: missing peripheral init/scaffold"](https://www.notion.so/34994a2cf4c681838739dbbe0adef5a9) item. The wrapper ships with whatever extern declarations and helpers it needs from coregen; if coregen doesn't fill them in, the link fails.
+1. The Tier 2 wrapper hasn't been written. Add a `static inline` in the relevant `core_*.h`, mark it `@studio expose`, and run `tools/gen_studio_manifest.py`. See [studio-annotations.md](studio-annotations.md).
+2. The wrapper exists but coregen isn't emitting the supporting scaffold (the dispatcher, the init call, the start). This is the [Z1 high-priority "Studio C codegen: missing peripheral init/scaffold"](https://www.notion.so/34994a2cf4c681838739dbbe0adef5a9) item. The wrapper ships with whatever extern declarations and helpers it needs from coregen; if coregen doesn't fill them in, the link fails.
 
 The first failure is a missing API. The second is a missing scaffold. Both are real, both are tracked, and both are worth filing.
 
 ## Related docs
 
-- [tessera-annotations.md](tessera-annotations.md) — how to add a Tier 2 wrapper to a header.
+- [studio-annotations.md](studio-annotations.md) — how to add a Tier 2 wrapper to a header.
 - [`AI.md`](../AI.md) — driver authoring guide for AI agents (covers Kiln tile drivers, which follow the same tier pattern: `tile_<name>_init` is Tier 1, palette-exposed functions are Tier 2).

@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Unit tests for the @tessera annotation parser.
+"""Unit tests for the @studio annotation parser.
 
 Focused on the enum-label extension landed for Pre-A4 — the rest of
-gen_tessera_manifest.py is exercised end-to-end by `--check` against
+gen_studio_manifest.py is exercised end-to-end by `--check` against
 the shipped manifests, so these tests cover just the path that can't
 be validated that way (no driver uses enum labels yet; the tests are
 the enforcement until one does).
 
 Run:
-    python3 tools/test_gen_tessera_manifest.py
+    python3 tools/test_gen_studio_manifest.py
     # or
-    python3 -m unittest tools.test_gen_tessera_manifest
+    python3 -m unittest tools.test_gen_studio_manifest
 """
 
 import json
@@ -22,11 +22,11 @@ from pathlib import Path
 # Make the generator module importable whether this file is run as a
 # script or via unittest discovery.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from gen_tessera_manifest import (  # noqa: E402
+from gen_studio_manifest import (  # noqa: E402
     build_host_entry,
     load_bus_addresses,
     parse_enum_body,
-    parse_tessera_tags,
+    parse_studio_tags,
 )
 
 
@@ -79,13 +79,13 @@ class ParseEnumBody(unittest.TestCase):
         )
 
 
-class ParseTesseraTagsEnum(unittest.TestCase):
+class ParseStudioTagsEnum(unittest.TestCase):
     def test_param_enum_tag(self):
         lines = [
-            "@tessera expose category=tile name=set_range",
-            "@tessera param range enum {FSR_2G=2g, FSR_4G=4g, FSR_8G=8g}",
+            "@studio expose category=tile name=set_range",
+            "@studio param range enum {FSR_2G=2g, FSR_4G=4g, FSR_8G=8g}",
         ]
-        tags = parse_tessera_tags(lines)
+        tags = parse_studio_tags(lines)
         self.assertEqual(len(tags), 2)
         expose = tags[0]
         self.assertEqual(expose[0], "expose")
@@ -105,40 +105,40 @@ class ParseTesseraTagsEnum(unittest.TestCase):
     def test_comma_inside_braces_survives(self):
         # Before the brace-aware extraction, rest.split() would have
         # shredded the enum body at every comma.
-        lines = ["@tessera param mode enum {A=a, B=b, C=c}"]
-        tags = parse_tessera_tags(lines)
+        lines = ["@studio param mode enum {A=a, B=b, C=c}"]
+        tags = parse_studio_tags(lines)
         self.assertEqual(len(tags[0][2]["enum"]), 3)
 
     def test_other_attrs_still_parsed(self):
         lines = [
-            "@tessera expose category=tile name=foo icon=★",
+            "@studio expose category=tile name=foo icon=★",
         ]
-        tags = parse_tessera_tags(lines)
+        tags = parse_studio_tags(lines)
         _, _, attrs = tags[0]
         self.assertEqual(attrs["category"], "tile")
         self.assertEqual(attrs["name"], "foo")
         self.assertEqual(attrs["icon"], "★")
 
     def test_no_braces_no_enum(self):
-        lines = ["@tessera param range"]
-        tags = parse_tessera_tags(lines)
+        lines = ["@studio param range"]
+        tags = parse_studio_tags(lines)
         _, positional, attrs = tags[0]
         self.assertEqual(positional, "range")
         self.assertNotIn("enum", attrs)
 
 
 class BuildHostEntryEnum(unittest.TestCase):
-    """Integration: a tessera-exposed function with an enum param emits
+    """Integration: a studio-exposed function with an enum param emits
     the enum labels in its dsl_params entry."""
 
-    def _build(self, tessera_param_attrs):
+    def _build(self, studio_param_attrs):
         doxy_lines = [
             "@brief Set accelerometer range.",
-            "@tessera expose category=tile name=set_accel_range",
+            "@studio expose category=tile name=set_accel_range",
             "@param range Full-scale range setting.",
-            f"@tessera param range enum {{{tessera_param_attrs}}}",
+            f"@studio param range enum {{{studio_param_attrs}}}",
         ]
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -168,10 +168,10 @@ class BuildHostEntryEnum(unittest.TestCase):
 
     def test_no_enum_when_not_annotated(self):
         doxy_lines = [
-            "@tessera expose category=tile name=set_accel_range",
+            "@studio expose category=tile name=set_accel_range",
             "@param range Full-scale range setting.",
         ]
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -186,20 +186,20 @@ class BuildHostEntryEnum(unittest.TestCase):
 
 
 class BuildHostEntryOutBuffer(unittest.TestCase):
-    """`@tessera out_buffer <cname> type=... length=...` strips the
+    """`@studio out_buffer <cname> type=... length=...` strips the
     param from the DSL-facing list and emits `c_out_buffer` on the host.
     """
 
     def _build(self, extra_lines=None):
         doxy_lines = [
             "@brief Read raw accelerometer [X, Y, Z].",
-            "@tessera expose category=tile name=get_raw_accels returns=int[3]",
-            "@tessera out_buffer buffer type=int16_t length=3",
+            "@studio expose category=tile name=get_raw_accels returns=int[3]",
+            "@studio out_buffer buffer type=int16_t length=3",
             "@param buffer Caller-owned buffer receiving the 3 axes.",
         ]
         if extra_lines:
             doxy_lines.extend(extra_lines)
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -232,13 +232,13 @@ class BuildHostEntryOutBuffer(unittest.TestCase):
         self.assertEqual(host["dsl_returns"], "int[3]")
 
     def test_no_out_buffer_no_field(self):
-        # Without @tessera out_buffer, c_out_buffer must be absent even
+        # Without @studio out_buffer, c_out_buffer must be absent even
         # on void-returning hosts. Gatekeeps against a future default
         # that would emit it unconditionally.
         doxy_lines = [
-            "@tessera expose category=tile name=sleep",
+            "@studio expose category=tile name=sleep",
         ]
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -250,18 +250,18 @@ class BuildHostEntryOutBuffer(unittest.TestCase):
 
 
 class BuildHostEntryArrayInParam(unittest.TestCase):
-    """`@tessera param <cname> type=int[N]` overrides the DSL type for
+    """`@studio param <cname> type=int[N]` overrides the DSL type for
     a pointer-typed C param so it appears as a fixed-length array in
     the manifest."""
 
     def test_array_in_param_type_override(self):
         doxy_lines = [
-            "@tessera expose category=tile name=play_sequence",
-            "@tessera param effects type=int[16]",
+            "@studio expose category=tile name=play_sequence",
+            "@studio param effects type=int[16]",
             "@param effects Array of effect indices.",
             "@param count Number of effects.",
         ]
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -283,18 +283,18 @@ class BuildHostEntryArrayInParam(unittest.TestCase):
 
 
 class DoxyParamNameAlignmentAfterStripping(unittest.TestCase):
-    """When @tessera out_buffer strips a param from the middle of the C
+    """When @studio out_buffer strips a param from the middle of the C
     signature, remaining dsl_params still pick up the correct @param
     metadata — aligned by name, not position."""
 
     def test_out_buffer_doesnt_misalign_neighbour(self):
         doxy_lines = [
-            "@tessera expose category=tile name=sample_many returns=int[3]",
-            "@tessera out_buffer buffer type=int16_t length=3",
+            "@studio expose category=tile name=sample_many returns=int[3]",
+            "@studio out_buffer buffer type=int16_t length=3",
             "@param buffer Caller-owned buffer.",
             "@param channel [0..3] ADC channel to sample.",
         ]
-        tags = parse_tessera_tags(doxy_lines)
+        tags = parse_studio_tags(doxy_lines)
         expose = next((a for v, _, a in tags if v == "expose"), None)
         sig = {
             "returns": "void",
@@ -331,7 +331,7 @@ class LoadBusAddresses(unittest.TestCase):
         self.assertEqual(load_bus_addresses(None), {})
 
     def test_missing_file_returns_empty(self):
-        missing = Path("/tmp/does-not-exist-tessera-test.json")
+        missing = Path("/tmp/does-not-exist-studio-test.json")
         self.assertEqual(load_bus_addresses(missing), {})
 
     def test_invalid_json_returns_empty(self):

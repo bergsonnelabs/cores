@@ -12,7 +12,7 @@
  *
  * Requires: Core.W (STM32WBA55), BLE_ENABLED=1, clock >= "default" (HSE).
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    ble
  *   name:  BLE — Bluetooth Low Energy
  *   page:  /docs/sdk/ble
@@ -20,7 +20,7 @@
  *          GATT services + characteristics, read/write/notify, and
  *          connect/disconnect callbacks. Currently Tier 1 only — there
  *          are no DSL bindings yet, and the API is C-callback heavy
- *          which doesn't translate cleanly to the current Tessera
+ *          which doesn't translate cleanly to the current Studio
  *          host-call ABI.
  */
 
@@ -177,29 +177,29 @@ void core_ble_enable_pairing(void);
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No DSL / Twin coverage for BLE"
+// @studio unsupported tier=2 value=H title="No DSL / Twin coverage for BLE"
 //   The whole subsystem is escape-to-C. Notify, on-write, and
 //   on-connect callbacks need a story that maps DSL handlers to the
 //   underlying C function pointers — same pattern as Core.Pad rising/
 //   falling events but with a payload struct.
 //
-// @tessera unsupported tier=1 value=M title="Central / scanner mode"
+// @studio unsupported tier=1 value=M title="Central / scanner mode"
 //   Peripheral-only today. No scanning, no central-role connections,
 //   no GATT-client reads/writes. Tracked as its own initiative — most
 //   Bergsonne use-cases are peripheral-role (sensor advertising to a
 //   phone). Apps that need central-role drop into the WBA BLE stack.
 //
-// @tessera unsupported tier=1 value=M title="Bonding / persistent pairing"
+// @studio unsupported tier=1 value=M title="Bonding / persistent pairing"
 //   core_ble_enable_pairing() runs Just Works each session — no
 //   long-term key storage, so the host re-prompts on every connect.
 //   Bonded reconnect needs IRK/LTK persistence in NVM.
 //
-// @tessera unsupported tier=1 value=M title="Custom UUIDs"
+// @studio unsupported tier=1 value=M title="Custom UUIDs"
 //   Service + characteristic UUIDs are auto-generated from the name
 //   string. No way to declare a fixed 128-bit UUID for interop with
 //   existing apps that expect a specific service identifier.
 //
-// @tessera unsupported tier=1 value=L title="Advanced features (LE Audio, extended adv, multi-link)"
+// @studio unsupported tier=1 value=L title="Advanced features (LE Audio, extended adv, multi-link)"
 //   The WBA radio supports LE Audio (LC3), extended advertising / 2M
 //   PHY / coded PHY, and multi-link (multiple simultaneous connections).
 //   None of that is exposed.

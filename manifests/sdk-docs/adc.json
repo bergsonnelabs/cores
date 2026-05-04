@@ -1,6 +1,6 @@
 {
-  "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "schema": "studio-sdk-docs/v1",
+  "source": "cores@11dcaf9",
   "category": "adc",
   "label": "Core.ADC",
   "icon": "◐",
@@ -21,7 +21,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_add",
@@ -42,7 +42,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_read",
@@ -59,7 +59,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_read_mv",
@@ -76,7 +76,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_read_pad",
@@ -94,7 +94,7 @@
           "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_adc_read_mv_pad",
@@ -112,7 +112,7 @@
           "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_adc_temp_decidegc",
@@ -120,7 +120,7 @@
       "returns": "int",
       "brief": "Die temperature in tenths of deg C (e.g. 253 = 25.3 C). Dispatches to the default ADC instance.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_adc_vdd_mv",
@@ -128,7 +128,7 @@
       "returns": "int",
       "brief": "VDD supply voltage in millivolts (via VREFINT). Dispatches to the default ADC instance.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_adc_temp",
@@ -141,7 +141,7 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_vdd",
@@ -154,7 +154,7 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_start_dma",
@@ -187,7 +187,7 @@
           "description": "User context passed to callback; may be NULL"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_stop_dma",
@@ -200,7 +200,7 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_adc_dma_read",
@@ -217,7 +217,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
-  "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "schema": "studio-sdk-docs/v1",
+  "source": "cores@11dcaf9",
   "category": "timing",
   "label": "Core.Timing",
   "icon": "⏱",
@@ -22,7 +22,7 @@
           "description": "Delay duration in milliseconds."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_delay_us",
@@ -40,7 +40,7 @@
           "description": "Delay duration in microseconds."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_millis",
@@ -48,7 +48,7 @@
       "returns": "uint32_t",
       "brief": "Milliseconds since boot (wraps at ~49 days).",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_timeout",
@@ -71,7 +71,7 @@
           "description": "Timeout duration in milliseconds."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     }
   ]
 }

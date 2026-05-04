@@ -1,5 +1,5 @@
 /*
- * Generated firmware harness for a Compiled-mode Tessera flash.
+ * Generated firmware harness for a Compiled-mode Studio flash.
  * main.c assembled by apps/web/src/lib/wasmHarness.ts; do not
  * edit by hand — the web app regenerates on every flash.
  */
@@ -16,10 +16,10 @@
 #include "hal_usb_cdc.h"
 
 #include "wasm_export.h"
-#include "tessera_natives.h"
-#include "tessera_natives_project.h"  /* coregen: pad / pwm / adc / dac */
+#include "studio_natives.h"
+#include "studio_natives_project.h"  /* coregen: pad / pwm / adc / dac */
 
-/* Precompiled Tessera DSL program as a Wasm binary. */
+/* Precompiled Studio DSL program as a Wasm binary. */
 static const uint8_t g_wasm_blob_flash[] = {
     0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x60,
     0x01, 0x7f, 0x00, 0x60, 0x00, 0x00, 0x02, 0x1a, 0x01, 0x03, 0x65, 0x6e,
@@ -72,7 +72,7 @@ static void usb_warmup(void)
 
 static void fatal(const char *tag, const char *detail)
 {
-    core_usb_printf("tessera: %s - %s\r\n", tag, detail);
+    core_usb_printf("studio: %s - %s\r\n", tag, detail);
     while (1) {
         core_led_blink(3, 100, 100);
         core_delay_ms(500);
@@ -81,7 +81,7 @@ static void fatal(const char *tag, const char *detail)
 
 /* Load + instantiate whatever is currently in g_wasm_blob[0 .. g_wasm_blob_len].
  * On success: g_module/g_inst/g_exec/g_fn_start/g_fn_loop are live and
- * tessera_start has run. On failure: nothing survives and the caller
+ * studio_start has run. On failure: nothing survives and the caller
  * should fatal() — we try to clean up partial state along the way. */
 static bool load_and_start(char *err_buf, size_t err_buf_size)
 {
@@ -107,14 +107,14 @@ static bool load_and_start(char *err_buf, size_t err_buf_size)
         return false;
     }
 
-    g_fn_start = wasm_runtime_lookup_function(g_inst, "tessera_start");
-    g_fn_loop  = wasm_runtime_lookup_function(g_inst, "tessera_loop");
+    g_fn_start = wasm_runtime_lookup_function(g_inst, "studio_start");
+    g_fn_loop  = wasm_runtime_lookup_function(g_inst, "studio_loop");
     if (!g_fn_start || !g_fn_loop) {
         wasm_runtime_destroy_exec_env(g_exec);
         wasm_runtime_deinstantiate(g_inst);
         wasm_runtime_unload(g_module);
         g_exec = NULL; g_inst = NULL; g_module = NULL;
-        snprintf(err_buf, err_buf_size, "tessera_start / tessera_loop missing");
+        snprintf(err_buf, err_buf_size, "studio_start / studio_loop missing");
         return false;
     }
 
@@ -124,7 +124,7 @@ static bool load_and_start(char *err_buf, size_t err_buf_size)
         wasm_runtime_deinstantiate(g_inst);
         wasm_runtime_unload(g_module);
         g_exec = NULL; g_inst = NULL; g_module = NULL;
-        snprintf(err_buf, err_buf_size, "tessera_start: %s", ex ? ex : "(no message)");
+        snprintf(err_buf, err_buf_size, "studio_start: %s", ex ? ex : "(no message)");
         return false;
     }
     return true;
@@ -191,7 +191,7 @@ static bool frame_feed_byte(uint8_t b)
             if (g_rx_expected_len == 0
                 || g_rx_expected_len > MAX_MODULE_BYTES) {
                 core_usb_printf(
-                    "tessera: rejecting frame (%lu bytes; max %u)\r\n",
+                    "studio: rejecting frame (%lu bytes; max %u)\r\n",
                     (unsigned long)g_rx_expected_len,
                     (unsigned)MAX_MODULE_BYTES);
                 frame_reset();
@@ -228,7 +228,7 @@ int main(void)
     core_led_init();
     usb_warmup();
 
-    core_usb_printf("tessera: booting (WAMR-2.4.4, %u-byte boot module)\r\n",
+    core_usb_printf("studio: booting (WAMR-2.4.4, %u-byte boot module)\r\n",
                     (unsigned)g_wasm_blob_flash_len);
 
     /* Seed the RAM buffer with the flash-resident boot module. */
@@ -244,13 +244,13 @@ int main(void)
     }
 
     if (!wasm_runtime_register_natives(
-            "env", g_tessera_natives, g_tessera_natives_count)) {
+            "env", g_studio_natives, g_studio_natives_count)) {
         fatal("wasm_runtime_register_natives (static)", "returned false");
     }
     /* Per-project table: pad / pwm / adc / dac adapters that need
      * coregen-emitted state in scope. Generated alongside core_init.c. */
     if (!wasm_runtime_register_natives(
-            "env", g_tessera_natives_project, g_tessera_natives_project_count)) {
+            "env", g_studio_natives_project, g_studio_natives_project_count)) {
         fatal("wasm_runtime_register_natives (project)", "returned false");
     }
 
@@ -259,13 +259,13 @@ int main(void)
         fatal("boot module", err_buf);
     }
 
-    core_usb_printf("tessera: running (push TSWM frames over CDC to hot-swap)\r\n");
+    core_usb_printf("studio: running (push TSWM frames over CDC to hot-swap)\r\n");
 
     uint32_t tick = 0;
     while (1) {
         if (!wasm_runtime_call_wasm(g_exec, g_fn_loop, 0, NULL)) {
             const char *ex = wasm_runtime_get_exception(g_inst);
-            core_usb_printf("tessera: tessera_loop exception: %s\r\n",
+            core_usb_printf("studio: studio_loop exception: %s\r\n",
                             ex ? ex : "(none)");
             /* Tear down the failed instance so a push-new-DSL
              * recovers without a reboot. If no new DSL arrives
@@ -280,15 +280,15 @@ int main(void)
         /* Drain CDC RX. If a complete hot-swap frame landed,
          * teardown and reload the new module. */
         if (frame_poll()) {
-            core_usb_printf("tessera: hot-swap frame (%lu bytes)\r\n",
+            core_usb_printf("studio: hot-swap frame (%lu bytes)\r\n",
                             (unsigned long)g_wasm_blob_len);
             unload_current();
             if (!load_and_start(err_buf, sizeof err_buf)) {
-                core_usb_printf("tessera: hot-swap failed: %s\r\n",
+                core_usb_printf("studio: hot-swap failed: %s\r\n",
                                 err_buf);
                 /* Keep spinning — next push might be valid. */
             } else {
-                core_usb_printf("tessera: running new module\r\n");
+                core_usb_printf("studio: running new module\r\n");
                 tick = 0;
             }
             frame_reset();

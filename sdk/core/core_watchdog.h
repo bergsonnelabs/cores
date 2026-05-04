@@ -22,9 +22,9 @@
  *       core_watchdog_feed();
  *   }
  *
- * @tessera category watchdog label=Core.Watchdog icon=🐕
+ * @studio category watchdog label=Core.Watchdog icon=🐕
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    watchdog
  *   name:  Watchdog — independent watchdog (IWDG)
  *   blurb: Auto-prescaler IWDG with millisecond timeouts (~100 ms to
@@ -47,8 +47,8 @@
  *
  * WARNING: Once started, the IWDG cannot be stopped.
  *
- * @tessera expose category=watchdog name=start
- * @tessera twin full
+ * @studio expose category=watchdog name=start
+ * @studio twin full
  * @param timeout_ms [100..28000] Timeout in milliseconds before reset.
  */
 static inline void core_watchdog_start(uint32_t timeout_ms)
@@ -77,8 +77,8 @@ static inline void core_watchdog_start(uint32_t timeout_ms)
 /**
  * Feed the watchdog. Must be called before the timeout expires.
  *
- * @tessera expose category=watchdog name=feed
- * @tessera twin full
+ * @studio expose category=watchdog name=feed
+ * @studio twin full
  */
 static inline void core_watchdog_feed(void)
 {
@@ -99,12 +99,12 @@ static inline void core_watchdog_clear_flags(void)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=L title="No DSL access to caused_reset / clear_flags"
+// @studio unsupported tier=2 value=L title="No DSL access to caused_reset / clear_flags"
 //   These return / clear hardware flags that only matter on the very
 //   first boot iteration. Exposing them needs a story for "before
-//   tessera_start runs" — Tessera doesn't currently model that phase.
+//   studio_start runs" — Studio doesn't currently model that phase.
 //
-// @tessera unsupported tier=1 value=L title="No window watchdog (WWDG)"
+// @studio unsupported tier=1 value=L title="No window watchdog (WWDG)"
 //   STM32 also has a windowed watchdog (must feed within a window,
 //   not just before the deadline). Useful for catching feed-too-fast
 //   bugs. Not wrapped here.

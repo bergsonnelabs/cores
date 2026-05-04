@@ -294,8 +294,8 @@ ifneq ($(wildcard $(CONFIG_JSON)),)
   # link when the project pulled WAMR in — otherwise the symbols are
   # generated but ignored at link time.
   ifeq ($(WAMR_ENABLED),1)
-    GEN_HEADERS += $(GEN_DIR)/tessera_natives_project.h
-    GEN_SOURCES += $(GEN_DIR)/tessera_natives_project.c
+    GEN_HEADERS += $(GEN_DIR)/studio_natives_project.h
+    GEN_SOURCES += $(GEN_DIR)/studio_natives_project.c
   endif
 else
   GEN_SOURCES   =
@@ -347,7 +347,7 @@ $(BUILD_DIR)/%.o: $(PROJECT_DIR)/%.c $(GEN_HEADERS)
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
-# Generated C sources (core_init.c, tessera_natives_project.c, etc.).
+# Generated C sources (core_init.c, studio_natives_project.c, etc.).
 # Static pattern: each `<name>.o` in GEN_OBJS pairs with the matching
 # `<name>.c` in GEN_SOURCES. Static-pattern syntax keeps the rule
 # crisp even when GEN_DIR is an absolute path (regular `%` pattern

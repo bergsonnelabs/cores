@@ -1,7 +1,7 @@
 # h1-wasm-blink - A4c proof-of-life DSL source.
 #
 # Regenerate module_wasm.h with:
-#   cd ~/Documents/local/source/tessera
+#   cd ~/Documents/local/source/studio
 #   npm run dsl-to-wasm -- \
 #     ~/Documents/local/source/cores/examples/h1-wasm-blink/program.dsl \
 #     --header=~/Documents/local/source/cores/examples/h1-wasm-blink/module_wasm.h \

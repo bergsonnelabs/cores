@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate Tessera manifests from cores + kiln headers.
+Generate Studio manifests from cores + kiln headers.
 
-Reads C headers, finds doxygen blocks containing `@tessera expose ...`, and
-emits JSON manifests consumed by the Tessera frontend palette and build
+Reads C headers, finds doxygen blocks containing `@studio expose ...`, and
+emits JSON manifests consumed by the Studio frontend palette and build
 service. Produces one merged core manifest and one manifest per tile driver.
 
-`@tessera` tag syntax (inside a doxygen block):
+`@studio` tag syntax (inside a doxygen block):
 
-    @tessera expose category=<str> icon=<glyph> name=<dsl_name> [availability=Core.X,Core.Y]
+    @studio expose category=<str> icon=<glyph> name=<dsl_name> [availability=Core.X,Core.Y]
 
 Param syntax (each `@param` line):
 
@@ -16,12 +16,12 @@ Param syntax (each `@param` line):
 
 Example:
 
-    @tessera expose category=led icon=☀ name=heartbeat
+    @studio expose category=led icon=☀ name=heartbeat
     @param period_ms [0..60000] ms Time between LED toggles.
 
 Usage:
-  tools/gen_tessera_manifest.py          # write manifests
-  tools/gen_tessera_manifest.py --check  # verify manifests match headers
+  tools/gen_studio_manifest.py          # write manifests
+  tools/gen_studio_manifest.py --check  # verify manifests match headers
 """
 
 import argparse
@@ -71,8 +71,8 @@ def strip_doxy(body):
     return out
 
 
-def parse_tessera_tags(lines):
-    """Return every @tessera tag in the block as a list of (verb, positional, attrs).
+def parse_studio_tags(lines):
+    """Return every @studio tag in the block as a list of (verb, positional, attrs).
 
     Brace-delimited bodies (e.g. `enum {KEY=label, ...}`) are extracted
     before the rest of the line is split on whitespace so commas inside
@@ -81,7 +81,7 @@ def parse_tessera_tags(lines):
     """
     out = []
     for line in lines:
-        m = re.match(r"@tessera\s+(\w+)\s*(.*)", line.strip())
+        m = re.match(r"@studio\s+(\w+)\s*(.*)", line.strip())
         if not m:
             continue
         verb = m.group(1)
@@ -103,7 +103,7 @@ def parse_tessera_tags(lines):
                 # Unknown brace key — surface via stderr so a typo doesn't
                 # silently disappear into the void.
                 print(
-                    f"warn: @tessera {verb}: unknown brace key '{brace_key}' — only 'enum' is recognised",
+                    f"warn: @studio {verb}: unknown brace key '{brace_key}' — only 'enum' is recognised",
                     file=sys.stderr,
                 )
             rest = (rest[:brace_match.start()] + rest[brace_match.end():]).strip()
@@ -142,9 +142,9 @@ def parse_enum_body(body):
     return out
 
 
-def parse_tessera_tag(lines):
-    """Back-compat helper — return the first @tessera expose tag's attrs."""
-    for verb, _pos, attrs in parse_tessera_tags(lines):
+def parse_studio_tag(lines):
+    """Back-compat helper — return the first @studio expose tag's attrs."""
+    for verb, _pos, attrs in parse_studio_tags(lines):
         if verb == "expose":
             return attrs
     return None
@@ -250,17 +250,17 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     description = first_brief(doxy_lines)
     doxy_params = parse_params(doxy_lines)
 
-    # Per-parameter tessera annotations — currently only `@tessera param
+    # Per-parameter studio annotations — currently only `@studio param
     # <cname> enum {...}` carries useful metadata, but this is the seam
     # for future per-param attributes (e.g., bitmasks, unit hints).
     # Indexed by the positional C identifier so we can merge into the
     # dsl_params loop below without altering doxy_params shape.
-    tessera_params = {}
+    studio_params = {}
     for verb, positional, attrs in all_tags:
         if verb == "param" and positional:
-            tessera_params[positional] = attrs
+            studio_params[positional] = attrs
 
-    # `@tessera out_buffer <cname> type=...` identifies which C parameter
+    # `@studio out_buffer <cname> type=...` identifies which C parameter
     # is an output buffer the driver writes into. Two flavours:
     #
     #   Fixed-length:   length=<N>             → DSL sees `int[N]` return
@@ -279,7 +279,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             continue
         if "type" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {positional} missing type=",
+                f"warn: {sig['name']}: @studio out_buffer {positional} missing type=",
                 file=sys.stderr,
             )
             continue
@@ -287,13 +287,13 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         has_cap_param = "cap_param" in attrs
         if not has_length and not has_cap_param:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {positional} needs either length=<N> (fixed) or cap_param=<name> (variable)",
+                f"warn: {sig['name']}: @studio out_buffer {positional} needs either length=<N> (fixed) or cap_param=<name> (variable)",
                 file=sys.stderr,
             )
             continue
         if has_length and has_cap_param:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {positional} can't carry both length= and cap_param=",
+                f"warn: {sig['name']}: @studio out_buffer {positional} can't carry both length= and cap_param=",
                 file=sys.stderr,
             )
             continue
@@ -303,7 +303,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 entry["length"] = int(attrs["length"])
             except ValueError:
                 print(
-                    f"warn: {sig['name']}: @tessera out_buffer {positional} length={attrs['length']!r} must be an integer",
+                    f"warn: {sig['name']}: @studio out_buffer {positional} length={attrs['length']!r} must be an integer",
                     file=sys.stderr,
                 )
                 continue
@@ -312,7 +312,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             out_buffer_caps.add(attrs["cap_param"])
         out_buffers[positional] = entry
 
-    # `@tessera out_scalar <cname> type=<ctype>` identifies a scalar pointer
+    # `@studio out_scalar <cname> type=<ctype>` identifies a scalar pointer
     # parameter (`Type *<cname>`) that the driver writes into. The DSL caller
     # passes a *local* (lvalue Ident) into the slot and the value is back-
     # filled when the call returns. Multiple out_scalars per host are allowed
@@ -327,13 +327,13 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             continue
         if "type" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera out_scalar {positional} missing type=",
+                f"warn: {sig['name']}: @studio out_scalar {positional} missing type=",
                 file=sys.stderr,
             )
             continue
         out_scalars[positional] = {"type": attrs["type"]}
 
-    # `@tessera in_buffer <cname> type=<element> length_param=<other_cname>
+    # `@studio in_buffer <cname> type=<element> length_param=<other_cname>
     #     [length=<N>]`
     # identifies which C parameter is a caller-passed array buffer + which
     # adjacent param carries its length. Both flavours strip the buffer
@@ -354,7 +354,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             continue
         if "type" not in attrs:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer {positional} missing type=",
+                f"warn: {sig['name']}: @studio in_buffer {positional} missing type=",
                 file=sys.stderr,
             )
             continue
@@ -366,7 +366,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         #   length=N only                    → fixed-length, C function has no count arg
         if not has_length and not has_length_param:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer {positional} needs length= (fixed without count arg), length_param= (variable), or both (fixed with count arg)",
+                f"warn: {sig['name']}: @studio in_buffer {positional} needs length= (fixed without count arg), length_param= (variable), or both (fixed with count arg)",
                 file=sys.stderr,
             )
             continue
@@ -378,7 +378,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
                 entry["length"] = int(attrs["length"])
             except ValueError:
                 print(
-                    f"warn: {sig['name']}: @tessera in_buffer {positional} length={attrs['length']!r} must be an integer",
+                    f"warn: {sig['name']}: @studio in_buffer {positional} length={attrs['length']!r} must be an integer",
                     file=sys.stderr,
                 )
                 continue
@@ -402,11 +402,11 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             else:
                 c_params.append(sp)
         elif sp["name"] in in_buffer_lengths:
-            # Length params paired with an `@tessera in_buffer` are
+            # Length params paired with an `@studio in_buffer` are
             # implicit at the DSL layer (array.length supplies them).
             continue
         elif sp["name"] in out_buffer_caps:
-            # Cap params paired with a cap-mode `@tessera out_buffer`
+            # Cap params paired with a cap-mode `@studio out_buffer`
             # are implicit (the writable array's declared length supplies
             # them).
             continue
@@ -414,31 +414,31 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             c_params.append(sp)
 
     # Warn when out_buffer / in_buffer annotations don't line up with
-    # the C signature — catches typos (`@tessera out_buffer buf` when
+    # the C signature — catches typos (`@studio out_buffer buf` when
     # the param is named `buffer`).
     c_param_names = {sp["name"] for sp in sig["params"]}
     for cname in out_buffers:
         if cname not in c_param_names:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer {cname} doesn't match any C parameter",
+                f"warn: {sig['name']}: @studio out_buffer {cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
     for cname in in_buffers:
         if cname not in c_param_names:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer {cname} doesn't match any C parameter",
+                f"warn: {sig['name']}: @studio in_buffer {cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
     for cname in out_scalars:
         if cname not in c_param_names:
             print(
-                f"warn: {sig['name']}: @tessera out_scalar {cname} doesn't match any C parameter",
+                f"warn: {sig['name']}: @studio out_scalar {cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
     for cname in in_buffer_lengths:
         if cname not in c_param_names:
             print(
-                f"warn: {sig['name']}: @tessera in_buffer length_param={cname} doesn't match any C parameter",
+                f"warn: {sig['name']}: @studio in_buffer length_param={cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
 
@@ -458,7 +458,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     for cname in out_buffer_caps:
         if cname not in c_param_names:
             print(
-                f"warn: {sig['name']}: @tessera out_buffer cap_param={cname} doesn't match any C parameter",
+                f"warn: {sig['name']}: @studio out_buffer cap_param={cname} doesn't match any C parameter",
                 file=sys.stderr,
             )
 
@@ -474,7 +474,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         if meta is None:
             meta = doxy_params[i] if i < len(doxy_params) else {"name": cp["name"]}
         # Array IN / cap-mode OUT params get a DSL array type from the
-        # @tessera in_buffer / @tessera out_buffer annotation,
+        # @studio in_buffer / @studio out_buffer annotation,
         # overriding the underlying C pointer type. Fixed-length renders
         # as `int[N]`; variable / cap-mode renders as `int[]`.
         if cp["name"] in in_buffers:
@@ -505,7 +505,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             entry["unit"] = meta["unit"]
         if "description" in meta:
             entry["description"] = meta["description"]
-        # Attach per-param tessera annotations when present. Matched by
+        # Attach per-param studio annotations when present. Matched by
         # either the C identifier (`cp["name"]`) or the DSL-facing name
         # — the latter catches the common pattern where @param renames
         # a parameter for DSL friendliness.
@@ -516,7 +516,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         #     array.
         #   - `enum {K=label, ...}` attaches friendly labels for
         #     int-valued enum C params.
-        tp = tessera_params.get(cp["name"]) or tessera_params.get(entry["name"])
+        tp = studio_params.get(cp["name"]) or studio_params.get(entry["name"])
         if tp:
             if "type" in tp:
                 entry["type"] = tp["type"]
@@ -537,7 +537,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
         "params": dsl_params,
         "returns": sig["returns"],
     }
-    # DSL-visible return type — explicitly declared on the @tessera expose
+    # DSL-visible return type — explicitly declared on the @studio expose
     # tag via `returns=<int|bool|float|string>`. Drives the DSL's import
     # return-type clause (`import X.Y() -> int`) and makes the host
     # callable as a CallExpr. Void hosts (no `returns=`) stay statement-
@@ -555,7 +555,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     if out_buffers:
         if len(out_buffers) > 1:
             print(
-                f"warn: {sig['name']}: multiple @tessera out_buffer annotations — only one out-buffer per host is supported (using the first)",
+                f"warn: {sig['name']}: multiple @studio out_buffer annotations — only one out-buffer per host is supported (using the first)",
                 file=sys.stderr,
             )
         first_name = next(iter(out_buffers))
@@ -570,7 +570,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
             host["c_out_buffer"] = ob
     if out_scalars:
         # Preserve C-signature order (dict iteration follows insertion =
-        # parse order, but the parse loop visits @tessera tags in source
+        # parse order, but the parse loop visits @studio tags in source
         # order — sort by C param position so codegen emits args in the
         # right slot).
         order = {sp["name"]: i for i, sp in enumerate(sig["params"])}
@@ -581,7 +581,7 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
     if in_buffers:
         if len(in_buffers) > 1:
             print(
-                f"warn: {sig['name']}: multiple @tessera in_buffer annotations — only one in-buffer per host is supported (using the first)",
+                f"warn: {sig['name']}: multiple @studio in_buffer annotations — only one in-buffer per host is supported (using the first)",
                 file=sys.stderr,
             )
         first_name = next(iter(in_buffers))
@@ -604,12 +604,12 @@ def build_host_entry(tag, doxy_lines, sig, header_name, scope, all_tags=()):
 def parse_header(path, scope):
     """Return (hosts, sections, docs, events).
 
-    `hosts` — palette-facing entries for functions tagged `@tessera expose`.
-    `sections` — file-scope metadata from `@tessera category`/`@tessera tile`.
+    `hosts` — palette-facing entries for functions tagged `@studio expose`.
+    `sections` — file-scope metadata from `@studio category`/`@studio tile`.
     `docs` — docs-facing entries for every documented function in the file,
-             whether or not it's Tessera-exposed. This is what feeds the
+             whether or not it's Studio-exposed. This is what feeds the
              SDK reference pages on the website.
-    `events` — event declarations from `@tessera event name=<id>
+    `events` — event declarations from `@studio event name=<id>
                [description="..."] [payload=n:t,n:t,...]`. Valid in both
                scopes; tile events carry extra `mask`/`read`/`read_type`
                attributes tied to the tile driver's on_event ABI, core
@@ -627,7 +627,7 @@ def parse_header(path, scope):
     events = []
     for m in DOXY_BLOCK_RE.finditer(source):
         lines = strip_doxy(m.group(1))
-        tags = parse_tessera_tags(lines)
+        tags = parse_studio_tags(lines)
 
         for verb, positional, attrs in tags:
             if verb == "category" and scope == "core" and positional:
@@ -645,7 +645,7 @@ def parse_header(path, scope):
                 name = attrs.get("name")
                 if not name:
                     print(
-                        f"warn: {path.name}: @tessera event missing name=",
+                        f"warn: {path.name}: @studio event missing name=",
                         file=sys.stderr,
                     )
                     continue
@@ -710,7 +710,7 @@ def parse_event_payload(spec):
     return out
 
 
-def build_doc_entry(doxy_lines, sig, tessera_exposed, source, doxy_end_offset):
+def build_doc_entry(doxy_lines, sig, studio_exposed, source, doxy_end_offset):
     """Build a docs-facing entry for the SDK reference pages.
 
     Carries richer C-level detail than the palette `host` entry: C parameter
@@ -752,7 +752,7 @@ def build_doc_entry(doxy_lines, sig, tessera_exposed, source, doxy_end_offset):
         "returns": sig["returns"],
         "brief": description,
         "params": doc_params,
-        "tessera_exposed": tessera_exposed,
+        "studio_exposed": studio_exposed,
     }
     if attributes:
         entry["attributes"] = attributes
@@ -812,7 +812,7 @@ def load_bus_addresses(def_path):
 
     No schema change to the tile-def format; the data is already
     present for every tile with `parameters.addresses`. This helper
-    just surfaces it onto the tile manifest so Tessera can cap bus
+    just surfaces it onto the tile manifest so Studio can cap bus
     capacity and render an address selector per-row.
     """
     if def_path is None:
@@ -856,7 +856,7 @@ def main():
     commit = source_commit()
 
     # Auto-discover every `sdk/core/core_*.h` header; anything without a
-    # `@tessera category` tag contributes nothing, so new modules opt in
+    # `@studio category` tag contributes nothing, so new modules opt in
     # simply by adding the tag. No hand-maintained source list.
     core_sources = sorted((ROOT / "sdk/core").glob("core_*.h"))
     core_hosts = []
@@ -869,9 +869,9 @@ def main():
     for p in core_sources:
         hosts, sections, docs, events = parse_header(p, scope="core")
         core_hosts.extend(hosts)
-        # Attach the surrounding category to each event so Tessera's DSL
+        # Attach the surrounding category to each event so Studio's DSL
         # codegen + block palette can group them under the right header.
-        # Core events declared outside a `@tessera category` block are
+        # Core events declared outside a `@studio category` block are
         # skipped with a warning — the palette needs somewhere to show them.
         if events:
             if len(sections) == 1:
@@ -881,8 +881,8 @@ def main():
                 core_events.extend(events)
             else:
                 print(
-                    f"warn: {p.name}: {len(events)} @tessera event(s) but "
-                    f"{len(sections)} @tessera category declarations — "
+                    f"warn: {p.name}: {len(events)} @studio event(s) but "
+                    f"{len(sections)} @studio category declarations — "
                     f"events dropped (need exactly one category per file)",
                     file=sys.stderr,
                 )
@@ -895,7 +895,7 @@ def main():
                 continue
             core_categories[name] = meta
             sdk_docs[name] = {
-                "schema": "tessera-sdk-docs/v1",
+                "schema": "studio-sdk-docs/v1",
                 "source": f"cores@{commit}",
                 "category": name,
                 "label": meta["label"],
@@ -905,7 +905,7 @@ def main():
             }
 
     core_manifest = {
-        "schema": "tessera-manifest/v1",
+        "schema": "studio-manifest/v1",
         "source": f"cores@{commit}",
         "categories": core_categories,
         "hosts": core_hosts,
@@ -1001,7 +1001,7 @@ def main():
 
     targets = [(CORE_OUT_DIR / "core.json", core_manifest)]
 
-    # Per-category SDK docs JSONs — one file per `@tessera category`.
+    # Per-category SDK docs JSONs — one file per `@studio category`.
     for category, doc in sdk_docs.items():
         targets.append((SDK_DOCS_OUT_DIR / f"{category}.json", doc))
 
@@ -1009,7 +1009,7 @@ def main():
         hosts, sections, _docs, events = parse_header(t["path"], scope="tile")
         if len(sections) != 1:
             print(
-                f"warn: {t['path'].name}: expected exactly one @tessera tile tag, "
+                f"warn: {t['path'].name}: expected exactly one @studio tile tag, "
                 f"found {len(sections)}",
                 file=sys.stderr,
             )
@@ -1017,7 +1017,7 @@ def main():
             "label": t["path"].stem, "icon": "",
         }
         manifest = {
-            "schema": "tessera-manifest/v1",
+            "schema": "studio-manifest/v1",
             "source": f"cores@{commit}",
             "tile": palette["label"],
             "palette": palette,

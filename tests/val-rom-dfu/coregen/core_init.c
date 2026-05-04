@@ -21,34 +21,34 @@
 
 
 /* No pads with `exti` configured in config.json — dispatcher is a no-op.
- * Always-callable contract lets the Tessera shim invoke it without
+ * Always-callable contract lets the Studio shim invoke it without
  * caring about project contents. */
-void tessera_dispatch_core_pad(void) { }
+void studio_dispatch_core_pad(void) { }
 
-/* ---- Tessera tick dispatcher ----
+/* ---- Studio tick dispatcher ----
  * Polled from the DSL main loop via hal_tick(); fires the weak
- * `tessera_evt_Core_Timer_tick` handler once per configured period.
+ * `studio_evt_Core_Timer_tick` handler once per configured period.
  * Elapsed time is computed in unsigned ms so it's wrap-safe at the
  * ~49-day rollover. DSL overrides the weak default to run user code.
  */
-__attribute__((weak)) void tessera_evt_Core_Timer_tick(void) { }
+__attribute__((weak)) void studio_evt_Core_Timer_tick(void) { }
 
 /* No `timer.tick_ms` in config.json — dispatcher is a no-op. */
-void tessera_dispatch_core_timer(void) { }
+void studio_dispatch_core_timer(void) { }
 
-/* ---- Tessera USB-receive dispatcher ----
+/* ---- Studio USB-receive dispatcher ----
  * Drains the USB CDC RX ring once per main-loop iteration (capped at
  * 64 bytes so burst traffic can't starve the DSL loop). Fires the
- * weak `tessera_evt_Core_USB_receive(int byte)` per byte. Gated on
+ * weak `studio_evt_Core_USB_receive(int byte)` per byte. Gated on
  * `usb.enabled`; emits a no-op when USB isn't enabled.
  */
-__attribute__((weak)) void tessera_evt_Core_USB_receive(int byte) { (void)byte; }
+__attribute__((weak)) void studio_evt_Core_USB_receive(int byte) { (void)byte; }
 
-void tessera_dispatch_core_usb(void)
+void studio_dispatch_core_usb(void)
 {
     int drained = 0;
     while (drained++ < 64 && hal_usb_cdc_available() > 0) {
-        tessera_evt_Core_USB_receive((int)hal_usb_cdc_getc());
+        studio_evt_Core_USB_receive((int)hal_usb_cdc_getc());
     }
 }
 

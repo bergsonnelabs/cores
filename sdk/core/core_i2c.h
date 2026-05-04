@@ -19,9 +19,9 @@
  *   core_i2c_t bus;
  *   core_i2c_init(&bus, I2C1, I2C_400K);
  *
- * @tessera category i2c label=Core.I2C icon=⇄
+ * @studio category i2c label=Core.I2C icon=⇄
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    i2c
  *   name:  I2C — bus communication
  *   page:  /docs/sdk/i2c
@@ -187,7 +187,7 @@ static inline void core_i2c_scan(core_i2c_t *h, uint8_t *found,
  * core_init.c when the project declares any I2C bus). Forward-declared
  * here rather than `#include "core_init.h"` so this header compiles in
  * SDK contexts that don't have a project (val tests, examples without
- * config.json). The natives-side caller in tessera_natives_project.c is
+ * config.json). The natives-side caller in studio_natives_project.c is
  * gated on CORE_HAS_I2C_BUSES, so the linker never asks for the symbol
  * unless the dispatcher actually exists. */
 hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus);
@@ -197,8 +197,8 @@ hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus);
  * Returns I2C_OK on success, I2C_NACK / I2C_ERROR on bus failure,
  * or I2C_ERROR if `bus` isn't declared in config.json.
  *
- * @tessera expose category=i2c name=write_byte returns=int
- * @tessera twin full
+ * @studio expose category=i2c name=write_byte returns=int
+ * @studio twin full
  */
 static inline hal_status_t core_i2c_write_byte_bus(uint8_t bus, uint8_t addr,
                                                     uint16_t reg, uint8_t value)
@@ -214,8 +214,8 @@ static inline hal_status_t core_i2c_write_byte_bus(uint8_t bus, uint8_t addr,
  * (bus undeclared, NACK, timeout). The signed return lets DSL
  * programs branch on `< 0` without an out-pointer.
  *
- * @tessera expose category=i2c name=read_byte returns=int
- * @tessera twin full
+ * @studio expose category=i2c name=read_byte returns=int
+ * @studio twin full
  */
 static inline int core_i2c_read_byte_bus(uint8_t bus, uint8_t addr, uint16_t reg)
 {
@@ -230,8 +230,8 @@ static inline int core_i2c_read_byte_bus(uint8_t bus, uint8_t addr, uint16_t reg
  * Check if a device responds at `addr` on `bus`. Returns 1 if the
  * device ACKs, 0 on NACK / timeout / undeclared bus.
  *
- * @tessera expose category=i2c name=probe returns=bool
- * @tessera twin full
+ * @studio expose category=i2c name=probe returns=bool
+ * @studio twin full
  */
 static inline int core_i2c_probe_bus(uint8_t bus, uint8_t addr)
 {
@@ -242,7 +242,7 @@ static inline int core_i2c_probe_bus(uint8_t bus, uint8_t addr)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Tier 2 is byte-level only — no bulk / scan"
+// @studio unsupported tier=2 value=M title="Tier 2 is byte-level only — no bulk / scan"
 //   The current Tier 2 surface is write_byte_bus / read_byte_bus /
 //   probe_bus. DSL programs that need to push a multi-byte payload
 //   (display init sequences, IMU FIFO drains) or discover what's on a
@@ -250,25 +250,25 @@ static inline int core_i2c_probe_bus(uint8_t bus, uint8_t addr)
 //   Adds need the array-IN / array-OUT host-call ABI prototyped on the
 //   tile-driver side — track with the DSL Capability Coverage close.
 //
-// @tessera unsupported tier=1 value=H title="Interrupt-driven / non-blocking I/O"
+// @studio unsupported tier=1 value=H title="Interrupt-driven / non-blocking I/O"
 //   All current operations are polled. A non-blocking variant (with
 //   completion callback or status poll) would let DSL programs interleave
 //   bus traffic without stalling the main loop. Tracked on the SDK
 //   roadmap as 'I2C interrupt-driven'.
 //
-// @tessera unsupported tier=1 value=H title="DMA transfers"
+// @studio unsupported tier=1 value=H title="DMA transfers"
 //   No DMA path for bulk reads/writes. Long FIFO drains (e.g., IMU
 //   water-level batch reads) currently block on polled byte loops.
 //
-// @tessera unsupported tier=1 value=M title="Slave / device mode"
+// @studio unsupported tier=1 value=M title="Slave / device mode"
 //   Master-only today. Slave-mode would let a Core respond as an I2C
 //   device on a host bus.
 //
-// @tessera unsupported tier=1 value=M title="10-bit addressing"
+// @studio unsupported tier=1 value=M title="10-bit addressing"
 //   API takes uint8_t addr — 7-bit only. No path for 10-bit-addressed
 //   peripherals (rare in practice but in spec).
 //
-// @tessera unsupported tier=1 value=L title="SMBus / PMBus extensions"
+// @studio unsupported tier=1 value=L title="SMBus / PMBus extensions"
 //   No PEC, no Alert Response, no block read/write protocol framing.
 //   Not requested by any current tile.
 

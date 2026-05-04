@@ -10,9 +10,9 @@
  *   core_deep_sleep()         — enter Stop (caller manages wakeup + clock recovery)
  *   core_shutdown()           — enter Standby (caller manages wakeup)
  *
- * @tessera category power label=Core.Power icon=☾
+ * @studio category power label=Core.Power icon=☾
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    power
  *   name:  Power — sleep / Stop / Standby
  *   page:  /docs/sdk/system
@@ -44,8 +44,8 @@
 /**
  * Sleep until any interrupt (CPU stopped, peripherals running).
  *
- * @tessera expose category=power name=sleep
- * @tessera twin full
+ * @studio expose category=power name=sleep
+ * @studio twin full
  */
 static inline void core_sleep(void)
 {
@@ -56,8 +56,8 @@ static inline void core_sleep(void)
  * Enter Stop mode for a number of seconds, then wake and restore clocks.
  * Uses RTC wakeup timer (LSI). Returns after wake with PLL + SysTick restored.
  *
- * @tessera expose category=power name=stop_for
- * @tessera twin full
+ * @studio expose category=power name=stop_for
+ * @studio twin full
  * @param seconds [1..86400] Seconds to spend in Stop mode.
  */
 static inline void core_stop_for(uint32_t seconds)
@@ -226,8 +226,8 @@ static inline void core_standby(void)
 /**
  * Returns 1 if the MCU woke from Standby.
  *
- * @tessera expose category=power name=woke_from_standby returns=bool
- * @tessera twin full
+ * @studio expose category=power name=woke_from_standby returns=bool
+ * @studio twin full
  */
 static inline int core_woke_from_standby(void)
 {
@@ -258,7 +258,7 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Standby family stays Tier 1 (noreturn)"
+// @studio unsupported tier=2 value=M title="Standby family stays Tier 1 (noreturn)"
 //   core_standby_for / core_standby reset on wake — they're declared
 //   __attribute__((noreturn)) and can't be safely exposed to the DSL,
 //   since the simulator would deadlock on a call that never returns.
@@ -266,30 +266,30 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 //   from a DSL program needs an "escape-to-C" fallthrough or a separate
 //   "would have entered Standby" event the simulator can model.
 //
-// @tessera unsupported tier=2 value=M title="No wake-on-pad Tier 2"
+// @studio unsupported tier=2 value=M title="No wake-on-pad Tier 2"
 //   core_stop_until_on_change blocks until a configured pad edge wakes
 //   the chip. The DSL surface is straightforward in spirit but needs
 //   the EXTI handler bridge to express "block until" cleanly across
 //   the host-call boundary. Tracked alongside the broader DSL event-
 //   model story.
 //
-// @tessera unsupported tier=1 value=H title="Stop mode broken on Core.L / Core.W"
+// @studio unsupported tier=1 value=H title="Stop mode broken on Core.L / Core.W"
 //   Per the SDK roadmap: Core.L's RTC wakeup hangs, Core.W's stop mode
 //   is compile-only. Only Core.U and Core.H are verified end-to-end
 //   for stop_for / standby_for. Programs targeting battery operation
 //   on the WBA / L011 should not rely on this header yet.
 //
-// @tessera unsupported tier=1 value=M title="WKUP-pin Standby is L4-only"
+// @studio unsupported tier=1 value=M title="WKUP-pin Standby is L4-only"
 //   core_standby_until_on_change is implemented for STM32L422 only —
 //   Core.U.2's PA0/PA2 WKUP pins. Other Cores hit the (void) fallback
 //   and return without entering Standby.
 //
-// @tessera unsupported tier=1 value=M title="No LPTIM (low-power timer) wakeup"
+// @studio unsupported tier=1 value=M title="No LPTIM (low-power timer) wakeup"
 //   The SDK roadmap flags LPTIM as Tier 1 high-impact: it runs in Stop
 //   without the RTC and gives finer wakeup granularity than seconds.
 //   Not wrapped here yet.
 //
-// @tessera unsupported tier=1 value=L title="No autonomous-mode peripherals (Core.W)"
+// @studio unsupported tier=1 value=L title="No autonomous-mode peripherals (Core.W)"
 //   The WBA's Stop2 autonomous mode (ADC / SPI / I2C / UART operating
 //   while the CPU sleeps) is on the roadmap as Tier 3 — none of it is
 //   surfaced through core_power yet.

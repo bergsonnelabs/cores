@@ -6,20 +6,20 @@
  *
  * Edge-triggered events fire for any pad whose config.json
  * `gpio.<pad>.exti` is set to `rising`, `falling`, or `both`. Coregen
- * wires the EXTI interrupts into a pending-bit bitmap; the Tessera
+ * wires the EXTI interrupts into a pending-bit bitmap; the Studio
  * main loop drains it and calls the DSL `on Core.Pad.*` handler once
  * per pending pad with the pad number as payload.
  *
  * Fires once per rising edge on any pad whose config.json gpio.<pad>.exti
  * is set to "rising" or "both". Likewise for falling. Coregen wires the
- * EXTI callbacks; the Tessera main loop drains the pending bitmap and
+ * EXTI callbacks; the Studio main loop drains the pending bitmap and
  * calls the DSL handler with the pad number as payload.
  *
- * @tessera category pad label=Core.Pad icon=◼
- * @tessera event name=rising payload=pad:int
- * @tessera event name=falling payload=pad:int
+ * @studio category pad label=Core.Pad icon=◼
+ * @studio event name=rising payload=pad:int
+ * @studio event name=falling payload=pad:int
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    gpio
  *   name:  GPIO — pad-level I/O
  *   page:  /docs/sdk/gpio
@@ -87,8 +87,8 @@ static inline void core_pad_input(uint8_t pad, uint32_t pull)
 /**
  * Set a pad high (ON) or low (OFF).
  *
- * @tessera expose category=pad name=write
- * @tessera twin full
+ * @studio expose category=pad name=write
+ * @studio twin full
  * @param pad [1..64] Tile pad number.
  * @param state [0..1] 0 for low, 1 for high.
  */
@@ -100,8 +100,8 @@ static inline void core_pad_write(uint8_t pad, int state)
 /**
  * Read a pad. Returns 0 or 1.
  *
- * @tessera expose category=pad name=read returns=bool
- * @tessera twin full
+ * @studio expose category=pad name=read returns=bool
+ * @studio twin full
  * @param pad [1..64] Tile pad number.
  */
 static inline int core_pad_read(uint8_t pad)
@@ -112,8 +112,8 @@ static inline int core_pad_read(uint8_t pad)
 /**
  * Toggle a pad output.
  *
- * @tessera expose category=pad name=toggle
- * @tessera twin full
+ * @studio expose category=pad name=toggle
+ * @studio twin full
  * @param pad [1..64] Tile pad number.
  */
 static inline void core_pad_toggle(uint8_t pad)
@@ -178,14 +178,14 @@ static inline void core_pad_on_change_stop(uint8_t pad)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="No DSL access to slew-rate / pull / drive-strength"
+// @studio unsupported tier=2 value=M title="No DSL access to slew-rate / pull / drive-strength"
 //   Tier 2 exposes write/read/toggle only. core_pad_speed,
 //   core_pad_output_od pull-config, and the analog-mode setter are
-//   reachable only by escaping to C. A Tier 2 wrapper (or @tessera expose
+//   reachable only by escaping to C. A Tier 2 wrapper (or @studio expose
 //   annotation) for slew-rate would let DSL programs tune SPI/UART rise
 //   times without leaving the IDE.
 //
-// @tessera unsupported tier=2 value=L title="No bulk pad write / read"
+// @studio unsupported tier=2 value=L title="No bulk pad write / read"
 //   Each call writes one pad. A vector form (mask + value) would let
 //   synchronized buses or LED matrices update pads in a single BSRR
 //   write, avoiding per-pad jitter.

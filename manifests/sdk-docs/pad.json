@@ -1,6 +1,6 @@
 {
-  "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "schema": "studio-sdk-docs/v1",
+  "source": "cores@11dcaf9",
   "category": "pad",
   "label": "Core.Pad",
   "icon": "◼",
@@ -17,7 +17,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_output_od",
@@ -34,7 +34,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_input",
@@ -51,7 +51,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_write",
@@ -78,7 +78,7 @@
           "description": "0 for low, 1 for high."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_pad_read",
@@ -96,7 +96,7 @@
           "description": "Tile pad number."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_pad_toggle",
@@ -114,7 +114,7 @@
           "description": "Tile pad number."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_pad_analog",
@@ -127,7 +127,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_speed",
@@ -144,7 +144,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_on_change",
@@ -173,7 +173,7 @@
           "description": "Opaque pointer passed to cb"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_pad_on_change_stop",
@@ -186,7 +186,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

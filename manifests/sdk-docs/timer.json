@@ -1,6 +1,6 @@
 {
-  "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "schema": "studio-sdk-docs/v1",
+  "source": "cores@11dcaf9",
   "category": "timer",
   "label": "Core.Timer",
   "icon": "◷",
@@ -25,7 +25,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_init_tick",
@@ -46,7 +46,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_start",
@@ -59,7 +59,7 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_stop",
@@ -72,7 +72,7 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_set_freq",
@@ -89,7 +89,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_pwm_set",
@@ -110,7 +110,7 @@
           "ctype": "uint16_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_capture_init",
@@ -127,7 +127,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_capture_read",
@@ -144,7 +144,7 @@
           "ctype": "uint8_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_enable_tick",
@@ -165,7 +165,7 @@
           "ctype": "void *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_timer_disable_tick",
@@ -178,7 +178,7 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_tick_init",
@@ -207,7 +207,7 @@
           "ctype": "void *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

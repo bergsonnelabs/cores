@@ -1400,7 +1400,7 @@ def generate(tile_path, output_dir, config_path=None):
         # Build resolved configs.
         # Project name is sourced from the parent directory — config.json no
         # longer carries it (name + description are project identity, not
-        # hardware configuration; see Tessera X1a).
+        # hardware configuration; see Studio X1a).
         ctx["project_name"] = os.path.basename(os.path.dirname(os.path.abspath(config_path)))
         ctx["pad_config"] = build_pad_config(project, pad_map)
         ctx["clock_config"] = build_clock_config(project, tile, mcu)
@@ -1412,10 +1412,10 @@ def generate(tile_path, output_dir, config_path=None):
         ctx["usart_buses"] = build_usart_config(project, mcu)
         ctx["pwm_timers"] = build_pwm_config(project, mcu)
         ctx["adc_config"] = build_adc_config(project)
-        # Tessera tick dispatcher — polled from main loop via hal_tick().
+        # Studio tick dispatcher — polled from main loop via hal_tick().
         # Null means "no tick configured" → coregen emits a no-op stub.
         _timer_cfg = project.get("timer", {})
-        ctx["tessera_tick_ms"] = _timer_cfg.get("tick_ms")
+        ctx["studio_tick_ms"] = _timer_cfg.get("tick_ms")
         # On WBA55, route I2C kernel clock to HSI16 (hardware constraint).
         # H523 uses SYSCLK — TIMINGR constants now cover 16/48/144/240MHz.
         _hsi16_i2c_parts = {"STM32WBA55xx"}
@@ -1501,7 +1501,7 @@ def generate(tile_path, output_dir, config_path=None):
         # the natives generator for projects that don't use WAMR.
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
         try:
-            import gen_tessera_natives as gtn
+            import gen_studio_natives as gtn
         finally:
             sys.path.pop(0)
         all_fns = gtn.load_manifests(gtn.SDK_DOCS)
@@ -1516,14 +1516,14 @@ def generate(tile_path, output_dir, config_path=None):
         ]
         c_text = gtn.emit_c(kept, skipped, mode="project")
         h_text = gtn.emit_h(kept, mode="project")
-        c_path = os.path.join(output_dir, "tessera_natives_project.c")
-        h_path = os.path.join(output_dir, "tessera_natives_project.h")
+        c_path = os.path.join(output_dir, "studio_natives_project.c")
+        h_path = os.path.join(output_dir, "studio_natives_project.h")
         with open(c_path, "w") as f:
             f.write(c_text)
         with open(h_path, "w") as f:
             f.write(h_text)
-        print(f"  tessera_natives_project.c ({len(kept)} natives)")
-        print(f"  tessera_natives_project.h")
+        print(f"  studio_natives_project.c ({len(kept)} natives)")
+        print(f"  studio_natives_project.h")
 
     # Generate or update tiles.h (smart merge) in the project directory
     if config_path and ctx.get("tiles_config"):

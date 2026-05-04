@@ -12,9 +12,9 @@
  *   core_rng_fill(buf, 4);              // fill buffer with random values
  *   core_rng_deinit();                  // power down (optional)
  *
- * @tessera category rng label=Core.RNG icon=🎲
+ * @studio category rng label=Core.RNG icon=🎲
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    rng
  *   name:  RNG — hardware random numbers
  *   blurb: Wraps the analog-noise RNG peripheral on Core.U / Core.W /
@@ -70,8 +70,8 @@ static inline void core_rng_init(void)
  * Read a single 32-bit random value (blocking).
  * Returns 0 on timeout — check core_rng_error() if this happens.
  *
- * @tessera expose category=rng name=read32 returns=int
- * @tessera twin full
+ * @studio expose category=rng name=read32 returns=int
+ * @studio twin full
  */
 static inline uint32_t core_rng_read(void)
 {
@@ -103,7 +103,7 @@ static inline void core_rng_deinit(void)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=1 value=L title="No bias correction / health tests"
+// @studio unsupported tier=1 value=L title="No bias correction / health tests"
 //   The hardware exposes a CED (clock error) and SEIS (seed error)
 //   bit which core_rng_error checks, but there's no NIST SP 800-90B
 //   continuous-health-test wrapper. Crypto-grade users should consume
