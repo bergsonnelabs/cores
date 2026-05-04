@@ -190,12 +190,12 @@ void studio_dispatch_core_pad(void) { }
 __attribute__((weak)) void studio_evt_Core_Timer_tick(void) { }
 
 {% if studio_tick_ms %}
-#define TESSERA_TICK_PERIOD_MS  {{ studio_tick_ms }}
+#define STUDIO_TICK_PERIOD_MS  {{ studio_tick_ms }}
 void studio_dispatch_core_timer(void)
 {
     static uint32_t _last;
     uint32_t now = hal_tick();
-    if ((uint32_t)(now - _last) >= TESSERA_TICK_PERIOD_MS) {
+    if ((uint32_t)(now - _last) >= STUDIO_TICK_PERIOD_MS) {
         _last = now;
         studio_evt_Core_Timer_tick();
     }
