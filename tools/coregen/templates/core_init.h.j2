@@ -42,11 +42,17 @@ hal_spi_t *core_spi_handle_for_bus(uint8_t bus);
 {% if usart_buses %}
 
 #include "hal_uart.h"
+#include <stdint.h>
 
 /* ---- Auto-generated USART handles ---- */
 {% for bus in usart_buses %}
 extern hal_uart_t {{ bus.handle }};
 {% endfor %}
+
+/* Tier 2 dispatcher — `core_serial_*_bus(id, …)` wrappers in
+ * core_serial.h consult this to find the configured bus. Returns NULL
+ * for unconfigured ids so callers can fail gracefully. */
+hal_uart_t *core_serial_handle_for_bus(uint8_t bus);
 {% endif %}
 {% if pwm_timers %}
 

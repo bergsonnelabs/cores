@@ -5,17 +5,20 @@
  * resolution still requires explicit init (auto-resolve from
  * config.json is planned).
  *
+ * @tessera category serial label=Core.Serial icon=⌨
+ *
  * @tessera coverage
  *   id:    serial
  *   name:  Serial — UART
  *   page:  /docs/sdk/uart
  *   blurb: Polled UART send / receive (write, print, putc, getc, read,
- *          available) with friendly names over hal_uart. Tier 1 only —
- *          there's no default-instance Tier 2 helper for UART yet, and
- *          coregen doesn't auto-init a serial port from config.json.
- *          Apps that want printf-style output to a host should prefer
- *          Core.USB; this header is for hardware UART pins (RS-485,
- *          GPS, side-channel debug).
+ *          available) over hal_uart. Tier 2 exposes the write side —
+ *          print_bus + putc_bus against a bus id (1, 2, 6 …) —
+ *          coregen resolves the handle via core_serial_handle_for_bus().
+ *          Read side (getc/read/available) stays Tier 1 until there's
+ *          a twin input affordance. Apps that want printf-style output
+ *          to a host should prefer Core.USB; this header is for
+ *          hardware UART pins (RS-485, GPS, side-channel debug).
  */
 
 #ifndef CORE_SERIAL_H
@@ -92,13 +95,64 @@ static inline uint16_t core_serial_read(hal_uart_t *h, uint8_t *buf,
     return hal_uart_read(h, buf, max_len);
 }
 
+/* ---- Tier 2 — default-instance bus helpers ---------------------------- */
+
+/* Forward-decl of the coregen-emitted dispatcher (definition lives in
+ * core_init.c when the project declares any USART). Forward-declared
+ * here rather than `#include "core_init.h"` so this header compiles in
+ * SDK contexts that don't have a project (val tests, examples without
+ * config.json). The natives-side caller in tessera_natives_project.c is
+ * gated on CORE_HAS_SERIAL_BUSES, so the linker never asks for the
+ * symbol unless the dispatcher actually exists. */
+hal_uart_t *core_serial_handle_for_bus(uint8_t bus);
+
+/**
+ * Write a null-terminated string to `bus` (blocking). Returns 0 on
+ * success or -1 on undeclared bus. The most-common DSL pattern —
+ * "drop a debug line on UART2" — is one line:
+ *   serial.print(2, "ready\\n");
+ *
+ * @tessera expose category=serial name=print returns=int
+ * @tessera twin full
+ */
+static inline int core_serial_print_bus(uint8_t bus, const char *str)
+{
+    hal_uart_t *h = core_serial_handle_for_bus(bus);
+    if (!h) return -1;
+    hal_uart_tx_str(h, str);
+    return 0;
+}
+
+/**
+ * Write a single byte to `bus` (blocking). Returns 0 on success or
+ * -1 on undeclared bus.
+ *
+ * @tessera expose category=serial name=putc returns=int
+ * @tessera twin full
+ */
+static inline int core_serial_putc_bus(uint8_t bus, uint8_t byte)
+{
+    hal_uart_t *h = core_serial_handle_for_bus(bus);
+    if (!h) return -1;
+    hal_uart_putc(h, byte);
+    return 0;
+}
+
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
-//   Same gap pattern as I2C: callers have to declare and init a
-//   hal_uart_t themselves, then thread it through every call. A
-//   coregen-resolved core_serial_print(text), core_serial_write_bus(...)
-//   would let the DSL ship a Core.Serial category.
+// @tessera unsupported tier=2 value=M title="No Tier 2 read surface"
+//   Tier 2 wraps the write side (print_bus, putc_bus) only. getc_bus,
+//   read_bus, available_bus need a Twin input affordance to be
+//   meaningful — without one the read functions would just return
+//   -1/0 always, defeating the point. Adding a "serial input" pane
+//   (analog of the GPIO toggle / ADC slider) closes both ends.
+//
+// @tessera unsupported tier=2 value=M title="No coregen auto-init for serial"
+//   Tier 2 wrappers assume the user has called core_serial_init on the
+//   matching handle before any send. Coregen doesn't yet read a
+//   `serial: { 1: { baud: 115200 } }` block out of config.json and
+//   emit the init in core_init(). Until it does, the bus has to be
+//   primed by hand even when using Tier 2.
 //
 // @tessera unsupported tier=1 value=H title="No interrupt / DMA driven path"
 //   All calls block. SDK roadmap Tier 1 item: "UART IRQ + coregen"

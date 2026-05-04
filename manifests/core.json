@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@e67da2b",
+  "source": "cores@2229190",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -41,6 +41,10 @@
     "rtc": {
       "label": "Core.RTC",
       "icon": "◴"
+    },
+    "serial": {
+      "label": "Core.Serial",
+      "icon": "⌨"
     },
     "spi": {
       "label": "Core.SPI",
@@ -786,6 +790,50 @@
       "params": [],
       "returns": "int",
       "dsl_returns": "bool"
+    },
+    {
+      "qname": [
+        "serial",
+        "print"
+      ],
+      "symbol": "core_serial_print_bus",
+      "header": "core_serial.h",
+      "category": "serial",
+      "description": "Write a null-terminated string to `bus` (blocking). Returns 0 on success or -1 on undeclared bus. The most-common DSL pattern — \"drop a debug line on UART2\" — is one line: serial.print(2, \"ready\\\\n\");",
+      "params": [
+        {
+          "name": "bus",
+          "type": "int"
+        },
+        {
+          "name": "str",
+          "type": "string"
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "serial",
+        "putc"
+      ],
+      "symbol": "core_serial_putc_bus",
+      "header": "core_serial.h",
+      "category": "serial",
+      "description": "Write a single byte to `bus` (blocking). Returns 0 on success or -1 on undeclared bus.",
+      "params": [
+        {
+          "name": "bus",
+          "type": "int"
+        },
+        {
+          "name": "byte",
+          "type": "int"
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
     },
     {
       "qname": [

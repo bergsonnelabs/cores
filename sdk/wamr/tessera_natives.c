@@ -43,6 +43,8 @@
  *   - core_pad_read: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_toggle: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pwm_duty: category 'pwm' reaches into coregen-generated state; needs per-project generation
+ *   - core_serial_print_bus: category 'serial' reaches into coregen-generated state; needs per-project generation
+ *   - core_serial_putc_bus: category 'serial' reaches into coregen-generated state; needs per-project generation
  *   - core_spi_xfer_byte_bus: category 'spi' reaches into coregen-generated state; needs per-project generation
  */
 

@@ -1,0 +1,192 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@2229190",
+  "category": "serial",
+  "label": "Core.Serial",
+  "icon": "⌨",
+  "header": "core_serial.h",
+  "functions": [
+    {
+      "name": "core_serial_init",
+      "signature": "core_serial_init(hal_uart_t * h, USART_TypeDef * instance, const hal_uart_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": "Initialize a UART instance. Clock is auto-resolved from PCLK1_HZ (core_config.h).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_uart_config_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_init_clk",
+      "signature": "core_serial_init_clk(hal_uart_t * h, USART_TypeDef * instance, uint32_t pclk_hz, const hal_uart_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": null,
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_uart_config_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_write",
+      "signature": "core_serial_write(hal_uart_t * h, const uint8_t * data, uint32_t len)",
+      "returns": "void",
+      "brief": "Transmit a buffer (blocking).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_print",
+      "signature": "core_serial_print(hal_uart_t * h, const char * str)",
+      "returns": "void",
+      "brief": "Transmit a null-terminated string (blocking).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "str",
+          "ctype": "const char *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_putc",
+      "signature": "core_serial_putc(hal_uart_t * h, uint8_t byte)",
+      "returns": "void",
+      "brief": "Transmit a single byte (blocking).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "byte",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_available",
+      "signature": "core_serial_available(hal_uart_t * h)",
+      "returns": "uint16_t",
+      "brief": "Number of bytes available in the RX buffer.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_getc",
+      "signature": "core_serial_getc(hal_uart_t * h)",
+      "returns": "uint8_t",
+      "brief": "Receive a single byte (blocking -- waits for data).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_read",
+      "signature": "core_serial_read(hal_uart_t * h, uint8_t * buf, uint16_t max_len)",
+      "returns": "uint16_t",
+      "brief": "Read available bytes from the RX ring buffer (non-blocking). Returns number of bytes read.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "max_len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_serial_print_bus",
+      "signature": "core_serial_print_bus(uint8_t bus, const char * str)",
+      "returns": "int",
+      "brief": "Write a null-terminated string to `bus` (blocking). Returns 0 on success or -1 on undeclared bus. The most-common DSL pattern — \"drop a debug line on UART2\" — is one line: serial.print(2, \"ready\\\\n\");",
+      "params": [
+        {
+          "name": "bus",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "str",
+          "ctype": "const char *"
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_serial_putc_bus",
+      "signature": "core_serial_putc_bus(uint8_t bus, uint8_t byte)",
+      "returns": "int",
+      "brief": "Write a single byte to `bus` (blocking). Returns 0 on success or -1 on undeclared bus.",
+      "params": [
+        {
+          "name": "bus",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "byte",
+          "ctype": "uint8_t"
+        }
+      ],
+      "tessera_exposed": true
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e67da2b",
+  "source": "cores@2229190",
   "category": "rng",
   "label": "Core.RNG",
   "icon": "🎲",

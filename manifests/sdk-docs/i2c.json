@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@e67da2b",
+  "source": "cores@2229190",
   "category": "i2c",
   "label": "Core.I2C",
   "icon": "⇄",

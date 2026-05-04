@@ -371,6 +371,7 @@ ADAPTER_GUARDS = {
     # I2C bus. Sentinel emitted by core_pads.h.j2 alongside the others.
     "i2c": "CORE_HAS_I2C_BUSES",
     "spi": "CORE_HAS_SPI_BUSES",
+    "serial": "CORE_HAS_SERIAL_BUSES",
 }
 
 
