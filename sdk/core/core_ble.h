@@ -183,11 +183,11 @@ void core_ble_enable_pairing(void);
 //   underlying C function pointers — same pattern as Core.Pad rising/
 //   falling events but with a payload struct.
 //
-// @tessera unsupported tier=1 value=H title="Central / scanner mode"
+// @tessera unsupported tier=1 value=M title="Central / scanner mode"
 //   Peripheral-only today. No scanning, no central-role connections,
-//   no GATT-client reads/writes. Apps that connect TO another BLE
-//   device (e.g., reading a sensor tag) need to drop into the WBA BLE
-//   stack directly.
+//   no GATT-client reads/writes. Tracked as its own initiative — most
+//   Bergsonne use-cases are peripheral-role (sensor advertising to a
+//   phone). Apps that need central-role drop into the WBA BLE stack.
 //
 // @tessera unsupported tier=1 value=M title="Bonding / persistent pairing"
 //   core_ble_enable_pairing() runs Just Works each session — no

@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-/* 26 Tessera-exposed host symbols (static table). */
+/* 27 Tessera-exposed host symbols (static table). */
 extern NativeSymbol g_tessera_natives[];
 extern const size_t g_tessera_natives_count;
 

@@ -157,14 +157,15 @@ static inline int core_usb_try_read(uint8_t *byte)
 //   string ops (or call print multiple times). A `print_fmt(template,
 //   ...args)` host call would be the next step.
 //
-// @tessera unsupported tier=1 value=H title="USB MSC (mass storage)"
+// @tessera unsupported tier=1 value=M title="USB MSC (mass storage)"
 //   SDK roadmap Tier 3: drag-and-drop firmware / datalog volume needs
-//   SCSI + FAT. Not surfaced.
+//   SCSI + FAT. A feature gap, not a workflow blocker — projects that
+//   need persistent storage today reach for NVM or SD via SPI.
 //
-// @tessera unsupported tier=1 value=H title="USB Host mode"
-//   Core.H has DRD silicon but the wrapper is device-only. Connecting
-//   USB peripherals to a Core requires reaching into the lower-layer
-//   USB stack.
+// @tessera unsupported tier=1 value=M title="USB Host mode"
+//   Core.H has DRD silicon but the wrapper is device-only. Most
+//   projects don't need host mode; the few that do (USB-keyboard /
+//   thumb-drive readers) drop into the lower-layer USB stack.
 //
 // @tessera unsupported tier=1 value=M title="No CDC line-coding callback"
 //   Host-side baud changes (1200-touch bootloader trigger included)
