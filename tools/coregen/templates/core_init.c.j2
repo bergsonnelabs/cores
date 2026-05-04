@@ -52,6 +52,20 @@
 {% for bus in i2c_buses %}
 hal_i2c_t {{ bus.handle }};
 {% endfor %}
+
+/* Tier 2 dispatcher: maps a bus id (1, 2, 3 …) → its handle. The
+ * core_i2c_*_bus() wrappers in core_i2c.h consult this so DSL callers
+ * never see hal_i2c_t. Returns NULL for any bus the project hasn't
+ * declared in config.json. */
+hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus)
+{
+    switch (bus) {
+{% for bus in i2c_buses %}
+        case {{ bus.num }}: return &{{ bus.handle }};
+{% endfor %}
+        default: return (hal_i2c_t *)0;
+    }
+}
 {% endif %}
 {% if spi_buses %}
 /* ---- SPI handles ---- */

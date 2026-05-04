@@ -366,6 +366,10 @@ ADAPTER_GUARDS = {
     "pwm": "CORE_HAS_TIMER_PADS",
     "adc": "CORE_HAS_ADC_PADS",
     "dac": "CORE_HAS_DAC",
+    # i2c Tier 2 wrappers consult core_i2c_handle_for_bus, which only
+    # exists in coregen output when the project declares at least one
+    # I2C bus. Sentinel emitted by core_pads.h.j2 alongside the others.
+    "i2c": "CORE_HAS_I2C_BUSES",
 }
 
 

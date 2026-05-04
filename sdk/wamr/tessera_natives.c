@@ -36,6 +36,9 @@
  *   - core_dac_write: category 'dac' reaches into coregen-generated state; needs per-project generation
  *   - core_dac_write_mv: category 'dac' reaches into coregen-generated state; needs per-project generation
  *   - core_dac_read: category 'dac' reaches into coregen-generated state; needs per-project generation
+ *   - core_i2c_write_byte_bus: category 'i2c' reaches into coregen-generated state; needs per-project generation
+ *   - core_i2c_read_byte_bus: category 'i2c' reaches into coregen-generated state; needs per-project generation
+ *   - core_i2c_probe_bus: category 'i2c' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_write: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_read: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_toggle: category 'pad' reaches into coregen-generated state; needs per-project generation

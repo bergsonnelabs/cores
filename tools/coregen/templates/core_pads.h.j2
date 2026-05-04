@@ -23,6 +23,9 @@
 {% if dac_enabled %}
 #define CORE_HAS_DAC         1
 {% endif %}
+{% if i2c_buses %}
+#define CORE_HAS_I2C_BUSES   1
+{% endif %}
 
 /* ---- Core identity ---- */
 

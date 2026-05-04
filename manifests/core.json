@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@91fba95",
+  "source": "cores@71b72f5",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -13,6 +13,10 @@
     "dac": {
       "label": "Core.DAC",
       "icon": "◓"
+    },
+    "i2c": {
+      "label": "Core.I2C",
+      "icon": "⇄"
     },
     "led": {
       "label": "Core.LED",
@@ -266,6 +270,84 @@
           "Core.H"
         ]
       }
+    },
+    {
+      "qname": [
+        "i2c",
+        "write_byte"
+      ],
+      "symbol": "core_i2c_write_byte_bus",
+      "header": "core_i2c.h",
+      "category": "i2c",
+      "description": "Write a single byte to a register on a device on `bus`. Returns I2C_OK on success, I2C_NACK / I2C_ERROR on bus failure, or I2C_ERROR if `bus` isn't declared in config.json.",
+      "params": [
+        {
+          "name": "bus",
+          "type": "int"
+        },
+        {
+          "name": "addr",
+          "type": "int"
+        },
+        {
+          "name": "reg",
+          "type": "int"
+        },
+        {
+          "name": "value",
+          "type": "int"
+        }
+      ],
+      "returns": "hal_status_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "i2c",
+        "read_byte"
+      ],
+      "symbol": "core_i2c_read_byte_bus",
+      "header": "core_i2c.h",
+      "category": "i2c",
+      "description": "Read a single byte from a register on a device on `bus`. Returns the byte value (0..255) on success, or -1 on any error (bus undeclared, NACK, timeout). The signed return lets DSL programs branch on `< 0` without an out-pointer.",
+      "params": [
+        {
+          "name": "bus",
+          "type": "int"
+        },
+        {
+          "name": "addr",
+          "type": "int"
+        },
+        {
+          "name": "reg",
+          "type": "int"
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "i2c",
+        "probe"
+      ],
+      "symbol": "core_i2c_probe_bus",
+      "header": "core_i2c.h",
+      "category": "i2c",
+      "description": "Check if a device responds at `addr` on `bus`. Returns 1 if the device ACKs, 0 on NACK / timeout / undeclared bus.",
+      "params": [
+        {
+          "name": "bus",
+          "type": "int"
+        },
+        {
+          "name": "addr",
+          "type": "int"
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "bool"
     },
     {
       "qname": [
