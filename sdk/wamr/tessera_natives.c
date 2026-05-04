@@ -18,8 +18,10 @@
 #include "ll_rcc.h"
 
 /* SDK headers providing the host symbols we wrap. */
+#include "core_backup.h"
 #include "core_led.h"
 #include "core_nvm.h"
+#include "core_rtc.h"
 #include "core_timing.h"
 #include "core_usb.h"
 #include "core_watchdog.h"
@@ -29,8 +31,6 @@
  *   - core_adc_read_mv_pad: category 'adc' reaches into coregen-generated state; needs per-project generation
  *   - core_adc_temp_decidegc: category 'adc' reaches into coregen-generated state; needs per-project generation
  *   - core_adc_vdd_mv: category 'adc' reaches into coregen-generated state; needs per-project generation
- *   - core_backup_read: category 'backup' reaches into coregen-generated state; needs per-project generation
- *   - core_backup_write: category 'backup' reaches into coregen-generated state; needs per-project generation
  *   - core_dac_init: category 'dac' reaches into coregen-generated state; needs per-project generation
  *   - core_dac_write: category 'dac' reaches into coregen-generated state; needs per-project generation
  *   - core_dac_write_mv: category 'dac' reaches into coregen-generated state; needs per-project generation
@@ -39,18 +39,24 @@
  *   - core_pad_read: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_toggle: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pwm_duty: category 'pwm' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_init: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_set_time: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_set_date: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_wakeup: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_wakeup_stop: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_set_alarm: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_clear_alarm: category 'rtc' reaches into coregen-generated state; needs per-project generation
- *   - core_rtc_alarm_fired: category 'rtc' reaches into coregen-generated state; needs per-project generation
  *   - core_usb_print: pointer param 'const char *' not yet supported
  */
 
 /* ---- Adapters ---------------------------------------------------------- */
+
+/* core_backup_read  (i)i  (category: backup) */
+static uint32_t core_backup_read_native(wasm_exec_env_t env, uint8_t index)
+{
+    (void)env;
+    return core_backup_read(index);
+}
+
+/* core_backup_write  (ii)  (category: backup) */
+static void core_backup_write_native(wasm_exec_env_t env, uint8_t index, uint32_t value)
+{
+    (void)env;
+    core_backup_write(index, value);
+}
 
 /* core_led_on  ()  (category: led) */
 static void core_led_on_native(wasm_exec_env_t env)
@@ -92,6 +98,62 @@ static uint32_t core_nvm_size_native(wasm_exec_env_t env)
 {
     (void)env;
     return core_nvm_size();
+}
+
+/* core_rtc_init  ()  (category: rtc) */
+static void core_rtc_init_native(wasm_exec_env_t env)
+{
+    (void)env;
+    core_rtc_init();
+}
+
+/* core_rtc_set_time  (iii)  (category: rtc) */
+static void core_rtc_set_time_native(wasm_exec_env_t env, uint8_t h, uint8_t m, uint8_t s)
+{
+    (void)env;
+    core_rtc_set_time(h, m, s);
+}
+
+/* core_rtc_set_date  (iiii)  (category: rtc) */
+static void core_rtc_set_date_native(wasm_exec_env_t env, uint8_t y, uint8_t mo, uint8_t d, uint8_t wd)
+{
+    (void)env;
+    core_rtc_set_date(y, mo, d, wd);
+}
+
+/* core_rtc_wakeup  (i)  (category: rtc) */
+static void core_rtc_wakeup_native(wasm_exec_env_t env, uint32_t seconds)
+{
+    (void)env;
+    core_rtc_wakeup(seconds);
+}
+
+/* core_rtc_wakeup_stop  ()  (category: rtc) */
+static void core_rtc_wakeup_stop_native(wasm_exec_env_t env)
+{
+    (void)env;
+    core_rtc_wakeup_stop();
+}
+
+/* core_rtc_set_alarm  (iii)  (category: rtc) */
+static void core_rtc_set_alarm_native(wasm_exec_env_t env, uint8_t hours, uint8_t minutes, uint8_t seconds)
+{
+    (void)env;
+    core_rtc_set_alarm(hours, minutes, seconds);
+}
+
+/* core_rtc_clear_alarm  ()  (category: rtc) */
+static void core_rtc_clear_alarm_native(wasm_exec_env_t env)
+{
+    (void)env;
+    core_rtc_clear_alarm();
+}
+
+/* core_rtc_alarm_fired  ()i  (category: rtc) */
+static int core_rtc_alarm_fired_native(wasm_exec_env_t env)
+{
+    (void)env;
+    return core_rtc_alarm_fired();
 }
 
 /* core_delay_ms  (i)  (category: timing) */
@@ -168,12 +230,22 @@ static void core_watchdog_feed_native(wasm_exec_env_t env)
  * Leaving it writable puts the table in .data (RAM-backed)
  * where the sort runs correctly at startup. */
 NativeSymbol g_tessera_natives[] = {
+    { "core_backup_read", (void *)core_backup_read_native, "(i)i", NULL },
+    { "core_backup_write", (void *)core_backup_write_native, "(ii)", NULL },
     { "core_led_on", (void *)core_led_on_native, "()", NULL },
     { "core_led_off", (void *)core_led_off_native, "()", NULL },
     { "core_led_toggle", (void *)core_led_toggle_native, "()", NULL },
     { "core_led_blink", (void *)core_led_blink_native, "(iii)", NULL },
     { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
     { "core_nvm_size", (void *)core_nvm_size_native, "()i", NULL },
+    { "core_rtc_init", (void *)core_rtc_init_native, "()", NULL },
+    { "core_rtc_set_time", (void *)core_rtc_set_time_native, "(iii)", NULL },
+    { "core_rtc_set_date", (void *)core_rtc_set_date_native, "(iiii)", NULL },
+    { "core_rtc_wakeup", (void *)core_rtc_wakeup_native, "(i)", NULL },
+    { "core_rtc_wakeup_stop", (void *)core_rtc_wakeup_stop_native, "()", NULL },
+    { "core_rtc_set_alarm", (void *)core_rtc_set_alarm_native, "(iii)", NULL },
+    { "core_rtc_clear_alarm", (void *)core_rtc_clear_alarm_native, "()", NULL },
+    { "core_rtc_alarm_fired", (void *)core_rtc_alarm_fired_native, "()i", NULL },
     { "core_delay_ms", (void *)core_delay_ms_native, "(i)", NULL },
     { "core_delay_us", (void *)core_delay_us_native, "(i)", NULL },
     { "core_millis", (void *)core_millis_native, "()i", NULL },
