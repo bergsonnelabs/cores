@@ -385,7 +385,7 @@ def adapter_guard(fn: HostFn) -> str | None:
 
 def emit_h(fns: list[HostFn], *, mode: str = "static") -> str:
     sym = table_symbol(mode)
-    guard = "TESSERA_NATIVES_PROJECT_H" if mode == "project" else "TESSERA_NATIVES_H"
+    guard = "STUDIO_NATIVES_PROJECT_H" if mode == "project" else "STUDIO_NATIVES_H"
     parts = [
         WARNING,
         "",

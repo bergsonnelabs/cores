@@ -4,8 +4,8 @@
  * ------------------------------------------------------------------ */
 
 
-#ifndef TESSERA_NATIVES_H
-#define TESSERA_NATIVES_H
+#ifndef STUDIO_NATIVES_H
+#define STUDIO_NATIVES_H
 
 #include <stddef.h>
 
@@ -23,4 +23,4 @@ extern const size_t g_studio_natives_count;
 }
 #endif
 
-#endif /* TESSERA_NATIVES_H */
+#endif /* STUDIO_NATIVES_H */

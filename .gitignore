@@ -19,3 +19,6 @@ examples/**/core.h
 # User project directory — not tracked
 projects/
 !projects/.gitkeep
+
+# Claude Code
+.claude/
