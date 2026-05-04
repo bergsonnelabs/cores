@@ -4,6 +4,18 @@
  * Wraps hal_uart with friendlier names. Instance and clock
  * resolution still requires explicit init (auto-resolve from
  * config.json is planned).
+ *
+ * @tessera coverage
+ *   id:    serial
+ *   name:  Serial — UART
+ *   page:  /docs/sdk/uart
+ *   blurb: Polled UART send / receive (write, print, putc, getc, read,
+ *          available) with friendly names over hal_uart. Tier 1 only —
+ *          there's no default-instance Tier 2 helper for UART yet, and
+ *          coregen doesn't auto-init a serial port from config.json.
+ *          Apps that want printf-style output to a host should prefer
+ *          Core.USB; this header is for hardware UART pins (RS-485,
+ *          GPS, side-channel debug).
  */
 
 #ifndef CORE_SERIAL_H
@@ -79,5 +91,27 @@ static inline uint16_t core_serial_read(hal_uart_t *h, uint8_t *buf,
 {
     return hal_uart_read(h, buf, max_len);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
+//   Same gap pattern as I2C: callers have to declare and init a
+//   hal_uart_t themselves, then thread it through every call. A
+//   coregen-resolved core_serial_print(text), core_serial_write_bus(...)
+//   would let the DSL ship a Core.Serial category.
+//
+// @tessera unsupported tier=1 value=H title="No interrupt / DMA driven path"
+//   All calls block. SDK roadmap Tier 1 item: "UART IRQ + coregen"
+//   for non-blocking serial (GPS, RS-485). Long reads currently stall
+//   the main loop until the buffer fills or times out.
+//
+// @tessera unsupported tier=1 value=M title="No flow control / parity / 9-bit modes"
+//   The thin wrappers expose only the basics — RTS/CTS, parity, stop
+//   bits, 9-bit data, and inversion are reachable only via the
+//   hal_uart_config_t struct passed to init.
+//
+// @tessera unsupported tier=1 value=M title="No LPUART (low-power UART)"
+//   SDK roadmap Tier 2: LPUART works in Stop mode for wake-on-serial.
+//   Compile-only on every Core today; not surfaced through this header.
 
 #endif /* CORE_SERIAL_H */

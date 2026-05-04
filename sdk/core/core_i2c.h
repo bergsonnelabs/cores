@@ -18,6 +18,15 @@
  *
  *   core_i2c_t bus;
  *   core_i2c_init(&bus, I2C1, I2C_400K);
+ *
+ * @tessera coverage
+ *   id:    i2c
+ *   name:  I2C — bus communication
+ *   page:  /docs/sdk/i2c
+ *   blurb: Master-mode I2C: polled read/write, register helpers, probing,
+ *          bus scan. Header is core_i2c.h, implementation wraps hal_i2c.
+ *          Currently Tier 1 only — there is no default-instance Tier 2
+ *          helper for I2C yet.
  */
 
 #ifndef CORE_I2C_H
@@ -159,5 +168,36 @@ static inline void core_i2c_scan(core_i2c_t *h, uint8_t *found,
 {
     hal_i2c_scan(h, found, count, max_count);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
+//   The Tessera-targeted convention — caller passes a bus id / pad and
+//   coregen resolves the handle from config.json — doesn't exist for I2C
+//   yet. Sketch: core_i2c_write_bus(bus_id, addr, data, len),
+//   core_i2c_read_byte_bus(bus_id, addr, reg, *value). Once added, the
+//   D / S / W columns become meaningful for I2C in the DSL.
+//
+// @tessera unsupported tier=1 value=H title="Interrupt-driven / non-blocking I/O"
+//   All current operations are polled. A non-blocking variant (with
+//   completion callback or status poll) would let DSL programs interleave
+//   bus traffic without stalling the main loop. Tracked on the SDK
+//   roadmap as 'I2C interrupt-driven'.
+//
+// @tessera unsupported tier=1 value=H title="DMA transfers"
+//   No DMA path for bulk reads/writes. Long FIFO drains (e.g., IMU
+//   water-level batch reads) currently block on polled byte loops.
+//
+// @tessera unsupported tier=1 value=M title="Slave / device mode"
+//   Master-only today. Slave-mode would let a Core respond as an I2C
+//   device on a host bus.
+//
+// @tessera unsupported tier=1 value=M title="10-bit addressing"
+//   API takes uint8_t addr — 7-bit only. No path for 10-bit-addressed
+//   peripherals (rare in practice but in spec).
+//
+// @tessera unsupported tier=1 value=L title="SMBus / PMBus extensions"
+//   No PEC, no Alert Response, no block read/write protocol framing.
+//   Not requested by any current tile.
 
 #endif /* CORE_I2C_H */

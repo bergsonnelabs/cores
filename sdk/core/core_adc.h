@@ -6,6 +6,17 @@
  * from the project configuration.
  *
  * @tessera category adc label=Core.ADC icon=◐
+ *
+ * @tessera coverage
+ *   id:    adc
+ *   name:  ADC — analog-to-digital conversion
+ *   page:  /docs/sdk/adc
+ *   blurb: Pad-numbered ADC reads in raw counts and calibrated
+ *          millivolts, plus internal channels (die temperature, VDD).
+ *          Tier 2 dispatches to the coregen-emitted default instance
+ *          (`core_adc1`); Tier 1 (the explicit-handle API) covers
+ *          channel registration, sampling-speed control, and DMA
+ *          continuous mode for advanced callers.
  */
 
 #ifndef CORE_ADC_H
@@ -91,6 +102,7 @@ static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
  * Read a pad as raw ADC counts (0–4095 at 12-bit resolution).
  *
  * @tessera expose category=adc name=read returns=int
+ * @tessera twin noop
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_pad(uint8_t pad)
@@ -102,6 +114,7 @@ static inline int core_adc_read_pad(uint8_t pad)
  * Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).
  *
  * @tessera expose category=adc name=read_mv returns=int
+ * @tessera twin noop
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_mv_pad(uint8_t pad)
@@ -114,6 +127,7 @@ static inline int core_adc_read_mv_pad(uint8_t pad)
  * Dispatches to the default ADC instance.
  *
  * @tessera expose category=adc name=temp_decidegc returns=int
+ * @tessera twin noop
  */
 static inline int core_adc_temp_decidegc(void)
 {
@@ -125,6 +139,7 @@ static inline int core_adc_temp_decidegc(void)
  * Dispatches to the default ADC instance.
  *
  * @tessera expose category=adc name=vdd_mv returns=int
+ * @tessera twin noop
  */
 static inline int core_adc_vdd_mv(void)
 {
@@ -173,5 +188,37 @@ static inline uint16_t core_adc_dma_read(core_adc_t *adc, uint8_t pad)
 {
     return tal_adc_dma_read_pad(adc, pad);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="Twin doesn't model analog inputs"
+//   The simulator logs core_adc_read_pad / read_mv_pad / temp_decidegc /
+//   vdd_mv host calls but always returns 0 (no named handler in
+//   runtime.ts). DSL programs that branch on an analog read can't be
+//   exercised end-to-end in the IDE — needs a per-pad input slider
+//   wired into a tile-sim handler that returns the simulated count.
+//
+// @tessera unsupported tier=2 value=M title="No DSL access to sampling speed / resolution"
+//   Tier 2 calls the default instance at its compile-time resolution
+//   (12-bit) and per-pad sampling speed set during init. SAMP_FAST /
+//   MED / SLOW / VERY_SLOW and ADC_6/8/10/12BIT aliases are reachable
+//   only via the explicit-handle Tier 1 API.
+//
+// @tessera unsupported tier=2 value=M title="No multi-instance ADC dispatch"
+//   Tier 2 wrappers always hit core_adc1. Cores with multiple ADCs
+//   (Core.H has ADC1 + ADC2) need per-pad peripheral tagging in tile
+//   JSON before coregen can emit the dispatch. Until then DSL programs
+//   are limited to whichever pads coregen routed to ADC1.
+//
+// @tessera unsupported tier=1 value=M title="No oversampling / averaging helper"
+//   STM32 ADCs can hardware-oversample 2×–256× for extra effective
+//   resolution. The HAL exposes the registers but core_adc has no
+//   convenience wrapper — callers reach into tal_adc / hal_adc to set
+//   OVSR/OVSS bits manually.
+//
+// @tessera unsupported tier=1 value=L title="No external-trigger / injected channels"
+//   ADC injected groups + external triggers (TIMx TRGO, EXTI line)
+//   are not surfaced. Bring-your-own register writes if you need a
+//   timer-synchronized analog sample for control loops.
 
 #endif /* CORE_ADC_H */

@@ -15,6 +15,18 @@
  *        core_pwm_set(&pwm, 3, 500);
  *
  * @tessera category pwm label=Core.PWM icon=◲
+ *
+ * @tessera coverage
+ *   id:    pwm
+ *   name:  PWM — pulse-width modulation
+ *   page:  /docs/sdk/timers
+ *   blurb: Three layered APIs: an explicit-instance core_pwm_init / set
+ *          for hand-rolled C, a pad-centric core_pwm_init_pad that
+ *          resolves the timer from coregen tables, and a project-centric
+ *          core_pwm_duty (Tier 2 default-instance) that's the DSL's
+ *          knob. The simulator renders pad output level live from
+ *          duty_permil. Periodic-tick (`every_us`) is also wrapped here
+ *          for ISR-driven callbacks.
  */
 
 #ifndef CORE_PWM_H
@@ -120,6 +132,7 @@ hal_timer_t *core_pwm_timer_for_pad(uint8_t pad);
  * Set PWM duty cycle on a pad. Timer handle resolved from config.json.
  *
  * @tessera expose category=pwm name=duty
+ * @tessera twin full
  * @param pad [1..64] Tile pad number configured as a TIMx.<ch> in config.json.
  * @param duty_permil [0..1000] 0 = off, 500 = 50%, 1000 = fully on.
  */
@@ -167,5 +180,30 @@ static inline void core_every_stop(core_timer_t *h)
 {
     hal_timer_tick_stop(h);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=M title="No DSL access to PWM frequency"
+//   Tier 2 only exposes duty. Frequency is fixed at coregen time from
+//   config.json's timer.freq_hz. DSL programs that want to sweep
+//   frequency (e.g., a buzzer playing notes) need set_freq exposed
+//   per-pad — the underlying tal_pwm has the path, but the wrapper +
+//   default-instance dispatch don't.
+//
+// @tessera unsupported tier=2 value=M title="No DSL access to periodic 'every' callbacks"
+//   core_every_us is Tier 1 only — it takes a C function pointer for
+//   the ISR callback. The DSL surface is `Core.Timer.tick` (in
+//   core_timer.h) which fires at config.json's timer.tick_ms; finer
+//   custom periods aren't reachable.
+//
+// @tessera unsupported tier=1 value=M title="No complementary PWM / dead-time (TIM1 advanced)"
+//   SDK roadmap Tier 2 item: TIM1's complementary outputs + dead-time
+//   insertion + break input are needed for half-bridge / motor /
+//   power-converter tiles. The PWM wrapper is single-channel only.
+//
+// @tessera unsupported tier=1 value=L title="No phase / center-aligned modes"
+//   Edge-aligned PWM only. STM32 timers can do center-aligned (Mode 1
+//   / 2 / 3) and per-channel phase offsets — useful for low-EMI
+//   switching. Not surfaced.
 
 #endif /* CORE_PWM_H */

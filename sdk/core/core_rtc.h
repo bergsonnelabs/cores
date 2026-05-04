@@ -2,6 +2,16 @@
  * core_rtc.h — Real-time clock
  *
  * @tessera category rtc label=Core.RTC icon=◴
+ *
+ * @tessera coverage
+ *   id:    rtc
+ *   name:  RTC — real-time clock
+ *   blurb: Wall-clock time + date, periodic wakeup timer, and Alarm A
+ *          (calendar-based with per-field wildcards). Tier 2 covers
+ *          init / set_time / set_date / wakeup(_stop) / set_alarm /
+ *          clear_alarm / alarm_fired. Defaults to LSI (~32 kHz internal
+ *          RC) — for LSE precision callers drop into ll_rtc_init(1)
+ *          from C.
  */
 
 #ifndef CORE_RTC_H
@@ -19,6 +29,7 @@
  * For LSE, call ll_rtc_init(1) directly in hand-written C.
  *
  * @tessera expose category=rtc name=init
+ * @tessera twin noop
  */
 static inline void core_rtc_init(void)
 {
@@ -33,6 +44,7 @@ static inline void core_rtc_init(void)
  * Set the time (24h format).
  *
  * @tessera expose category=rtc name=set_time
+ * @tessera twin noop
  * @param h [0..23] Hours.
  * @param m [0..59] Minutes.
  * @param s [0..59] Seconds.
@@ -56,6 +68,7 @@ static inline void core_rtc_get_time(uint8_t *h, uint8_t *m, uint8_t *s)
  * Set the date.
  *
  * @tessera expose category=rtc name=set_date
+ * @tessera twin noop
  * @param y [0..99] 2-digit year (2025 = 25).
  * @param mo [1..12] Month.
  * @param d [1..31] Day of month.
@@ -82,6 +95,7 @@ static inline void core_rtc_get_date(uint8_t *y, uint8_t *mo, uint8_t *d,
  * Configure a periodic wakeup timer.
  *
  * @tessera expose category=rtc name=wakeup
+ * @tessera twin noop
  * @param seconds [1..65535] Wakeup interval in seconds.
  */
 static inline void core_rtc_wakeup(uint32_t seconds)
@@ -93,6 +107,7 @@ static inline void core_rtc_wakeup(uint32_t seconds)
  * Disable the periodic wakeup timer.
  *
  * @tessera expose category=rtc name=wakeup_stop
+ * @tessera twin noop
  */
 static inline void core_rtc_wakeup_stop(void)
 {
@@ -121,6 +136,7 @@ static inline void core_rtc_wakeup_stop(void)
  * The alarm fires when all non-masked fields match the RTC time.
  *
  * @tessera expose category=rtc name=set_alarm
+ * @tessera twin noop
  * @param hours   [0..255] 0-23, or 255 (0xFF) to match any hour.
  * @param minutes [0..255] 0-59, or 255 (0xFF) to match any minute.
  * @param seconds [0..255] 0-59, or 255 (0xFF) to match any second.
@@ -135,6 +151,7 @@ static inline void core_rtc_set_alarm(uint8_t hours, uint8_t minutes,
  * Clear the alarm (disable Alarm A).
  *
  * @tessera expose category=rtc name=clear_alarm
+ * @tessera twin noop
  */
 static inline void core_rtc_clear_alarm(void)
 {
@@ -145,6 +162,7 @@ static inline void core_rtc_clear_alarm(void)
  * Check if the alarm has fired (poll mode). Clears the flag on read.
  *
  * @tessera expose category=rtc name=alarm_fired returns=bool
+ * @tessera twin noop
  */
 static inline int core_rtc_alarm_fired(void)
 {
@@ -154,5 +172,29 @@ static inline int core_rtc_alarm_fired(void)
     }
     return 0;
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="Twin doesn't model the RTC clock"
+//   set_time / set_date / set_alarm / wakeup are logged but the
+//   simulator has no virtual wall clock that advances over time. DSL
+//   programs that branch on alarm_fired will always see false in the
+//   IDE — needs a per-slot clock state + a way to fast-forward.
+//
+// @tessera unsupported tier=2 value=M title="No DSL get_time / get_date"
+//   The C surface has core_rtc_get_time / get_date taking out-pointers;
+//   they're not exposed because the host-call ABI doesn't map cleanly
+//   to multi-out values. The newer multi-scalar-out ABI (see DSL
+//   Capability Coverage close, 2026-05-03) could land them.
+//
+// @tessera unsupported tier=1 value=M title="LSE / external crystal not exposed"
+//   core_rtc_init always selects LSI (~32 kHz RC, ±5% typical drift).
+//   Cores with an LSE crystal need ll_rtc_init(1) — no Tier 2 wrapper
+//   that takes a clock-source argument.
+//
+// @tessera unsupported tier=1 value=L title="No subsecond / millisecond accuracy"
+//   The wrapper exposes whole-second resolution. STM32 RTCs have a
+//   subsecond register (1/PREDIV_S) that's reachable from ll_rtc but
+//   not from this header — wall-clock timestamps round to the second.
 
 #endif /* CORE_RTC_H */

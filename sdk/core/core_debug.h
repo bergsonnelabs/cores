@@ -1,5 +1,14 @@
 /**
  * core_debug.h — Debug output via SWO/ITM trace
+ *
+ * @tessera coverage
+ *   id:    debug
+ *   name:  Debug — SWO / ITM trace output
+ *   blurb: Tier 1 only. SWO-pin trace output (printf + raw-string) for
+ *          on-chip debugging via an ST-Link / J-Link probe. Useful
+ *          alongside core_usb_print when you want a debug stream that
+ *          doesn't depend on USB enumeration. No DSL surface — debug
+ *          output is the realm of escape-to-C.
  */
 
 #ifndef CORE_DEBUG_H
@@ -30,5 +39,18 @@ static inline void core_debug_print(const char *str)
 
 /** Printf via SWO/ITM — same format as standard printf. */
 #define core_debug_printf  hal_debug_printf
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=L title="No DSL surface"
+//   Debug output is intentionally Tier 1 — the DSL doesn't have a
+//   notion of "debug print to a hardware probe." DSL programs use
+//   Core.USB.print for visible output; SWO is reserved for users who
+//   are already in C and have a probe attached.
+//
+// @tessera unsupported tier=1 value=L title="No ITM channel selection / timestamps"
+//   All output goes to ITM stimulus port 0 with no timestamp packets.
+//   Multi-channel routing (e.g., separate streams for log vs. data)
+//   and ETM/CYCCNT correlation aren't wrapped.
 
 #endif /* CORE_DEBUG_H */

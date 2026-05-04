@@ -14,6 +14,9 @@
  *   core_pad_write(3, ON);
  *
  *   core_pad_on_change(5, EDGE_FALLING, on_button, NULL);
+ *
+ * (No @tessera coverage block — this is a re-export of core_pad.h, which
+ * carries the GPIO entry on the SDK Coverage Table.)
  */
 
 #ifndef CORE_GPIO_H

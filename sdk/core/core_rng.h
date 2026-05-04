@@ -11,6 +11,15 @@
  *   uint32_t buf[4];
  *   core_rng_fill(buf, 4);              // fill buffer with random values
  *   core_rng_deinit();                  // power down (optional)
+ *
+ * @tessera coverage
+ *   id:    rng
+ *   name:  RNG — hardware random numbers
+ *   blurb: Tier 1 only. Wraps the analog-noise RNG peripheral on
+ *          Core.U / Core.W / Core.H (Core.L has no RNG). Exposes single
+ *          32-bit reads, bulk fill, seed-error check, and deinit.
+ *          No DSL surface yet — exposing as a Tier 2 default-instance
+ *          (`rng.read32 -> int`) is straightforward but not landed.
  */
 
 #ifndef CORE_RNG_H
@@ -86,5 +95,24 @@ static inline void core_rng_deinit(void)
 {
     ll_rng_disable();
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No DSL surface for RNG"
+//   Wrapping core_rng_read as `rng.read32 -> int` is one-line cheap.
+//   Until it lands, DSL programs that need randomness (jitter, salt,
+//   game seeds) have to use software PRNGs in C.
+//
+// @tessera unsupported tier=2 value=M title="Twin would need a deterministic PRNG"
+//   Real RNG output isn't reproducible across worker runs, so the
+//   simulator should back the host call with a seeded PRNG (LCG /
+//   xorshift) so the same DSL program plays back identically each
+//   replay. Worth thinking through before exposing.
+//
+// @tessera unsupported tier=1 value=L title="No bias correction / health tests"
+//   The hardware exposes a CED (clock error) and SEIS (seed error)
+//   bit which core_rng_error checks, but there's no NIST SP 800-90B
+//   continuous-health-test wrapper. Crypto-grade users should consume
+//   the raw words through a vetted DRBG (mbedTLS, etc.).
 
 #endif /* CORE_RNG_H */

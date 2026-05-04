@@ -17,6 +17,16 @@
  * @endcode
  *
  * Available on: Core.U, Core.W, Core.H (not Core.L — no SPI peripheral).
+ *
+ * @tessera coverage
+ *   id:    spi
+ *   name:  SPI — bus communication
+ *   page:  /docs/sdk/spi
+ *   blurb: Master-mode SPI: polled byte / buffer transfer, software CS
+ *          via tile pads, and DMA non-blocking transfers (Core.U
+ *          verified; Core.W/H DMA is HAL-side WIP). Tier 1 only —
+ *          tile drivers consume SPI through core_tiles_pal, so the
+ *          DSL doesn't need a direct SPI surface yet.
  */
 
 #ifndef CORE_SPI_H
@@ -140,5 +150,34 @@ static inline int core_spi_busy(hal_spi_t *h)
 {
     return hal_spi_busy(h);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
+//   Pattern identical to I2C and Serial: callers thread their own
+//   hal_spi_t through every call. A coregen-resolved
+//   core_spi_xfer_bus(bus_id, ...) would mean tile drivers (and any
+//   future DSL surface) wouldn't have to plumb the handle by hand.
+//
+// @tessera unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
+//   SDK roadmap Tier 1 item: Core.W has an SPI v2 CSTART bug; Core.H
+//   builds but isn't hardware-verified. Only Core.U is end-to-end
+//   verified for polled + FIFO + Kiln-driver use. Tile drivers that
+//   need SPI on W/H should expect rough edges.
+//
+// @tessera unsupported tier=2 value=M title="DMA verified only on Core.U"
+//   SDK roadmap Tier 2: Core.W / Core.H GPDMA is deferred (SPI v2
+//   TSIZE constraints). Calls fall back to polled or hit
+//   HAL_ERROR. Long buffer transfers (display refresh, audio) are
+//   significantly slower on W/H than on U.
+//
+// @tessera unsupported tier=1 value=M title="Slave mode missing"
+//   Master-only. No path for a Core to act as a SPI peripheral on
+//   another host's bus.
+//
+// @tessera unsupported tier=1 value=L title="Quad / Octo SPI / OctoSPI"
+//   SDK roadmap Tier 2: QUADSPI / OctoSPI (memory-mapped external
+//   flash for NOR / PSRAM tiles) is wired only on Core.U + Core.H
+//   silicon and isn't wrapped here.
 
 #endif /* CORE_SPI_H */

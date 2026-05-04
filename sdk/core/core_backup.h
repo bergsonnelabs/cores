@@ -14,6 +14,15 @@
  * No init required — the RTC clock domain is enabled automatically.
  *
  * @tessera category backup label=Core.Backup icon=◫
+ *
+ * @tessera coverage
+ *   id:    backup
+ *   name:  Backup — persistent registers
+ *   blurb: 32-bit registers retained through reset and Standby (and across
+ *          power loss when VBAT is wired). Tier 2 read/write helpers take
+ *          an index and resolve the underlying RTC/TAMP block per Core
+ *          family — Core.L exposes 5 registers, others expose 32. Useful
+ *          for boot counters, sticky flags, and small scraps of state.
  */
 
 #ifndef CORE_BACKUP_H
@@ -66,6 +75,7 @@ static inline void _core_backup_ensure_clk(void)
  * Read a backup register.
  *
  * @tessera expose category=backup name=read returns=int
+ * @tessera twin noop
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  */
 static inline uint32_t core_backup_read(uint8_t index)
@@ -79,6 +89,7 @@ static inline uint32_t core_backup_read(uint8_t index)
  * Write a backup register. Backup domain write access is enabled automatically.
  *
  * @tessera expose category=backup name=write
+ * @tessera twin noop
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  * @param value 32-bit value to store.
  */
@@ -88,5 +99,18 @@ static inline void core_backup_write(uint8_t index, uint32_t value)
     _core_backup_ensure_clk();
     ll_rtc_bkp_write(index, value);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=M title="Twin doesn't persist between runs"
+//   The simulator logs read/write host calls but doesn't keep a backing
+//   store across Reset, so DSL programs that rely on backup state
+//   surviving a soft reset (e.g., boot counters) can't be exercised in
+//   the IDE. Persisting per-slot state across Reset would close the gap.
+//
+// @tessera unsupported tier=1 value=L title="No tamper / anti-tamper integration"
+//   The TAMP block on WBA/H5 hosts the backup registers but also drives
+//   tamper detection (active edge, anti-tamper erase, time-stamping on
+//   tamper). None of that is wrapped — backup is read/write only.
 
 #endif /* CORE_BACKUP_H */
