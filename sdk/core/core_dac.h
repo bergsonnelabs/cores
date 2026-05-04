@@ -41,7 +41,7 @@ extern hal_dac_t core_dac;
  * before any writes.
  *
  * @tessera expose category=dac name=init availability=Core.H
- * @tessera twin noop
+ * @tessera twin regs
  */
 static inline void core_dac_init(void)
 {
@@ -52,7 +52,7 @@ static inline void core_dac_init(void)
  * Write a raw 12-bit value. Output = val / 4095 × VREF+.
  *
  * @tessera expose category=dac name=write availability=Core.H
- * @tessera twin noop
+ * @tessera twin regs
  * @param val [0..4095] Raw DAC value.
  */
 static inline void core_dac_write(uint16_t val)
@@ -64,7 +64,7 @@ static inline void core_dac_write(uint16_t val)
  * Write a voltage in millivolts.
  *
  * @tessera expose category=dac name=write_mv availability=Core.H
- * @tessera twin noop
+ * @tessera twin regs
  * @param mv [0..3300] Output voltage in millivolts.
  */
 static inline void core_dac_write_mv(uint16_t mv)
@@ -76,7 +76,7 @@ static inline void core_dac_write_mv(uint16_t mv)
  * Read back the current DAC output register value (12-bit).
  *
  * @tessera expose category=dac name=read returns=int availability=Core.H
- * @tessera twin noop
+ * @tessera twin regs
  */
 static inline uint16_t core_dac_read(void)
 {
