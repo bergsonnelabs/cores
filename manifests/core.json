@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@f9d51bd",
+  "source": "cores@e8a8c62",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -473,6 +473,61 @@
       "description": "Returns the total NVM size in bytes for this Core.",
       "params": [],
       "returns": "uint32_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "nvm",
+        "read_byte"
+      ],
+      "symbol": "core_nvm_read_byte",
+      "header": "core_nvm.h",
+      "category": "nvm",
+      "description": "Read a single byte from NVM at `offset`. Returns the byte (0..255) on success or -1 on any error (offset out of range, NVM disabled). The signed return lets DSL programs branch on `< 0` without an out-pointer.",
+      "params": [
+        {
+          "name": "offset",
+          "type": "int",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Byte offset into the NVM region."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "nvm",
+        "write_byte"
+      ],
+      "symbol": "core_nvm_write_byte",
+      "header": "core_nvm.h",
+      "category": "nvm",
+      "description": "Write a single byte to NVM at `offset`. Returns 1 on success or -1 on any error (offset out of range, write timeout, flash-emu missing).",
+      "params": [
+        {
+          "name": "offset",
+          "type": "int",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Byte offset into the NVM region."
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "range": [
+            0,
+            255
+          ],
+          "description": "Byte to store."
+        }
+      ],
+      "returns": "int",
       "dsl_returns": "int"
     },
     {

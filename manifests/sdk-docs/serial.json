@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@f9d51bd",
+  "source": "cores@e8a8c62",
   "category": "serial",
   "label": "Core.Serial",
   "icon": "⌨",
