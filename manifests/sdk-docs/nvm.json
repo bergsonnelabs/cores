@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@2229190",
+  "source": "cores@f9d51bd",
   "category": "nvm",
   "label": "Core.NVM",
   "icon": "▤",

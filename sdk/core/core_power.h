@@ -10,16 +10,21 @@
  *   core_deep_sleep()         — enter Stop (caller manages wakeup + clock recovery)
  *   core_shutdown()           — enter Standby (caller manages wakeup)
  *
+ * @tessera category power label=Core.Power icon=☾
+ *
  * @tessera coverage
  *   id:    power
  *   name:  Power — sleep / Stop / Standby
  *   page:  /docs/sdk/system
- *   blurb: Tier 1 only. Sleep, Stop, and Standby helpers with auto-
- *          clock-recovery on wake (Stop) or full reset (Standby), plus
- *          GPIO-edge / RTC-timer wakeup variants. Backup-domain wakeup
- *          status (`core_woke_from_standby`) lives here too. The
- *          watchdog re-export is here for backward compatibility — the
- *          canonical surface is in core_watchdog.h.
+ *   blurb: Sleep, Stop, and Standby helpers with auto-clock-recovery on
+ *          wake (Stop) or full reset (Standby), plus GPIO-edge /
+ *          RTC-timer wakeup variants. Tier 2 exposes the recoverable
+ *          variants — sleep, stop_for, woke_from_standby — to the DSL.
+ *          The Standby family stays Tier 1 because it's `noreturn` on
+ *          real hardware (resets on wake), which would deadlock the
+ *          simulator. Backup-domain wakeup status lives here too; the
+ *          watchdog re-export is for backward compatibility — canonical
+ *          surface is in core_watchdog.h.
  */
 
 #ifndef CORE_POWER_H
@@ -36,7 +41,12 @@
 
 /* ---- Simple API ---- */
 
-/** Sleep until any interrupt (CPU stopped, peripherals running). */
+/**
+ * Sleep until any interrupt (CPU stopped, peripherals running).
+ *
+ * @tessera expose category=power name=sleep
+ * @tessera twin full
+ */
 static inline void core_sleep(void)
 {
     ll_pwr_sleep_wfi();
@@ -45,6 +55,10 @@ static inline void core_sleep(void)
 /**
  * Enter Stop mode for a number of seconds, then wake and restore clocks.
  * Uses RTC wakeup timer (LSI). Returns after wake with PLL + SysTick restored.
+ *
+ * @tessera expose category=power name=stop_for
+ * @tessera twin full
+ * @param seconds [1..86400] Seconds to spend in Stop mode.
  */
 static inline void core_stop_for(uint32_t seconds)
 {
@@ -209,7 +223,12 @@ static inline void core_standby(void)
 #define core_deep_sleep  core_stop
 #define core_shutdown    core_standby
 
-/** Returns 1 if the MCU woke from Standby. */
+/**
+ * Returns 1 if the MCU woke from Standby.
+ *
+ * @tessera expose category=power name=woke_from_standby returns=bool
+ * @tessera twin full
+ */
 static inline int core_woke_from_standby(void)
 {
     return ll_pwr_woke_from_standby();
@@ -239,12 +258,20 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No DSL surface for sleep / Stop / Standby"
-//   The whole power-management API is escape-to-C. DSL programs can't
-//   say "sleep until pad rises" or "stop for 30 s, then resume."
-//   Mapping the simpler verbs (sleep, stop_for, standby_for) onto the
-//   Tessera host-call ABI is straightforward; the wake-on-pad variants
-//   need the EXTI handler bridge + a way to express "block until."
+// @tessera unsupported tier=2 value=M title="Standby family stays Tier 1 (noreturn)"
+//   core_standby_for / core_standby reset on wake — they're declared
+//   __attribute__((noreturn)) and can't be safely exposed to the DSL,
+//   since the simulator would deadlock on a call that never returns.
+//   Recoverable variants (sleep, stop_for) are Tier 2; reaching Standby
+//   from a DSL program needs an "escape-to-C" fallthrough or a separate
+//   "would have entered Standby" event the simulator can model.
+//
+// @tessera unsupported tier=2 value=M title="No wake-on-pad Tier 2"
+//   core_stop_until_on_change blocks until a configured pad edge wakes
+//   the chip. The DSL surface is straightforward in spirit but needs
+//   the EXTI handler bridge to express "block until" cleanly across
+//   the host-call boundary. Tracked alongside the broader DSL event-
+//   model story.
 //
 // @tessera unsupported tier=1 value=H title="Stop mode broken on Core.L / Core.W"
 //   Per the SDK roadmap: Core.L's RTC wakeup hangs, Core.W's stop mode

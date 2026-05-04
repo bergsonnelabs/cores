@@ -21,6 +21,7 @@
 #include "core_backup.h"
 #include "core_led.h"
 #include "core_nvm.h"
+#include "core_power.h"
 #include "core_rng.h"
 #include "core_rtc.h"
 #include "core_timing.h"
@@ -104,6 +105,27 @@ static uint32_t core_nvm_size_native(wasm_exec_env_t env)
 {
     (void)env;
     return core_nvm_size();
+}
+
+/* core_sleep  ()  (category: power) */
+static void core_sleep_native(wasm_exec_env_t env)
+{
+    (void)env;
+    core_sleep();
+}
+
+/* core_stop_for  (i)  (category: power) */
+static void core_stop_for_native(wasm_exec_env_t env, uint32_t seconds)
+{
+    (void)env;
+    core_stop_for(seconds);
+}
+
+/* core_woke_from_standby  ()i  (category: power) */
+static int core_woke_from_standby_native(wasm_exec_env_t env)
+{
+    (void)env;
+    return core_woke_from_standby();
 }
 
 /* core_rng_read  ()i  (category: rng) */
@@ -258,6 +280,9 @@ NativeSymbol g_tessera_natives[] = {
     { "core_led_blink", (void *)core_led_blink_native, "(iii)", NULL },
     { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
     { "core_nvm_size", (void *)core_nvm_size_native, "()i", NULL },
+    { "core_sleep", (void *)core_sleep_native, "()", NULL },
+    { "core_stop_for", (void *)core_stop_for_native, "(i)", NULL },
+    { "core_woke_from_standby", (void *)core_woke_from_standby_native, "()i", NULL },
     { "core_rng_read", (void *)core_rng_read_native, "()i", NULL },
     { "core_rtc_init", (void *)core_rtc_init_native, "()", NULL },
     { "core_rtc_set_time", (void *)core_rtc_set_time_native, "(iii)", NULL },
