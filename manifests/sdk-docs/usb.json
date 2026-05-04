@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v1",
-  "source": "cores@e8a8c62",
+  "source": "cores@11dcaf9",
   "category": "usb",
   "label": "Core.USB",
   "icon": "❝",
