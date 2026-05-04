@@ -17,6 +17,7 @@
 
 #include "wasm_export.h"
 #include "tessera_natives.h"
+#include "tessera_natives_project.h"  /* coregen: pad / pwm / adc / dac */
 
 /* Precompiled Tessera DSL program as a Wasm binary. */
 static const uint8_t g_wasm_blob_flash[] = {
@@ -244,7 +245,13 @@ int main(void)
 
     if (!wasm_runtime_register_natives(
             "env", g_tessera_natives, g_tessera_natives_count)) {
-        fatal("wasm_runtime_register_natives", "returned false");
+        fatal("wasm_runtime_register_natives (static)", "returned false");
+    }
+    /* Per-project table: pad / pwm / adc / dac adapters that need
+     * coregen-emitted state in scope. Generated alongside core_init.c. */
+    if (!wasm_runtime_register_natives(
+            "env", g_tessera_natives_project, g_tessera_natives_project_count)) {
+        fatal("wasm_runtime_register_natives (project)", "returned false");
     }
 
     char err_buf[96];

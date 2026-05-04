@@ -178,13 +178,6 @@ static inline void core_pad_on_change_stop(uint8_t pad)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="WAMR natives need per-project codegen"
-//   core_pad_write / core_pad_read / core_pad_toggle reach into
-//   coregen-emitted pad lookup tables, so they can't sit in the static
-//   tessera_natives.c shipped with the SDK. The codegen path that emits
-//   per-project natives alongside core_init.c is on the WAMR roadmap.
-//   Until it lands, on-Core Wasm can't call any pad function.
-//
 // @tessera unsupported tier=2 value=M title="No DSL access to slew-rate / pull / drive-strength"
 //   Tier 2 exposes write/read/toggle only. core_pad_speed,
 //   core_pad_output_od pull-config, and the analog-mode setter are

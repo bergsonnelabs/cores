@@ -39,7 +39,6 @@
  *   - core_pad_read: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pad_toggle: category 'pad' reaches into coregen-generated state; needs per-project generation
  *   - core_pwm_duty: category 'pwm' reaches into coregen-generated state; needs per-project generation
- *   - core_usb_print: pointer param 'const char *' not yet supported
  */
 
 /* ---- Adapters ---------------------------------------------------------- */
@@ -184,6 +183,13 @@ static int core_timeout_native(wasm_exec_env_t env, uint32_t start, uint32_t ms)
     return core_timeout(start, ms);
 }
 
+/* core_usb_print  ($)  (category: usb) */
+static void core_usb_print_native(wasm_exec_env_t env, const char * text)
+{
+    (void)env;
+    core_usb_print(text);
+}
+
 /* core_usb_print_int  (i)  (category: usb) */
 static void core_usb_print_int_native(wasm_exec_env_t env, int value)
 {
@@ -250,6 +256,7 @@ NativeSymbol g_tessera_natives[] = {
     { "core_delay_us", (void *)core_delay_us_native, "(i)", NULL },
     { "core_millis", (void *)core_millis_native, "()i", NULL },
     { "core_timeout", (void *)core_timeout_native, "(ii)i", NULL },
+    { "core_usb_print", (void *)core_usb_print_native, "($)", NULL },
     { "core_usb_print_int", (void *)core_usb_print_int_native, "(i)", NULL },
     { "core_usb_print_float", (void *)core_usb_print_float_native, "(F)", NULL },
     { "core_usb_print_bool", (void *)core_usb_print_bool_native, "(i)", NULL },
