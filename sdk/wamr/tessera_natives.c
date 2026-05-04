@@ -21,6 +21,7 @@
 #include "core_backup.h"
 #include "core_led.h"
 #include "core_nvm.h"
+#include "core_rng.h"
 #include "core_rtc.h"
 #include "core_timing.h"
 #include "core_usb.h"
@@ -97,6 +98,13 @@ static uint32_t core_nvm_size_native(wasm_exec_env_t env)
 {
     (void)env;
     return core_nvm_size();
+}
+
+/* core_rng_read  ()i  (category: rng) */
+static uint32_t core_rng_read_native(wasm_exec_env_t env)
+{
+    (void)env;
+    return core_rng_read();
 }
 
 /* core_rtc_init  ()  (category: rtc) */
@@ -244,6 +252,7 @@ NativeSymbol g_tessera_natives[] = {
     { "core_led_blink", (void *)core_led_blink_native, "(iii)", NULL },
     { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
     { "core_nvm_size", (void *)core_nvm_size_native, "()i", NULL },
+    { "core_rng_read", (void *)core_rng_read_native, "()i", NULL },
     { "core_rtc_init", (void *)core_rtc_init_native, "()", NULL },
     { "core_rtc_set_time", (void *)core_rtc_set_time_native, "(iii)", NULL },
     { "core_rtc_set_date", (void *)core_rtc_set_date_native, "(iiii)", NULL },

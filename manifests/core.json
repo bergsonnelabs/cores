@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@f4d34f7",
+  "source": "cores@91fba95",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -29,6 +29,10 @@
     "pwm": {
       "label": "Core.PWM",
       "icon": "◲"
+    },
+    "rng": {
+      "label": "Core.RNG",
+      "icon": "🎲"
     },
     "rtc": {
       "label": "Core.RTC",
@@ -483,6 +487,19 @@
         }
       ],
       "returns": "void"
+    },
+    {
+      "qname": [
+        "rng",
+        "read32"
+      ],
+      "symbol": "core_rng_read",
+      "header": "core_rng.h",
+      "category": "rng",
+      "description": "Read a single 32-bit random value (blocking). Returns 0 on timeout — check core_rng_error() if this happens.",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
     },
     {
       "qname": [
