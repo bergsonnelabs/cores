@@ -13,6 +13,18 @@
  *
  * @tessera category usb label=Core.USB icon=❝
  * @tessera event name=receive payload=byte:int
+ *
+ * @tessera coverage
+ *   id:    usb
+ *   name:  USB — virtual serial port (CDC)
+ *   page:  /docs/sdk/usb
+ *   blurb: Core.U / Core.H only. CDC virtual COM port — printf-style
+ *          output (print, print_int, print_float, print_bool) with
+ *          full Twin coverage (the simulator's CDC pane is a real-time
+ *          mirror), plus byte-level TX/RX, ring-buffer reads, and a
+ *          receive callback. The DSL `Core.USB.receive(byte:int)`
+ *          event is wired through coregen's USB dispatch when the
+ *          program subscribes.
  */
 
 #ifndef CORE_USB_H
@@ -51,6 +63,7 @@ static inline int core_usb_write(const uint8_t *buf, uint16_t len)
  * Print a string followed by a newline. Thin wrapper for DSL-style callers.
  *
  * @tessera expose category=usb icon=❝ name=print availability=Core.U,Core.H
+ * @tessera twin full
  * @param text The message to print.
  */
 static inline void core_usb_print(const char *s)
@@ -62,6 +75,7 @@ static inline void core_usb_print(const char *s)
  * Print a signed integer followed by a newline.
  *
  * @tessera expose category=usb name=print_int availability=Core.U,Core.H
+ * @tessera twin full
  * @param value The integer to print (decimal).
  */
 static inline void core_usb_print_int(int v)
@@ -73,6 +87,7 @@ static inline void core_usb_print_int(int v)
  * Print a double with a newline. %g trims trailing zeros for readability.
  *
  * @tessera expose category=usb name=print_float availability=Core.U,Core.H
+ * @tessera twin full
  * @param value The float to print.
  */
 static inline void core_usb_print_float(double v)
@@ -84,6 +99,7 @@ static inline void core_usb_print_float(double v)
  * Print "true" / "false" followed by a newline.
  *
  * @tessera expose category=usb name=print_bool availability=Core.U,Core.H
+ * @tessera twin full
  * @param value {bool} The boolean to print.
  */
 static inline void core_usb_print_bool(int v)
@@ -125,5 +141,34 @@ static inline int core_usb_try_read(uint8_t *byte)
 {
     return hal_usb_cdc_rx_try(byte);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=M title="No DSL surface for receive (byte read / available)"
+//   The Core.USB.receive event handles inbound bytes one at a time,
+//   but DSL programs can't poll core_usb_available() / core_usb_read().
+//   That makes message-framed protocols (read N bytes after a header)
+//   awkward — the workaround is to accumulate bytes in a DSL array
+//   inside the receive handler.
+//
+// @tessera unsupported tier=2 value=L title="No DSL printf-with-formatting"
+//   print_int / float / bool emit one value per call, each on its own
+//   line. For multi-field log lines DSL programs concatenate with
+//   string ops (or call print multiple times). A `print_fmt(template,
+//   ...args)` host call would be the next step.
+//
+// @tessera unsupported tier=1 value=H title="USB MSC (mass storage)"
+//   SDK roadmap Tier 3: drag-and-drop firmware / datalog volume needs
+//   SCSI + FAT. Not surfaced.
+//
+// @tessera unsupported tier=1 value=H title="USB Host mode"
+//   Core.H has DRD silicon but the wrapper is device-only. Connecting
+//   USB peripherals to a Core requires reaching into the lower-layer
+//   USB stack.
+//
+// @tessera unsupported tier=1 value=M title="No CDC line-coding callback"
+//   Host-side baud changes (1200-touch bootloader trigger included)
+//   land in the lower stack. The header doesn't expose a hook for
+//   programs that want to react to baud / DTR changes.
 
 #endif /* CORE_USB_H */

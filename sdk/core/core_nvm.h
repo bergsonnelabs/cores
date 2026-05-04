@@ -18,6 +18,16 @@
  * internally (not yet implemented).
  *
  * @tessera category nvm label=Core.NVM icon=▤
+ *
+ * @tessera coverage
+ *   id:    nvm
+ *   name:  NVM — non-volatile memory
+ *   blurb: Byte-level read / write across all four Cores. Core.L hits
+ *          true EEPROM (512 B, no erase needed); Core.U / Core.W /
+ *          Core.H are flash-emulated and currently stubbed out — writes
+ *          return -1 until flash-emu lands. Tier 2 only exposes
+ *          `nvm.size`; the read / write surface is escape-to-C until
+ *          the DSL grows a way to bind the (offset, ptr, len) ABI.
  */
 
 #ifndef CORE_NVM_H
@@ -123,10 +133,36 @@ static inline int core_nvm_write(uint32_t offset, const void *data, uint32_t len
  * Returns the total NVM size in bytes for this Core.
  *
  * @tessera expose category=nvm name=size returns=int
+ * @tessera twin noop
  */
 static inline uint32_t core_nvm_size(void)
 {
     return CORE_NVM_SIZE;
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No DSL read / write surface"
+//   Tier 2 only exposes nvm.size — actual read / write require pointer
+//   args, which the current host-call ABI can't represent. The DSL
+//   needs a typed-buffer or scoped-handle pattern (similar to how
+//   array hosts work) before nvm.read / nvm.write can land.
+//
+// @tessera unsupported tier=2 value=H title="Twin has no persistent backing store"
+//   Even if nvm.read / write existed, the simulator wouldn't persist
+//   bytes across Reset — see the same issue called out for Backup.
+//   Persistent slot state across worker resets would close both gaps.
+//
+// @tessera unsupported tier=1 value=H title="Flash emulation missing on U / W / H"
+//   core_nvm_write returns -1 on Core.U / Core.W / Core.H. Tracked in
+//   the SDK roadmap and called out in the Tessera A4cd PR notes —
+//   blocked on a flash-emu layer in core_nvm with wear-leveling. Until
+//   it lands, on-Core programs that need persistent state are limited
+//   to backup registers (32 × uint32_t).
+//
+// @tessera unsupported tier=1 value=M title="No erase / wear-tracking API"
+//   Even the EEPROM path doesn't surface erase, page count, or remaining
+//   write cycles. Long-running data-logger applications can't budget
+//   their write rate against EEPROM endurance.
 
 #endif /* CORE_NVM_H */

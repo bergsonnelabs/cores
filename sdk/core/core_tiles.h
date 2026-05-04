@@ -9,6 +9,16 @@
  *
  * The correct bus type is resolved at compile time via C11 _Generic.
  * Passing the wrong type is a compile error.
+ *
+ * @tessera coverage
+ *   id:    tiles
+ *   name:  Tiles — Cores ↔ Kiln bridge
+ *   blurb: Tier 1 only. Header-only adapter that wraps a core_i2c_t* /
+ *          core_spi_t* into the tiles_pal_t* shape Kiln tile drivers
+ *          consume. C11 _Generic resolves the bus type at compile
+ *          time; the resulting hal struct is cached per bus pointer
+ *          (max 4 per bus type). Used by every tile val / hardware
+ *          test in the SDK; not user-facing in the DSL.
  */
 
 #ifndef CORE_TILES_H
@@ -162,5 +172,19 @@ static inline tiles_pal_t *_core_tiles_pal_spi(core_spi_t *bus)
     core_i2c_t*: _core_tiles_pal_i2c,      \
     core_spi_t*: _core_tiles_pal_spi       \
 )(bus)
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=1 value=M title="Hard cap of 4 cached PALs per bus type"
+//   The internal slot table is sized to 4. Designs with >4 simultaneous
+//   I2C buses (or >4 SPI buses) will silently route extras to slot 0,
+//   which corrupts the cached function pointers if the bus types
+//   differ. No current Core has that many buses but the cap is
+//   undocumented for future-proofing.
+//
+// @tessera unsupported tier=1 value=L title="No bus / address discovery"
+//   Tile drivers receive a bare tiles_pal_t* and a tile JSON; there's
+//   no wrapper here that walks coregen's tile_handles.h to enumerate
+//   "what tiles are on what bus." Each test builds the wiring by hand.
 
 #endif /* CORE_TILES_H */

@@ -18,6 +18,17 @@
  * @tessera category pad label=Core.Pad icon=◼
  * @tessera event name=rising payload=pad:int
  * @tessera event name=falling payload=pad:int
+ *
+ * @tessera coverage
+ *   id:    gpio
+ *   name:  GPIO — pad-level I/O
+ *   page:  /docs/sdk/gpio
+ *   blurb: Pad-numbered GPIO API. Tier 2 helpers (write/read/toggle) take
+ *          a pad number and resolve the port/pin from coregen's tables.
+ *          Tier 1 helpers configure pad mode (output / open-drain / input
+ *          / analog / speed) and EXTI callbacks — they sit below the DSL
+ *          surface, called by the framework at init and by escape-to-C
+ *          users who want explicit control.
  */
 
 #ifndef CORE_PAD_H
@@ -77,6 +88,7 @@ static inline void core_pad_input(uint8_t pad, uint32_t pull)
  * Set a pad high (ON) or low (OFF).
  *
  * @tessera expose category=pad name=write
+ * @tessera twin full
  * @param pad [1..64] Tile pad number.
  * @param state [0..1] 0 for low, 1 for high.
  */
@@ -89,6 +101,7 @@ static inline void core_pad_write(uint8_t pad, int state)
  * Read a pad. Returns 0 or 1.
  *
  * @tessera expose category=pad name=read returns=bool
+ * @tessera twin full
  * @param pad [1..64] Tile pad number.
  */
 static inline int core_pad_read(uint8_t pad)
@@ -100,6 +113,7 @@ static inline int core_pad_read(uint8_t pad)
  * Toggle a pad output.
  *
  * @tessera expose category=pad name=toggle
+ * @tessera twin full
  * @param pad [1..64] Tile pad number.
  */
 static inline void core_pad_toggle(uint8_t pad)
@@ -161,5 +175,26 @@ static inline void core_pad_on_change_stop(uint8_t pad)
 /* ---- Backward compatibility ---- */
 #define core_on_change       core_pad_on_change
 #define core_on_change_stop  core_pad_on_change_stop
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="WAMR natives need per-project codegen"
+//   core_pad_write / core_pad_read / core_pad_toggle reach into
+//   coregen-emitted pad lookup tables, so they can't sit in the static
+//   tessera_natives.c shipped with the SDK. The codegen path that emits
+//   per-project natives alongside core_init.c is on the WAMR roadmap.
+//   Until it lands, on-Core Wasm can't call any pad function.
+//
+// @tessera unsupported tier=2 value=M title="No DSL access to slew-rate / pull / drive-strength"
+//   Tier 2 exposes write/read/toggle only. core_pad_speed,
+//   core_pad_output_od pull-config, and the analog-mode setter are
+//   reachable only by escaping to C. A Tier 2 wrapper (or @tessera expose
+//   annotation) for slew-rate would let DSL programs tune SPI/UART rise
+//   times without leaving the IDE.
+//
+// @tessera unsupported tier=2 value=L title="No bulk pad write / read"
+//   Each call writes one pad. A vector form (mask + value) would let
+//   synchronized buses or LED matrices update pads in a single BSRR
+//   write, avoiding per-pad jitter.
 
 #endif /* CORE_PAD_H */

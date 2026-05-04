@@ -9,6 +9,17 @@
  * Advanced:
  *   core_deep_sleep()         — enter Stop (caller manages wakeup + clock recovery)
  *   core_shutdown()           — enter Standby (caller manages wakeup)
+ *
+ * @tessera coverage
+ *   id:    power
+ *   name:  Power — sleep / Stop / Standby
+ *   page:  /docs/sdk/system
+ *   blurb: Tier 1 only. Sleep, Stop, and Standby helpers with auto-
+ *          clock-recovery on wake (Stop) or full reset (Standby), plus
+ *          GPIO-edge / RTC-timer wakeup variants. Backup-domain wakeup
+ *          status (`core_woke_from_standby`) lives here too. The
+ *          watchdog re-export is here for backward compatibility — the
+ *          canonical surface is in core_watchdog.h.
  */
 
 #ifndef CORE_POWER_H
@@ -225,5 +236,35 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 {
     core_watchdog_start(seconds * 1000);
 }
+
+/* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
+
+// @tessera unsupported tier=2 value=H title="No DSL surface for sleep / Stop / Standby"
+//   The whole power-management API is escape-to-C. DSL programs can't
+//   say "sleep until pad rises" or "stop for 30 s, then resume."
+//   Mapping the simpler verbs (sleep, stop_for, standby_for) onto the
+//   Tessera host-call ABI is straightforward; the wake-on-pad variants
+//   need the EXTI handler bridge + a way to express "block until."
+//
+// @tessera unsupported tier=1 value=H title="Stop mode broken on Core.L / Core.W"
+//   Per the SDK roadmap: Core.L's RTC wakeup hangs, Core.W's stop mode
+//   is compile-only. Only Core.U and Core.H are verified end-to-end
+//   for stop_for / standby_for. Programs targeting battery operation
+//   on the WBA / L011 should not rely on this header yet.
+//
+// @tessera unsupported tier=1 value=M title="WKUP-pin Standby is L4-only"
+//   core_standby_until_on_change is implemented for STM32L422 only —
+//   Core.U.2's PA0/PA2 WKUP pins. Other Cores hit the (void) fallback
+//   and return without entering Standby.
+//
+// @tessera unsupported tier=1 value=M title="No LPTIM (low-power timer) wakeup"
+//   The SDK roadmap flags LPTIM as Tier 1 high-impact: it runs in Stop
+//   without the RTC and gives finer wakeup granularity than seconds.
+//   Not wrapped here yet.
+//
+// @tessera unsupported tier=1 value=L title="No autonomous-mode peripherals (Core.W)"
+//   The WBA's Stop2 autonomous mode (ADC / SPI / I2C / UART operating
+//   while the CPU sleeps) is on the roadmap as Tier 3 — none of it is
+//   surfaced through core_power yet.
 
 #endif /* CORE_POWER_H */
