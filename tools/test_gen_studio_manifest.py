@@ -317,7 +317,7 @@ class DoxyParamNameAlignmentAfterStripping(unittest.TestCase):
 
 
 class LoadBusAddresses(unittest.TestCase):
-    """`load_bus_addresses` reads a kiln tile-definition JSON and
+    """`load_bus_addresses` reads a tile-definition JSON and
     surfaces `interfaces[].parameters.addresses` onto the manifest,
     keyed by bus name."""
 

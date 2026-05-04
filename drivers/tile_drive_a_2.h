@@ -1,0 +1,853 @@
+/**
+ * @file   tile_drive_a_2.h
+ * @brief  Dual-channel audio output driver for the Drive.A.2 tile
+ *         (DAC63202W smart DAC + 2x TPA2028D1 Class-D amplifiers).
+ *         Supports I2C and SPI bus access via tiles_pal_t.
+ * @version 3.1.0
+ *
+ * The Drive.A.2 tile provides two independent audio output channels,
+ * each consisting of a 12-bit DAC channel feeding a 3W Class-D amplifier.
+ *
+ * DAC features (DAC63202W):
+ *   - 12-bit resolution, dual channel
+ *   - Voltage output with configurable gain (1x, 1.5x, 2x, 3x, 4x)
+ *   - Internal 1.21V reference or VDD/external reference
+ *   - Built-in waveform generation: sine, triangle, sawtooth
+ *   - I2C (up to 1 MHz) or SPI (up to 50 MHz), auto-detected at boot
+ *
+ * Amplifier features (TPA2028D1, x2):
+ *   - 3W into 4 ohm, 880 mW into 8 ohm per channel
+ *   - I2C-programmable gain: -28 dB to +30 dB in 1 dB steps
+ *   - AGC with configurable compression, attack/release/hold times
+ *   - Both amplifiers share I2C address 0x58 — writes affect both
+ *
+ * In SPI mode, only the DAC is controllable; amplifier functions
+ * become no-ops since the I2C bus pins are repurposed for SPI.
+ *
+ * Quick start (I2C — DAC + amplifiers):
+ * @code
+ *   #include "core_tiles.h"  // provides core_tiles_pal()
+ *
+ *   tile_t dac;
+ *   tiles_pal_t *hal = core_tiles_pal(&core_i2c1);
+ *   tile_drive_a_2_init(hal, 0, &dac, NULL);
+ *   if (tile_is_ready(&dac)) {
+ *       tile_drive_a_2_set(&dac, 0, 2048);       // Ch 0 mid-scale
+ *       tile_drive_a_2_amp_set_gain(&dac, 12);    // +12 dB both amps
+ *   }
+ * @endcode
+ *
+ * Quick start (SPI — DAC only, no amplifier control):
+ * @code
+ *   #include "core_tiles.h"
+ *
+ *   tile_t dac;
+ *   tiles_pal_t *hal = core_tiles_pal(&core_spi1);
+ *   tile_drive_a_2_init(hal, 0, &dac, NULL);  // instance = CS index
+ *   tile_drive_a_2_set_mv(&dac, 0, 1500);     // 1.5 V on channel 0
+ * @endcode
+ *
+ * Datasheet (DAC): https://www.ti.com/product/DAC63202W
+ * Datasheet (Amp): https://www.ti.com/product/TPA2028D1
+ *
+ * @studio tile label=Drive.A.2 icon=♬
+ *
+ * Driver gaps (chip capabilities not exposed by this driver):
+ *
+ * @studio unsupported severity=advanced category="DAC PWM-output mode (FBx pins)"
+ *   The DAC63202W FB0 / FB1 pins (package balls B2 / C2) can be
+ *   configured as comparator / PWM outputs for driving external
+ *   power-stage gates. On the Drive.A.2 tile these pins are tied
+ *   to the on-board TPA2028D1 amplifier inputs (closed-loop voltage-
+ *   output feedback) and are NOT routed to any tile-connector pad —
+ *   so even if the driver enabled PWM mode, no Core GPIO could
+ *   observe or use the output. Closing this gap requires a tile
+ *   hardware revision that breaks FBx out to a pad.
+ *
+ * @studio unsupported severity=niche category="Per-amp independent control"
+ *   The tile carries 2× TPA2028D1 amps wired to a single shared I²C
+ *   bus, and the TPA2028D1 has a fixed factory I²C address (0x58) —
+ *   any write at 0x58 is acknowledged by both amps simultaneously.
+ *   Independent left / right gain, AGC, or shutdown therefore can't
+ *   be achieved in software; closing this gap requires either an
+ *   I²C-mux on the tile or amp ICs with selectable addresses.
+ */
+
+#ifndef INC_TILE_DRIVE_A_2_H_
+#define INC_TILE_DRIVE_A_2_H_
+
+#include "tiles.h"
+#include <stdint.h>
+
+/* -------------------------------------------------------------- */
+/* Driver version                                                  */
+/* -------------------------------------------------------------- */
+
+#define TILE_DRIVE_A_2_VERSION_MAJOR  3
+#define TILE_DRIVE_A_2_VERSION_MINOR  1
+#define TILE_DRIVE_A_2_VERSION_PATCH  0
+
+TILES_CHECK_VERSION(1, 0);
+
+/* -------------------------------------------------------------- */
+/* Instance mapping                                                */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Instance-to-address mapping for Drive.A.2.
+ *
+ * | Instance | DAC addr | A0 pin config             |
+ * |----------|----------|---------------------------|
+ * | 0        | 0x49     | Float / VDD (default)     |
+ * | 1        | 0x48     | GND                       |
+ * | 2        | 0x4A     | SDA                       |
+ * | 3        | 0x4B     | SCL                       |
+ *
+ * For SPI, instance selects the CS index (0–7).
+ *
+ * @note  Tile pads 2 and 3 have weak pull-ups that set I2C mode
+ *        and the default address (0x49) at power-on.
+ */
+#define DAC63202W_I2C_ADDR_DEFAULT   0x49  /**< A0 → VDD (default) */
+#define DAC63202W_I2C_ADDR_GND       0x48  /**< A0 → GND */
+#define DAC63202W_I2C_ADDR_SDA       0x4A  /**< A0 → SDA */
+#define DAC63202W_I2C_ADDR_SCL       0x4B  /**< A0 → SCL */
+
+#define TPA2028D1_I2C_ADDR           0x58  /**< Fixed (both amps) */
+
+/* -------------------------------------------------------------- */
+/* DAC63202W register map                                          */
+/* -------------------------------------------------------------- */
+
+/* Per-channel registers (X = 0 uses 0x13–0x1C, X = 1 uses 0x01–0x06/0x19) */
+#define DAC63202W_REG_DAC_0_MARGIN_HIGH   0x13
+#define DAC63202W_REG_DAC_0_MARGIN_LOW    0x14
+#define DAC63202W_REG_DAC_0_VOUT_CMP_CFG  0x15
+#define DAC63202W_REG_DAC_0_IOUT_MISC_CFG 0x16
+#define DAC63202W_REG_DAC_0_CMP_MODE_CFG  0x17
+#define DAC63202W_REG_DAC_0_FUNC_CFG      0x18
+#define DAC63202W_REG_DAC_0_DATA          0x1C
+
+#define DAC63202W_REG_DAC_1_MARGIN_HIGH   0x01
+#define DAC63202W_REG_DAC_1_MARGIN_LOW    0x02
+#define DAC63202W_REG_DAC_1_VOUT_CMP_CFG  0x03
+#define DAC63202W_REG_DAC_1_IOUT_MISC_CFG 0x04
+#define DAC63202W_REG_DAC_1_CMP_MODE_CFG  0x05
+#define DAC63202W_REG_DAC_1_FUNC_CFG      0x06
+#define DAC63202W_REG_DAC_1_DATA          0x19
+
+/* Shared registers */
+#define DAC63202W_REG_COMMON_CONFIG       0x1F
+#define DAC63202W_REG_COMMON_TRIGGER      0x20
+#define DAC63202W_REG_COMMON_DAC_TRIG     0x21
+#define DAC63202W_REG_GENERAL_STATUS      0x22
+
+/** @brief  Expected DEVICE-ID value in GENERAL-STATUS bits[7:2]. */
+#define DAC63202W_DEVICE_ID               0x06
+
+/** @brief  Internal reference voltage in mV. */
+#define DAC63202W_VREF_INT_MV             1210
+
+/** @brief  DAC resolution in bits. */
+#define DAC63202W_DAC_BITS                12
+#define DAC63202W_DAC_MAX                 ((1 << DAC63202W_DAC_BITS) - 1)
+
+/* -------------------------------------------------------------- */
+/* TPA2028D1 register map                                          */
+/* -------------------------------------------------------------- */
+
+#define TPA2028D1_REG_FUNC_CTRL           0x01  /**< EN, SWS, FAULT, Thermal, NG_EN */
+#define TPA2028D1_REG_AGC_ATTACK          0x02  /**< Attack time [5:0] */
+#define TPA2028D1_REG_AGC_RELEASE         0x03  /**< Release time [5:0] */
+#define TPA2028D1_REG_AGC_HOLD            0x04  /**< Hold time [5:0] */
+#define TPA2028D1_REG_AGC_GAIN            0x05  /**< Fixed gain [5:0], two's complement */
+#define TPA2028D1_REG_AGC_CTRL1           0x06  /**< Limiter disable, noise gate, limiter level */
+#define TPA2028D1_REG_AGC_CTRL2           0x07  /**< Max gain [7:4], compression ratio [1:0] */
+
+/* -------------------------------------------------------------- */
+/* DAC gain / reference selection                                  */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  DAC output voltage gain setting.
+ *
+ * Maps directly to VOUT-GAIN-X bits[12:10] in DAC-X-VOUT-CMP-CONFIG.
+ * Internal reference gains require EN-INT-REF = 1 in COMMON-CONFIG.
+ */
+typedef enum {
+    DRIVE_A_2_GAIN_1X_EXT   = 0,  /**< 1x, external VREF pin */
+    DRIVE_A_2_GAIN_1X_VDD   = 1,  /**< 1x, VDD as reference (default) */
+    DRIVE_A_2_GAIN_1P5X_INT = 2,  /**< 1.5x, internal 1.21V → 0–1.815V */
+    DRIVE_A_2_GAIN_2X_INT   = 3,  /**< 2x, internal 1.21V → 0–2.42V */
+    DRIVE_A_2_GAIN_3X_INT   = 4,  /**< 3x, internal 1.21V → 0–3.63V */
+    DRIVE_A_2_GAIN_4X_INT   = 5,  /**< 4x, internal 1.21V → 0–4.84V */
+} drive_a_2_gain_t;
+
+/* -------------------------------------------------------------- */
+/* Waveform generation                                             */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Built-in waveform shapes for the DAC function generator.
+ *
+ * Maps to FUNC-CONFIG-X bits[10:8] in DAC-X-FUNC-CONFIG.
+ * Use with set_waveform() / start_waveform() / stop_waveform().
+ */
+typedef enum {
+    DRIVE_A_2_WAVE_TRIANGLE = 0,  /**< Triangular wave */
+    DRIVE_A_2_WAVE_SAWTOOTH = 1,  /**< Sawtooth (ramp up) */
+    DRIVE_A_2_WAVE_INV_SAW  = 2,  /**< Inverse sawtooth (ramp down) */
+    DRIVE_A_2_WAVE_SINE     = 4,  /**< Sine wave */
+    DRIVE_A_2_WAVE_OFF      = 7,  /**< Function generation disabled */
+} drive_a_2_wave_t;
+
+/**
+ * @brief  Slew-rate control (time per code step) for the DAC.
+ *
+ * Maps to SLEW-RATE-X bits[3:0] in DAC-X-FUNC-CONFIG. Combined with
+ * CODE-STEP-X this sets both the slewed-update ramp time
+ * (set_slew_rate / set_code_step) and the function-generator
+ * frequency.
+ *
+ * Time per step values from datasheet Table 6-6 (in linear-slew mode):
+ *   NONE  =    0 µs (no slew, default — output updates immediately)
+ *   4_US  =    4 µs        18_US =   18 µs        91_US  =   91.13 µs
+ *   8_US  =    8 µs        27_US =   27 µs        137_US =  136.69 µs
+ *   12_US =   12 µs        41_US =   40.5 µs      239_US =  239.20 µs
+ *                          61_US =   60.75 µs     419_US =  418.61 µs
+ *                                                 733_US =  732.56 µs
+ *                                                 1282_US = 1281.98 µs
+ *                                                 2564_US = 2563.96 µs
+ *                                                 5128_US = 5127.92 µs
+ */
+typedef enum {
+    DRIVE_A_2_SLEW_NONE     = 0x0,  /**< No slew (default) — immediate update */
+    DRIVE_A_2_SLEW_4_US     = 0x1,
+    DRIVE_A_2_SLEW_8_US     = 0x2,
+    DRIVE_A_2_SLEW_12_US    = 0x3,
+    DRIVE_A_2_SLEW_18_US    = 0x4,
+    DRIVE_A_2_SLEW_27_US    = 0x5,
+    DRIVE_A_2_SLEW_41_US    = 0x6,
+    DRIVE_A_2_SLEW_61_US    = 0x7,
+    DRIVE_A_2_SLEW_91_US    = 0x8,
+    DRIVE_A_2_SLEW_137_US   = 0x9,
+    DRIVE_A_2_SLEW_239_US   = 0xA,
+    DRIVE_A_2_SLEW_419_US   = 0xB,
+    DRIVE_A_2_SLEW_733_US   = 0xC,
+    DRIVE_A_2_SLEW_1282_US  = 0xD,
+    DRIVE_A_2_SLEW_2564_US  = 0xE,
+    DRIVE_A_2_SLEW_5128_US  = 0xF,
+} drive_a_2_slew_t;
+
+/**
+ * @brief  Code-step size (LSBs per slewed update tick) for the DAC.
+ *
+ * Maps to CODE-STEP-X bits[6:4] in DAC-X-FUNC-CONFIG. With slew
+ * enabled, the DAC moves toward DAC-X-DATA (or between MARGIN-LOW
+ * and MARGIN-HIGH for waveforms) by this many LSBs per slew tick.
+ */
+typedef enum {
+    DRIVE_A_2_STEP_1_LSB   = 0x0,  /**< 1 LSB per step (default — finest) */
+    DRIVE_A_2_STEP_2_LSB   = 0x1,
+    DRIVE_A_2_STEP_3_LSB   = 0x2,
+    DRIVE_A_2_STEP_4_LSB   = 0x3,
+    DRIVE_A_2_STEP_6_LSB   = 0x4,
+    DRIVE_A_2_STEP_8_LSB   = 0x5,
+    DRIVE_A_2_STEP_16_LSB  = 0x6,
+    DRIVE_A_2_STEP_32_LSB  = 0x7,
+} drive_a_2_step_t;
+
+/**
+ * @brief  Phase offset for the function generator (sine / triangle).
+ *
+ * Maps to PHASE-SEL-X bits[12:11] in DAC-X-FUNC-CONFIG. Useful for
+ * driving two channels in quadrature (e.g., 0° + 90°) for stereo
+ * effects or two-phase actuators.
+ */
+typedef enum {
+    DRIVE_A_2_PHASE_0    = 0,  /**< 0° (default) */
+    DRIVE_A_2_PHASE_120  = 1,  /**< 120° */
+    DRIVE_A_2_PHASE_240  = 2,  /**< 240° */
+    DRIVE_A_2_PHASE_90   = 3,  /**< 90° (quadrature) */
+} drive_a_2_phase_t;
+
+/* -------------------------------------------------------------- */
+/* Amplifier AGC / DRC                                             */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Amplifier compression ratio.
+ *
+ * Maps to bits[1:0] of TPA2028D1 register 0x07.
+ */
+typedef enum {
+    DRIVE_A_2_COMP_1_1 = 0,  /**< 1:1 — compression off */
+    DRIVE_A_2_COMP_2_1 = 1,  /**< 2:1 */
+    DRIVE_A_2_COMP_4_1 = 2,  /**< 4:1 (default) */
+    DRIVE_A_2_COMP_8_1 = 3,  /**< 8:1 */
+} drive_a_2_comp_t;
+
+/**
+ * @brief  Full AGC/DRC configuration for the TPA2028D1 amplifiers.
+ *
+ * Pass to tile_drive_a_2_amp_set_agc() to configure all AGC parameters.
+ * All fields default to the TPA2028D1 power-on defaults when zeroed.
+ */
+typedef struct {
+    uint8_t compression;     /**< drive_a_2_comp_t. 0 = 1:1 (off). */
+    int8_t  fixed_gain_db;   /**< -28 to +30 dB. 0 = 0 dB. */
+    uint8_t max_gain_db;     /**< 18 to 30 dB. 0 = 18 dB (use 30 for default). */
+    uint8_t limiter_level;   /**< 0–31 (0.5 dB steps from -6.5 dBV). 0 = -6.5 dBV. */
+    uint8_t attack;          /**< 0–63 (0.1067 ms per step). 0 = fastest. */
+    uint8_t release;         /**< 0–63 (0.0137 s per step). 0 = fastest. */
+    uint8_t hold;            /**< 0–63 (0.0137 s per step). 0 = disabled. */
+    uint8_t noise_gate;      /**< 0–3 (0=1mV, 1=4mV, 2=10mV, 3=20mV rms). */
+} drive_a_2_agc_cfg_t;
+
+/* -------------------------------------------------------------- */
+/* Tier-2 channel selector                                         */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Logical channel selector for the tier-2 runtime helpers
+ *         (`play_tone`, `set_volume_pct`, `mute`, …).
+ *
+ * Channel 0 maps to the DAC's VOUT0 → left amp; channel 1 to VOUT1
+ * → right amp. The two TPA2028D1 amps share I²C address 0x58 (see
+ * the per-amp constraint at the top of this file), so any
+ * amp-side write actually lands on both physical amps regardless
+ * of which logical channel was requested. Use BOTH when you want
+ * symmetric stereo behaviour and don't need the channel
+ * distinction at the API level.
+ */
+typedef enum {
+    DRIVE_A_2_CH_LEFT  = 0,  /**< DAC0 / left amp logically */
+    DRIVE_A_2_CH_RIGHT = 1,  /**< DAC1 / right amp logically */
+    DRIVE_A_2_CH_BOTH  = 2,  /**< Both DAC channels (amp writes still hit both) */
+} drive_a_2_channel_t;
+
+/* -------------------------------------------------------------- */
+/* Init configuration                                              */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Optional configuration for tile_drive_a_2_init().
+ *
+ * Pass NULL for defaults: 1x VDD gain on both channels, 6 dB amp gain.
+ */
+typedef struct {
+    uint8_t gain;            /**< DAC gain (drive_a_2_gain_t). Default: DRIVE_A_2_GAIN_1X_VDD. */
+    int8_t  amp_gain_db;     /**< Amplifier fixed gain in dB (-28 to +30). Default: 6 dB. */
+} drive_a_2_cfg_t;
+
+/* -------------------------------------------------------------- */
+/* Public API — Lifecycle                                          */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Check whether a DAC63202W is present on the bus.
+ *
+ * @param  hal       Platform HAL handle
+ * @param  instance  Instance index (see mapping table)
+ * @return 1 if device ACKs (I2C) or responds to WHO_AM_I (SPI), 0 otherwise
+ */
+uint8_t tile_drive_a_2_find(tiles_pal_t *hal, uint8_t instance);
+
+/**
+ * @brief  Initialize the Drive.A.2 tile.
+ *
+ * Resets the DAC, verifies DEVICE-ID, powers up both VOUT channels,
+ * configures gain, and (in I2C mode) probes and configures the amplifiers.
+ *
+ * @param  hal       Platform HAL handle (see core_tiles.h).
+ * @param  instance  Instance index (I2C: address variant, SPI: CS index)
+ * @param  tile      Pointer to tile handle (populated by this function)
+ * @param  cfg       Optional config, or NULL for defaults (1x VDD, 6 dB amp)
+ */
+void tile_drive_a_2_init(tiles_pal_t *hal, uint8_t instance,
+                         tile_t *tile, const drive_a_2_cfg_t *cfg);
+
+/**
+ * @brief  Enter low-power sleep.
+ * @studio expose category=tile name=sleep section=lifecycle
+ *
+ * Powers down both DAC VOUT channels (Hi-Z) and puts the amplifiers
+ * into software shutdown.
+ */
+void tile_drive_a_2_sleep(tile_t *tile);
+
+/**
+ * @brief  Wake from sleep.
+ * @studio expose category=tile name=wake section=lifecycle
+ *
+ * Powers up both DAC VOUT channels and re-enables the amplifiers.
+ * Restores cached gain settings.
+ */
+void tile_drive_a_2_wake(tile_t *tile);
+
+/**
+ * @brief  Perform a software reset of the DAC.
+ *
+ * All DAC registers return to defaults. tile->state becomes TILE_STATE_NONE;
+ * call init() again to reconfigure.
+ */
+void tile_drive_a_2_reset(tile_t *tile);
+
+/* -------------------------------------------------------------- */
+/* Public API — DAC output                                         */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Set a DAC channel output by raw 12-bit code (0–4095).
+ * @studio expose category=tile name=set section=runtime
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  value    12-bit DAC code (0 = 0V, 4095 = full-scale)
+ */
+void tile_drive_a_2_set(tile_t *tile, uint8_t channel, uint16_t value);
+
+/**
+ * @brief  Set a DAC channel output in millivolts.
+ * @studio expose category=tile name=set_mv section=runtime
+ *
+ * Computes the DAC code from the cached reference voltage and gain.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  mv       Desired output in millivolts
+ */
+void tile_drive_a_2_set_mv(tile_t *tile, uint8_t channel, uint16_t mv);
+
+/**
+ * @brief  Read back the current DAC code for a channel.
+ * @studio expose category=tile name=get returns=int section=runtime
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @return 12-bit DAC code currently loaded
+ */
+uint16_t tile_drive_a_2_get(tile_t *tile, uint8_t channel);
+
+/* -------------------------------------------------------------- */
+/* Public API — DAC configuration                                  */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Set the voltage output gain for a DAC channel.
+ * @studio expose category=tile name=set_gain section=config
+ *
+ * Automatically enables the internal reference when an internal-reference
+ * gain is selected, and updates the cached Vref for set_mv() calculations.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  gain     One of the drive_a_2_gain_t values
+ */
+void tile_drive_a_2_set_gain(tile_t *tile, uint8_t channel,
+                             drive_a_2_gain_t gain);
+
+/* -------------------------------------------------------------- */
+/* Public API — Waveform generation                                */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Configure the waveform shape for a channel.
+ * @studio expose category=tile name=set_waveform section=runtime
+ *
+ * Sets FUNC-CONFIG-X in DAC-X-FUNC-CONFIG. The waveform oscillates
+ * between DAC-X-MARGIN-LOW and DAC-X-MARGIN-HIGH at the configured
+ * slew rate. Call start_waveform() to begin output.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  wave     Waveform shape
+ */
+void tile_drive_a_2_set_waveform(tile_t *tile, uint8_t channel,
+                                 drive_a_2_wave_t wave);
+
+/**
+ * @brief  Start waveform generation on a channel.
+ * @studio expose category=tile name=start_waveform section=runtime
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ */
+void tile_drive_a_2_start_waveform(tile_t *tile, uint8_t channel);
+
+/**
+ * @brief  Stop waveform generation on a channel.
+ * @studio expose category=tile name=stop_waveform section=runtime
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ */
+void tile_drive_a_2_stop_waveform(tile_t *tile, uint8_t channel);
+
+/**
+ * @brief  Set the slew rate (time per code step) for a DAC channel.
+ * @studio expose category=tile name=set_slew_rate section=config
+ *
+ * Programs SLEW-RATE-X bits[3:0] in DAC-X-FUNC-CONFIG. Affects both
+ * slewed direct-output updates and the on-chip function generator's
+ * frequency. The default is no-slew — outputs settle as fast as the
+ * analog stage allows. Use a slower slew to soften zero-crossings
+ * for capacitive / inductive loads, or to dial in a target waveform
+ * frequency together with set_code_step() and set_margins().
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  slew     Slew-rate code (drive_a_2_slew_t value 0–15)
+ */
+void tile_drive_a_2_set_slew_rate(tile_t *tile, uint8_t channel,
+                                  drive_a_2_slew_t slew);
+
+/**
+ * @brief  Set the code step (LSBs per slew tick) for a DAC channel.
+ * @studio expose category=tile name=set_code_step section=config
+ *
+ * Programs CODE-STEP-X bits[6:4] in DAC-X-FUNC-CONFIG. Larger steps
+ * give faster ramps / higher waveform frequencies at the cost of
+ * coarser resolution.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  step     Code-step code (drive_a_2_step_t value 0–7)
+ */
+void tile_drive_a_2_set_code_step(tile_t *tile, uint8_t channel,
+                                  drive_a_2_step_t step);
+
+/**
+ * @brief  Set the upper / lower bounds for waveform & window-comparator modes.
+ * @studio expose category=tile name=set_margins section=config
+ *
+ * Writes DAC-X-MARGIN-HIGH and DAC-X-MARGIN-LOW. The function
+ * generator oscillates between these levels, and they also serve
+ * as the thresholds for the chip's window / hysteresis comparator
+ * modes. Values are 12-bit DAC codes; high must be > low.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  low      12-bit DAC code for the lower bound (0–4095)
+ * @param  high     12-bit DAC code for the upper bound (0–4095)
+ */
+void tile_drive_a_2_set_margins(tile_t *tile, uint8_t channel,
+                                uint16_t low, uint16_t high);
+
+/**
+ * @brief  Set the phase offset for the function generator.
+ * @studio expose category=tile name=set_phase section=config
+ *
+ * Programs PHASE-SEL-X bits[12:11] in DAC-X-FUNC-CONFIG. Take effect
+ * the next time start_waveform() is called. Use phase = 90° on one
+ * channel and 0° on the other to drive a quadrature pair.
+ *
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  phase    Phase offset (drive_a_2_phase_t)
+ */
+void tile_drive_a_2_set_phase(tile_t *tile, uint8_t channel,
+                              drive_a_2_phase_t phase);
+
+/**
+ * @brief  Configure the parametric on-chip waveform generator.
+ *
+ * Convenience helper that sets up the waveform shape, full-scale
+ * margins (0 → 4095), code step, and slew rate in one call. The
+ * resulting frequency is approximately:
+ *
+ *   f_triangle = 1 / (2 × time_step × ceil((margin_high − margin_low) / code_step))
+ *   f_sawtooth = 1 / (    time_step × ceil((margin_high − margin_low) / code_step + 1))
+ *
+ * Call start_waveform() to begin output once configured. For
+ * fine-grained control, call set_margins() / set_code_step() /
+ * set_slew_rate() / set_waveform() / set_phase() individually.
+ *
+ * @studio expose category=tile name=set_waveform_params section=config
+ * @param  tile     Tile handle
+ * @param  channel  0 or 1
+ * @param  wave     Waveform shape (drive_a_2_wave_t)
+ * @param  step     Code-step (drive_a_2_step_t)
+ * @param  slew     Time per step (drive_a_2_slew_t)
+ */
+void tile_drive_a_2_set_waveform_params(tile_t *tile, uint8_t channel,
+                                        drive_a_2_wave_t wave,
+                                        drive_a_2_step_t step,
+                                        drive_a_2_slew_t slew);
+
+/* -------------------------------------------------------------- */
+/* Public API — Amplifier control                                  */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Set the amplifier fixed gain.
+ * @studio expose category=tile name=amp_set_gain section=runtime
+ *
+ * Both TPA2028D1 amplifiers share I2C address 0x58, so this write
+ * affects both channels simultaneously.  No-op in SPI mode.
+ *
+ * @param  tile      Tile handle
+ * @param  gain_db   Gain in dB (-28 to +30). Clamped if out of range.
+ */
+void tile_drive_a_2_amp_set_gain(tile_t *tile, int8_t gain_db);
+
+/**
+ * @brief  Read the current amplifier fixed gain.
+ * @studio expose category=tile name=amp_get_gain returns=int section=runtime
+ *
+ * @param  tile  Tile handle
+ * @return Gain in dB (-28 to +30), or 0 if amp not available
+ */
+int8_t tile_drive_a_2_amp_get_gain(tile_t *tile);
+
+/**
+ * @brief  Enable the amplifiers (clear software shutdown).
+ * @studio expose category=tile name=amp_enable section=runtime
+ *
+ * No-op in SPI mode.
+ */
+void tile_drive_a_2_amp_enable(tile_t *tile);
+
+/**
+ * @brief  Disable the amplifiers (enter software shutdown).
+ * @studio expose category=tile name=amp_disable section=runtime
+ *
+ * No-op in SPI mode.
+ */
+void tile_drive_a_2_amp_disable(tile_t *tile);
+
+/**
+ * @brief  Configure the full AGC/DRC parameters.
+ * @studio expose category=tile name=amp_set_agc section=runtime
+ *
+ * Writes all AGC registers (attack, release, hold, fixed gain,
+ * limiter, compression, noise gate, max gain).  Affects both amps.
+ * No-op in SPI mode.
+ *
+ * @param  tile  Tile handle
+ * @param  cfg   AGC configuration
+ */
+void tile_drive_a_2_amp_set_agc(tile_t *tile, const drive_a_2_agc_cfg_t *cfg);
+
+/**
+ * @brief  Read the amplifier status register.
+ * @studio expose category=tile name=amp_read_status returns=int section=runtime
+ *
+ * Check bit 3 (FAULT) for short-circuit and bit 2 (Thermal) for
+ * over-temperature.  Write 0 to the respective bit to clear.
+ *
+ * @param  tile  Tile handle
+ * @return Raw register 0x01 value, or 0 if amp not available
+ */
+uint8_t tile_drive_a_2_amp_read_status(tile_t *tile);
+
+/* -------------------------------------------------------------- */
+/* Public API — Status                                             */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Read the DAC GENERAL-STATUS register.
+ * @studio expose category=tile name=read_status returns=int section=runtime
+ *
+ * Contains DEVICE-ID, VERSION-ID, NVM CRC status, and DAC busy flags.
+ *
+ * @param  tile  Tile handle
+ * @return 16-bit GENERAL-STATUS value
+ */
+uint16_t tile_drive_a_2_read_status(tile_t *tile);
+
+/* -------------------------------------------------------------- */
+/* Public API — NVM (shadow flash for power-on defaults)           */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Save the DAC's current register state into shadow NVM.
+ * @studio expose category=tile name=nvm_save section=config
+ *
+ * Triggers NVM-PROG in COMMON-TRIGGER. The DAC's user-programmable
+ * registers (gain, margins, slew, waveform shape, COMMON-CONFIG,
+ * etc. — see datasheet "highlighted gray" rows) are committed to
+ * non-volatile storage and become the new power-on defaults.
+ *
+ * Blocking: holds the bus busy for the NVM write cycle. Limited
+ * write endurance — TI specs ~1000 cycles. Use only for one-time
+ * factory tuning, not for runtime configuration storage.
+ *
+ * @param  tile  Tile handle
+ */
+void tile_drive_a_2_nvm_save(tile_t *tile);
+
+/**
+ * @brief  Reload all DAC registers from shadow NVM.
+ * @studio expose category=tile name=nvm_reload section=config
+ *
+ * Triggers NVM-RELOAD in COMMON-TRIGGER. Restores the saved
+ * power-on configuration without a full reset — equivalent to
+ * the load that happens automatically on POR. Blocks until the
+ * reload completes. Note that this resets the cached gain /
+ * vref state in the driver: call set_gain() afterwards if you
+ * need set_mv() to work correctly.
+ *
+ * @param  tile  Tile handle
+ */
+void tile_drive_a_2_nvm_reload(tile_t *tile);
+
+/* -------------------------------------------------------------- */
+/* Public API — Raw register access (escape hatches)               */
+/* -------------------------------------------------------------- */
+
+/**
+ * @brief  Read any 16-bit DAC63202W register.
+ * @studio expose category=tile name=read_reg returns=int section=advanced
+ *
+ * Escape hatch for advanced users wanting to touch registers the
+ * driver doesn't expose. Caller is responsible for not bricking
+ * the chip — most useful registers have typed setters above.
+ *
+ * @param  tile  Tile handle
+ * @param  reg   Register address (7-bit)
+ * @return 16-bit register value
+ */
+uint16_t tile_drive_a_2_read_reg(tile_t *tile, uint8_t reg);
+
+/**
+ * @brief  Write any 16-bit DAC63202W register.
+ * @studio expose category=tile name=write_reg section=advanced
+ *
+ * @param  tile   Tile handle
+ * @param  reg    Register address (7-bit)
+ * @param  value  16-bit value to write (big-endian on the wire)
+ */
+void tile_drive_a_2_write_reg(tile_t *tile, uint8_t reg, uint16_t value);
+
+/* ============================================================== */
+/* Runtime — tier-2 idiomatic helpers                              */
+/*                                                                  */
+/* These compose the tier-1 surface above into "do the thing the   */
+/* user wants to do" calls. Mode transitions, sample synthesis,    */
+/* and amp gating are handled internally so a caller can play a    */
+/* tone or sweep without reading the DAC63202W datasheet.          */
+/*                                                                  */
+/* Channel semantics: LEFT/RIGHT pick a single DAC channel; BOTH   */
+/* drives both DAC channels. The TPA2028D1 amp pair shares an I²C  */
+/* address, so amp-side writes (mute, volume, enable) affect both  */
+/* physical amps regardless of the requested channel.              */
+/* ============================================================== */
+
+/**
+ * @brief  Play a sine tone on `channel` for `ms` milliseconds.
+ * @studio expose category=tile name=play_tone section=runtime
+ *
+ * Configures DAC margins for full-scale swing, sets a sine
+ * waveform, and uses the on-chip parametric generator together
+ * with a software-tuned slew rate / code step to approximate
+ * `freq_hz` (audio range 50–5000 Hz works well; the chip's
+ * function generator is rough at the high end). The amplifier is
+ * unmuted for the duration of the tone and restored to its prior
+ * mute state on return.
+ *
+ * @note  Blocks for `ms` milliseconds via `hal->delay_ms`.
+ *
+ * @param  tile     Initialised tile handle
+ * @param  channel  DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH
+ * @param  freq_hz  Tone frequency in Hz (1–20000 useful range)
+ * @param  ms       Duration in milliseconds
+ */
+void tile_drive_a_2_play_tone(tile_t *tile, drive_a_2_channel_t channel,
+                              uint16_t freq_hz, uint16_t ms);
+
+/**
+ * @brief  Hold the channel at silence (DAC mid-scale) for `ms` ms.
+ * @studio expose category=tile name=play_silence section=runtime
+ *
+ * Stops any active waveform on `channel`, parks the DAC code at
+ * mid-scale (= zero differential at the amp input), and blocks
+ * for `ms` milliseconds. Useful to insert a precise gap between
+ * tones without toggling the amp shutdown — the amp stays alive
+ * but draws minimal idle current with no signal.
+ *
+ * @note  Blocks for `ms` milliseconds via `hal->delay_ms`.
+ *
+ * @param  tile     Initialised tile handle
+ * @param  channel  DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH
+ * @param  ms       Duration in milliseconds
+ */
+void tile_drive_a_2_play_silence(tile_t *tile, drive_a_2_channel_t channel,
+                                 uint16_t ms);
+
+/**
+ * @brief  Linear frequency sweep on `channel` from `start_hz` to `end_hz`.
+ * @studio expose category=tile name=play_chirp section=runtime
+ *
+ * Software sine-LUT chirp delivered through `set` (raw DAC code)
+ * at ~8 kHz update rate. Frequency advances linearly across `ms`.
+ * For ascending sweeps pass start < end; for descending, start >
+ * end. The amp is unmuted for the duration and restored to its
+ * prior mute state on return.
+ *
+ * @note  Blocks for `ms` milliseconds via `hal->delay_ms`.
+ *
+ * @param  tile      Initialised tile handle
+ * @param  channel   DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH
+ * @param  start_hz  Initial frequency in Hz
+ * @param  end_hz    Final frequency in Hz
+ * @param  ms        Sweep duration in milliseconds
+ */
+void tile_drive_a_2_play_chirp(tile_t *tile, drive_a_2_channel_t channel,
+                               uint16_t start_hz, uint16_t end_hz,
+                               uint16_t ms);
+
+/**
+ * @brief  Map a 0–100 percent volume to amplifier fixed gain.
+ * @studio expose category=tile name=set_volume_pct section=runtime
+ *
+ * Linear mapping from `pct` to the TPA2028D1's full -28 dB to
+ * +30 dB programmable range:
+ *
+ *   gain_db = -28 + (pct × 58) / 100
+ *
+ * 0 % → -28 dB (near-mute), 50 % → +1 dB, 100 % → +30 dB. The
+ * mapping is intentionally linear-in-dB rather than perceptually
+ * weighted; for finer dB control use @ref
+ * tile_drive_a_2_amp_set_gain directly. Because both amps share
+ * an I²C address, the channel argument is accepted for symmetry
+ * with the rest of the tier-2 API but the write lands on both
+ * physical amps.
+ *
+ * @param  tile     Initialised tile handle
+ * @param  channel  DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)
+ * @param  pct      0–100 percent (clamped if out of range)
+ */
+void tile_drive_a_2_set_volume_pct(tile_t *tile, drive_a_2_channel_t channel,
+                                   uint8_t pct);
+
+/**
+ * @brief  Mute `channel` by entering amp software shutdown.
+ * @studio expose category=tile name=mute section=runtime
+ *
+ * Stashes the current fixed-gain register so a later @ref
+ * tile_drive_a_2_unmute restores it byte-exact, then puts the amp
+ * pair into software shutdown (SWS=1). Both physical amps mute
+ * regardless of `channel` (shared I²C address).
+ *
+ * @param  tile     Initialised tile handle
+ * @param  channel  DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)
+ */
+void tile_drive_a_2_mute(tile_t *tile, drive_a_2_channel_t channel);
+
+/**
+ * @brief  Restore audio output after a previous `mute` call.
+ * @studio expose category=tile name=unmute section=runtime
+ *
+ * Re-applies the gain that was active at the time of @ref
+ * tile_drive_a_2_mute and clears software shutdown (SWS=0). If
+ * the channel was never muted by this driver instance the call
+ * still wakes the amp using whatever gain is currently in the
+ * register.
+ *
+ * @param  tile     Initialised tile handle
+ * @param  channel  DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)
+ */
+void tile_drive_a_2_unmute(tile_t *tile, drive_a_2_channel_t channel);
+
+#endif /* INC_TILE_DRIVE_A_2_H_ */

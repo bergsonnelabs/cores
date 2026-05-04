@@ -1,5 +1,5 @@
 TILE         := Core-L-1-a
-KILN_ENABLED := 0
+TILES_ENABLED := 0
 BLE_ENABLED  := 0
 BOOTLOADER   := 0
 PROJECT      := $(notdir $(CURDIR))
@@ -9,4 +9,4 @@ V            ?= 0
 
 .PHONY: all clean distclean flash flash-dfu size generate
 all clean distclean flash flash-dfu size generate:
-	$(MAKE) --no-print-directory -C $(SDK_ROOT) TILE=$(TILE) PROJECT=$(PROJECT) PROJECT_DIR=$(PROJECT_DIR) KILN_ENABLED=$(KILN_ENABLED) BLE_ENABLED=$(BLE_ENABLED) BOOTLOADER=$(BOOTLOADER) V=$(V) $@
+	$(MAKE) --no-print-directory -C $(SDK_ROOT) TILE=$(TILE) PROJECT=$(PROJECT) PROJECT_DIR=$(PROJECT_DIR) TILES_ENABLED=$(TILES_ENABLED) BLE_ENABLED=$(BLE_ENABLED) BOOTLOADER=$(BOOTLOADER) V=$(V) $@

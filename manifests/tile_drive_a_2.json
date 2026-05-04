@@ -1,0 +1,678 @@
+{
+  "schema": "studio-manifest/v1",
+  "source": "cores@c2415b1",
+  "tile": "Drive.A.2",
+  "palette": {
+    "label": "Drive.A.2",
+    "icon": "♬"
+  },
+  "driver": {
+    "prefix": "tile_drive_a_2",
+    "header": "tile_drive_a_2.h",
+    "version": "3.1.0"
+  },
+  "handle": {
+    "type": "tile_t",
+    "init": "tile_drive_a_2_init"
+  },
+  "hosts": [
+    {
+      "qname": [
+        "$slot",
+        "sleep"
+      ],
+      "symbol": "tile_drive_a_2_sleep",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Enter low-power sleep.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "wake"
+      ],
+      "symbol": "tile_drive_a_2_wake",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Wake from sleep.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set"
+      ],
+      "symbol": "tile_drive_a_2_set",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set a DAC channel output by raw 12-bit code (0–4095).",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "description": "12-bit DAC code (0 = 0V, 4095 = full-scale)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_mv"
+      ],
+      "symbol": "tile_drive_a_2_set_mv",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set a DAC channel output in millivolts.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "mv",
+          "type": "int",
+          "description": "Desired output in millivolts"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get"
+      ],
+      "symbol": "tile_drive_a_2_get",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Read back the current DAC code for a channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_gain"
+      ],
+      "symbol": "tile_drive_a_2_set_gain",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the voltage output gain for a DAC channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "gain",
+          "type": "?drive_a_2_gain_t",
+          "description": "One of the drive_a_2_gain_t values"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_waveform"
+      ],
+      "symbol": "tile_drive_a_2_set_waveform",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Configure the waveform shape for a channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "wave",
+          "type": "?drive_a_2_wave_t",
+          "description": "Waveform shape"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "start_waveform"
+      ],
+      "symbol": "tile_drive_a_2_start_waveform",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Start waveform generation on a channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "stop_waveform"
+      ],
+      "symbol": "tile_drive_a_2_stop_waveform",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Stop waveform generation on a channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_slew_rate"
+      ],
+      "symbol": "tile_drive_a_2_set_slew_rate",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the slew rate (time per code step) for a DAC channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "slew",
+          "type": "?drive_a_2_slew_t",
+          "description": "Slew-rate code (drive_a_2_slew_t value 0–15)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_code_step"
+      ],
+      "symbol": "tile_drive_a_2_set_code_step",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the code step (LSBs per slew tick) for a DAC channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "step",
+          "type": "?drive_a_2_step_t",
+          "description": "Code-step code (drive_a_2_step_t value 0–7)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_margins"
+      ],
+      "symbol": "tile_drive_a_2_set_margins",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the upper / lower bounds for waveform & window-comparator modes.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "low",
+          "type": "int",
+          "description": "12-bit DAC code for the lower bound (0–4095)"
+        },
+        {
+          "name": "high",
+          "type": "int",
+          "description": "12-bit DAC code for the upper bound (0–4095)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_phase"
+      ],
+      "symbol": "tile_drive_a_2_set_phase",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the phase offset for the function generator.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "phase",
+          "type": "?drive_a_2_phase_t",
+          "description": "Phase offset (drive_a_2_phase_t)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_waveform_params"
+      ],
+      "symbol": "tile_drive_a_2_set_waveform_params",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Configure the parametric on-chip waveform generator.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0 or 1"
+        },
+        {
+          "name": "wave",
+          "type": "?drive_a_2_wave_t",
+          "description": "Waveform shape (drive_a_2_wave_t)"
+        },
+        {
+          "name": "step",
+          "type": "?drive_a_2_step_t",
+          "description": "Code-step (drive_a_2_step_t)"
+        },
+        {
+          "name": "slew",
+          "type": "?drive_a_2_slew_t",
+          "description": "Time per step (drive_a_2_slew_t)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_set_gain"
+      ],
+      "symbol": "tile_drive_a_2_amp_set_gain",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Set the amplifier fixed gain.",
+      "params": [
+        {
+          "name": "gain_db",
+          "type": "int",
+          "description": "Gain in dB (-28 to +30). Clamped if out of range."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_get_gain"
+      ],
+      "symbol": "tile_drive_a_2_amp_get_gain",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Read the current amplifier fixed gain.",
+      "params": [],
+      "returns": "int8_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_enable"
+      ],
+      "symbol": "tile_drive_a_2_amp_enable",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Enable the amplifiers (clear software shutdown).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_disable"
+      ],
+      "symbol": "tile_drive_a_2_amp_disable",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Disable the amplifiers (enter software shutdown).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_set_agc"
+      ],
+      "symbol": "tile_drive_a_2_amp_set_agc",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Configure the full AGC/DRC parameters.",
+      "params": [
+        {
+          "name": "cfg",
+          "type": "?const drive_a_2_agc_cfg_t *",
+          "description": "AGC configuration"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amp_read_status"
+      ],
+      "symbol": "tile_drive_a_2_amp_read_status",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Read the amplifier status register.",
+      "params": [],
+      "returns": "uint8_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "read_status"
+      ],
+      "symbol": "tile_drive_a_2_read_status",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Read the DAC GENERAL-STATUS register.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "nvm_save"
+      ],
+      "symbol": "tile_drive_a_2_nvm_save",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Save the DAC's current register state into shadow NVM.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "nvm_reload"
+      ],
+      "symbol": "tile_drive_a_2_nvm_reload",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Reload all DAC registers from shadow NVM.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "read_reg"
+      ],
+      "symbol": "tile_drive_a_2_read_reg",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Read any 16-bit DAC63202W register.",
+      "params": [
+        {
+          "name": "reg",
+          "type": "int",
+          "description": "Register address (7-bit)"
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "write_reg"
+      ],
+      "symbol": "tile_drive_a_2_write_reg",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Write any 16-bit DAC63202W register.",
+      "params": [
+        {
+          "name": "reg",
+          "type": "int",
+          "description": "Register address (7-bit)"
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "description": "16-bit value to write (big-endian on the wire)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "play_tone"
+      ],
+      "symbol": "tile_drive_a_2_play_tone",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Play a sine tone on `channel` for `ms` milliseconds.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
+        },
+        {
+          "name": "freq_hz",
+          "type": "int",
+          "description": "Tone frequency in Hz (1–20000 useful range)"
+        },
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Duration in milliseconds"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "play_silence"
+      ],
+      "symbol": "tile_drive_a_2_play_silence",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Hold the channel at silence (DAC mid-scale) for `ms` ms.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
+        },
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Duration in milliseconds"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "play_chirp"
+      ],
+      "symbol": "tile_drive_a_2_play_chirp",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Linear frequency sweep on `channel` from `start_hz` to `end_hz`.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
+        },
+        {
+          "name": "start_hz",
+          "type": "int",
+          "description": "Initial frequency in Hz"
+        },
+        {
+          "name": "end_hz",
+          "type": "int",
+          "description": "Final frequency in Hz"
+        },
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Sweep duration in milliseconds"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_volume_pct"
+      ],
+      "symbol": "tile_drive_a_2_set_volume_pct",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Map a 0–100 percent volume to amplifier fixed gain.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
+        },
+        {
+          "name": "pct",
+          "type": "int",
+          "description": "0–100 percent (clamped if out of range)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "mute"
+      ],
+      "symbol": "tile_drive_a_2_mute",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Mute `channel` by entering amp software shutdown.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "unmute"
+      ],
+      "symbol": "tile_drive_a_2_unmute",
+      "header": "tile_drive_a_2.h",
+      "category": "tile",
+      "description": "Restore audio output after a previous `mute` call.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "?drive_a_2_channel_t",
+          "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    }
+  ],
+  "events": [],
+  "bus_addresses": {
+    "I2C": [
+      {
+        "address": "0x49",
+        "is_default": true
+      },
+      {
+        "address": "0x48"
+      },
+      {
+        "address": "0x4A"
+      },
+      {
+        "address": "0x4B"
+      }
+    ]
+  }
+}

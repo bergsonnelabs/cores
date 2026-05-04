@@ -1,0 +1,452 @@
+{
+  "schema": "studio-manifest/v1",
+  "source": "cores@c2415b1",
+  "tile": "Sense.MIC",
+  "palette": {
+    "label": "Sense.MIC",
+    "icon": "◉"
+  },
+  "driver": {
+    "prefix": "tile_sense_mic",
+    "header": "tile_sense_mic.h",
+    "version": "2.1.0"
+  },
+  "handle": {
+    "type": "tile_t",
+    "init": "tile_sense_mic_init"
+  },
+  "hosts": [
+    {
+      "qname": [
+        "$slot",
+        "sleep"
+      ],
+      "symbol": "tile_sense_mic_sleep",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Enter low-power mode (no conversions).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "wake"
+      ],
+      "symbol": "tile_sense_mic_wake",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Wake from sleep, restore previous configuration.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "reset"
+      ],
+      "symbol": "tile_sense_mic_reset",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Reset the config register to power-on defaults. Must call init() again.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_reference"
+      ],
+      "symbol": "tile_sense_mic_set_reference",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Change the reference voltage source.",
+      "params": [
+        {
+          "name": "ref",
+          "type": "?sense_mic_ref_t",
+          "description": "One of the sense_mic_ref_t values (VDD, INTERNAL, etc.)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_channel"
+      ],
+      "symbol": "tile_sense_mic_set_channel",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Change the active ADC channel.",
+      "params": [
+        {
+          "name": "ch",
+          "type": "?sense_mic_channel_t",
+          "description": "SENSE_MIC_CH_AIN0 (mic) or SENSE_MIC_CH_AIN1"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_scan_mode"
+      ],
+      "symbol": "tile_sense_mic_set_scan_mode",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Change the scan mode.",
+      "params": [
+        {
+          "name": "scan",
+          "type": "?sense_mic_scan_t",
+          "description": "SENSE_MIC_SCAN_SINGLE, SENSE_MIC_SCAN_UP, or SENSE_MIC_SCAN_8X"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_clock_mode"
+      ],
+      "symbol": "tile_sense_mic_set_clock_mode",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Switch the conversion-clock source.",
+      "params": [
+        {
+          "name": "clk",
+          "type": "?sense_mic_clock_t",
+          "description": "SENSE_MIC_CLOCK_INTERNAL or SENSE_MIC_CLOCK_EXTERNAL"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_polarity"
+      ],
+      "symbol": "tile_sense_mic_set_polarity",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Switch the output coding (unipolar vs bipolar).",
+      "params": [
+        {
+          "name": "pol",
+          "type": "?sense_mic_polarity_t",
+          "description": "SENSE_MIC_POLARITY_UNIPOLAR or SENSE_MIC_POLARITY_BIPOLAR"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_vref_mv"
+      ],
+      "symbol": "tile_sense_mic_get_vref_mv",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Get the currently configured reference voltage in millivolts.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_raw"
+      ],
+      "symbol": "tile_sense_mic_get_raw",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Read a single 12-bit ADC sample (0–4095).",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_raw_mv"
+      ],
+      "symbol": "tile_sense_mic_get_raw_mv",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Read a single sample and convert to millivolts.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_audio_sample"
+      ],
+      "symbol": "tile_sense_mic_get_audio_sample",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Read a single AC-coupled audio sample (signed, relative to DC offset).",
+      "params": [],
+      "returns": "int16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_dc_offset"
+      ],
+      "symbol": "tile_sense_mic_get_dc_offset",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Get the auto-calibrated DC offset (mic bias point).",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "calibrate"
+      ],
+      "symbol": "tile_sense_mic_calibrate",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Re-calibrate the DC offset (e.g., after changing reference).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_samples"
+      ],
+      "symbol": "tile_sense_mic_get_samples",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Burst-read N samples into a buffer.",
+      "params": [
+        {
+          "name": "buf",
+          "type": "int[]",
+          "description": "Output buffer (caller-allocated, min count entries)"
+        }
+      ],
+      "returns": "void",
+      "c_out_buffer": {
+        "name": "buf",
+        "type": "uint16_t",
+        "cap_param": "count"
+      },
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "dc_level"
+      ],
+      "symbol": "tile_sense_mic_dc_level",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Compute the DC level (mean) of a sample buffer.",
+      "params": [
+        {
+          "name": "samples",
+          "type": "int[]",
+          "description": "Sample buffer (typically from get_samples())."
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "c_in_buffer": {
+        "name": "samples",
+        "type": "uint16_t",
+        "length_param": "count"
+      },
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "peak_to_peak"
+      ],
+      "symbol": "tile_sense_mic_peak_to_peak",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Compute peak-to-peak amplitude of a sample buffer (raw counts).",
+      "params": [
+        {
+          "name": "samples",
+          "type": "int[]",
+          "description": "Sample buffer."
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "c_in_buffer": {
+        "name": "samples",
+        "type": "uint16_t",
+        "length_param": "count"
+      },
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "rms"
+      ],
+      "symbol": "tile_sense_mic_rms",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Compute RMS amplitude relative to a DC offset (raw counts).",
+      "params": [
+        {
+          "name": "samples",
+          "type": "int[]",
+          "description": "Sample buffer."
+        },
+        {
+          "name": "dc_offset",
+          "type": "int",
+          "description": "DC bias point (use dc_level() to measure, or pass 2048)."
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "c_in_buffer": {
+        "name": "samples",
+        "type": "uint16_t",
+        "length_param": "count"
+      },
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "amplitude_mv"
+      ],
+      "symbol": "tile_sense_mic_amplitude_mv",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Convert peak-to-peak raw amplitude to millivolts.",
+      "params": [
+        {
+          "name": "pp_raw",
+          "type": "int",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Peak-to-peak amplitude in raw ADC counts."
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "is_loud"
+      ],
+      "symbol": "tile_sense_mic_is_loud",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Quick \"is the room loud right now?\" check.",
+      "params": [
+        {
+          "name": "threshold_db",
+          "type": "int",
+          "description": "SPL threshold in 0.1 dB units (e.g. 700 = 70 dB)."
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "read_spl_db"
+      ],
+      "symbol": "tile_sense_mic_read_spl_db",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Read instantaneous SPL in 0.1 dB units.",
+      "params": [],
+      "returns": "int16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "wait_for_sound"
+      ],
+      "symbol": "tile_sense_mic_wait_for_sound",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Block until ambient SPL crosses a threshold (or timeout).",
+      "params": [
+        {
+          "name": "threshold_db",
+          "type": "int",
+          "description": "SPL threshold in 0.1 dB units."
+        },
+        {
+          "name": "timeout_ms",
+          "type": "int",
+          "description": "Maximum wait, in milliseconds."
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "detect_clap"
+      ],
+      "symbol": "tile_sense_mic_detect_clap",
+      "header": "tile_sense_mic.h",
+      "category": "tile",
+      "description": "Detect a clap pattern (two peaks, quiet brackets).",
+      "params": [
+        {
+          "name": "timeout_ms",
+          "type": "int",
+          "description": "Maximum wait, in milliseconds."
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t *"
+    }
+  ],
+  "events": [],
+  "bus_addresses": {
+    "I2C": [
+      {
+        "address": "0x36"
+      }
+    ]
+  }
+}

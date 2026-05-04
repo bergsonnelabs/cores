@@ -50,7 +50,7 @@ GDB     = $(PREFIX)gdb
 
 # Coregen
 COREGEN      = python3 $(SDK_DIR)tools/coregen/coregen.py
-TILE_JSON    = $(SDK_DIR)kiln/definitions/$(TILE).json
+TILE_JSON    = $(SDK_DIR)definitions/$(TILE).json
 CONFIG_JSON = $(PROJECT_DIR)/config.json
 GEN_DIR      = $(PROJECT_DIR)/coregen
 
@@ -194,15 +194,14 @@ ifeq ($(ROM_DFU),1)
   CFLAGS += -DROM_DFU
 endif
 
-# ---- Kiln driver support (optional) ----
-KILN_DIR ?= $(SDK_DIR)kiln
-KILN_ENABLED ?= 0
-ifeq ($(KILN_ENABLED),1)
+# ---- Tile driver support (optional) ----
+TILES_ENABLED ?= 0
+ifeq ($(TILES_ENABLED),1)
   -include $(GEN_DIR)/core_drivers.mk
-  CFLAGS += -I"$(KILN_DIR)" -I"$(KILN_DIR)/drivers" -I"$(KILN_DIR)/hal"
-  KILN_SOURCES =
-  ifdef KILN_DRIVERS
-    KILN_SOURCES += $(foreach drv,$(KILN_DRIVERS),$(KILN_DIR)/drivers/$(drv).c)
+  CFLAGS += -I"$(SDK_DIR)" -I"$(SDK_DIR)drivers" -I"$(SDK_DIR)hal"
+  TILES_SOURCES =
+  ifdef TILES_DRIVERS
+    TILES_SOURCES += $(foreach drv,$(TILES_DRIVERS),$(SDK_DIR)drivers/$(drv).c)
   endif
 endif
 
@@ -263,9 +262,9 @@ HAL_OBJS = $(addprefix $(BUILD_DIR)/sdk/hal/, $(notdir $(HAL_SOURCES:.c=.o)))
 GEN_OBJS = $(GEN_SOURCES:.c=.o)
 OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(GEN_OBJS)
 
-ifeq ($(KILN_ENABLED),1)
-  KILN_OBJS = $(addprefix $(BUILD_DIR)/kiln/, $(notdir $(KILN_SOURCES:.c=.o)))
-  OBJECTS += $(KILN_OBJS)
+ifeq ($(TILES_ENABLED),1)
+  TILES_OBJS = $(addprefix $(BUILD_DIR)/tiles/, $(notdir $(TILES_SOURCES:.c=.o)))
+  OBJECTS += $(TILES_OBJS)
 endif
 
 ifeq ($(BLE_ENABLED),1)
@@ -303,7 +302,7 @@ else
 endif
 
 # core_drivers.mk is an included makefile — it must have its own recipe so
-# GNU Make detects it was remade and restarts (picking up KILN_DRIVERS).
+# GNU Make detects it was remade and restarts (picking up TILES_DRIVERS).
 $(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
 	@mkdir -p $(GEN_DIR)
 	@echo "  GEN   $(TILE)"
@@ -367,14 +366,14 @@ $(BUILD_DIR)/sdk/device/%.o: $(SDK_DIR)sdk/device/%.s
 	$(LOG) "  AS    $(notdir $<)"
 	$(Q)$(AS) $(ASFLAGS) -c $< -o $@
 
-# Kiln driver sources
-ifeq ($(KILN_ENABLED),1)
-$(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/hal/%.c $(GEN_HEADERS)
+# Tile driver sources
+ifeq ($(TILES_ENABLED),1)
+$(BUILD_DIR)/tiles/%.o: $(SDK_DIR)hal/%.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
 
-$(BUILD_DIR)/kiln/%.o: $(KILN_DIR)/drivers/%.c $(GEN_HEADERS)
+$(BUILD_DIR)/tiles/%.o: $(SDK_DIR)drivers/%.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@

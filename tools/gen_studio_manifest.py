@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generate Studio manifests from cores + kiln headers.
+Generate Studio manifests from cores + tiles headers.
 
 Reads C headers, finds doxygen blocks containing `@studio expose ...`, and
 emits JSON manifests consumed by the Studio frontend palette and build
@@ -33,7 +33,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CORE_OUT_DIR = ROOT / "manifests"
-TILE_OUT_DIR = ROOT / "kiln" / "manifests"
+TILE_OUT_DIR = ROOT / "manifests"
 SDK_DOCS_OUT_DIR = ROOT / "manifests" / "sdk-docs"
 
 C_TO_DSL = {
@@ -800,7 +800,7 @@ def serialize(data):
 
 
 def load_bus_addresses(def_path):
-    """Extract per-bus address variants from a kiln tile-definition JSON.
+    """Extract per-bus address variants from a tile-definition JSON.
 
     Returns a dict keyed by bus name (upper-cased, e.g. "I2C"), each
     value a list of `{address, is_default}` entries pulled verbatim
@@ -914,85 +914,85 @@ def main():
 
     tile_sources = [
         {
-            "path": ROOT / "kiln/drivers/tile_display_rgbw.h",
-            "definition": ROOT / "kiln/definitions/Display-RGBW-a.json",
+            "path": ROOT / "drivers/tile_display_rgbw.h",
+            "definition": ROOT / "definitions/Display-RGBW-a.json",
             "prefix": "tile_display_rgbw",
             "init": "tile_display_rgbw_init",
             "version": "2.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_i_6p6.h",
-            "definition": ROOT / "kiln/definitions/Sense-I-6P6-a.json",
+            "path": ROOT / "drivers/tile_sense_i_6p6.h",
+            "definition": ROOT / "definitions/Sense-I-6P6-a.json",
             "prefix": "tile_sense_i_6p6",
             "init": "tile_sense_i_6p6_init",
             "version": "1.2.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_drive_h.h",
-            "definition": ROOT / "kiln/definitions/Drive-H-a.json",
+            "path": ROOT / "drivers/tile_drive_h.h",
+            "definition": ROOT / "definitions/Drive-H-a.json",
             "prefix": "tile_drive_h",
             "init": "tile_drive_h_init",
             "version": "4.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_mic.h",
-            "definition": ROOT / "kiln/definitions/Sense-MIC-a.json",
+            "path": ROOT / "drivers/tile_sense_mic.h",
+            "definition": ROOT / "definitions/Sense-MIC-a.json",
             "prefix": "tile_sense_mic",
             "init": "tile_sense_mic_init",
             "version": "2.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_i_9.h",
-            "definition": ROOT / "kiln/definitions/Sense-I-9-c.json",
+            "path": ROOT / "drivers/tile_sense_i_9.h",
+            "definition": ROOT / "definitions/Sense-I-9-c.json",
             "prefix": "tile_sense_i_9",
             "init": "tile_sense_i_9_init",
             "version": "3.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_t_c.h",
-            "definition": ROOT / "kiln/definitions/Sense-T-C-a.json",
+            "path": ROOT / "drivers/tile_sense_t_c.h",
+            "definition": ROOT / "definitions/Sense-T-C-a.json",
             "prefix": "tile_sense_t_c",
             "init": "tile_sense_t_c_init",
             "version": "1.2.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_drive_a_2.h",
-            "definition": ROOT / "kiln/definitions/Drive-A-2-a.json",
+            "path": ROOT / "drivers/tile_drive_a_2.h",
+            "definition": ROOT / "definitions/Drive-A-2-a.json",
             "prefix": "tile_drive_a_2",
             "init": "tile_drive_a_2_init",
             "version": "3.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_drive_p.h",
-            "definition": ROOT / "kiln/definitions/Drive-P-a.json",
+            "path": ROOT / "drivers/tile_drive_p.h",
+            "definition": ROOT / "definitions/Drive-P-a.json",
             "prefix": "tile_drive_p",
             "init": "tile_drive_p_init",
             "version": "3.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_power_l_1t.h",
-            "definition": ROOT / "kiln/definitions/Power-L-1T-b.json",
+            "path": ROOT / "drivers/tile_power_l_1t.h",
+            "definition": ROOT / "definitions/Power-L-1T-b.json",
             "prefix": "tile_power_l_1t",
             "init": "tile_power_l_1t_init",
             "version": "3.1.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_bp.h",
-            "definition": ROOT / "kiln/definitions/Sense-BP-a.json",
+            "path": ROOT / "drivers/tile_sense_bp.h",
+            "definition": ROOT / "definitions/Sense-BP-a.json",
             "prefix": "tile_sense_bp",
             "init": "tile_sense_bp_init",
             "version": "1.2.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_sense_tof.h",
-            "definition": ROOT / "kiln/definitions/Sense-TOF-a.json",
+            "path": ROOT / "drivers/tile_sense_tof.h",
+            "definition": ROOT / "definitions/Sense-TOF-a.json",
             "prefix": "tile_sense_tof",
             "init": "tile_sense_tof_init",
             "version": "1.2.0",
         },
         {
-            "path": ROOT / "kiln/drivers/tile_drive_dc_h.h",
-            "definition": ROOT / "kiln/definitions/Drive-DC-H-a.json",
+            "path": ROOT / "drivers/tile_drive_dc_h.h",
+            "definition": ROOT / "definitions/Drive-DC-H-a.json",
             "prefix": "tile_drive_dc_h",
             "init": "tile_drive_dc_h_init",
             "version": "4.1.0",
@@ -1030,7 +1030,7 @@ def main():
             "hosts": hosts,
             "events": events,
         }
-        # Carry per-bus address variants from the kiln tile-def JSON so
+        # Carry per-bus address variants from the tile-def JSON so
         # the frontend can cap how many instances of this tile fit on a
         # bus (I2C: one per address) and surface a variant selector when
         # the tile supports more than one. Absent/empty when the tile

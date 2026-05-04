@@ -1,0 +1,29 @@
+{
+  "rev": "a",
+  "name": "F.2",
+  "pads": [],
+  "power": [],
+  "family": "Core",
+  "package": {
+    "pads": 22,
+    "type": "T48",
+    "size_x": 4000,
+    "size_y": 8000,
+    "size_z": 0
+  },
+  "tile_id": 33,
+  "headline": "FPGA with more pads",
+  "components": [
+    {
+      "url": "",
+      "part": "ICE40x",
+      "datasheet": "",
+      "manufacturer": "Lattice Semiconductor"
+    }
+  ],
+  "interfaces": [],
+  "updated_at": "2026-03-12T20:53:18.576Z",
+  "description": "",
+  "json_version": "0.1",
+  "application_notes": []
+}

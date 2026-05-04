@@ -217,7 +217,7 @@ static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx
 // @studio unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
 //   SDK roadmap Tier 1 item: Core.W has an SPI v2 CSTART bug; Core.H
 //   builds but isn't hardware-verified. Only Core.U is end-to-end
-//   verified for polled + FIFO + Kiln-driver use. Tile drivers that
+//   verified for polled + FIFO + tile-driver use. Tile drivers that
 //   need SPI on W/H should expect rough edges.
 //
 // @studio unsupported tier=2 value=M title="DMA verified only on Core.U"

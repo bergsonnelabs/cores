@@ -12,7 +12,7 @@ The **Cores SDK** is a firmware development kit for the Tiletown **Core** family
 
 - A **HAL** (hardware abstraction layer) over STM32 LL drivers — no CubeIDE, no STM32Cube HAL
 - A **code generator** (`coregen`) that turns a declarative `config.json` into initialisation C code
-- The **Kiln tile driver framework** — platform-agnostic drivers for Tiletown sensor/actuator/power tiles
+- The **tile driver framework** — platform-agnostic drivers for Tiletown sensor/actuator/power tiles
 - A clean **build system** (Make + arm-none-eabi-gcc) targeting four Core MCU families
 
 ---
@@ -53,11 +53,13 @@ cores/
 │       ├── core-u.json         # Core.U (STM32L422) feature statuses
 │       ├── core-w.json         # Core.W (STM32WBA55) feature statuses
 │       └── core-h.json         # Core.H (STM32H523) feature statuses
-├── kiln/                       # Tile driver framework (git submodule)
-│   ├── tiles.h                 # Framework entry point — include this
-│   ├── tiles_pal.h             # Platform abstraction interface
-│   ├── definitions/            # Tile JSON definitions (28 tiles, canonical source)
-│   └── drivers/                # Tile peripheral drivers (tile_*.h/c)
+├── tiles.h                     # Tile framework entry point — include this
+├── tiles_pal.h                 # Platform abstraction interface
+├── definitions/                # Tile JSON definitions (canonical source)
+├── drivers/                    # Tile peripheral drivers (tile_*.h/c)
+├── hal/                        # Tile PAL adapters (Arduino / ESP-IDF / STM32)
+├── templates/                  # Driver scaffolding (tile_template.{h,c})
+├── manifests/                  # Generated manifests (per-tile + SDK)
 ├── tools/
 │   └── coregen/
 │       ├── coregen.py          # Main generator — entry point
@@ -82,7 +84,7 @@ cores/
 | `TILE` | `Core-U-2-a` | Core variant to build for |
 | `PROJECT` | `blink` | Project name (looks in `examples/` or `projects/`) |
 | `PROJECT_DIR` | `examples/$(PROJECT)` | Override if project lives elsewhere |
-| `KILN_ENABLED` | `0` or `1` | Auto-set: 1 if project has tiles configured |
+| `TILES_ENABLED` | `0` or `1` | Auto-set: 1 if project has tiles configured |
 | `BOOTLOADER` | from config.json | `1` = custom DFU bootloader (app at 0x08002000) |
 | `ROM_DFU` | from config.json | `1` = ROM DfuSe bootloader (app at 0x08000000) |
 | `V` | `0` | Verbosity (1 = show all commands) |
@@ -143,7 +145,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
 
 ```jsonc
 {
-  "core": "Core-W-b",            // Must match a kiln/definitions/<name>.json
+  "core": "Core-W-b",            // Must match a definitions/<name>.json
   "clock": "default",            // "low" | "default" | "max"  (see tile JSON for MHz values)
   "pads": {
     // Pad number (string) → function
@@ -169,7 +171,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
   },
   "tiles": [
     {
-      "tile": "Sense.I.9",       // Must match a kiln/definitions tile name
+      "tile": "Sense.I.9",       // Must match a definitions tile name
       "bus": "I2C1",             // Must be an enabled interface
       "instance": 0,             // I2C: selects address slot; SPI: per-CS-line instance
       "cs_pad": "8"              // SPI tiles only: which pad is this tile's CS
@@ -194,7 +196,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
 ```
 
 **Rules:**
-- `pads` values must match pad function names defined in the tile's JSON (`kiln/definitions/`)
+- `pads` values must match pad function names defined in the tile's JSON (`definitions/`)
 - `SPI*.CS` pads are configured as GPIO outputs (software CS via `hal_spi_set_cs()`)
 - All pads used by an interface must appear in `pads` before that interface is usable
 - A tile's `bus` must match a key in `interfaces`
@@ -378,11 +380,11 @@ Enums: `HAL_ADC_RES_6/8/10/12BIT` (all families, plus `14BIT` on H5). Sampling: 
 
 ---
 
-## Kiln Tile Driver Framework
+## Tile Driver Framework
 
 ### Framework Headers
 
-**`tiles.h`** — include in all tile drivers and user code when `KILN_ENABLED=1`:
+**`tiles.h`** — include in all tile drivers and user code when `TILES_ENABLED=1`:
 - Defines `tile_t` handle: `{ tiles_pal_t* hal, uint8_t id, tile_state_t state, ... }`
 - States: `TILE_STATE_NONE -> TILE_STATE_FOUND -> TILE_STATE_READY` (or `TILE_STATE_ERROR`)
 - `TILES_CHECK_VERSION(major, minor)` — compile-time SDK version assertion
@@ -400,7 +402,7 @@ tiles_pal_t *hal = core_tiles_pal(&core_spi1);   // SPI bus
 
 ### Tile Driver Conventions
 
-Drivers live in `kiln/drivers/tile_<family>_<name>.h/c`:
+Drivers live in `drivers/tile_<family>_<name>.h/c`:
 
 ```c
 // Minimum viable tile driver
@@ -454,7 +456,7 @@ int main(void) {
 3. **Platform-agnostic tile drivers.** Drivers must compile on Arduino/ESP-IDF/Zephyr. No STM32 types in `tile_*.h`.
 4. **config.json is the source of truth.** Never hand-edit generated files inside `coregen:begin/coregen:end` markers.
 5. **CS lines are per-tile, not per-bus.** Each tile on an SPI bus gets its own GPIO CS line.
-6. **`kiln/definitions/` is canonical.** Tile JSON lives there (synced from GitHub). Do not duplicate.
+6. **`definitions/` is canonical.** Tile JSON lives there (synced from GitHub). Do not duplicate.
 7. **`sdk/status/` is the source of truth for SDK implementation status.** Update `features.json` when adding a feature row, and the relevant `core-*.json` when implementation status changes.
 
 ---
@@ -466,7 +468,7 @@ int main(void) {
 #### Phase 1 — Research
 
 - [ ] Read IC datasheets: register map, I2C/SPI protocol, power-on defaults, device ID register
-- [ ] Check `kiln/definitions/` for the tile JSON (already exists from the DB?)
+- [ ] Check `definitions/` for the tile JSON (already exists from the DB?)
 - [ ] Check `TILE_DRIVER_MAP` in `tools/coregen/coregen.py` (entry exists?)
 - [ ] Choose a reference driver to follow:
   - **Sensor (I2C, simple):** `tile_sense_mic.h/c` — config struct, calibration, data reads
@@ -477,7 +479,7 @@ int main(void) {
 
 #### Phase 2 — Driver implementation
 
-Create `kiln/drivers/tile_<family>_<name>.h` and `.c`. All code must be platform-agnostic — no STM32 types, no direct register access. All bus I/O goes through `tile->hal` function pointers.
+Create `drivers/tile_<family>_<name>.h` and `.c`. All code must be platform-agnostic — no STM32 types, no direct register access. All bus I/O goes through `tile->hal` function pointers.
 
 **Header (.h) structure:**
 
@@ -530,7 +532,7 @@ Data/control functions
 1. Add entry to `MCU_DB` in `tools/coregen/coregen.py`
 2. Add linker script + startup to `sdk/device/`
 3. Add `SPI_CLK_MAP` entries for the new MCU's APB assignments
-4. Add the tile JSON to `kiln/definitions/`
+4. Add the tile JSON to `definitions/`
 5. Update `TILE` -> MCU mapping in `Makefile`
 6. Add a `sdk/status/core-<x>.json` with the new Core's feature statuses
 

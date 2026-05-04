@@ -246,4 +246,4 @@ The first failure is a missing API. The second is a missing scaffold. Both are r
 ## Related docs
 
 - [studio-annotations.md](studio-annotations.md) — how to add a Tier 2 wrapper to a header.
-- [`AI.md`](../AI.md) — driver authoring guide for AI agents (covers Kiln tile drivers, which follow the same tier pattern: `tile_<name>_init` is Tier 1, palette-exposed functions are Tier 2).
+- [`AI.md`](../AI.md) — driver authoring guide for AI agents (covers tile drivers, which follow the same tier pattern: `tile_<name>_init` is Tier 1, palette-exposed functions are Tier 2).
