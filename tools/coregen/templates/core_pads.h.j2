@@ -26,6 +26,9 @@
 {% if i2c_buses %}
 #define CORE_HAS_I2C_BUSES   1
 {% endif %}
+{% if spi_buses %}
+#define CORE_HAS_SPI_BUSES   1
+{% endif %}
 
 /* ---- Core identity ---- */
 

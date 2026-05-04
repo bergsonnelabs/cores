@@ -27,11 +27,17 @@ hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus);
 {% if spi_buses %}
 
 #include "hal_spi.h"
+#include <stdint.h>
 
 /* ---- Auto-generated SPI handles ---- */
 {% for bus in spi_buses %}
 extern hal_spi_t {{ bus.handle }};
 {% endfor %}
+
+/* Tier 2 dispatcher — `core_spi_*_bus(id, …)` wrappers in
+ * core_spi.h consult this to find the configured bus. Returns NULL
+ * for unconfigured ids so callers can fail gracefully. */
+hal_spi_t *core_spi_handle_for_bus(uint8_t bus);
 {% endif %}
 {% if usart_buses %}
 

@@ -18,15 +18,19 @@
  *
  * Available on: Core.U, Core.W, Core.H (not Core.L — no SPI peripheral).
  *
+ * @tessera category spi label=Core.SPI icon=⇆
+ *
  * @tessera coverage
  *   id:    spi
  *   name:  SPI — bus communication
  *   page:  /docs/sdk/spi
  *   blurb: Master-mode SPI: polled byte / buffer transfer, software CS
  *          via tile pads, and DMA non-blocking transfers (Core.U
- *          verified; Core.W/H DMA is HAL-side WIP). Tier 1 only —
- *          tile drivers consume SPI through core_tiles_pal, so the
- *          DSL doesn't need a direct SPI surface yet.
+ *          verified; Core.W/H DMA is HAL-side WIP). Tier 2 exposes a
+ *          single-byte full-duplex transfer against a bus id + CS pad —
+ *          coregen resolves the handle via core_spi_handle_for_bus().
+ *          Tier 1 keeps the explicit-handle forms for buffer transfers,
+ *          DMA, and persistent CS control.
  */
 
 #ifndef CORE_SPI_H
@@ -151,13 +155,64 @@ static inline int core_spi_busy(hal_spi_t *h)
     return hal_spi_busy(h);
 }
 
+/* ---- Tier 2 — default-instance bus helpers ---------------------------- */
+
+/* These wrappers take a bus id (the SPI peripheral number — 1, 2, 3 …
+ * matching how config.json declares it) plus the CS pad, instead of
+ * a hal_spi_t handle + persistent CS state. The dispatcher
+ * `core_spi_handle_for_bus` is emitted by coregen alongside the per-
+ * bus extern handles (core_spi1, core_spi2 …). DSL programs reach
+ * for these; escape-to-C drops back to the Tier 1 handle-based forms
+ * when buffer transfers, DMA, or persistent CS control are needed.
+ */
+
+/* Forward-decl of the coregen-emitted dispatcher (definition lives in
+ * core_init.c when the project declares any SPI bus). Forward-declared
+ * here rather than `#include "core_init.h"` so this header compiles in
+ * SDK contexts that don't have a project (val tests, examples without
+ * config.json). The natives-side caller in tessera_natives_project.c is
+ * gated on CORE_HAS_SPI_BUSES, so the linker never asks for the symbol
+ * unless the dispatcher actually exists. */
+hal_spi_t *core_spi_handle_for_bus(uint8_t bus);
+
+/**
+ * Single-byte full-duplex transfer over `bus`, with CS auto-managed
+ * around the call (asserted before, deasserted after). Returns the
+ * received byte (0..255) on success or -1 on any error (bus undeclared,
+ * cs_pad undefined). The signed return lets DSL programs branch on
+ * `< 0` without an out-pointer.
+ *
+ * Most chip protocols pair two of these (write a register address,
+ * then read or write the value). Multi-byte sequences that need CS
+ * held across them — display init streams, audio frame transfers —
+ * still need Tier 1 with manual select/deselect.
+ *
+ * @tessera expose category=spi name=xfer_byte returns=int
+ * @tessera twin full
+ */
+static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx)
+{
+    hal_spi_t *h = core_spi_handle_for_bus(bus);
+    if (!h) return -1;
+    hal_pad_gpio_t cs = hal_pad_lookup(cs_pad);
+    if (!cs.port) return -1;
+    hal_spi_set_cs(h, cs.port, cs.pin);
+    hal_spi_select(h);
+    uint8_t rx = hal_spi_transfer(h, tx);
+    hal_spi_deselect(h);
+    return (int)rx;
+}
+
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
-//   Pattern identical to I2C and Serial: callers thread their own
-//   hal_spi_t through every call. A coregen-resolved
-//   core_spi_xfer_bus(bus_id, ...) would mean tile drivers (and any
-//   future DSL surface) wouldn't have to plumb the handle by hand.
+// @tessera unsupported tier=2 value=M title="Tier 2 is single-byte xfer only — no bulk / persistent CS"
+//   The Tier 2 surface is core_spi_xfer_byte_bus: one byte, CS auto-
+//   managed around the call. DSL programs that need to push a
+//   multi-byte payload with CS held (display init streams, SD-card
+//   sectors, audio frame transfers) drop back to Tier 1 with a
+//   hal_spi_t handle and manual select/deselect. Bulk variants need
+//   the array-IN / array-OUT host-call ABI prototyped on the tile-
+//   driver side — track with the DSL Capability Coverage close.
 //
 // @tessera unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
 //   SDK roadmap Tier 1 item: Core.W has an SPI v2 CSTART bug; Core.H
