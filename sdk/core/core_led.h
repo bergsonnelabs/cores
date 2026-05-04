@@ -73,7 +73,7 @@ static inline void core_led_off(void)
  * rate you've already chosen (e.g., a pad-edge ISR on a button).
  *
  * @tessera expose category=led name=toggle
- * @tessera twin noop
+ * @tessera twin full
  */
 static inline void core_led_toggle(void)
 {
@@ -86,7 +86,7 @@ static inline void core_led_toggle(void)
  * after the last off period.
  *
  * @tessera expose category=led name=blink
- * @tessera twin noop
+ * @tessera twin full
  * @param n [1..100] Number of times to blink.
  * @param on_ms [1..5000] ms LED-on duration per blink.
  * @param off_ms [1..5000] ms LED-off duration per blink.
@@ -131,13 +131,6 @@ static inline void core_led_heartbeat(int period_ms)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Twin doesn't model toggle / blink animation"
-//   on / off / heartbeat have full SimulatorPane handlers (the LED
-//   panel renders the actual state). toggle is logged but the Twin
-//   doesn't track the prior state, so a sequence of toggles doesn't
-//   visibly flip in the IDE. blink is a blocking loop that's invisible
-//   to the worker — the user just sees the host-call entries.
-//
 // @tessera unsupported tier=2 value=L title="No DSL access to SOS"
 //   core_led_sos is `__attribute__((noreturn))` so it can't be
 //   exposed safely — DSL programs that "call SOS" would deadlock

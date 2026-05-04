@@ -133,7 +133,7 @@ static inline int core_nvm_write(uint32_t offset, const void *data, uint32_t len
  * Returns the total NVM size in bytes for this Core.
  *
  * @tessera expose category=nvm name=size returns=int
- * @tessera twin noop
+ * @tessera twin full
  */
 static inline uint32_t core_nvm_size(void)
 {
