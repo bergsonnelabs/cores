@@ -1,0 +1,133 @@
+{
+  "schema": "tessera-sdk-docs/v1",
+  "source": "cores@f9d51bd",
+  "category": "power",
+  "label": "Core.Power",
+  "icon": "☾",
+  "header": "core_power.h",
+  "functions": [
+    {
+      "name": "core_sleep",
+      "signature": "core_sleep(void)",
+      "returns": "void",
+      "brief": "Sleep until any interrupt (CPU stopped, peripherals running).",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_stop_for",
+      "signature": "core_stop_for(uint32_t seconds)",
+      "returns": "void",
+      "brief": "Enter Stop mode for a number of seconds, then wake and restore clocks. Uses RTC wakeup timer (LSI). Returns after wake with PLL + SysTick restored.",
+      "params": [
+        {
+          "name": "seconds",
+          "ctype": "uint32_t",
+          "range": [
+            1,
+            86400
+          ],
+          "description": "Seconds to spend in Stop mode."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_stop_until_on_change",
+      "signature": "core_stop_until_on_change(uint8_t pad, uint32_t edge)",
+      "returns": "void",
+      "brief": "Enter Stop mode until a GPIO edge occurs on the given pad. Configures the pad as input, enables EXTI, enters Stop, and restores clocks on wake. Returns after the edge is detected.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "description": "Tile pad number"
+        },
+        {
+          "name": "edge",
+          "ctype": "uint32_t",
+          "description": "EDGE_FALLING, EDGE_RISING, or EDGE_BOTH"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_standby_for",
+      "signature": "core_standby_for(void)",
+      "returns": "void",
+      "brief": "Enter Standby mode with RTC wakeup after the given seconds. Does not return — MCU resets on wake. Check core_woke_from_standby() at the top of main() to detect a Standby wake.",
+      "params": [],
+      "tessera_exposed": false,
+      "attributes": [
+        "noreturn"
+      ]
+    },
+    {
+      "name": "core_standby_until_on_change",
+      "signature": "core_standby_until_on_change(uint8_t pad, uint32_t edge)",
+      "returns": "void",
+      "brief": "Enter Standby mode until a GPIO edge on the given pad (via WKUP pin). Does not return — MCU resets on wake. Not all pads support WKUP; returns without entering Standby if the pad has no WKUP capability. On Core.U.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t",
+          "description": "Tile pad number"
+        },
+        {
+          "name": "edge",
+          "ctype": "uint32_t",
+          "description": "EDGE_FALLING or EDGE_RISING"
+        }
+      ],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_stop",
+      "signature": "core_stop(void)",
+      "returns": "void",
+      "brief": "Enter Stop mode (caller manages wakeup source + clock recovery).",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_standby",
+      "signature": "core_standby(void)",
+      "returns": "void",
+      "brief": "Enter Standby (caller manages wakeup source). Does not return.",
+      "params": [],
+      "tessera_exposed": false,
+      "attributes": [
+        "noreturn"
+      ]
+    },
+    {
+      "name": "core_woke_from_standby",
+      "signature": "core_woke_from_standby(void)",
+      "returns": "int",
+      "brief": "Returns 1 if the MCU woke from Standby.",
+      "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_clear_standby_flag",
+      "signature": "core_clear_standby_flag(void)",
+      "returns": "void",
+      "brief": "Clear the Standby wake flag. Call after core_woke_from_standby() returns 1.",
+      "params": [],
+      "tessera_exposed": false
+    },
+    {
+      "name": "core_watchdog_start_seconds",
+      "signature": "core_watchdog_start_seconds(uint32_t seconds)",
+      "returns": "void",
+      "brief": "Start the independent watchdog with a timeout in seconds (convenience). For finer control use core_watchdog_start() from core_watchdog.h which accepts milliseconds.",
+      "params": [
+        {
+          "name": "seconds",
+          "ctype": "uint32_t"
+        }
+      ],
+      "tessera_exposed": false
+    }
+  ]
+}

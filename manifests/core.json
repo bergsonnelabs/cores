@@ -1,6 +1,6 @@
 {
   "schema": "tessera-manifest/v1",
-  "source": "cores@2229190",
+  "source": "cores@f9d51bd",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -29,6 +29,10 @@
     "pad": {
       "label": "Core.Pad",
       "icon": "◼"
+    },
+    "power": {
+      "label": "Core.Power",
+      "icon": "☾"
     },
     "pwm": {
       "label": "Core.PWM",
@@ -546,6 +550,53 @@
         }
       ],
       "returns": "void"
+    },
+    {
+      "qname": [
+        "power",
+        "sleep"
+      ],
+      "symbol": "core_sleep",
+      "header": "core_power.h",
+      "category": "power",
+      "description": "Sleep until any interrupt (CPU stopped, peripherals running).",
+      "params": [],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "power",
+        "stop_for"
+      ],
+      "symbol": "core_stop_for",
+      "header": "core_power.h",
+      "category": "power",
+      "description": "Enter Stop mode for a number of seconds, then wake and restore clocks. Uses RTC wakeup timer (LSI). Returns after wake with PLL + SysTick restored.",
+      "params": [
+        {
+          "name": "seconds",
+          "type": "int",
+          "range": [
+            1,
+            86400
+          ],
+          "description": "Seconds to spend in Stop mode."
+        }
+      ],
+      "returns": "void"
+    },
+    {
+      "qname": [
+        "power",
+        "woke_from_standby"
+      ],
+      "symbol": "core_woke_from_standby",
+      "header": "core_power.h",
+      "category": "power",
+      "description": "Returns 1 if the MCU woke from Standby.",
+      "params": [],
+      "returns": "int",
+      "dsl_returns": "bool"
     },
     {
       "qname": [

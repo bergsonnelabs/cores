@@ -94,6 +94,10 @@ PROJECT_INDEPENDENT_CATEGORIES = {
     # ll_rng_read which is plain SDK code. Added with the RNG Tier 2
     # `read32` exposure.
     "rng",
+    # power exposes core_sleep / core_stop_for / core_woke_from_standby.
+    # Each calls into ll_pwr / ll_rtc / ll_rcc only (no per-project
+    # handles), so the static SDK table is the right home.
+    "power",
 }
 F64_TYPES = {"double"}
 F32_TYPES = {"float"}  # WAMR uses 'f' for f32, 'F' for f64 in sig strings
