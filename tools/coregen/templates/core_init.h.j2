@@ -100,22 +100,22 @@ void core_pads_init(void);
 
 /**
  * Drain pending pad-edge events and dispatch DSL handlers. Called from
- * the Tessera shim's main loop every iteration. Always safe to call —
+ * the Studio shim's main loop every iteration. Always safe to call —
  * no-op when no pads have EXTI configured in config.json.
  */
-void tessera_dispatch_core_pad(void);
+void studio_dispatch_core_pad(void);
 
 /**
- * Fire the Tessera tick handler once per configured `timer.tick_ms`.
+ * Fire the Studio tick handler once per configured `timer.tick_ms`.
  * No-op when no tick period is set. Always safe to call.
  */
-void tessera_dispatch_core_timer(void);
+void studio_dispatch_core_timer(void);
 
 /**
- * Drain the USB CDC RX ring and fire the Tessera byte-receive handler
+ * Drain the USB CDC RX ring and fire the Studio byte-receive handler
  * (capped at 64 bytes per call). No-op when USB isn't enabled.
  */
-void tessera_dispatch_core_usb(void);
+void studio_dispatch_core_usb(void);
 {% if tiles_config %}
 
 /* ---- Tile driver init recipe ----

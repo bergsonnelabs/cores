@@ -9,9 +9,9 @@
  *
  * Uses LED_ON/OFF/TOGGLE from core_board.h and ll_delay_ms from ll_systick.h.
  *
- * @tessera category led label=Core.LED icon=☀
+ * @studio category led label=Core.LED icon=☀
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    led
  *   name:  LED — onboard status LED
  *   page:  /docs/sdk/led
@@ -48,8 +48,8 @@ static inline void core_led_init(void)
  * alongside blink/heartbeat when the user wants explicit on/off state
  * rather than a timed pattern.
  *
- * @tessera expose category=led name=on
- * @tessera twin full
+ * @studio expose category=led name=on
+ * @studio twin full
  */
 static inline void core_led_on(void)
 {
@@ -59,8 +59,8 @@ static inline void core_led_on(void)
 /**
  * Turn the onboard LED off.
  *
- * @tessera expose category=led name=off
- * @tessera twin full
+ * @studio expose category=led name=off
+ * @studio twin full
  */
 static inline void core_led_off(void)
 {
@@ -72,8 +72,8 @@ static inline void core_led_off(void)
  * Good for driving the LED from an event handler that fires at a
  * rate you've already chosen (e.g., a pad-edge ISR on a button).
  *
- * @tessera expose category=led name=toggle
- * @tessera twin full
+ * @studio expose category=led name=toggle
+ * @studio twin full
  */
 static inline void core_led_toggle(void)
 {
@@ -85,8 +85,8 @@ static inline void core_led_toggle(void)
  * milliseconds and off for off_ms milliseconds. Blocking — returns
  * after the last off period.
  *
- * @tessera expose category=led name=blink
- * @tessera twin full
+ * @studio expose category=led name=blink
+ * @studio twin full
  * @param n [1..100] Number of times to blink.
  * @param on_ms [1..5000] ms LED-on duration per blink.
  * @param off_ms [1..5000] ms LED-off duration per blink.
@@ -119,8 +119,8 @@ static inline void core_led_sos(void)
  * for a continuous alive indicator. Vary the period to signal different
  * states (e.g., 50ms = fast/active, 500ms = idle).
  *
- * @tessera expose category=led name=heartbeat
- * @tessera twin full
+ * @studio expose category=led name=heartbeat
+ * @studio twin full
  * @param period_ms [0..60000] ms Delay after the toggle. 0 toggles without waiting.
  */
 static inline void core_led_heartbeat(int period_ms)
@@ -131,12 +131,12 @@ static inline void core_led_heartbeat(int period_ms)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=L title="No DSL access to SOS"
+// @studio unsupported tier=2 value=L title="No DSL access to SOS"
 //   core_led_sos is `__attribute__((noreturn))` so it can't be
 //   exposed safely — DSL programs that "call SOS" would deadlock
 //   the worker. Reserved for fault-handler escape-to-C use.
 //
-// @tessera unsupported tier=1 value=L title="No PWM brightness / color"
+// @studio unsupported tier=1 value=L title="No PWM brightness / color"
 //   The onboard LED is hard-wired as a digital push-pull output. No
 //   PWM dimming wrapper, no RGB/RGBW support (tiles with addressable
 //   LEDs use Disp.RGBW or similar, not core_led).

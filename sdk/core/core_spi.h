@@ -18,9 +18,9 @@
  *
  * Available on: Core.U, Core.W, Core.H (not Core.L — no SPI peripheral).
  *
- * @tessera category spi label=Core.SPI icon=⇆
+ * @studio category spi label=Core.SPI icon=⇆
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    spi
  *   name:  SPI — bus communication
  *   page:  /docs/sdk/spi
@@ -170,7 +170,7 @@ static inline int core_spi_busy(hal_spi_t *h)
  * core_init.c when the project declares any SPI bus). Forward-declared
  * here rather than `#include "core_init.h"` so this header compiles in
  * SDK contexts that don't have a project (val tests, examples without
- * config.json). The natives-side caller in tessera_natives_project.c is
+ * config.json). The natives-side caller in studio_natives_project.c is
  * gated on CORE_HAS_SPI_BUSES, so the linker never asks for the symbol
  * unless the dispatcher actually exists. */
 hal_spi_t *core_spi_handle_for_bus(uint8_t bus);
@@ -187,8 +187,8 @@ hal_spi_t *core_spi_handle_for_bus(uint8_t bus);
  * held across them — display init streams, audio frame transfers —
  * still need Tier 1 with manual select/deselect.
  *
- * @tessera expose category=spi name=xfer_byte returns=int
- * @tessera twin full
+ * @studio expose category=spi name=xfer_byte returns=int
+ * @studio twin full
  */
 static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx)
 {
@@ -205,7 +205,7 @@ static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Tier 2 is single-byte xfer only — no bulk / persistent CS"
+// @studio unsupported tier=2 value=M title="Tier 2 is single-byte xfer only — no bulk / persistent CS"
 //   The Tier 2 surface is core_spi_xfer_byte_bus: one byte, CS auto-
 //   managed around the call. DSL programs that need to push a
 //   multi-byte payload with CS held (display init streams, SD-card
@@ -214,23 +214,23 @@ static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx
 //   the array-IN / array-OUT host-call ABI prototyped on the tile-
 //   driver side — track with the DSL Capability Coverage close.
 //
-// @tessera unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
+// @studio unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
 //   SDK roadmap Tier 1 item: Core.W has an SPI v2 CSTART bug; Core.H
 //   builds but isn't hardware-verified. Only Core.U is end-to-end
 //   verified for polled + FIFO + Kiln-driver use. Tile drivers that
 //   need SPI on W/H should expect rough edges.
 //
-// @tessera unsupported tier=2 value=M title="DMA verified only on Core.U"
+// @studio unsupported tier=2 value=M title="DMA verified only on Core.U"
 //   SDK roadmap Tier 2: Core.W / Core.H GPDMA is deferred (SPI v2
 //   TSIZE constraints). Calls fall back to polled or hit
 //   HAL_ERROR. Long buffer transfers (display refresh, audio) are
 //   significantly slower on W/H than on U.
 //
-// @tessera unsupported tier=1 value=M title="Slave mode missing"
+// @studio unsupported tier=1 value=M title="Slave mode missing"
 //   Master-only. No path for a Core to act as a SPI peripheral on
 //   another host's bus.
 //
-// @tessera unsupported tier=1 value=L title="Quad / Octo SPI / OctoSPI"
+// @studio unsupported tier=1 value=L title="Quad / Octo SPI / OctoSPI"
 //   SDK roadmap Tier 2: QUADSPI / OctoSPI (memory-mapped external
 //   flash for NOR / PSRAM tiles) is wired only on Core.U + Core.H
 //   silicon and isn't wrapped here.

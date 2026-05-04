@@ -5,9 +5,9 @@
  * resolution still requires explicit init (auto-resolve from
  * config.json is planned).
  *
- * @tessera category serial label=Core.Serial icon=⌨
+ * @studio category serial label=Core.Serial icon=⌨
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    serial
  *   name:  Serial — UART
  *   page:  /docs/sdk/uart
@@ -101,7 +101,7 @@ static inline uint16_t core_serial_read(hal_uart_t *h, uint8_t *buf,
  * core_init.c when the project declares any USART). Forward-declared
  * here rather than `#include "core_init.h"` so this header compiles in
  * SDK contexts that don't have a project (val tests, examples without
- * config.json). The natives-side caller in tessera_natives_project.c is
+ * config.json). The natives-side caller in studio_natives_project.c is
  * gated on CORE_HAS_SERIAL_BUSES, so the linker never asks for the
  * symbol unless the dispatcher actually exists. */
 hal_uart_t *core_serial_handle_for_bus(uint8_t bus);
@@ -112,8 +112,8 @@ hal_uart_t *core_serial_handle_for_bus(uint8_t bus);
  * "drop a debug line on UART2" — is one line:
  *   serial.print(2, "ready\\n");
  *
- * @tessera expose category=serial name=print returns=int
- * @tessera twin full
+ * @studio expose category=serial name=print returns=int
+ * @studio twin full
  */
 static inline int core_serial_print_bus(uint8_t bus, const char *str)
 {
@@ -127,8 +127,8 @@ static inline int core_serial_print_bus(uint8_t bus, const char *str)
  * Write a single byte to `bus` (blocking). Returns 0 on success or
  * -1 on undeclared bus.
  *
- * @tessera expose category=serial name=putc returns=int
- * @tessera twin full
+ * @studio expose category=serial name=putc returns=int
+ * @studio twin full
  */
 static inline int core_serial_putc_bus(uint8_t bus, uint8_t byte)
 {
@@ -140,31 +140,31 @@ static inline int core_serial_putc_bus(uint8_t bus, uint8_t byte)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="No Tier 2 read surface"
+// @studio unsupported tier=2 value=M title="No Tier 2 read surface"
 //   Tier 2 wraps the write side (print_bus, putc_bus) only. getc_bus,
 //   read_bus, available_bus need a Twin input affordance to be
 //   meaningful — without one the read functions would just return
 //   -1/0 always, defeating the point. Adding a "serial input" pane
 //   (analog of the GPIO toggle / ADC slider) closes both ends.
 //
-// @tessera unsupported tier=2 value=M title="No coregen auto-init for serial"
+// @studio unsupported tier=2 value=M title="No coregen auto-init for serial"
 //   Tier 2 wrappers assume the user has called core_serial_init on the
 //   matching handle before any send. Coregen doesn't yet read a
 //   `serial: { 1: { baud: 115200 } }` block out of config.json and
 //   emit the init in core_init(). Until it does, the bus has to be
 //   primed by hand even when using Tier 2.
 //
-// @tessera unsupported tier=1 value=H title="No interrupt / DMA driven path"
+// @studio unsupported tier=1 value=H title="No interrupt / DMA driven path"
 //   All calls block. SDK roadmap Tier 1 item: "UART IRQ + coregen"
 //   for non-blocking serial (GPS, RS-485). Long reads currently stall
 //   the main loop until the buffer fills or times out.
 //
-// @tessera unsupported tier=1 value=M title="No flow control / parity / 9-bit modes"
+// @studio unsupported tier=1 value=M title="No flow control / parity / 9-bit modes"
 //   The thin wrappers expose only the basics — RTS/CTS, parity, stop
 //   bits, 9-bit data, and inversion are reachable only via the
 //   hal_uart_config_t struct passed to init.
 //
-// @tessera unsupported tier=1 value=M title="No LPUART (low-power UART)"
+// @studio unsupported tier=1 value=M title="No LPUART (low-power UART)"
 //   SDK roadmap Tier 2: LPUART works in Stop mode for wake-on-serial.
 //   Compile-only on every Core today; not surfaced through this header.
 

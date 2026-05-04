@@ -13,9 +13,9 @@
  *
  * No init required — the RTC clock domain is enabled automatically.
  *
- * @tessera category backup label=Core.Backup icon=◫
+ * @studio category backup label=Core.Backup icon=◫
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    backup
  *   name:  Backup — persistent registers
  *   blurb: 32-bit registers retained through reset and Standby (and across
@@ -74,8 +74,8 @@ static inline void _core_backup_ensure_clk(void)
 /**
  * Read a backup register.
  *
- * @tessera expose category=backup name=read returns=int
- * @tessera twin full
+ * @studio expose category=backup name=read returns=int
+ * @studio twin full
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  */
 static inline uint32_t core_backup_read(uint8_t index)
@@ -88,8 +88,8 @@ static inline uint32_t core_backup_read(uint8_t index)
 /**
  * Write a backup register. Backup domain write access is enabled automatically.
  *
- * @tessera expose category=backup name=write
- * @tessera twin full
+ * @studio expose category=backup name=write
+ * @studio twin full
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  * @param value 32-bit value to store.
  */
@@ -102,13 +102,13 @@ static inline void core_backup_write(uint8_t index, uint32_t value)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=L title="Twin backup state wipes on Reset"
+// @studio unsupported tier=2 value=L title="Twin backup state wipes on Reset"
 //   read/write round-trip within a single run, but the per-slot store
 //   is cleared on every project reload — DSL programs that rely on
 //   backup state surviving a soft reset (e.g., boot counters across
 //   the user clicking Reset in the IDE) can't be exercised end-to-end.
 //
-// @tessera unsupported tier=1 value=L title="No tamper / anti-tamper integration"
+// @studio unsupported tier=1 value=L title="No tamper / anti-tamper integration"
 //   The TAMP block on WBA/H5 hosts the backup registers but also drives
 //   tamper detection (active edge, anti-tamper erase, time-stamping on
 //   tamper). None of that is wrapped — backup is read/write only.

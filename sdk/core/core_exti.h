@@ -4,7 +4,7 @@
  * EXTI functionality has moved into core_pad.h (as core_pad_on_change).
  * Include "core_gpio.h" or "core_pad.h" instead.
  *
- * (No @tessera coverage block — this is a re-export of core_pad.h, which
+ * (No @studio coverage block — this is a re-export of core_pad.h, which
  * carries the GPIO entry on the SDK Coverage Table.)
  */
 

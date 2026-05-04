@@ -7,7 +7,7 @@
  *
  * Optionally register a callback to run custom logic before the dump.
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    fault
  *   name:  Fault — exception handlers
  *   blurb: Tier 1 only. The SDK installs default HardFault / MemManage /
@@ -31,7 +31,7 @@ static inline void core_fault_set_callback(hal_fault_callback_t cb)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=1 value=M title="No structured fault report capture"
+// @studio unsupported tier=1 value=M title="No structured fault report capture"
 //   The default handler dumps to USB CDC at runtime — there's no
 //   in-flash crash log that survives reset for post-mortem analysis.
 //   A small ring buffer in backup or NVM (with the captured PC / LR

@@ -5,8 +5,8 @@
       "name": "System",
       "features": [
         { "id": "system.init",  "layer": "Core", "name": "core initialization" },
-        { "id": "system.led",   "layer": "Tessera", "name": "LED"                  },
-        { "id": "system.delay", "layer": "Tessera", "name": "delay (ms / µs)",     "desc": "Blocking delays: ll_delay_ms uses the SysTick interrupt counter for ms precision; ll_delay_us uses a NOP loop calibrated to CPU frequency for sub-ms precision." },
+        { "id": "system.led",   "layer": "Studio", "name": "LED"                  },
+        { "id": "system.delay", "layer": "Studio", "name": "delay (ms / µs)",     "desc": "Blocking delays: ll_delay_ms uses the SysTick interrupt counter for ms precision; ll_delay_us uses a NOP loop calibrated to CPU frequency for sub-ms precision." },
         { "id": "system.tick",  "layer": "LL",      "name": "SysTick",             "desc": "Cortex-M core timer — 1 ms ISR tick that drives ll_delay_ms. Also used as a timebase for future RTOS integration." },
         { "id": "system.fault",               "name": "fault handlers",      "desc": "HardFault / BusFault / UsageFault handlers with register-dump diagnostics." }
       ]
@@ -25,8 +25,8 @@
       "id": "gpio",
       "name": "GPIO",
       "features": [
-        { "id": "gpio.digital",  "layer": "Tessera", "name": "digital I/O (read / write)" },
-        { "id": "gpio.exti",     "layer": "Tessera", "name": "EXTI (external interrupts)", "desc": "Triggers a callback on rising, falling, or both edges of a GPIO pin without polling." },
+        { "id": "gpio.digital",  "layer": "Studio", "name": "digital I/O (read / write)" },
+        { "id": "gpio.exti",     "layer": "Studio", "name": "EXTI (external interrupts)", "desc": "Triggers a callback on rising, falling, or both edges of a GPIO pin without polling." },
         { "id": "gpio.af",       "layer": "LL",      "name": "alternate function config",   "desc": "Routes a pin to a peripheral (UART TX, I2C SDA, SPI CLK, etc.) rather than software-controlled GPIO." },
         { "id": "gpio.od_pull",  "layer": "Core",    "name": "open-drain / pull config",    "desc": "Open-drain output mode and internal pull-up / pull-down resistor configuration." }
       ]
@@ -70,12 +70,12 @@
       "id": "timers",
       "name": "Timers",
       "features": [
-        { "id": "timer.pwm",     "layer": "Tessera", "name": "PWM output"              },
+        { "id": "timer.pwm",     "layer": "Studio", "name": "PWM output"              },
         { "id": "timer.capture", "layer": "Core", "name": "input capture",         "desc": "Measures timing of external signals — pulse width, frequency, or phase of an incoming waveform." },
         { "id": "timer.oneshot",                 "name": "one-shot pulse",         "desc": "Generates a single precisely-timed pulse on a GPIO pin, triggered by software or a hardware event." },
         { "id": "timer.encoder",                 "name": "encoder mode",           "desc": "Counts quadrature encoder pulses directly in hardware for position or velocity measurement." },
         { "id": "timer.lptim",                   "name": "LPTIM (low-power timer)","desc": "Continues running in STOP mode — used for periodic wakeup and low-power event scheduling." },
-        { "id": "timer.wdog",    "layer": "Tessera", "name": "IWDG (watchdog)",    "desc": "Independent Watchdog — resets the MCU if firmware stops refreshing it, guarding against hangs." }
+        { "id": "timer.wdog",    "layer": "Studio", "name": "IWDG (watchdog)",    "desc": "Independent Watchdog — resets the MCU if firmware stops refreshing it, guarding against hangs." }
       ]
     },
     {
@@ -83,9 +83,9 @@
       "name": "ADC",
       "page": "/docs/sdk/adc",
       "features": [
-        { "id": "adc.raw",      "layer": "Tessera", "name": "single-shot raw read"     },
-        { "id": "adc.mv",       "layer": "Tessera", "name": "millivolt read (VREFINT)", "desc": "Converts raw counts to millivolts using the factory-calibrated VREFINT reference." },
-        { "id": "adc.temp",     "layer": "Tessera", "name": "temperature sensor",       "desc": "Reads the on-die temperature sensor channel using the factory calibration points." },
+        { "id": "adc.raw",      "layer": "Studio", "name": "single-shot raw read"     },
+        { "id": "adc.mv",       "layer": "Studio", "name": "millivolt read (VREFINT)", "desc": "Converts raw counts to millivolts using the factory-calibrated VREFINT reference." },
+        { "id": "adc.temp",     "layer": "Studio", "name": "temperature sensor",       "desc": "Reads the on-die temperature sensor channel using the factory calibration points." },
         { "id": "adc.res",      "layer": "Core", "name": "resolution (8 / 10 / 12-bit)", "desc": "Selects the SAR conversion depth. Lower resolution converts faster and reduces power; 12-bit gives the finest granularity." },
         { "id": "adc.oversamp", "layer": "Core", "name": "oversampling / burst",     "desc": "Averages multiple conversions in hardware to increase effective resolution and reduce noise." },
         { "id": "adc.dma",      "layer": "Core", "name": "DMA"                      },
@@ -112,11 +112,11 @@
         { "id": "power.sleep",     "layer": "Core", "name": "sleep mode",       "desc": "CPU halted, peripherals running — lowest-latency wakeup (~1 µs). Ideal for interrupt-driven designs." },
         { "id": "power.stop",      "layer": "Core", "name": "STOP mode",        "desc": "CPU and most clocks halted, RAM retained — wakeup from EXTI or timer (~5 µs)." },
         { "id": "power.standby",   "layer": "Core", "name": "standby / shutdown", "desc": "Near-zero power draw — RAM is lost and wakeup triggers a full reset." },
-        { "id": "power.rtc_wake",  "layer": "Tessera", "name": "RTC wakeup",     "desc": "Wake from STOP or Standby on a timed RTC alarm." },
+        { "id": "power.rtc_wake",  "layer": "Studio", "name": "RTC wakeup",     "desc": "Wake from STOP or Standby on a timed RTC alarm." },
         { "id": "power.exti_wake", "layer": "Core", "name": "EXTI wakeup",      "desc": "Wake from STOP or Standby on a GPIO edge — e.g. button press or tile interrupt line." },
         { "id": "power.wkup_wake", "layer": "Core", "name": "wakeup pin (Standby)", "desc": "Dedicated WKUP pins wake from Standby without EXTI config." },
-        { "id": "power.rtc_alarm","layer": "Tessera", "name": "RTC Alarm A",       "desc": "Calendar-based alarm — triggers when RTC matches configured hours/minutes/seconds (with wildcards)." },
-        { "id": "power.backup",   "layer": "Tessera", "name": "backup registers",  "desc": "32-bit registers that persist through resets and Standby. Crash counters, boot flags, state preservation." }
+        { "id": "power.rtc_alarm","layer": "Studio", "name": "RTC Alarm A",       "desc": "Calendar-based alarm — triggers when RTC matches configured hours/minutes/seconds (with wildcards)." },
+        { "id": "power.backup",   "layer": "Studio", "name": "backup registers",  "desc": "32-bit registers that persist through resets and Standby. Crash counters, boot flags, state preservation." }
       ]
     },
     {
@@ -133,7 +133,7 @@
       "id": "conn",
       "name": "Connectivity",
       "features": [
-        { "id": "conn.usb_cdc",  "layer": "Tessera", "name": "USB CDC serial",  "desc": "Emulates a virtual COM port over USB — appears as a serial device on the host OS." },
+        { "id": "conn.usb_cdc",  "layer": "Studio", "name": "USB CDC serial",  "desc": "Emulates a virtual COM port over USB — appears as a serial device on the host OS." },
         { "id": "conn.usb_hid",                  "name": "USB HID",            "desc": "Human Interface Device class — used for custom input devices, sensor streams, and control panels." },
         { "id": "conn.usb_msc",                  "name": "USB MSC",            "desc": "Mass Storage Class — Core appears as a USB drive; useful for datalogging and drag-and-drop firmware updates." },
         { "id": "conn.dfu",                       "name": "ROM DFU bootloader", "desc": "Uses the STM32 factory ROM bootloader to flash firmware over USB without a hardware debugger." },
@@ -150,7 +150,7 @@
         { "id": "adv.i3c_ctrl",   "name": "I3C controller",           "desc": "Next-gen sensor bus — I2C-compatible with higher speed, in-band interrupts, and dynamic addressing." },
         { "id": "adv.i3c_target", "name": "I3C target",               "desc": "Core acts as an I3C secondary device, addressable by an external I3C controller." },
         { "id": "adv.comp",       "name": "COMP (analog comparator)", "desc": "Compares two voltages and outputs a digital signal or interrupt — threshold detection without ADC overhead." },
-        { "id": "adv.dac",        "layer": "Tessera", "name": "DAC",  "desc": "Digital-to-Analog Converter — generates a continuous analog voltage from a digital value." }
+        { "id": "adv.dac",        "layer": "Studio", "name": "DAC",  "desc": "Digital-to-Analog Converter — generates a continuous analog voltage from a digital value." }
       ]
     }
   ]

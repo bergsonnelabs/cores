@@ -1,5 +1,5 @@
 {
-  "schema": "tessera-sdk-docs/v1",
+  "schema": "studio-sdk-docs/v1",
   "source": "cores@e8a8c62",
   "category": "power",
   "label": "Core.Power",
@@ -12,7 +12,7 @@
       "returns": "void",
       "brief": "Sleep until any interrupt (CPU stopped, peripherals running).",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_stop_for",
@@ -30,7 +30,7 @@
           "description": "Seconds to spend in Stop mode."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_stop_until_on_change",
@@ -49,7 +49,7 @@
           "description": "EDGE_FALLING, EDGE_RISING, or EDGE_BOTH"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_standby_for",
@@ -57,7 +57,7 @@
       "returns": "void",
       "brief": "Enter Standby mode with RTC wakeup after the given seconds. Does not return — MCU resets on wake. Check core_woke_from_standby() at the top of main() to detect a Standby wake.",
       "params": [],
-      "tessera_exposed": false,
+      "studio_exposed": false,
       "attributes": [
         "noreturn"
       ]
@@ -79,7 +79,7 @@
           "description": "EDGE_FALLING or EDGE_RISING"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_stop",
@@ -87,7 +87,7 @@
       "returns": "void",
       "brief": "Enter Stop mode (caller manages wakeup source + clock recovery).",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_standby",
@@ -95,7 +95,7 @@
       "returns": "void",
       "brief": "Enter Standby (caller manages wakeup source). Does not return.",
       "params": [],
-      "tessera_exposed": false,
+      "studio_exposed": false,
       "attributes": [
         "noreturn"
       ]
@@ -106,7 +106,7 @@
       "returns": "int",
       "brief": "Returns 1 if the MCU woke from Standby.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_clear_standby_flag",
@@ -114,7 +114,7 @@
       "returns": "void",
       "brief": "Clear the Standby wake flag. Call after core_woke_from_standby() returns 1.",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_watchdog_start_seconds",
@@ -127,7 +127,7 @@
           "ctype": "uint32_t"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

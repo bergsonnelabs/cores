@@ -1,5 +1,5 @@
 {
-  "schema": "tessera-sdk-docs/v1",
+  "schema": "studio-sdk-docs/v1",
   "source": "cores@e8a8c62",
   "category": "rng",
   "label": "Core.RNG",
@@ -12,7 +12,7 @@
       "returns": "void",
       "brief": "Initialize the hardware RNG. Enables the peripheral clock, configures the RNG, and waits for the first random number to be ready. On Core.U: requires HSI48 to be running (auto-enabled if USB is used, otherwise call ll_rcc_hsi48_enable() first).",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_rng_read",
@@ -20,7 +20,7 @@
       "returns": "uint32_t",
       "brief": "Read a single 32-bit random value (blocking). Returns 0 on timeout — check core_rng_error() if this happens.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rng_fill",
@@ -39,7 +39,7 @@
           "description": "Number of uint32_t values to generate"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_rng_error",
@@ -47,7 +47,7 @@
       "returns": "int",
       "brief": "Check if the RNG has a seed error (entropy source failure).",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_rng_deinit",
@@ -55,7 +55,7 @@
       "returns": "void",
       "brief": "Power down the RNG peripheral.",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     }
   ]
 }

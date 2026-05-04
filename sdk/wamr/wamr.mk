@@ -87,7 +87,7 @@ WAMR_INCS := \
 # User code (a project's main.c) needs the embedder-facing header
 # set — just `wasm_export.h` and friends. Tacked onto CFLAGS so
 # projects with WAMR_ENABLED=1 can `#include "wasm_export.h"`.
-# `sdk/wamr/` goes on too so projects can reach `tessera_natives.h`
+# `sdk/wamr/` goes on too so projects can reach `studio_natives.h`
 # for the generated host-import catalog.
 CFLAGS += -I$(WAMR_CORE)/iwasm/include
 CFLAGS += -I$(WAMR_PAL_DIR)
@@ -135,7 +135,7 @@ WAMR_SRCS := \
   $(WAMR_CORE)/shared/mem-alloc/ems/ems_kfc.c \
   $(WAMR_CORE)/shared/mem-alloc/ems/ems_hmu.c \
   $(WAMR_PAL_DIR)/platform_stubs.c \
-  $(WAMR_PAL_DIR)/tessera_natives.c
+  $(WAMR_PAL_DIR)/studio_natives.c
 
 # thumb-VFP native-call trampoline — used when Wasm calls into a
 # registered C host function. The .s suffix matters: the top-level
@@ -174,7 +174,7 @@ $(BUILD_DIR)/third_party/wasm-micro-runtime/%.o: $(WAMR_DIR)/%.s
 $(BUILD_DIR)/sdk/wamr/%.o: $(WAMR_PAL_DIR)/%.c
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $(notdir $<)"
-	# `tessera_natives.c` pulls in every tessera_exposed `core_*.h`
+	# `studio_natives.c` pulls in every studio_exposed `core_*.h`
 	# for adapter wrapping. Some of those headers reach through
 	# tal_* into coregen-generated accessors (e.g. `core_pad_timer_info`
 	# declared in the project's generated `core_pads.h`) — the

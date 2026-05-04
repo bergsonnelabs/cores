@@ -5,9 +5,9 @@
  * Channels, instances, and clocks are resolved automatically
  * from the project configuration.
  *
- * @tessera category adc label=Core.ADC icon=◐
+ * @studio category adc label=Core.ADC icon=◐
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    adc
  *   name:  ADC — analog-to-digital conversion
  *   page:  /docs/sdk/adc
@@ -101,8 +101,8 @@ static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
 /**
  * Read a pad as raw ADC counts (0–4095 at 12-bit resolution).
  *
- * @tessera expose category=adc name=read returns=int
- * @tessera twin full
+ * @studio expose category=adc name=read returns=int
+ * @studio twin full
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_pad(uint8_t pad)
@@ -113,8 +113,8 @@ static inline int core_adc_read_pad(uint8_t pad)
 /**
  * Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).
  *
- * @tessera expose category=adc name=read_mv returns=int
- * @tessera twin full
+ * @studio expose category=adc name=read_mv returns=int
+ * @studio twin full
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_mv_pad(uint8_t pad)
@@ -126,8 +126,8 @@ static inline int core_adc_read_mv_pad(uint8_t pad)
  * Die temperature in tenths of deg C (e.g. 253 = 25.3 C).
  * Dispatches to the default ADC instance.
  *
- * @tessera expose category=adc name=temp_decidegc returns=int
- * @tessera twin full
+ * @studio expose category=adc name=temp_decidegc returns=int
+ * @studio twin full
  */
 static inline int core_adc_temp_decidegc(void)
 {
@@ -138,8 +138,8 @@ static inline int core_adc_temp_decidegc(void)
  * VDD supply voltage in millivolts (via VREFINT).
  * Dispatches to the default ADC instance.
  *
- * @tessera expose category=adc name=vdd_mv returns=int
- * @tessera twin full
+ * @studio expose category=adc name=vdd_mv returns=int
+ * @studio twin full
  */
 static inline int core_adc_vdd_mv(void)
 {
@@ -191,31 +191,31 @@ static inline uint16_t core_adc_dma_read(core_adc_t *adc, uint8_t pad)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=L title="Twin VDD / die-temp are constants"
+// @studio unsupported tier=2 value=L title="Twin VDD / die-temp are constants"
 //   read_pad / read_mv_pad use the per-pad slider on the chip view, but
 //   temp_decidegc and vdd_mv return fixed values (25.0 °C / 3300 mV).
 //   No UI affordance to vary them yet — DSL programs that branch on
 //   under-/over-temp or low-VDD logic always see nominal in the IDE.
 //
-// @tessera unsupported tier=2 value=M title="No DSL access to sampling speed / resolution"
+// @studio unsupported tier=2 value=M title="No DSL access to sampling speed / resolution"
 //   Tier 2 calls the default instance at its compile-time resolution
 //   (12-bit) and per-pad sampling speed set during init. SAMP_FAST /
 //   MED / SLOW / VERY_SLOW and ADC_6/8/10/12BIT aliases are reachable
 //   only via the explicit-handle Tier 1 API.
 //
-// @tessera unsupported tier=2 value=M title="No multi-instance ADC dispatch"
+// @studio unsupported tier=2 value=M title="No multi-instance ADC dispatch"
 //   Tier 2 wrappers always hit core_adc1. Cores with multiple ADCs
 //   (Core.H has ADC1 + ADC2) need per-pad peripheral tagging in tile
 //   JSON before coregen can emit the dispatch. Until then DSL programs
 //   are limited to whichever pads coregen routed to ADC1.
 //
-// @tessera unsupported tier=1 value=M title="No oversampling / averaging helper"
+// @studio unsupported tier=1 value=M title="No oversampling / averaging helper"
 //   STM32 ADCs can hardware-oversample 2×–256× for extra effective
 //   resolution. The HAL exposes the registers but core_adc has no
 //   convenience wrapper — callers reach into tal_adc / hal_adc to set
 //   OVSR/OVSS bits manually.
 //
-// @tessera unsupported tier=1 value=L title="No external-trigger / injected channels"
+// @studio unsupported tier=1 value=L title="No external-trigger / injected channels"
 //   ADC injected groups + external triggers (TIMx TRGO, EXTI line)
 //   are not surfaced. Bring-your-own register writes if you need a
 //   timer-synchronized analog sample for control loops.

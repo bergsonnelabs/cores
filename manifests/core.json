@@ -1,5 +1,5 @@
 {
-  "schema": "tessera-manifest/v1",
+  "schema": "studio-manifest/v1",
   "source": "cores@e8a8c62",
   "categories": {
     "adc": {

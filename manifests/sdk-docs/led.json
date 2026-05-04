@@ -1,5 +1,5 @@
 {
-  "schema": "tessera-sdk-docs/v1",
+  "schema": "studio-sdk-docs/v1",
   "source": "cores@e8a8c62",
   "category": "led",
   "label": "Core.LED",
@@ -12,7 +12,7 @@
       "returns": "void",
       "brief": "Enable the GPIO clock and configure the LED pin as a push-pull output. Call once after core_init(). The LED starts in the off state.",
       "params": [],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_led_on",
@@ -20,7 +20,7 @@
       "returns": "void",
       "brief": "Turn the onboard LED on. Simplest possible light control — useful alongside blink/heartbeat when the user wants explicit on/off state rather than a timed pattern.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_led_off",
@@ -28,7 +28,7 @@
       "returns": "void",
       "brief": "Turn the onboard LED off.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_led_toggle",
@@ -36,7 +36,7 @@
       "returns": "void",
       "brief": "Flip the onboard LED's current state. Non-blocking — no delay. Good for driving the LED from an event handler that fires at a rate you've already chosen (e.g., a pad-edge ISR on a button).",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_led_blink",
@@ -74,7 +74,7 @@
           "description": "LED-off duration per blink."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_led_sos",
@@ -82,7 +82,7 @@
       "returns": "void",
       "brief": "Blink the SOS pattern (3 short, 3 long, 3 short) in an infinite loop. Use for unrecoverable errors. This function never returns.",
       "params": [],
-      "tessera_exposed": false,
+      "studio_exposed": false,
       "attributes": [
         "noreturn"
       ]
@@ -104,7 +104,7 @@
           "description": "Delay after the toggle. 0 toggles without waiting."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     }
   ]
 }

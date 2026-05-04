@@ -1,5 +1,5 @@
 {
-  "schema": "tessera-sdk-docs/v1",
+  "schema": "studio-sdk-docs/v1",
   "source": "cores@e8a8c62",
   "category": "rtc",
   "label": "Core.RTC",
@@ -12,7 +12,7 @@
       "returns": "void",
       "brief": "Initialize the RTC using LSI (~32kHz internal RC). Call once from `on start` before setting time, date, or alarms. For LSE, call ll_rtc_init(1) directly in hand-written C.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_set_time",
@@ -48,7 +48,7 @@
           "description": "Seconds."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_get_time",
@@ -69,7 +69,7 @@
           "ctype": "uint8_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_rtc_set_date",
@@ -114,7 +114,7 @@
           "description": "Weekday (1 = Mon, 7 = Sun)."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_get_date",
@@ -139,7 +139,7 @@
           "ctype": "uint8_t *"
         }
       ],
-      "tessera_exposed": false
+      "studio_exposed": false
     },
     {
       "name": "core_rtc_wakeup",
@@ -157,7 +157,7 @@
           "description": "Wakeup interval in seconds."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_wakeup_stop",
@@ -165,7 +165,7 @@
       "returns": "void",
       "brief": "Disable the periodic wakeup timer.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_set_alarm",
@@ -201,7 +201,7 @@
           "description": "0-59, or 255 (0xFF) to match any second."
         }
       ],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_clear_alarm",
@@ -209,7 +209,7 @@
       "returns": "void",
       "brief": "Clear the alarm (disable Alarm A).",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     },
     {
       "name": "core_rtc_alarm_fired",
@@ -217,7 +217,7 @@
       "returns": "int",
       "brief": "Check if the alarm has fired (poll mode). Clears the flag on read.",
       "params": [],
-      "tessera_exposed": true
+      "studio_exposed": true
     }
   ]
 }

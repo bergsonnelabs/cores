@@ -17,9 +17,9 @@
  * no erase. On flash-emulated cores, wear-leveling is handled
  * internally (not yet implemented).
  *
- * @tessera category nvm label=Core.NVM icon=▤
+ * @studio category nvm label=Core.NVM icon=▤
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    nvm
  *   name:  NVM — non-volatile memory
  *   blurb: Byte-level read / write across all four Cores. Core.L hits
@@ -132,8 +132,8 @@ static inline int core_nvm_write(uint32_t offset, const void *data, uint32_t len
 /**
  * Returns the total NVM size in bytes for this Core.
  *
- * @tessera expose category=nvm name=size returns=int
- * @tessera twin full
+ * @studio expose category=nvm name=size returns=int
+ * @studio twin full
  */
 static inline uint32_t core_nvm_size(void)
 {
@@ -155,8 +155,8 @@ static inline uint32_t core_nvm_size(void)
  * The signed return lets DSL programs branch on `< 0` without an
  * out-pointer.
  *
- * @tessera expose category=nvm name=read_byte returns=int
- * @tessera twin full
+ * @studio expose category=nvm name=read_byte returns=int
+ * @studio twin full
  * @param offset [0..4095] Byte offset into the NVM region.
  */
 static inline int core_nvm_read_byte(uint32_t offset)
@@ -170,8 +170,8 @@ static inline int core_nvm_read_byte(uint32_t offset)
  * Write a single byte to NVM at `offset`. Returns 1 on success or -1
  * on any error (offset out of range, write timeout, flash-emu missing).
  *
- * @tessera expose category=nvm name=write_byte returns=int
- * @tessera twin full
+ * @studio expose category=nvm name=write_byte returns=int
+ * @studio twin full
  * @param offset [0..4095] Byte offset into the NVM region.
  * @param value  [0..255] Byte to store.
  */
@@ -183,14 +183,14 @@ static inline int core_nvm_write_byte(uint32_t offset, uint8_t value)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="No bulk read / write Tier 2 yet"
+// @studio unsupported tier=2 value=M title="No bulk read / write Tier 2 yet"
 //   Tier 2 covers the byte-level pair (read_byte, write_byte) — enough
 //   for boot counters, single flags, small struct fields. Multi-byte
 //   read_buf / write_buf still need the array-IN / array-OUT host-call
 //   ABI prototyped on the tile-driver side. Tracked with the DSL
 //   Capability Coverage close.
 //
-// @tessera unsupported tier=2 value=L title="Twin NVM state wipes on Reset"
+// @studio unsupported tier=2 value=L title="Twin NVM state wipes on Reset"
 //   read_byte / write_byte round-trip within a single run, but the
 //   per-slot store is cleared on every project reload — DSL programs
 //   that rely on NVM state surviving a soft reset (boot counters,
@@ -198,14 +198,14 @@ static inline int core_nvm_write_byte(uint32_t offset, uint8_t value)
 //   the Backup register gap calls out; closing both needs persistent
 //   per-slot state across worker resets.
 //
-// @tessera unsupported tier=1 value=H title="Flash emulation missing on U / W / H"
+// @studio unsupported tier=1 value=H title="Flash emulation missing on U / W / H"
 //   core_nvm_write returns -1 on Core.U / Core.W / Core.H. Tracked in
-//   the SDK roadmap and called out in the Tessera A4cd PR notes —
+//   the SDK roadmap and called out in the Studio A4cd PR notes —
 //   blocked on a flash-emu layer in core_nvm with wear-leveling. Until
 //   it lands, on-Core programs that need persistent state are limited
 //   to backup registers (32 × uint32_t).
 //
-// @tessera unsupported tier=1 value=M title="No erase / wear-tracking API"
+// @studio unsupported tier=1 value=M title="No erase / wear-tracking API"
 //   Even the EEPROM path doesn't surface erase, page count, or remaining
 //   write cycles. Long-running data-logger applications can't budget
 //   their write rate against EEPROM endurance.

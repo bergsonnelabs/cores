@@ -12,10 +12,10 @@
  * consumed, no ISR context to manage. When no `tick_ms` is set the
  * dispatcher is a no-op stub.
  *
- * @tessera category timer label=Core.Timer icon=◷
- * @tessera event name=tick
+ * @studio category timer label=Core.Timer icon=◷
+ * @studio event name=tick
  *
- * @tessera coverage
+ * @studio coverage
  *   id:    timer
  *   name:  Timer — timebase, capture, periodic tick
  *   page:  /docs/sdk/timers
@@ -225,25 +225,25 @@ static inline hal_status_t core_tick_init(core_timer_t *h,
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Tick event period is set in config.json, not from DSL"
+// @studio unsupported tier=2 value=M title="Tick event period is set in config.json, not from DSL"
 //   The DSL's `Core.Timer.tick` event fires at the period baked into
 //   coregen from config.json's timer.tick_ms. There's no
 //   `Core.Timer.set_tick_ms()` host call to retune at runtime — the
 //   period is fixed for the life of the program.
 //
-// @tessera unsupported tier=2 value=M title="No DSL access to per-channel capture / PWM"
+// @studio unsupported tier=2 value=M title="No DSL access to per-channel capture / PWM"
 //   core_timer_capture_init / capture_read / pwm_set are Tier 1 — they
 //   take a core_timer_t* the DSL can't construct. PWM has its own
 //   default-instance helper (Core.PWM.duty); capture / measurement has
 //   no DSL surface.
 //
-// @tessera unsupported tier=1 value=M title="No encoder / quadrature mode"
+// @studio unsupported tier=1 value=M title="No encoder / quadrature mode"
 //   The hardware supports incremental encoder mode (CH1+CH2 quadrature
 //   counting). The wrapper exposes neither encoder init nor read.
 //   Motion / rotary-encoder tiles can't use it without dropping into
 //   ll_tim.
 //
-// @tessera unsupported tier=1 value=L title="No one-pulse mode (OPM)"
+// @studio unsupported tier=1 value=L title="No one-pulse mode (OPM)"
 //   STM32 timers can fire a single pulse of programmable width and
 //   then auto-disable — useful for camera trigger / strobe / ultrasound
 //   ranging. Not wrapped.
