@@ -84,6 +84,12 @@ PROJECT_INDEPENDENT_CATEGORIES = {
     "watchdog",
     "nvm",
     "usb",  # only core_usb_print_* stays — core_usb_print(string) is already skipped for pointer param
+    # rtc and backup were on the per-project list but a closer audit
+    # (Phase D-0) showed every Tier-2 entry resolves through tal_rtc /
+    # ll_rtc / ll_pwr — no coregen-emitted handles or PAD_*_PORT
+    # macros. Safe to wrap directly here.
+    "rtc",
+    "backup",
 }
 F64_TYPES = {"double"}
 F32_TYPES = {"float"}  # WAMR uses 'f' for f32, 'F' for f64 in sig strings

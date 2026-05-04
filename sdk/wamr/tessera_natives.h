@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-/* 15 Tessera-exposed host symbols wired from manifests. */
+/* 25 Tessera-exposed host symbols wired from manifests. */
 extern NativeSymbol g_tessera_natives[];
 extern const size_t g_tessera_natives_count;
 
