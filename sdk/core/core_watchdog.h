@@ -48,7 +48,7 @@
  * WARNING: Once started, the IWDG cannot be stopped.
  *
  * @tessera expose category=watchdog name=start
- * @tessera twin noop
+ * @tessera twin full
  * @param timeout_ms [100..28000] Timeout in milliseconds before reset.
  */
 static inline void core_watchdog_start(uint32_t timeout_ms)
@@ -78,7 +78,7 @@ static inline void core_watchdog_start(uint32_t timeout_ms)
  * Feed the watchdog. Must be called before the timeout expires.
  *
  * @tessera expose category=watchdog name=feed
- * @tessera twin noop
+ * @tessera twin full
  */
 static inline void core_watchdog_feed(void)
 {
@@ -99,12 +99,6 @@ static inline void core_watchdog_clear_flags(void)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Twin doesn't enforce the watchdog"
-//   start / feed are logged host calls — the simulator never resets
-//   the worker, so DSL programs that "forget" to feed don't see any
-//   consequence in the IDE. A virtual countdown that re-emits started
-//   on miss would close the gap.
-//
 // @tessera unsupported tier=2 value=L title="No DSL access to caused_reset / clear_flags"
 //   These return / clear hardware flags that only matter on the very
 //   first boot iteration. Exposing them needs a story for "before

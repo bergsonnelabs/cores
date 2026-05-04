@@ -75,7 +75,7 @@ static inline void _core_backup_ensure_clk(void)
  * Read a backup register.
  *
  * @tessera expose category=backup name=read returns=int
- * @tessera twin noop
+ * @tessera twin full
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  */
 static inline uint32_t core_backup_read(uint8_t index)
@@ -89,7 +89,7 @@ static inline uint32_t core_backup_read(uint8_t index)
  * Write a backup register. Backup domain write access is enabled automatically.
  *
  * @tessera expose category=backup name=write
- * @tessera twin noop
+ * @tessera twin full
  * @param index [0..31] Register index (Core.L caps at 4; others at 31).
  * @param value 32-bit value to store.
  */
@@ -102,11 +102,11 @@ static inline void core_backup_write(uint8_t index, uint32_t value)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=M title="Twin doesn't persist between runs"
-//   The simulator logs read/write host calls but doesn't keep a backing
-//   store across Reset, so DSL programs that rely on backup state
-//   surviving a soft reset (e.g., boot counters) can't be exercised in
-//   the IDE. Persisting per-slot state across Reset would close the gap.
+// @tessera unsupported tier=2 value=L title="Twin backup state wipes on Reset"
+//   read/write round-trip within a single run, but the per-slot store
+//   is cleared on every project reload — DSL programs that rely on
+//   backup state surviving a soft reset (e.g., boot counters across
+//   the user clicking Reset in the IDE) can't be exercised end-to-end.
 //
 // @tessera unsupported tier=1 value=L title="No tamper / anti-tamper integration"
 //   The TAMP block on WBA/H5 hosts the backup registers but also drives
