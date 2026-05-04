@@ -102,7 +102,7 @@ static inline uint32_t core_adc_read_mv(core_adc_t *adc, uint8_t pad)
  * Read a pad as raw ADC counts (0–4095 at 12-bit resolution).
  *
  * @tessera expose category=adc name=read returns=int
- * @tessera twin noop
+ * @tessera twin full
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_pad(uint8_t pad)
@@ -114,7 +114,7 @@ static inline int core_adc_read_pad(uint8_t pad)
  * Read a pad as calibrated millivolts (uses VREFINT for per-chip accuracy).
  *
  * @tessera expose category=adc name=read_mv returns=int
- * @tessera twin noop
+ * @tessera twin full
  * @param pad [1..64] Tile pad number configured as an ADC input in config.json.
  */
 static inline int core_adc_read_mv_pad(uint8_t pad)
@@ -127,7 +127,7 @@ static inline int core_adc_read_mv_pad(uint8_t pad)
  * Dispatches to the default ADC instance.
  *
  * @tessera expose category=adc name=temp_decidegc returns=int
- * @tessera twin noop
+ * @tessera twin full
  */
 static inline int core_adc_temp_decidegc(void)
 {
@@ -139,7 +139,7 @@ static inline int core_adc_temp_decidegc(void)
  * Dispatches to the default ADC instance.
  *
  * @tessera expose category=adc name=vdd_mv returns=int
- * @tessera twin noop
+ * @tessera twin full
  */
 static inline int core_adc_vdd_mv(void)
 {
@@ -191,12 +191,11 @@ static inline uint16_t core_adc_dma_read(core_adc_t *adc, uint8_t pad)
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="Twin doesn't model analog inputs"
-//   The simulator logs core_adc_read_pad / read_mv_pad / temp_decidegc /
-//   vdd_mv host calls but always returns 0 (no named handler in
-//   runtime.ts). DSL programs that branch on an analog read can't be
-//   exercised end-to-end in the IDE — needs a per-pad input slider
-//   wired into a tile-sim handler that returns the simulated count.
+// @tessera unsupported tier=2 value=L title="Twin VDD / die-temp are constants"
+//   read_pad / read_mv_pad use the per-pad slider on the chip view, but
+//   temp_decidegc and vdd_mv return fixed values (25.0 °C / 3300 mV).
+//   No UI affordance to vary them yet — DSL programs that branch on
+//   under-/over-temp or low-VDD logic always see nominal in the IDE.
 //
 // @tessera unsupported tier=2 value=M title="No DSL access to sampling speed / resolution"
 //   Tier 2 calls the default instance at its compile-time resolution
