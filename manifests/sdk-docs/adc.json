@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v1",
-  "source": "cores@c2415b1",
+  "source": "tiles@d131f0f",
   "category": "adc",
   "label": "Core.ADC",
   "icon": "◐",
