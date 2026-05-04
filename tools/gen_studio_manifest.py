@@ -896,7 +896,7 @@ def main():
             core_categories[name] = meta
             sdk_docs[name] = {
                 "schema": "studio-sdk-docs/v1",
-                "source": f"cores@{commit}",
+                "source": f"tiles@{commit}",
                 "category": name,
                 "label": meta["label"],
                 "icon": meta["icon"],
@@ -906,7 +906,7 @@ def main():
 
     core_manifest = {
         "schema": "studio-manifest/v1",
-        "source": f"cores@{commit}",
+        "source": f"tiles@{commit}",
         "categories": core_categories,
         "hosts": core_hosts,
         "events": core_events,
@@ -1018,7 +1018,7 @@ def main():
         }
         manifest = {
             "schema": "studio-manifest/v1",
-            "source": f"cores@{commit}",
+            "source": f"tiles@{commit}",
             "tile": palette["label"],
             "palette": palette,
             "driver": {
