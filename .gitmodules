@@ -1,7 +1,3 @@
-[submodule "kiln"]
-	path = kiln
-	url = https://github.com/bergsonnelabs/kiln.git
-	branch = main
 [submodule "third_party/wasm-micro-runtime"]
 	path = third_party/wasm-micro-runtime
 	url = https://github.com/bytecodealliance/wasm-micro-runtime.git

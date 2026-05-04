@@ -1,0 +1,546 @@
+{
+  "schema": "studio-manifest/v1",
+  "source": "cores@c2415b1",
+  "tile": "Power.L.1T",
+  "palette": {
+    "label": "Power.L.1T",
+    "icon": "☷"
+  },
+  "driver": {
+    "prefix": "tile_power_l_1t",
+    "header": "tile_power_l_1t.h",
+    "version": "3.1.0"
+  },
+  "handle": {
+    "type": "tile_t",
+    "init": "tile_power_l_1t_init"
+  },
+  "hosts": [
+    {
+      "qname": [
+        "$slot",
+        "set_charge_current_ma"
+      ],
+      "symbol": "tile_power_l_1t_set_charge_current_ma",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the fast-charge current.",
+      "params": [
+        {
+          "name": "ma",
+          "type": "int",
+          "description": "Target charge current in mA (1.25–500)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_charge_voltage_mv"
+      ],
+      "symbol": "tile_power_l_1t_set_charge_voltage_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the battery regulation voltage.",
+      "params": [
+        {
+          "name": "mv",
+          "type": "int",
+          "description": "Target battery voltage in mV (3600–4600)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_pre_charge_ma"
+      ],
+      "symbol": "tile_power_l_1t_set_pre_charge_ma",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the pre-charge current (used when VBAT < VLOW).",
+      "params": [
+        {
+          "name": "ma",
+          "type": "int",
+          "description": "Target pre-charge current in mA (1.25–77.5)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_termination_percent"
+      ],
+      "symbol": "tile_power_l_1t_set_termination_percent",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the termination current as a percentage of ICHG.",
+      "params": [
+        {
+          "name": "pct",
+          "type": "int",
+          "description": "Termination current as % of ICHG (0 = disabled, 1–31)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_input_current_limit_ma"
+      ],
+      "symbol": "tile_power_l_1t_set_input_current_limit_ma",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the input current limit (DPM threshold).",
+      "params": [
+        {
+          "name": "ma",
+          "type": "int",
+          "description": "Input current limit in mA (5–500)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_vbat_mv"
+      ],
+      "symbol": "tile_power_l_1t_get_vbat_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read battery voltage from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_vin_mv"
+      ],
+      "symbol": "tile_power_l_1t_get_vin_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read input (VIN) voltage from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_pmid_mv"
+      ],
+      "symbol": "tile_power_l_1t_get_pmid_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read PMID (system rail) voltage from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_charge_current_ma"
+      ],
+      "symbol": "tile_power_l_1t_get_charge_current_ma",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read charge current (into the battery) from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_input_current_ma"
+      ],
+      "symbol": "tile_power_l_1t_get_input_current_ma",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read input current (from VIN) from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_ts_mv"
+      ],
+      "symbol": "tile_power_l_1t_get_ts_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read raw TS pin voltage from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_adcin_mv"
+      ],
+      "symbol": "tile_power_l_1t_get_adcin_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read raw ADCIN pin voltage from the ADC.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_percent"
+      ],
+      "symbol": "tile_power_l_1t_get_percent",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read battery state-of-charge as a percentage.",
+      "params": [],
+      "returns": "uint8_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ts_cold"
+      ],
+      "symbol": "tile_power_l_1t_set_ts_cold",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the cold-temperature TS threshold (raw register value).",
+      "params": [
+        {
+          "name": "code",
+          "type": "int",
+          "description": "Raw 8-bit TS_COLD register value"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ts_cool"
+      ],
+      "symbol": "tile_power_l_1t_set_ts_cool",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the cool-temperature TS threshold (raw register value).",
+      "params": [
+        {
+          "name": "code",
+          "type": "int",
+          "description": "Raw 8-bit TS_COOL register value"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ts_warm"
+      ],
+      "symbol": "tile_power_l_1t_set_ts_warm",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the warm-temperature TS threshold (raw register value).",
+      "params": [
+        {
+          "name": "code",
+          "type": "int",
+          "description": "Raw 8-bit TS_WARM register value"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ts_hot"
+      ],
+      "symbol": "tile_power_l_1t_set_ts_hot",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the hot-temperature TS threshold (raw register value).",
+      "params": [
+        {
+          "name": "code",
+          "type": "int",
+          "description": "Raw 8-bit TS_HOT register value"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ts_enabled"
+      ],
+      "symbol": "tile_power_l_1t_set_ts_enabled",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Enable or disable TS-based thermal protection.",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "int",
+          "description": "1 = TS thermal protection on, 0 = off"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ldo_voltage_mv"
+      ],
+      "symbol": "tile_power_l_1t_set_ldo_voltage_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the LDO output voltage.",
+      "params": [
+        {
+          "name": "mv",
+          "type": "int",
+          "description": "Target LDO voltage in mV (600–3700)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ldo_mode"
+      ],
+      "symbol": "tile_power_l_1t_set_ldo_mode",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the LS/LDO output mode (regulated LDO vs load switch).",
+      "params": [
+        {
+          "name": "mode",
+          "type": "?power_l_1t_ldo_mode_t",
+          "description": "LDO mode (POWER_L_1T_LDO_MODE_LDO or _LOAD_SWITCH)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_ldo_enabled"
+      ],
+      "symbol": "tile_power_l_1t_set_ldo_enabled",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Enable or disable the LS/LDO output.",
+      "params": [
+        {
+          "name": "enabled",
+          "type": "int",
+          "description": "1 = output on, 0 = output off (high-Z)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_charge_status"
+      ],
+      "symbol": "tile_power_l_1t_get_charge_status",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Snapshot the chip's current state + latched faults.",
+      "params": [
+        {
+          "name": "out",
+          "type": "?power_l_1t_status_t *",
+          "description": "Caller-allocated status struct (zeroed on entry)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "enter_ship_mode"
+      ],
+      "symbol": "tile_power_l_1t_enter_ship_mode",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Enter ship mode (~10 nA quiescent).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "read_status"
+      ],
+      "symbol": "tile_power_l_1t_read_status",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read any 8-bit BQ25150 register.",
+      "params": [
+        {
+          "name": "reg",
+          "type": "int",
+          "description": "Register address"
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "write_reg"
+      ],
+      "symbol": "tile_power_l_1t_write_reg",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Write any 8-bit BQ25150 register.",
+      "params": [
+        {
+          "name": "reg",
+          "type": "int",
+          "description": "Register address"
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "description": "Value to write"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "is_charging"
+      ],
+      "symbol": "tile_power_l_1t_is_charging",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Is the cell currently being charged?",
+      "params": [],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "is_charge_done"
+      ],
+      "symbol": "tile_power_l_1t_is_charge_done",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Has charge termination been reached?",
+      "params": [],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "is_battery_low"
+      ],
+      "symbol": "tile_power_l_1t_is_battery_low",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Is the battery below `threshold_pct`?",
+      "params": [
+        {
+          "name": "threshold_pct",
+          "type": "int",
+          "description": "Threshold in percent (0–100)"
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "is_powered"
+      ],
+      "symbol": "tile_power_l_1t_is_powered",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Is external power present (running off VIN)?",
+      "params": [],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "wait_for_charge_done"
+      ],
+      "symbol": "tile_power_l_1t_wait_for_charge_done",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Block until charge_done is observed, or timeout.",
+      "params": [
+        {
+          "name": "timeout_ms",
+          "type": "int",
+          "description": "Maximum time to wait, in milliseconds"
+        }
+      ],
+      "returns": "uint8_t",
+      "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    }
+  ],
+  "events": [],
+  "bus_addresses": {
+    "I2C": [
+      {
+        "address": "0x6B",
+        "is_default": true
+      }
+    ]
+  }
+}

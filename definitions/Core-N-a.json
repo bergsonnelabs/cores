@@ -1,0 +1,29 @@
+{
+  "rev": "a",
+  "name": "N",
+  "pads": [],
+  "power": [],
+  "family": "Core",
+  "package": {
+    "pads": 10,
+    "type": "T44",
+    "size_x": 4000,
+    "size_y": 4000,
+    "size_z": 0
+  },
+  "tile_id": 35,
+  "headline": "Edge-AI engine",
+  "components": [
+    {
+      "url": "",
+      "part": "STM32N6x",
+      "datasheet": "",
+      "manufacturer": "ST Microelectronics"
+    }
+  ],
+  "interfaces": [],
+  "updated_at": "2026-03-12T20:53:44.091Z",
+  "description": "",
+  "json_version": "0.1",
+  "application_notes": []
+}

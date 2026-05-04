@@ -10,9 +10,9 @@
                 "${workspaceFolder}/sdk/ble/include",
                 "${workspaceFolder}/sdk/ble/include/auto",
                 "${workspaceFolder}/sdk/ble/link_layer/inc",
-                "${workspaceFolder}/Kiln",
-                "${workspaceFolder}/Kiln/drivers",
-                "${workspaceFolder}/Kiln/hal",
+                "${workspaceFolder}",
+                "${workspaceFolder}/drivers",
+                "${workspaceFolder}/hal",
                 "${workspaceFolder}/projects/*/coregen",
                 "${workspaceFolder}/projects/*"
             ],

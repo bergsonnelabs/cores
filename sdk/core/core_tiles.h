@@ -1,5 +1,5 @@
 /**
- * core_tiles.h — Bridge between Cores SDK and Kiln tile drivers.
+ * core_tiles.h — Bridge between Cores SDK and tile drivers.
  *
  * Provides core_tiles_pal() which accepts either an I2C or SPI bus
  * handle and returns a tiles_pal_t* wired to the Cores SDK:
@@ -12,9 +12,9 @@
  *
  * @studio coverage
  *   id:    tiles
- *   name:  Tiles — Cores ↔ Kiln bridge
+ *   name:  Tiles — SDK ↔ tile-driver bridge
  *   blurb: Tier 1 only. Header-only adapter that wraps a core_i2c_t* /
- *          core_spi_t* into the tiles_pal_t* shape Kiln tile drivers
+ *          core_spi_t* into the tiles_pal_t* shape tile drivers
  *          consume. C11 _Generic resolves the bus type at compile
  *          time; the resulting hal struct is cached per bus pointer
  *          (max 4 per bus type). Used by every tile val / hardware

@@ -5,7 +5,7 @@
  * is kept in sync with project.json automatically — add your own
  * tile-related defines outside the markers.
  *
- * Named tile_handles.h (not tiles.h) so it doesn't shadow kiln/tiles.h
+ * Named tile_handles.h (not tiles.h) so it doesn't shadow tiles.h
  * in the compiler include path.
  */
 

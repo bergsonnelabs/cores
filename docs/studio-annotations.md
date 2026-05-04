@@ -2,7 +2,7 @@
 
 Studio builds its block palette, DSL imports, and SDK reference docs from C headers in this repo. The bridge is a small set of `@studio` directives placed inside Doxygen blocks. The generator that reads them is [`tools/gen_studio_manifest.py`](../tools/gen_studio_manifest.py); this file is the human-readable companion.
 
-If you're authoring a new `core_*.h` module or a Kiln tile driver and want it to show up in Studio, this is the doc. If you're adding directives the generator doesn't yet understand, edit `gen_studio_manifest.py` and update this file in the same change.
+If you're authoring a new `core_*.h` module or a tile driver and want it to show up in Studio, this is the doc. If you're adding directives the generator doesn't yet understand, edit `gen_studio_manifest.py` and update this file in the same change.
 
 ## How the generator finds tags
 
@@ -32,9 +32,9 @@ Declares this header as a Studio category. Required on every `sdk/core/core_*.h`
 
 A header may declare at most one `@studio category`. A second declaration with different attributes is a warning and is ignored.
 
-### `@studio tile [label=<str>] [icon=<glyph>]` — Kiln drivers
+### `@studio tile [label=<str>] [icon=<glyph>]` — tile drivers
 
-The tile-driver counterpart. Goes at the top of `Kiln/drivers/tile_*.h`.
+The tile-driver counterpart. Goes at the top of `drivers/tile_*.h`.
 
 ```c
 /**
@@ -94,7 +94,7 @@ Marks a function as palette-exposed and DSL-callable. The single most important 
 static inline void core_pwm_duty(uint8_t pad, uint16_t duty_permil) { ... }
 ```
 
-- `category=`: must match the file's `@studio category` (or be `tile` for Kiln drivers). Drives the DSL qname (`Core.<category>.<name>`).
+- `category=`: must match the file's `@studio category` (or be `tile` for tile drivers). Drives the DSL qname (`Core.<category>.<name>`).
 - `name=`: DSL-facing name. Convention: lowercase snake_case, short. The generated qname is `Core.PWM.duty`, not `Core.PWM.core_pwm_duty`.
 - `returns=`: DSL-level return type. Required for non-void hosts so Studio can use the call as an expression. Values: `int`, `bool`, `float`, `string`, `int[N]` / `bool[N]` / `float[N]` (fixed-length array). Omit for void hosts (statement-only).
 - `icon=`: per-host glyph in the palette (rare; usually inherited from the category).
@@ -244,7 +244,7 @@ tools/gen_studio_manifest.py
 It writes:
 - `manifests/core.json` — palette manifest used by Studio's frontend.
 - `manifests/sdk-docs/<category>.json` — per-category SDK reference doc.
-- `kiln/manifests/tile_<name>.json` — per-tile manifest (for Kiln drivers).
+- `manifests/tile_<name>.json` — per-tile manifest (for tile drivers).
 
 To verify the manifests on disk match the headers without overwriting (CI-friendly):
 
@@ -270,7 +270,7 @@ The generator prints warnings to stderr without failing the build. Watch for:
 
 When adding `@studio` annotations to an existing driver:
 
-1. File-level: add `@studio category <name>` (cores) or `@studio tile label=<Name>` (Kiln). Pick a category name that's unique across the repo.
+1. File-level: add `@studio category <name>` (SDK module) or `@studio tile label=<Name>` (tile driver). Pick a category name that's unique across the repo.
 2. For each function the user should be able to call from Studio, add `@studio expose category=<name> name=<dsl_name>` plus `returns=` if non-void.
 3. Add `@param` lines with ranges and units for every C parameter.
 4. For pointer-output parameters: add `@studio out_buffer <param> type=<ctype> length=<N>` and `returns=int[N]` (or `float[N]`) on the expose tag.
@@ -280,5 +280,5 @@ When adding `@studio` annotations to an existing driver:
 
 Reference patterns:
 - Default-instance helper (most common): [`core_pwm_duty`](../sdk/core/core_pwm.h) in `sdk/core/core_pwm.h`.
-- Tile driver with events: [`tile_sense_i_6p6.h`](../kiln/drivers/tile_sense_i_6p6.h) — five events, two with payload, two with read functions.
+- Tile driver with events: [`tile_sense_i_6p6.h`](../drivers/tile_sense_i_6p6.h) — five events, two with payload, two with read functions.
 - Array-returning host: `tile_sense_i_6p6_get_raw_accels` in the same file.

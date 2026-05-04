@@ -1,0 +1,22 @@
+{
+  "rev": "a",
+  "name": "BB",
+  "pads": [],
+  "power": [],
+  "family": "Power",
+  "package": {
+    "pads": 10,
+    "type": "T44",
+    "size_x": 4000,
+    "size_y": 4000,
+    "size_z": 0
+  },
+  "tile_id": 42,
+  "headline": "multi-output buck-boost regulator",
+  "components": [],
+  "interfaces": [],
+  "updated_at": "2026-02-20T10:11:58.598Z",
+  "description": "",
+  "json_version": "0.1",
+  "application_notes": []
+}

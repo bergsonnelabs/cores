@@ -8,7 +8,7 @@
  * Exercises: core_init, core_i2c_init (h, I2C1, I2C_400K),
  *            core_spi_init, core_spi_set_cs, core_spi_transfer
  *
- * Note: Kiln tile driver integration (KILN_ENABLED) tested separately
+ * Note: tile driver integration (TILES_ENABLED) tested separately
  * in projects/ble-test which uses tile_handles.h from coregen.
  */
 

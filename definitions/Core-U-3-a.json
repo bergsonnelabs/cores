@@ -1,0 +1,29 @@
+{
+  "rev": "a",
+  "name": "U.3",
+  "pads": [],
+  "power": [],
+  "family": "Core",
+  "package": {
+    "pads": 10,
+    "type": "T44",
+    "size_x": 4000,
+    "size_y": 4000,
+    "size_z": 0
+  },
+  "tile_id": 31,
+  "headline": "Full-fanout USB-prog Cortex-M4",
+  "components": [
+    {
+      "url": "",
+      "part": "STM32L422TB",
+      "datasheet": "",
+      "manufacturer": "ST Microelectronics"
+    }
+  ],
+  "interfaces": [],
+  "updated_at": "2026-03-02T09:55:19.921Z",
+  "description": "",
+  "json_version": "0.2",
+  "application_notes": []
+}

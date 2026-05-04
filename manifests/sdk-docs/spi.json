@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v1",
-  "source": "cores@11dcaf9",
+  "source": "cores@c2415b1",
   "category": "spi",
   "label": "Core.SPI",
   "icon": "⇆",
