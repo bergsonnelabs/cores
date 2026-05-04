@@ -92,6 +92,20 @@ hal_spi_t *core_spi_handle_for_bus(uint8_t bus)
 {% for bus in usart_buses %}
 hal_uart_t {{ bus.handle }};
 {% endfor %}
+
+/* Tier 2 dispatcher: maps a bus id (1, 2, 6 …) → its handle. The
+ * core_serial_*_bus() wrappers in core_serial.h consult this so DSL
+ * callers never see hal_uart_t. Returns NULL for any bus the project
+ * hasn't declared in config.json. */
+hal_uart_t *core_serial_handle_for_bus(uint8_t bus)
+{
+    switch (bus) {
+{% for bus in usart_buses %}
+        case {{ bus.num }}: return &{{ bus.handle }};
+{% endfor %}
+        default: return (hal_uart_t *)0;
+    }
+}
 {% endif %}
 {% if pwm_timers %}
 /* ---- Timer/PWM handles ---- */
