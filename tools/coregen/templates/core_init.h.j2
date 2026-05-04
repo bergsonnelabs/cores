@@ -12,11 +12,17 @@
 {% if i2c_buses %}
 
 #include "hal_i2c.h"
+#include <stdint.h>
 
 /* ---- Auto-generated I2C handles ---- */
 {% for bus in i2c_buses %}
 extern hal_i2c_t {{ bus.handle }};
 {% endfor %}
+
+/* Tier 2 dispatcher — `core_i2c_*_bus(id, …)` wrappers in
+ * core_i2c.h consult this to find the configured bus. Returns NULL
+ * for unconfigured ids so callers can fail gracefully. */
+hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus);
 {% endif %}
 {% if spi_buses %}
 

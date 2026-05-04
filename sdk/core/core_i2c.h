@@ -19,14 +19,18 @@
  *   core_i2c_t bus;
  *   core_i2c_init(&bus, I2C1, I2C_400K);
  *
+ * @tessera category i2c label=Core.I2C icon=⇄
+ *
  * @tessera coverage
  *   id:    i2c
  *   name:  I2C — bus communication
  *   page:  /docs/sdk/i2c
  *   blurb: Master-mode I2C: polled read/write, register helpers, probing,
- *          bus scan. Header is core_i2c.h, implementation wraps hal_i2c.
- *          Currently Tier 1 only — there is no default-instance Tier 2
- *          helper for I2C yet.
+ *          bus scan. Tier 2 exposes byte-level register I/O + probing
+ *          against a bus id (1, 2, 3 …) — coregen resolves the handle
+ *          via core_i2c_handle_for_bus(). Tier 1 keeps the explicit
+ *          handle-based forms for finer control. Implementation wraps
+ *          hal_i2c.
  */
 
 #ifndef CORE_I2C_H
@@ -169,14 +173,82 @@ static inline void core_i2c_scan(core_i2c_t *h, uint8_t *found,
     hal_i2c_scan(h, found, count, max_count);
 }
 
+/* ---- Tier 2 — default-instance bus helpers ---------------------------- */
+
+/* These wrappers take a bus id (the I2C peripheral number — 1, 2, 3 …
+ * matching how config.json declares it) instead of a handle. The
+ * dispatcher `core_i2c_handle_for_bus` is emitted by coregen alongside
+ * the per-bus extern handles (core_i2c1, core_i2c3 …) so the wrapper
+ * never needs to see the hal_i2c_t shape itself. DSL programs reach
+ * for these; escape-to-C drops back to the Tier 1 handle-based forms
+ * above when finer control is needed. */
+
+/* Forward-decl of the coregen-emitted dispatcher (definition lives in
+ * core_init.c when the project declares any I2C bus). Forward-declared
+ * here rather than `#include "core_init.h"` so this header compiles in
+ * SDK contexts that don't have a project (val tests, examples without
+ * config.json). The natives-side caller in tessera_natives_project.c is
+ * gated on CORE_HAS_I2C_BUSES, so the linker never asks for the symbol
+ * unless the dispatcher actually exists. */
+hal_i2c_t *core_i2c_handle_for_bus(uint8_t bus);
+
+/**
+ * Write a single byte to a register on a device on `bus`.
+ * Returns I2C_OK on success, I2C_NACK / I2C_ERROR on bus failure,
+ * or I2C_ERROR if `bus` isn't declared in config.json.
+ *
+ * @tessera expose category=i2c name=write_byte returns=int
+ * @tessera twin full
+ */
+static inline hal_status_t core_i2c_write_byte_bus(uint8_t bus, uint8_t addr,
+                                                    uint16_t reg, uint8_t value)
+{
+    hal_i2c_t *h = core_i2c_handle_for_bus(bus);
+    if (!h) return HAL_ERROR;
+    return hal_i2c_write_byte(h, addr, reg, value);
+}
+
+/**
+ * Read a single byte from a register on a device on `bus`.
+ * Returns the byte value (0..255) on success, or -1 on any error
+ * (bus undeclared, NACK, timeout). The signed return lets DSL
+ * programs branch on `< 0` without an out-pointer.
+ *
+ * @tessera expose category=i2c name=read_byte returns=int
+ * @tessera twin full
+ */
+static inline int core_i2c_read_byte_bus(uint8_t bus, uint8_t addr, uint16_t reg)
+{
+    hal_i2c_t *h = core_i2c_handle_for_bus(bus);
+    if (!h) return -1;
+    uint8_t v = 0;
+    if (hal_i2c_read_byte(h, addr, reg, &v) != HAL_OK) return -1;
+    return (int)v;
+}
+
+/**
+ * Check if a device responds at `addr` on `bus`. Returns 1 if the
+ * device ACKs, 0 on NACK / timeout / undeclared bus.
+ *
+ * @tessera expose category=i2c name=probe returns=bool
+ * @tessera twin full
+ */
+static inline int core_i2c_probe_bus(uint8_t bus, uint8_t addr)
+{
+    hal_i2c_t *h = core_i2c_handle_for_bus(bus);
+    if (!h) return 0;
+    return hal_i2c_probe(h, addr) == HAL_OK ? 1 : 0;
+}
+
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No Tier 2 (default-instance) helpers"
-//   The Tessera-targeted convention — caller passes a bus id / pad and
-//   coregen resolves the handle from config.json — doesn't exist for I2C
-//   yet. Sketch: core_i2c_write_bus(bus_id, addr, data, len),
-//   core_i2c_read_byte_bus(bus_id, addr, reg, *value). Once added, the
-//   D / S / W columns become meaningful for I2C in the DSL.
+// @tessera unsupported tier=2 value=M title="Tier 2 is byte-level only — no bulk / scan"
+//   The current Tier 2 surface is write_byte_bus / read_byte_bus /
+//   probe_bus. DSL programs that need to push a multi-byte payload
+//   (display init sequences, IMU FIFO drains) or discover what's on a
+//   bus (`scan -> int[]`) drop back to Tier 1 with a hal_i2c_t handle.
+//   Adds need the array-IN / array-OUT host-call ABI prototyped on the
+//   tile-driver side — track with the DSL Capability Coverage close.
 //
 // @tessera unsupported tier=1 value=H title="Interrupt-driven / non-blocking I/O"
 //   All current operations are polled. A non-blocking variant (with
