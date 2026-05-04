@@ -1,6 +1,6 @@
 {
   "schema": "tessera-sdk-docs/v1",
-  "source": "cores@f9d51bd",
+  "source": "cores@e8a8c62",
   "category": "nvm",
   "label": "Core.NVM",
   "icon": "▤",
@@ -54,6 +54,51 @@
       "returns": "uint32_t",
       "brief": "Returns the total NVM size in bytes for this Core.",
       "params": [],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_nvm_read_byte",
+      "signature": "core_nvm_read_byte(uint32_t offset)",
+      "returns": "int",
+      "brief": "Read a single byte from NVM at `offset`. Returns the byte (0..255) on success or -1 on any error (offset out of range, NVM disabled). The signed return lets DSL programs branch on `< 0` without an out-pointer.",
+      "params": [
+        {
+          "name": "offset",
+          "ctype": "uint32_t",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Byte offset into the NVM region."
+        }
+      ],
+      "tessera_exposed": true
+    },
+    {
+      "name": "core_nvm_write_byte",
+      "signature": "core_nvm_write_byte(uint32_t offset, uint8_t value)",
+      "returns": "int",
+      "brief": "Write a single byte to NVM at `offset`. Returns 1 on success or -1 on any error (offset out of range, write timeout, flash-emu missing).",
+      "params": [
+        {
+          "name": "offset",
+          "ctype": "uint32_t",
+          "range": [
+            0,
+            4095
+          ],
+          "description": "Byte offset into the NVM region."
+        },
+        {
+          "name": "value",
+          "ctype": "uint8_t",
+          "range": [
+            0,
+            255
+          ],
+          "description": "Byte to store."
+        }
+      ],
       "tessera_exposed": true
     }
   ]

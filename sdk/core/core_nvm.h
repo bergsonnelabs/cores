@@ -140,18 +140,63 @@ static inline uint32_t core_nvm_size(void)
     return CORE_NVM_SIZE;
 }
 
+/* ---- Tier 2 — byte-level read / write -------------------------------- */
+
+/* These wrap the buffer-based core_nvm_read / write at byte
+ * granularity so DSL programs can persist a flag, a counter, or
+ * a small struct field without needing the array-IN / array-OUT
+ * host-call ABI. Bulk transfers stay Tier 1 with the buffer forms
+ * above; once the array ABI is wired the Tier 2 surface gets
+ * `read_buf` / `write_buf` on top of these. */
+
+/**
+ * Read a single byte from NVM at `offset`. Returns the byte (0..255)
+ * on success or -1 on any error (offset out of range, NVM disabled).
+ * The signed return lets DSL programs branch on `< 0` without an
+ * out-pointer.
+ *
+ * @tessera expose category=nvm name=read_byte returns=int
+ * @tessera twin full
+ * @param offset [0..4095] Byte offset into the NVM region.
+ */
+static inline int core_nvm_read_byte(uint32_t offset)
+{
+    uint8_t b = 0;
+    if (core_nvm_read(offset, &b, 1) != 1) return -1;
+    return (int)b;
+}
+
+/**
+ * Write a single byte to NVM at `offset`. Returns 1 on success or -1
+ * on any error (offset out of range, write timeout, flash-emu missing).
+ *
+ * @tessera expose category=nvm name=write_byte returns=int
+ * @tessera twin full
+ * @param offset [0..4095] Byte offset into the NVM region.
+ * @param value  [0..255] Byte to store.
+ */
+static inline int core_nvm_write_byte(uint32_t offset, uint8_t value)
+{
+    if (core_nvm_write(offset, &value, 1) != 1) return -1;
+    return 1;
+}
+
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @tessera unsupported tier=2 value=H title="No DSL read / write surface"
-//   Tier 2 only exposes nvm.size — actual read / write require pointer
-//   args, which the current host-call ABI can't represent. The DSL
-//   needs a typed-buffer or scoped-handle pattern (similar to how
-//   array hosts work) before nvm.read / nvm.write can land.
+// @tessera unsupported tier=2 value=M title="No bulk read / write Tier 2 yet"
+//   Tier 2 covers the byte-level pair (read_byte, write_byte) — enough
+//   for boot counters, single flags, small struct fields. Multi-byte
+//   read_buf / write_buf still need the array-IN / array-OUT host-call
+//   ABI prototyped on the tile-driver side. Tracked with the DSL
+//   Capability Coverage close.
 //
-// @tessera unsupported tier=2 value=H title="Twin has no persistent backing store"
-//   Even if nvm.read / write existed, the simulator wouldn't persist
-//   bytes across Reset — see the same issue called out for Backup.
-//   Persistent slot state across worker resets would close both gaps.
+// @tessera unsupported tier=2 value=L title="Twin NVM state wipes on Reset"
+//   read_byte / write_byte round-trip within a single run, but the
+//   per-slot store is cleared on every project reload — DSL programs
+//   that rely on NVM state surviving a soft reset (boot counters,
+//   crash flags) can't be exercised end-to-end in the IDE. Same issue
+//   the Backup register gap calls out; closing both needs persistent
+//   per-slot state across worker resets.
 //
 // @tessera unsupported tier=1 value=H title="Flash emulation missing on U / W / H"
 //   core_nvm_write returns -1 on Core.U / Core.W / Core.H. Tracked in

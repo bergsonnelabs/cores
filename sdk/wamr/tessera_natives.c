@@ -107,6 +107,20 @@ static uint32_t core_nvm_size_native(wasm_exec_env_t env)
     return core_nvm_size();
 }
 
+/* core_nvm_read_byte  (i)i  (category: nvm) */
+static int core_nvm_read_byte_native(wasm_exec_env_t env, uint32_t offset)
+{
+    (void)env;
+    return core_nvm_read_byte(offset);
+}
+
+/* core_nvm_write_byte  (ii)i  (category: nvm) */
+static int core_nvm_write_byte_native(wasm_exec_env_t env, uint32_t offset, uint8_t value)
+{
+    (void)env;
+    return core_nvm_write_byte(offset, value);
+}
+
 /* core_sleep  ()  (category: power) */
 static void core_sleep_native(wasm_exec_env_t env)
 {
@@ -280,6 +294,8 @@ NativeSymbol g_tessera_natives[] = {
     { "core_led_blink", (void *)core_led_blink_native, "(iii)", NULL },
     { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
     { "core_nvm_size", (void *)core_nvm_size_native, "()i", NULL },
+    { "core_nvm_read_byte", (void *)core_nvm_read_byte_native, "(i)i", NULL },
+    { "core_nvm_write_byte", (void *)core_nvm_write_byte_native, "(ii)i", NULL },
     { "core_sleep", (void *)core_sleep_native, "()", NULL },
     { "core_stop_for", (void *)core_stop_for_native, "(i)", NULL },
     { "core_woke_from_standby", (void *)core_woke_from_standby_native, "()i", NULL },
