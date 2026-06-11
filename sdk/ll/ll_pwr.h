@@ -44,7 +44,11 @@ static inline void ll_rcc_pwr_clk_enable(void)
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x58UL), (1UL << 28));  /* APB1ENR1: PWREN */
 #elif defined(STM32WBA55xx)
-    /* WBA: PWR is always accessible, no explicit clock gate */
+    /* WBA: PWR IS clock-gated — needs AHB4ENR.PWREN before any PWR access.
+     * (The previous "always accessible" comment was wrong and left core_init's
+     * PWR/regulator setup silently dropped, killing the radio.) */
+    SET_BITS(REG32(RCC_BASE + 0x94UL), (1UL << 2));   /* AHB4ENR: PWREN */
+    (void)REG32(RCC_BASE + 0x94UL);                   /* propagate enable */
 #elif defined(STM32H523xx)
     /* H5: PWR is always accessible via SRD domain */
 #endif
@@ -68,8 +72,15 @@ static inline void ll_pwr_enable_backup_access(void)
     SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR1: DBP */
     while (!(REG32(PWR_BASE + 0x00UL) & (1UL << 8))) ;
 #elif defined(STM32WBA55xx)
-    SET_BITS(REG32(PWR_BASE + 0x00UL), (1UL << 8));   /* CR1: DBP */
-    while (!(REG32(PWR_BASE + 0x00UL) & (1UL << 8))) ;
+    /* WBA: enable the PWR bus clock (AHB4ENR.PWREN) BEFORE touching PWR, then
+     * set DBP in the dedicated PWR_DBPR register (offset 0x28, bit 0).
+     * RM0493 §11.10.9. The generic CR1-bit8 path is wrong for WBA and silently
+     * no-ops without the clock — breaking every caller, including the radio
+     * (linklayer_plat.c), which is why advertising died. Restores the correct
+     * implementation that commit 7092941 removed from ll_rcc.h. */
+    SET_BITS(REG32(RCC_BASE + 0x94UL), (1UL << 2));   /* AHB4ENR: PWREN */
+    (void)REG32(RCC_BASE + 0x94UL);                   /* propagate enable */
+    SET_BITS(REG32(PWR_BASE + 0x28UL), (1UL << 0));   /* PWR_DBPR: DBP */
 #elif defined(STM32H523xx)
     SET_BITS(REG32(PWR_BASE + 0x24UL), (1UL << 0));   /* DBPCR: DBP (offset 0x024, bit 0) */
     while (!(REG32(PWR_BASE + 0x24UL) & (1UL << 0))) ;
