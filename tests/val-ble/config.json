@@ -1,0 +1,14 @@
+{
+  "core": "Core-W-b",
+  "clock": "medium",
+  "programming": {
+    "methods": [
+      "swd"
+    ],
+    "swd_dedicated": true
+  },
+  "ble": {
+    "enabled": true
+  },
+  "pads": {}
+}
