@@ -419,6 +419,9 @@ def validate_project_config(config, tile, pad_map, mcu=None):
     # Validate clock performance level
     _sources, _configurations, _knob_default = resolve_clock_block(tile)
     clock = config.get("clock", _knob_default)
+    # "default" is an alias for the tile's schema default (config.clock.default).
+    if clock == "default":
+        clock = _knob_default
     if clock:
         configs = {c["name"]: c for c in _configurations}
         if clock not in configs:
@@ -572,6 +575,9 @@ def build_clock_config(config, tile, mcu):
     """
     sources, configurations, knob_default = resolve_clock_block(tile)
     level = config.get("clock", knob_default)
+    # "default" is an alias for the tile's schema default (config.clock.default).
+    if level == "default":
+        level = knob_default
 
     # Resolve performance level to clock config
     configs = {c["name"]: c for c in configurations}
