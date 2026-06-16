@@ -1,0 +1,32 @@
+name: studio-manifest
+
+# Keeps the generated Studio / SDK-docs manifests honest: the parser's unit
+# tests run, and `--check` fails the build if a header was edited without
+# regenerating its manifest (drift). Provenance sha differences are ignored —
+# see the --check normalisation in gen_studio_manifest.py.
+
+on:
+  pull_request:
+    paths:
+      - 'sdk/**'
+      - 'drivers/**'
+      - 'definitions/**'
+      - 'manifests/**'
+      - 'tools/gen_studio_manifest.py'
+      - 'tools/test_gen_studio_manifest.py'
+      - '.github/workflows/studio-manifest.yml'
+  push:
+    branches: [main]
+
+jobs:
+  studio-manifest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Parser unit tests
+        run: python3 tools/test_gen_studio_manifest.py
+      - name: Manifests in sync with headers
+        run: python3 tools/gen_studio_manifest.py --check
