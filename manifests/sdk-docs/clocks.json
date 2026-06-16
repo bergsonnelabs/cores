@@ -1,0 +1,173 @@
+{
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
+  "category": "clocks",
+  "label": "Clocks",
+  "icon": "⏱",
+  "header": null,
+  "headers": {
+    "ll": "ll_rcc.h"
+  },
+  "functions": [
+    {
+      "name": "ll_rcc_hsi16_enable",
+      "signature": "ll_rcc_hsi16_enable(void)",
+      "returns": "void",
+      "brief": "Enable the high-speed internal (HSI16) oscillator.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_hse_enable",
+      "signature": "ll_rcc_hse_enable(void)",
+      "returns": "void",
+      "brief": "Enable the high-speed external (HSE) oscillator / crystal.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_flash_set_latency",
+      "signature": "ll_flash_set_latency(uint32_t wait_states)",
+      "returns": "void",
+      "brief": "Set flash read latency (wait states). Must be set BEFORE increasing SYSCLK, or AFTER decreasing it. Typical values for VDD >= 2.7V: L0:   0 WS ≤ 16MHz, 1 WS ≤ 32MHz L4:   0 WS ≤ 16MHz, 1 WS ≤ 32MHz, 2 WS ≤ 48MHz, 3 WS ≤ 64MHz, 4 WS ≤ 80MHz WBA:  0 WS ≤ 32MHz, 1 WS ≤ 64MHz, 2 WS ≤ 96MHz, 3 WS ≤ 100MHz H5:   0 WS ≤ 32MHz, 1 WS ≤ 64MHz, 2 WS ≤ 96MHz, ... 5 WS ≤ 250MHz",
+      "params": [
+        {
+          "name": "wait_states",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_flash_latency_for_mhz",
+      "signature": "ll_flash_latency_for_mhz(uint32_t mhz)",
+      "returns": "uint32_t",
+      "brief": "Calculate required flash wait states from SYSCLK frequency.",
+      "params": [
+        {
+          "name": "mhz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_pll_config",
+      "signature": "ll_rcc_pll_config(uint32_t src, uint32_t m, uint32_t n, uint32_t r)",
+      "returns": "void",
+      "brief": "Configure and enable the main PLL. src:  PLL source (LL_RCC_PLLSRC_*) m:    input divider (1-based) n:    VCO multiplier r:    output divider for SYSCLK PLL must be disabled before calling this function.",
+      "params": [
+        {
+          "name": "src",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "m",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "n",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "r",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_pll_enable",
+      "signature": "ll_rcc_pll_enable(void)",
+      "returns": "void",
+      "brief": "Enable the main PLL",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_pll_ready",
+      "signature": "ll_rcc_pll_ready(void)",
+      "returns": "int",
+      "brief": "Check if PLL is locked and ready",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_set_sysclk",
+      "signature": "ll_rcc_set_sysclk(uint32_t source)",
+      "returns": "void",
+      "brief": "Set the SYSCLK source",
+      "params": [
+        {
+          "name": "source",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_wait_sysclk",
+      "signature": "ll_rcc_wait_sysclk(uint32_t source)",
+      "returns": "void",
+      "brief": "Wait until the SYSCLK source has switched",
+      "params": [
+        {
+          "name": "source",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_set_ahb_div",
+      "signature": "ll_rcc_set_ahb_div(uint32_t div)",
+      "returns": "void",
+      "brief": "Set AHB prescaler. div: 1, 2, 4, 8, 16, 64, 128, 256, 512",
+      "params": [
+        {
+          "name": "div",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_set_apb1_div",
+      "signature": "ll_rcc_set_apb1_div(uint32_t div)",
+      "returns": "void",
+      "brief": "Set APB1 prescaler. div: 1, 2, 4, 8, 16",
+      "params": [
+        {
+          "name": "div",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_set_apb2_div",
+      "signature": "ll_rcc_set_apb2_div(uint32_t div)",
+      "returns": "void",
+      "brief": "Set APB2 prescaler. div: 1, 2, 4, 8, 16",
+      "params": [
+        {
+          "name": "div",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    }
+  ]
+}

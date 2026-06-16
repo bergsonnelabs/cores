@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "backup",
   "label": "Core.Backup",
   "icon": "◫",
   "header": "core_backup.h",
+  "headers": {
+    "core": "core_backup.h"
+  },
   "functions": [
     {
       "name": "_core_backup_ensure_clk",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Ensure the RTC/backup register clock domain is accessible. On L0/L4 the backup registers live inside the RTC peripheral block, so RTCEN (and a clock source) must be active for reads AND writes. On WBA/H5 they're in TAMP, which only needs PWR+DBP.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_backup_read",
@@ -30,7 +34,8 @@
           "description": "Register index (Core.L caps at 4; others at 31)."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_backup_write",
@@ -53,7 +58,8 @@
           "description": "32-bit value to store."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

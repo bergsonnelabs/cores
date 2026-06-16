@@ -1,10 +1,14 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "led",
   "label": "Core.LED",
   "icon": "☀",
   "header": "core_led.h",
+  "headers": {
+    "core": "core_led.h",
+    "ll": "ll_gpio.h"
+  },
   "functions": [
     {
       "name": "core_led_init",
@@ -12,7 +16,8 @@
       "returns": "void",
       "brief": "Enable the GPIO clock and configure the LED pin as a push-pull output. Call once after core_init(). The LED starts in the off state.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_led_on",
@@ -20,7 +25,8 @@
       "returns": "void",
       "brief": "Turn the onboard LED on. Simplest possible light control — useful alongside blink/heartbeat when the user wants explicit on/off state rather than a timed pattern.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_led_off",
@@ -28,7 +34,8 @@
       "returns": "void",
       "brief": "Turn the onboard LED off.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_led_toggle",
@@ -36,7 +43,8 @@
       "returns": "void",
       "brief": "Flip the onboard LED's current state. Non-blocking — no delay. Good for driving the LED from an event handler that fires at a rate you've already chosen (e.g., a pad-edge ISR on a button).",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_led_blink",
@@ -74,7 +82,8 @@
           "description": "LED-off duration per blink."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_led_sos",
@@ -85,7 +94,8 @@
       "studio_exposed": false,
       "attributes": [
         "noreturn"
-      ]
+      ],
+      "layer": "core"
     },
     {
       "name": "core_led_heartbeat",
@@ -104,7 +114,98 @@
           "description": "Delay after the toggle. 0 toggles without waiting."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "ll_gpio_config_output",
+      "signature": "ll_gpio_config_output(GPIO_TypeDef * port, uint32_t pin)",
+      "returns": "void",
+      "brief": "Configure a pin as general-purpose output (push-pull, no pull, medium speed).",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set",
+      "signature": "ll_gpio_set(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Set one or more pins high (write 1s to BSRR lower half)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_clear",
+      "signature": "ll_gpio_clear(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Set one or more pins low (write 1s to BSRR upper half)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_toggle",
+      "signature": "ll_gpio_toggle(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Toggle one or more pins (XOR with ODR)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_read",
+      "signature": "ll_gpio_read(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "uint32_t",
+      "brief": "Read the input state of one or more pins",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

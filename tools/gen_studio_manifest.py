@@ -36,6 +36,53 @@ CORE_OUT_DIR = ROOT / "manifests"
 TILE_OUT_DIR = ROOT / "manifests"
 SDK_DOCS_OUT_DIR = ROOT / "manifests" / "sdk-docs"
 
+# Where hal_/ll_ headers live, keyed by layer.
+LAYER_DIRS = {"hal": ROOT / "sdk/hal", "ll": ROOT / "sdk/ll"}
+
+# Per-category lower-layer docs. Maps a docs category to the hal_*/ll_*
+# headers that implement it, so the SDK reference can show the same surface at
+# the Core / HAL / LL layer the reader works in. Each layer value is
+# (header_filename, only): `only=None` includes every documented function in
+# the header (source order); a list curates + orders the output — required for
+# sprawling headers like ll_rcc.h. Categories absent here are Core-only. An
+# entry may introduce a category that has no core header at all (e.g. clocks,
+# which is config-driven) — give it a label/icon via the `meta` key.
+LAYER_HEADERS = {
+    "pad": {
+        "hal": ("hal_gpio.h", None),
+        "ll": ("ll_gpio.h", None),
+    },
+    "led": {
+        "ll": (
+            "ll_gpio.h",
+            ["ll_gpio_config_output", "ll_gpio_set", "ll_gpio_clear",
+             "ll_gpio_toggle", "ll_gpio_read"],
+        ),
+    },
+    "timing": {
+        "hal": ("hal_common.h", ["hal_tick", "hal_timeout_expired"]),
+        "ll": ("ll_systick.h", ["ll_systick_init", "ll_delay_ms", "ll_delay_us"]),
+    },
+    "watchdog": {
+        "ll": (
+            "ll_iwdg.h",
+            ["ll_iwdg_init", "ll_iwdg_init_1s", "ll_iwdg_init_2s",
+             "ll_iwdg_init_5s", "ll_iwdg_init_10s", "ll_iwdg_refresh",
+             "ll_iwdg_caused_reset", "ll_rcc_clear_reset_flags"],
+        ),
+    },
+    "clocks": {
+        "meta": {"label": "Clocks", "icon": "⏱"},
+        "ll": (
+            "ll_rcc.h",
+            ["ll_rcc_hsi16_enable", "ll_rcc_hse_enable", "ll_flash_set_latency",
+             "ll_flash_latency_for_mhz", "ll_rcc_pll_config", "ll_rcc_pll_enable",
+             "ll_rcc_pll_ready", "ll_rcc_set_sysclk", "ll_rcc_wait_sysclk",
+             "ll_rcc_set_ahb_div", "ll_rcc_set_apb1_div", "ll_rcc_set_apb2_div"],
+        ),
+    },
+}
+
 C_TO_DSL = {
     "int": "int",
     "int8_t": "int", "int16_t": "int", "int32_t": "int",
@@ -759,6 +806,40 @@ def build_doc_entry(doxy_lines, sig, studio_exposed, source, doxy_end_offset):
     return entry
 
 
+def parse_layer_docs(path, layer, only=None):
+    """Docs-facing entries for the hal_*/ll_* functions in `path`, tagged `layer`.
+
+    Reuses the core docs path (Doxygen block -> build_doc_entry) but these are
+    never Studio-exposed. Duplicate names — the family-gated `#if` variants in
+    e.g. ll_rcc.h — collapse to the first occurrence. `only` (a list of names)
+    curates and orders the output and is required for sprawling headers;
+    without it, every documented function in the header is included in source
+    order. Names in `only` that aren't found (or aren't Doxygen'd) are warned
+    about, not silently dropped.
+    """
+    source = path.read_text()
+    by_name = {}
+    order = []
+    for m in DOXY_BLOCK_RE.finditer(source):
+        sig = extract_signature(source, m.end())
+        if not sig or sig["name"] in by_name:
+            continue
+        entry = build_doc_entry(strip_doxy(m.group(1)), sig, False, source, m.end())
+        entry["layer"] = layer
+        by_name[sig["name"]] = entry
+        order.append(sig["name"])
+    if only is None:
+        return [by_name[n] for n in order]
+    missing = [n for n in only if n not in by_name]
+    if missing:
+        print(
+            f"warn: {path.name}: layer-doc functions not found or undocumented: "
+            f"{', '.join(missing)}",
+            file=sys.stderr,
+        )
+    return [by_name[n] for n in only if n in by_name]
+
+
 def format_c_params(params):
     if not params:
         return "void"
@@ -894,15 +975,44 @@ def main():
                 print(f"warn: category '{name}' redeclared in {p.name}", file=sys.stderr)
                 continue
             core_categories[name] = meta
+            for fn in docs:
+                fn["layer"] = "core"
             sdk_docs[name] = {
-                "schema": "studio-sdk-docs/v1",
+                "schema": "studio-sdk-docs/v2",
                 "source": f"tiles@{commit}",
                 "category": name,
                 "label": meta["label"],
                 "icon": meta["icon"],
                 "header": p.name,
+                "headers": {"core": p.name},
                 "functions": docs,
             }
+
+    # Augment categories with their HAL / LL surface so the SDK reference can
+    # render at whichever layer the reader works in. A category may be brand
+    # new here (no core header — e.g. clocks, which is config-driven). See
+    # LAYER_HEADERS.
+    for category, spec in LAYER_HEADERS.items():
+        doc = sdk_docs.get(category)
+        if doc is None:
+            meta = spec.get("meta", {})
+            doc = {
+                "schema": "studio-sdk-docs/v2",
+                "source": f"tiles@{commit}",
+                "category": category,
+                "label": meta.get("label", category),
+                "icon": meta.get("icon", ""),
+                "header": None,
+                "headers": {},
+                "functions": [],
+            }
+            sdk_docs[category] = doc
+        for layer in ("hal", "ll"):
+            if layer not in spec:
+                continue
+            fname, only = spec[layer]
+            doc["functions"].extend(parse_layer_docs(LAYER_DIRS[layer] / fname, layer, only))
+            doc["headers"][layer] = fname
 
     core_manifest = {
         "schema": "studio-manifest/v1",

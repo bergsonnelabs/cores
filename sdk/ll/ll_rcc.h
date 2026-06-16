@@ -46,6 +46,7 @@
 
 #if defined(STM32L011xx)
 
+/** Enable the high-speed internal (HSI16) oscillator. */
 static inline void ll_rcc_hsi16_enable(void)
 {
     SET_BITS(REG32(RCC_BASE + 0x00UL), (1UL << 0));  /* CR: HSION */
@@ -165,6 +166,7 @@ static inline int ll_rcc_msi_ready(void)
 
 /* ---- HSE (external oscillator) ---- */
 
+/** Enable the high-speed external (HSE) oscillator / crystal. */
 static inline void ll_rcc_hse_enable(void)
 {
 #if defined(STM32L011xx)

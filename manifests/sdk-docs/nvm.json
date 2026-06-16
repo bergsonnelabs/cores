@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "nvm",
   "label": "Core.NVM",
   "icon": "▤",
   "header": "core_nvm.h",
+  "headers": {
+    "core": "core_nvm.h"
+  },
   "functions": [
     {
       "name": "core_nvm_read",
@@ -25,7 +28,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_nvm_write",
@@ -46,7 +50,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_nvm_size",
@@ -54,7 +59,8 @@
       "returns": "uint32_t",
       "brief": "Returns the total NVM size in bytes for this Core.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_nvm_read_byte",
@@ -72,7 +78,8 @@
           "description": "Byte offset into the NVM region."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_nvm_write_byte",
@@ -99,7 +106,8 @@
           "description": "Byte to store."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

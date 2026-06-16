@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "power",
   "label": "Core.Power",
   "icon": "☾",
   "header": "core_power.h",
+  "headers": {
+    "core": "core_power.h"
+  },
   "functions": [
     {
       "name": "core_sleep",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Sleep until any interrupt (CPU stopped, peripherals running).",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_stop_for",
@@ -30,7 +34,8 @@
           "description": "Seconds to spend in Stop mode."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_stop_until_on_change",
@@ -49,7 +54,8 @@
           "description": "EDGE_FALLING, EDGE_RISING, or EDGE_BOTH"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_standby_for",
@@ -60,7 +66,8 @@
       "studio_exposed": false,
       "attributes": [
         "noreturn"
-      ]
+      ],
+      "layer": "core"
     },
     {
       "name": "core_standby_until_on_change",
@@ -79,7 +86,8 @@
           "description": "EDGE_FALLING or EDGE_RISING"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_stop",
@@ -87,7 +95,8 @@
       "returns": "void",
       "brief": "Enter Stop mode (caller manages wakeup source + clock recovery).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_standby",
@@ -98,7 +107,8 @@
       "studio_exposed": false,
       "attributes": [
         "noreturn"
-      ]
+      ],
+      "layer": "core"
     },
     {
       "name": "core_woke_from_standby",
@@ -106,7 +116,8 @@
       "returns": "int",
       "brief": "Returns 1 if the MCU woke from Standby.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_clear_standby_flag",
@@ -114,7 +125,8 @@
       "returns": "void",
       "brief": "Clear the Standby wake flag. Call after core_woke_from_standby() returns 1.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_watchdog_start_seconds",
@@ -127,7 +139,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }
