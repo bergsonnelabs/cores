@@ -1,0 +1,234 @@
+{
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@6bbf0d8",
+  "category": "ble",
+  "label": "Core.BLE",
+  "icon": "ᛒ",
+  "header": "core_ble.h",
+  "headers": {
+    "core": "core_ble.h"
+  },
+  "functions": [
+    {
+      "name": "core_ble_set_services",
+      "signature": "core_ble_set_services(void)",
+      "returns": "void",
+      "brief": "Register a service builder function. Called before core_ble_init(). The builder is invoked during init after the GATT server is ready.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_init",
+      "signature": "core_ble_init(void)",
+      "returns": "void",
+      "brief": "Initialize the BLE stack. Call once after core_init().",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_advertise",
+      "signature": "core_ble_advertise(const char * name)",
+      "returns": "int",
+      "brief": "Start advertising. Call after init + at least one core_ble_process().",
+      "params": [
+        {
+          "name": "name",
+          "ctype": "const char *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_stop_advertise",
+      "signature": "core_ble_stop_advertise(void)",
+      "returns": "int",
+      "brief": "Stop advertising.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_process",
+      "signature": "core_ble_process(void)",
+      "returns": "void",
+      "brief": "Process BLE events. Call continuously from main loop.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_add_service",
+      "signature": "core_ble_add_service(const char * name)",
+      "returns": "core_ble_svc_t",
+      "brief": "Add a GATT service. Returns a handle for adding characteristics. UUID is auto-generated from the service name.",
+      "params": [
+        {
+          "name": "name",
+          "ctype": "const char *",
+          "description": "Human-readable service name (for documentation/debugging)."
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_add_char",
+      "signature": "core_ble_add_char(core_ble_svc_t svc, const char * name, uint8_t access, uint8_t type, core_ble_write_cb on_write, void * ctx)",
+      "returns": "core_ble_char_t",
+      "brief": "Add a characteristic to a service.",
+      "params": [
+        {
+          "name": "svc",
+          "ctype": "core_ble_svc_t",
+          "description": "Service handle from core_ble_add_service."
+        },
+        {
+          "name": "name",
+          "ctype": "const char *",
+          "description": "Human-readable name (for documentation/debugging)."
+        },
+        {
+          "name": "access",
+          "ctype": "uint8_t",
+          "description": "Access mode: CORE_BLE_READ, CORE_BLE_WRITE, CORE_BLE_NOTIFY,"
+        },
+        {
+          "name": "type",
+          "ctype": "uint8_t",
+          "description": "Value type: CORE_BLE_BOOL, CORE_BLE_UINT8, CORE_BLE_UINT16,"
+        },
+        {
+          "name": "on_write",
+          "ctype": "core_ble_write_cb",
+          "description": "Callback when central writes. NULL if read-only."
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context passed to on_write callback; may be NULL."
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_set_value",
+      "signature": "core_ble_set_value(core_ble_char_t ch, const void * data, uint16_t len)",
+      "returns": "int",
+      "brief": "Update a characteristic's value. For readable characteristics, this is what the central will read. For notify characteristics, call core_ble_notify() after to push the update.",
+      "params": [
+        {
+          "name": "ch",
+          "ctype": "core_ble_char_t"
+        },
+        {
+          "name": "data",
+          "ctype": "const void *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_notify",
+      "signature": "core_ble_notify(core_ble_char_t ch)",
+      "returns": "int",
+      "brief": "Send a notification to the connected central. The central must have enabled notifications (CCCD) for this to work. Sends the current value set by core_ble_set_value().",
+      "params": [
+        {
+          "name": "ch",
+          "ctype": "core_ble_char_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_connected",
+      "signature": "core_ble_connected(void)",
+      "returns": "int",
+      "brief": "Returns 1 if a central is connected.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_on_connect",
+      "signature": "core_ble_on_connect(void * ctx)",
+      "returns": "void",
+      "brief": "Set callback for connection events.",
+      "params": [
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context passed to callback; may be NULL"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_on_disconnect",
+      "signature": "core_ble_on_disconnect(void * ctx)",
+      "returns": "void",
+      "brief": "Set callback for disconnection events.",
+      "params": [
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context passed to callback; may be NULL"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_set_tx_power",
+      "signature": "core_ble_set_tx_power(uint8_t level)",
+      "returns": "void",
+      "brief": "TX power: 0=low(-20dBm), 1=medium(0dBm), 2=high(+10dBm). Default: 1.",
+      "params": [
+        {
+          "name": "level",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_set_adv_interval",
+      "signature": "core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms)",
+      "returns": "void",
+      "brief": "Advertising interval in ms (20-10240). Default: 100/150.",
+      "params": [
+        {
+          "name": "min_ms",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "max_ms",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_enable_pairing",
+      "signature": "core_ble_enable_pairing(void)",
+      "returns": "void",
+      "brief": "Enable OS-level pairing (Just Works). When enabled, the phone/computer will show a \"Pair?\" dialog. Once paired, the device auto-reconnects and appears in OS Bluetooth settings. Call before core_ble_init(). Default: disabled.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    }
+  ]
+}

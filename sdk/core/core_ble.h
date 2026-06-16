@@ -12,6 +12,8 @@
  *
  * Requires: Core.W (STM32WBA55), BLE_ENABLED=1, clock >= "default" (HSE).
  *
+ * @studio category ble label=Core.BLE icon=ᛒ
+ *
  * @studio coverage
  *   id:    ble
  *   name:  BLE — Bluetooth Low Energy

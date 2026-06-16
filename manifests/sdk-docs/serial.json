@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@bc0bd68",
+  "source": "tiles@6bbf0d8",
   "category": "serial",
   "label": "Core.Serial",
   "icon": "⌨",
