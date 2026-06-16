@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@bc0bd68",
   "category": "led",
   "label": "Core.LED",
   "icon": "☀",

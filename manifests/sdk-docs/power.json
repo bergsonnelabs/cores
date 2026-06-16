@@ -1,12 +1,13 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@bc0bd68",
   "category": "power",
   "label": "Core.Power",
   "icon": "☾",
   "header": "core_power.h",
   "headers": {
-    "core": "core_power.h"
+    "core": "core_power.h",
+    "ll": "ll_pwr.h"
   },
   "functions": [
     {
@@ -141,6 +142,60 @@
       ],
       "studio_exposed": false,
       "layer": "core"
+    },
+    {
+      "name": "ll_pwr_enable_backup_access",
+      "signature": "ll_pwr_enable_backup_access(void)",
+      "returns": "void",
+      "brief": "Enable access to the backup domain (RTC, backup registers). Must be called before writing to RTC or backup registers.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_pwr_sleep_wfi",
+      "signature": "ll_pwr_sleep_wfi(void)",
+      "returns": "void",
+      "brief": "Enter Sleep mode. CPU clock stopped, all peripherals continue running. Wakes on any enabled interrupt. Use WFI (wait for interrupt) or WFE (wait for event).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_pwr_stop",
+      "signature": "ll_pwr_stop(void)",
+      "returns": "void",
+      "brief": "Enter Stop mode (lowest power with SRAM retention). All oscillators stopped except LSI/LSE. Wakes via EXTI (GPIO, RTC alarm, etc.). After waking, clock is MSI/HSI — you must reinitialize the PLL if needed. On L4: Stop 0, Stop 1, or Stop 2 available. On WBA/H5: Stop 0 or Stop 1.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_pwr_standby",
+      "signature": "ll_pwr_standby(void)",
+      "returns": "void",
+      "brief": "Enter Standby mode (lowest power, SRAM lost). Only RTC, IWDG, and wakeup pins remain powered. On wake, the MCU resets (starts from Reset_Handler). WARNING: All SRAM contents are lost. Save state to backup registers or flash before entering standby.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_pwr_woke_from_standby",
+      "signature": "ll_pwr_woke_from_standby(void)",
+      "returns": "int",
+      "brief": "Check if we woke from standby",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_pwr_clear_standby_flag",
+      "signature": "ll_pwr_clear_standby_flag(void)",
+      "returns": "void",
+      "brief": "Clear the standby flag",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

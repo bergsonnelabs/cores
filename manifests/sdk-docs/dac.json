@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@bc0bd68",
   "category": "dac",
   "label": "Core.DAC",
   "icon": "◓",
   "header": "core_dac.h",
   "headers": {
-    "core": "core_dac.h"
+    "core": "core_dac.h",
+    "hal": "hal_dac.h",
+    "ll": "ll_dac.h"
   },
   "functions": [
     {
@@ -64,6 +66,127 @@
       "params": [],
       "studio_exposed": true,
       "layer": "core"
+    },
+    {
+      "name": "hal_dac_init",
+      "signature": "hal_dac_init(hal_dac_t * dac)",
+      "returns": "void",
+      "brief": "Initialize the DAC. Enables clock, configures the GPIO pin as analog, and starts the channel.",
+      "params": [
+        {
+          "name": "dac",
+          "ctype": "hal_dac_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_dac_write",
+      "signature": "hal_dac_write(hal_dac_t * dac, uint16_t val)",
+      "returns": "void",
+      "brief": "Write a raw 12-bit value (0–4095).",
+      "params": [
+        {
+          "name": "dac",
+          "ctype": "hal_dac_t *"
+        },
+        {
+          "name": "val",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_dac_write_mv",
+      "signature": "hal_dac_write_mv(hal_dac_t * dac, uint16_t mv)",
+      "returns": "void",
+      "brief": "Write a voltage in millivolts (0–3300, assumes VREF+ = 3.3V).",
+      "params": [
+        {
+          "name": "dac",
+          "ctype": "hal_dac_t *"
+        },
+        {
+          "name": "mv",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_dac_read",
+      "signature": "hal_dac_read(hal_dac_t * dac)",
+      "returns": "uint16_t",
+      "brief": "Read back the current DAC output register value (12-bit).",
+      "params": [
+        {
+          "name": "dac",
+          "ctype": "hal_dac_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_dac_init",
+      "signature": "ll_dac_init(void)",
+      "returns": "void",
+      "brief": "Initialize DAC channel 2 (PA5, pad 9 on Core.H). Enables the DAC with output buffer connected to the pin. GPIO must already be configured as analog. AHB2 clock must be enabled: ll_rcc_ahb2_clk_enable(LL_AHB2_DAC1).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_dac_write",
+      "signature": "ll_dac_write(uint16_t val)",
+      "returns": "void",
+      "brief": "Write a 12-bit value to DAC channel 2 (PA5). Output voltage = (val / 4095) × VREF+ (typically 3.3V).",
+      "params": [
+        {
+          "name": "val",
+          "ctype": "uint16_t",
+          "description": "0–4095"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_dac_write_mv",
+      "signature": "ll_dac_write_mv(uint16_t mv)",
+      "returns": "void",
+      "brief": "Write a voltage in millivolts to DAC channel 2 (PA5). Assumes VREF+ = 3300 mV.",
+      "params": [
+        {
+          "name": "mv",
+          "ctype": "uint16_t",
+          "description": "0–3300"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_dac_read",
+      "signature": "ll_dac_read(void)",
+      "returns": "uint16_t",
+      "brief": "Read back the current DAC channel 2 (PA5) output register value.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_dac_deinit",
+      "signature": "ll_dac_deinit(void)",
+      "returns": "void",
+      "brief": "Disable DAC channel 2 (PA5).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

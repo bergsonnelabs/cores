@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@bc0bd68",
   "category": "timer",
   "label": "Core.Timer",
   "icon": "◷",
   "header": "core_timer.h",
   "headers": {
-    "core": "core_timer.h"
+    "core": "core_timer.h",
+    "hal": "hal_timer.h",
+    "ll": "ll_tim.h"
   },
   "functions": [
     {
@@ -222,6 +224,400 @@
       ],
       "studio_exposed": false,
       "layer": "core"
+    },
+    {
+      "name": "hal_timer_pwm_init",
+      "signature": "hal_timer_pwm_init(hal_timer_t * h, TIM_TypeDef * instance, uint32_t pclk_hz, uint32_t freq_hz)",
+      "returns": "hal_status_t",
+      "brief": "Initialize a timer for PWM output at the given frequency. Auto-calculates PSC and ARR from pclk_hz and freq_hz. For advanced timers (TIM1), also enables MOE.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "freq_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_pwm_set_duty",
+      "signature": "hal_timer_pwm_set_duty(hal_timer_t * h, uint8_t channel, uint16_t duty_permil)",
+      "returns": "void",
+      "brief": "Set PWM duty cycle for a channel. channel:      1–4 duty_permil:  0–1000 (0 = off, 500 = 50%, 1000 = 100%)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "duty_permil",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_pwm_set_freq",
+      "signature": "hal_timer_pwm_set_freq(hal_timer_t * h, uint32_t freq_hz)",
+      "returns": "void",
+      "brief": "Change PWM frequency (recalculates PSC/ARR, resets all channel duties)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        },
+        {
+          "name": "freq_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_pwm_start",
+      "signature": "hal_timer_pwm_start(hal_timer_t * h)",
+      "returns": "void",
+      "brief": "Start the PWM timer",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_pwm_stop",
+      "signature": "hal_timer_pwm_stop(hal_timer_t * h)",
+      "returns": "void",
+      "brief": "Stop the PWM timer",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_tick_init",
+      "signature": "hal_timer_tick_init(hal_timer_t * h, TIM_TypeDef * instance, uint32_t pclk_hz, uint32_t period_us, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Configure a timer to call a callback at a fixed interval. period_us: interval in microseconds (1 – 1000000) cb:        callback function (called from ISR context!) ctx:       user context passed to callback",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "period_us",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_tick_enable",
+      "signature": "hal_timer_tick_enable(hal_timer_t * h, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Enable periodic tick on an already-initialized timer. Does NOT touch PSC/ARR — the timer keeps its existing timebase. Use this to add a tick callback to a timer that's already set up for PWM or capture via hal_timer_pwm_init(). The callback fires on each counter overflow (update event) at the timer's current frequency.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timer_tick_disable",
+      "signature": "hal_timer_tick_disable(hal_timer_t * h)",
+      "returns": "void",
+      "brief": "Disable the tick callback (clears UIE, keeps timer running).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_timer_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_tim_config",
+      "signature": "ll_tim_config(TIM_TypeDef * tim, uint32_t prescaler, uint32_t period)",
+      "returns": "void",
+      "brief": "Configure basic timebase. tim:       timer instance prescaler: clock divider (0 = no division, N = divide by N+1) period:    auto-reload value (counter counts 0 → period) Timer frequency = pclk / (prescaler + 1) Overflow rate   = pclk / (prescaler + 1) / (period + 1) Example: 80MHz pclk, 1kHz overflow: prescaler = 79 (→ 1MHz tick), period = 999 (→ 1kHz)",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "prescaler",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "period",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_start",
+      "signature": "ll_tim_start(TIM_TypeDef * tim)",
+      "returns": "void",
+      "brief": "Start the timer counter",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_stop",
+      "signature": "ll_tim_stop(TIM_TypeDef * tim)",
+      "returns": "void",
+      "brief": "Stop the timer counter",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_get_counter",
+      "signature": "ll_tim_get_counter(TIM_TypeDef * tim)",
+      "returns": "uint32_t",
+      "brief": "Read the current counter value",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_set_counter",
+      "signature": "ll_tim_set_counter(TIM_TypeDef * tim, uint32_t value)",
+      "returns": "void",
+      "brief": "Set the counter value",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "value",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_update_flag",
+      "signature": "ll_tim_update_flag(TIM_TypeDef * tim)",
+      "returns": "int",
+      "brief": "Check and clear the update (overflow) flag",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_pwm_config",
+      "signature": "ll_tim_pwm_config(TIM_TypeDef * tim, uint32_t channel, uint32_t duty)",
+      "returns": "void",
+      "brief": "Configure a channel for PWM output (mode 1: active while CNT < CCR). tim:     timer instance channel: 1, 2, 3, or 4 duty:    compare value (0 = always off, ARR = always on) For advanced timers (TIM1), you must also call ll_tim_enable_moe().",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "duty",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_set_duty",
+      "signature": "ll_tim_set_duty(TIM_TypeDef * tim, uint32_t channel, uint32_t duty)",
+      "returns": "void",
+      "brief": "Set the duty cycle (compare value) for a channel",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "duty",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_set_duty_pct",
+      "signature": "ll_tim_set_duty_pct(TIM_TypeDef * tim, uint32_t channel, uint32_t pct)",
+      "returns": "void",
+      "brief": "Set PWM duty as a percentage (0-100) of the current ARR period",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "pct",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_enable_moe",
+      "signature": "ll_tim_enable_moe(TIM_TypeDef * tim)",
+      "returns": "void",
+      "brief": "Enable the main output enable (MOE) bit on advanced timers (TIM1). Required for TIM1 PWM outputs to actually drive the pins.",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_ic_config",
+      "signature": "ll_tim_ic_config(TIM_TypeDef * tim, uint32_t channel)",
+      "returns": "void",
+      "brief": "Configure a channel for input capture on rising edge. tim:     timer instance channel: 1, 2, 3, or 4",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_ic_read",
+      "signature": "ll_tim_ic_read(TIM_TypeDef * tim, uint32_t channel)",
+      "returns": "uint32_t",
+      "brief": "Read the captured value for a channel",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_tim_cc_flag",
+      "signature": "ll_tim_cc_flag(TIM_TypeDef * tim, uint32_t channel)",
+      "returns": "int",
+      "brief": "Check and clear the capture/compare flag for a channel",
+      "params": [
+        {
+          "name": "tim",
+          "ctype": "TIM_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

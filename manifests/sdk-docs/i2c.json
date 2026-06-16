@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@bc0bd68",
   "category": "i2c",
   "label": "Core.I2C",
   "icon": "⇄",
   "header": "core_i2c.h",
   "headers": {
-    "core": "core_i2c.h"
+    "core": "core_i2c.h",
+    "hal": "hal_i2c.h",
+    "ll": "ll_i2c.h"
   },
   "functions": [
     {
@@ -340,6 +342,380 @@
       ],
       "studio_exposed": true,
       "layer": "core"
+    },
+    {
+      "name": "hal_i2c_init",
+      "signature": "hal_i2c_init(hal_i2c_t * h, I2C_TypeDef * instance, const hal_i2c_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": "Initialize I2C in master mode. The peripheral clock is auto-enabled. SDA/SCL pins must be configured as AF open-drain with pull-up (via tile_init or manually).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "I2C_TypeDef *"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_i2c_config_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_recover",
+      "signature": "hal_i2c_recover(hal_i2c_t * h)",
+      "returns": "hal_status_t",
+      "brief": "Attempt bus recovery when I2C is stuck (SDA held low). Disables the peripheral, bit-bangs SCL as GPIO to clock out the stuck slave, generates a STOP condition, then re-initializes I2C. Returns HAL_OK if SDA was released, HAL_ERROR if still stuck.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_write",
+      "signature": "hal_i2c_write(hal_i2c_t * h, uint8_t addr, const uint8_t * data, uint32_t len)",
+      "returns": "hal_status_t",
+      "brief": "Write data to a 7-bit address device",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_read",
+      "signature": "hal_i2c_read(hal_i2c_t * h, uint8_t addr, uint8_t * buf, uint32_t len)",
+      "returns": "hal_status_t",
+      "brief": "Read data from a 7-bit address device",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_write_reg",
+      "signature": "hal_i2c_write_reg(hal_i2c_t * h, uint8_t addr, uint16_t reg, const uint8_t * data, uint32_t len)",
+      "returns": "hal_status_t",
+      "brief": "Write to a register on an I2C device. reg is 8-bit or 16-bit: if > 0xFF, two address bytes are sent (MSB first).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "reg",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_read_reg",
+      "signature": "hal_i2c_read_reg(hal_i2c_t * h, uint8_t addr, uint16_t reg, uint8_t * buf, uint32_t len)",
+      "returns": "hal_status_t",
+      "brief": "Read from a register on an I2C device. reg is 8-bit or 16-bit: if > 0xFF, two address bytes are sent (MSB first).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "reg",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_write_byte",
+      "signature": "hal_i2c_write_byte(hal_i2c_t * h, uint8_t addr, uint16_t reg, uint8_t value)",
+      "returns": "hal_status_t",
+      "brief": "Write a single byte to a register (8-bit or 16-bit reg)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "reg",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "value",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_read_byte",
+      "signature": "hal_i2c_read_byte(hal_i2c_t * h, uint8_t addr, uint16_t reg, uint8_t * value)",
+      "returns": "hal_status_t",
+      "brief": "Read a single byte from a register (8-bit or 16-bit reg)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "reg",
+          "ctype": "uint16_t"
+        },
+        {
+          "name": "value",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_probe",
+      "signature": "hal_i2c_probe(hal_i2c_t * h, uint8_t addr)",
+      "returns": "hal_status_t",
+      "brief": "Check if a device responds at addr. Returns HAL_OK or HAL_NACK.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_i2c_scan",
+      "signature": "hal_i2c_scan(hal_i2c_t * h, uint8_t * found, uint8_t * count, uint8_t max_count)",
+      "returns": "void",
+      "brief": "Scan the I2C bus (0x08–0x77). Fills found[] with responding addresses. Returns actual count via *count.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_i2c_t *"
+        },
+        {
+          "name": "found",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "count",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "max_count",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_i2c_init",
+      "signature": "ll_i2c_init(I2C_TypeDef * i2c, uint32_t timing)",
+      "returns": "void",
+      "brief": "Initialize I2C in master mode. i2c:     I2C instance timing:  TIMINGR value (use LL_I2C_TIMING_* defines) fmp:     set non-zero to enable Fast-mode Plus (CR1.FMP bit) Only effective on STM32WBA55 and STM32H523. On L422, FMP is enabled via SYSCFG — see hal_i2c.c. On L011, FMP is not supported.",
+      "params": [
+        {
+          "name": "i2c",
+          "ctype": "I2C_TypeDef *"
+        },
+        {
+          "name": "timing",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_init_fmp",
+      "signature": "ll_i2c_init_fmp(I2C_TypeDef * i2c, uint32_t timing)",
+      "returns": "void",
+      "brief": "Initialize I2C in Fast-mode Plus (1 MHz). Sets the CR1.FMP bit for 20 mA output drive on WBA55 / H523.",
+      "params": [
+        {
+          "name": "i2c",
+          "ctype": "I2C_TypeDef *"
+        },
+        {
+          "name": "timing",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_write",
+      "signature": "ll_i2c_write(I2C_TypeDef * i2c, uint8_t addr, const uint8_t * data, uint32_t len)",
+      "returns": "int",
+      "brief": "Master write to a 7-bit address device. addr:  7-bit slave address (unshifted, e.g. 0x68 for MPU6050) data:  pointer to bytes to send len:   number of bytes Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or LL_I2C_TIMEOUT on failure.",
+      "params": [
+        {
+          "name": "i2c",
+          "ctype": "I2C_TypeDef *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_read",
+      "signature": "ll_i2c_read(I2C_TypeDef * i2c, uint8_t addr, uint8_t * buf, uint32_t len)",
+      "returns": "int",
+      "brief": "Master read from a 7-bit address device. addr:  7-bit slave address (unshifted) buf:   buffer to store received bytes len:   number of bytes to read Returns LL_I2C_OK on success, LL_I2C_NACK, LL_I2C_ERROR, or LL_I2C_TIMEOUT on failure.",
+      "params": [
+        {
+          "name": "i2c",
+          "ctype": "I2C_TypeDef *"
+        },
+        {
+          "name": "addr",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_timing_100k",
+      "signature": "ll_i2c_timing_100k(uint32_t kernel_mhz)",
+      "returns": "uint32_t",
+      "brief": "Select appropriate timing constant based on kernel clock MHz. Returns a 100kHz (standard mode) timing value. Returns 0 if no pre-computed value exists for the given frequency.",
+      "params": [
+        {
+          "name": "kernel_mhz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_timing_400k",
+      "signature": "ll_i2c_timing_400k(uint32_t kernel_mhz)",
+      "returns": "uint32_t",
+      "brief": "Select appropriate timing constant based on kernel clock MHz. Returns a 400kHz (fast mode) timing value. Minimum kernel clock: 4 MHz. Returns 0 if unsupported.",
+      "params": [
+        {
+          "name": "kernel_mhz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_i2c_timing_1m",
+      "signature": "ll_i2c_timing_1m(uint32_t kernel_mhz)",
+      "returns": "uint32_t",
+      "brief": "Select appropriate timing constant based on kernel clock MHz. Returns a 1MHz (fast mode plus) timing value. Minimum kernel clock: 16 MHz. Returns 0 if unsupported.",
+      "params": [
+        {
+          "name": "kernel_mhz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }
