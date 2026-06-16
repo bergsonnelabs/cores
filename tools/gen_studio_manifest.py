@@ -1153,10 +1153,18 @@ def main():
         targets.append((TILE_OUT_DIR / f"{t['path'].stem}.json", manifest))
 
     if args.check:
+        # The `source` sha tracks the commit, not the content: it legitimately
+        # differs from HEAD between a regen and the commit that lands it (and
+        # always differs in CI, which runs on a later commit). Normalise it on
+        # both sides so --check flags only *structural* drift — a header edited
+        # without regenerating its manifest.
+        def strip_source(s):
+            return re.sub(r'"source": "tiles@[^"]*"', '"source": "tiles@<sha>"', s)
+
         drift = []
         for path, data in targets:
-            want = serialize(data)
-            have = path.read_text() if path.exists() else ""
+            want = strip_source(serialize(data))
+            have = strip_source(path.read_text()) if path.exists() else ""
             if have != want:
                 drift.append(path)
         if drift:
