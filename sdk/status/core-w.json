@@ -25,7 +25,7 @@
     "uart.irq":     "compile",
     "uart.lp":      "compile",
 
-    "timer.basic": "verified",
+    "timer.tick":  "verified",
     "timer.pwm":   "compile",
 
     "i2c.std":  "verified",
@@ -55,7 +55,7 @@
     "power.rtc_alarm": { "status": "compile", "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.W" },
     "power.backup":    { "status": "compile", "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.W" },
 
-    "watchdog.iwdg": "compile",
+    "timer.wdog": "compile",
 
     "conn.usb_cdc":  "na",
     "conn.usb_hid":  "na",

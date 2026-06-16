@@ -70,6 +70,7 @@
       "id": "timers",
       "name": "Timers",
       "features": [
+        { "id": "timer.tick",    "layer": "Studio", "name": "basic timebase / tick",  "desc": "A timer counting a prescaled clock to a reload value — the timebase behind PWM, periodic callbacks, and input capture." },
         { "id": "timer.pwm",     "layer": "Studio", "name": "PWM output"              },
         { "id": "timer.capture", "layer": "Core", "name": "input capture",         "desc": "Measures timing of external signals — pulse width, frequency, or phase of an incoming waveform." },
         { "id": "timer.oneshot",                 "name": "one-shot pulse",         "desc": "Generates a single precisely-timed pulse on a GPIO pin, triggered by software or a hardware event." },
