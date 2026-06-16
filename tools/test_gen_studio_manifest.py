@@ -13,10 +13,12 @@ Run:
     python3 -m unittest tools.test_gen_studio_manifest
 """
 
+import io
 import json
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 # Make the generator module importable whether this file is run as a
@@ -26,6 +28,7 @@ from gen_studio_manifest import (  # noqa: E402
     build_host_entry,
     load_bus_addresses,
     parse_enum_body,
+    parse_layer_docs,
     parse_studio_tags,
 )
 
@@ -411,6 +414,51 @@ class LoadBusAddresses(unittest.TestCase):
     def test_no_interfaces_key_returns_empty(self):
         tmp = self._write_def({"name": "x"})
         self.assertEqual(load_bus_addresses(tmp), {})
+
+
+class ParseLayerDocs(unittest.TestCase):
+    """The hal_/ll_ layer-docs path: dedup of #if variants, curation +
+    ordering via `only`, layer tagging, and a warning for missing names."""
+
+    HEADER = """\
+#if defined(STM32L011xx)
+/** Enable the oscillator. */
+static inline void ll_x_enable(void) { }
+#elif defined(STM32H523xx)
+static inline void ll_x_enable(void) { }
+#endif
+
+/** Read the thing. */
+static inline uint32_t ll_x_read(uint32_t mask) { return mask; }
+
+/** Not in the curated list. */
+static inline void ll_x_extra(void) { }
+"""
+
+    def _write(self):
+        tmp = Path(tempfile.mkstemp(suffix=".h")[1])
+        tmp.write_text(self.HEADER)
+        return tmp
+
+    def test_dedup_and_layer_tag(self):
+        out = parse_layer_docs(self._write(), "ll")
+        # the family-gated #if variant collapses to one entry, source order
+        self.assertEqual(
+            [f["name"] for f in out], ["ll_x_enable", "ll_x_read", "ll_x_extra"]
+        )
+        self.assertTrue(all(f["layer"] == "ll" for f in out))
+        self.assertEqual(out[0]["brief"], "Enable the oscillator.")
+
+    def test_only_curates_and_orders(self):
+        out = parse_layer_docs(self._write(), "ll", only=["ll_x_read", "ll_x_enable"])
+        self.assertEqual([f["name"] for f in out], ["ll_x_read", "ll_x_enable"])
+
+    def test_only_warns_on_missing(self):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            out = parse_layer_docs(self._write(), "ll", only=["ll_x_read", "ll_x_nope"])
+        self.assertEqual([f["name"] for f in out], ["ll_x_read"])
+        self.assertIn("ll_x_nope", err.getvalue())
 
 
 if __name__ == "__main__":

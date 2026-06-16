@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "adc",
   "label": "Core.ADC",
   "icon": "◐",
   "header": "core_adc.h",
+  "headers": {
+    "core": "core_adc.h"
+  },
   "functions": [
     {
       "name": "core_adc_init",
@@ -21,7 +24,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_add",
@@ -42,7 +46,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_read",
@@ -59,7 +64,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_read_mv",
@@ -76,7 +82,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_read_pad",
@@ -94,7 +101,8 @@
           "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_adc_read_mv_pad",
@@ -112,7 +120,8 @@
           "description": "Tile pad number configured as an ADC input in config.json."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_adc_temp_decidegc",
@@ -120,7 +129,8 @@
       "returns": "int",
       "brief": "Die temperature in tenths of deg C (e.g. 253 = 25.3 C). Dispatches to the default ADC instance.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_adc_vdd_mv",
@@ -128,7 +138,8 @@
       "returns": "int",
       "brief": "VDD supply voltage in millivolts (via VREFINT). Dispatches to the default ADC instance.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_adc_temp",
@@ -141,7 +152,8 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_vdd",
@@ -154,7 +166,8 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_start_dma",
@@ -187,7 +200,8 @@
           "description": "User context passed to callback; may be NULL"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_stop_dma",
@@ -200,7 +214,8 @@
           "ctype": "core_adc_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_adc_dma_read",
@@ -217,7 +232,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }

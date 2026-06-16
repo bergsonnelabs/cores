@@ -1,10 +1,15 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "timing",
   "label": "Core.Timing",
   "icon": "⏱",
   "header": "core_timing.h",
+  "headers": {
+    "core": "core_timing.h",
+    "hal": "hal_common.h",
+    "ll": "ll_systick.h"
+  },
   "functions": [
     {
       "name": "core_delay_ms",
@@ -22,7 +27,8 @@
           "description": "Delay duration in milliseconds."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_delay_us",
@@ -40,7 +46,8 @@
           "description": "Delay duration in microseconds."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_millis",
@@ -48,7 +55,8 @@
       "returns": "uint32_t",
       "brief": "Milliseconds since boot (wraps at ~49 days).",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_timeout",
@@ -71,7 +79,77 @@
           "description": "Timeout duration in milliseconds."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "hal_tick",
+      "signature": "hal_tick(void)",
+      "returns": "uint32_t",
+      "brief": "Milliseconds since boot, from the SysTick counter (requires ll_systick_init).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_timeout_expired",
+      "signature": "hal_timeout_expired(uint32_t start, uint32_t timeout_ms)",
+      "returns": "int",
+      "brief": "Wrap-safe check that timeout_ms has elapsed since the tick value start.",
+      "params": [
+        {
+          "name": "start",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "timeout_ms",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_systick_init",
+      "signature": "ll_systick_init(uint32_t sysclk_hz)",
+      "returns": "void",
+      "brief": "Initialize SysTick for 1ms interrupts + delay functions. sysclk_hz: System clock frequency in Hz (e.g., 80000000 for 80MHz) After calling this, SysTick fires every 1ms and increments _systick_ticks. ll_delay_ms() uses this counter. ll_delay_us() still uses polling mode for sub-ms precision.",
+      "params": [
+        {
+          "name": "sysclk_hz",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_delay_ms",
+      "signature": "ll_delay_ms(uint32_t ms)",
+      "returns": "void",
+      "brief": "Blocking delay in milliseconds. Uses the SysTick interrupt counter for accurate timing.",
+      "params": [
+        {
+          "name": "ms",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_delay_us",
+      "signature": "ll_delay_us(uint32_t us)",
+      "returns": "void",
+      "brief": "Blocking delay in microseconds. Uses a counting loop based on the known ticks-per-us. Less precise than the old SysTick-polling approach, but compatible with the interrupt-driven SysTick.",
+      "params": [
+        {
+          "name": "us",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

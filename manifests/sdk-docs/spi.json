@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "spi",
   "label": "Core.SPI",
   "icon": "⇆",
   "header": "core_spi.h",
+  "headers": {
+    "core": "core_spi.h"
+  },
   "functions": [
     {
       "name": "core_spi_init",
@@ -25,7 +28,8 @@
           "ctype": "const hal_spi_config_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_set_cs",
@@ -42,7 +46,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_select",
@@ -55,7 +60,8 @@
           "ctype": "hal_spi_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_deselect",
@@ -68,7 +74,8 @@
           "ctype": "hal_spi_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_transfer",
@@ -85,7 +92,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_write",
@@ -106,7 +114,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_read",
@@ -127,7 +136,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_xfer",
@@ -152,7 +162,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_xfer_dma",
@@ -191,7 +202,8 @@
           "description": "User context for callback"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_busy",
@@ -204,7 +216,8 @@
           "ctype": "hal_spi_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_spi_xfer_byte_bus",
@@ -225,7 +238,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

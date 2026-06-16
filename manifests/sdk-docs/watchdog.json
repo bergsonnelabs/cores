@@ -1,10 +1,14 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "watchdog",
   "label": "Core.Watchdog",
   "icon": "🐕",
   "header": "core_watchdog.h",
+  "headers": {
+    "core": "core_watchdog.h",
+    "ll": "ll_iwdg.h"
+  },
   "functions": [
     {
       "name": "core_watchdog_start",
@@ -22,7 +26,8 @@
           "description": "Timeout in milliseconds before reset."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_watchdog_feed",
@@ -30,7 +35,8 @@
       "returns": "void",
       "brief": "Feed the watchdog. Must be called before the timeout expires.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_watchdog_caused_reset",
@@ -38,7 +44,8 @@
       "returns": "int",
       "brief": "Check if the last reset was caused by the watchdog.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_watchdog_clear_flags",
@@ -46,7 +53,89 @@
       "returns": "void",
       "brief": "Clear all reset flags (call after checking cause).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "ll_iwdg_init",
+      "signature": "ll_iwdg_init(uint32_t prescaler, uint32_t reload)",
+      "returns": "void",
+      "brief": "Initialize and start the independent watchdog. prescaler: LL_IWDG_PSC_* value reload:    reload value (0-4095) WARNING: Once started, the IWDG cannot be stopped. The only way to disable it is a full MCU reset. Make sure your main loop calls ll_iwdg_refresh() regularly. The LSI oscillator is automatically started when IWDG is enabled.",
+      "params": [
+        {
+          "name": "prescaler",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "reload",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_init_1s",
+      "signature": "ll_iwdg_init_1s(void)",
+      "returns": "void",
+      "brief": "Start IWDG with ~1 second timeout",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_init_2s",
+      "signature": "ll_iwdg_init_2s(void)",
+      "returns": "void",
+      "brief": "Start IWDG with ~2 second timeout",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_init_5s",
+      "signature": "ll_iwdg_init_5s(void)",
+      "returns": "void",
+      "brief": "Start IWDG with ~5 second timeout",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_init_10s",
+      "signature": "ll_iwdg_init_10s(void)",
+      "returns": "void",
+      "brief": "Start IWDG with ~10 second timeout",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_refresh",
+      "signature": "ll_iwdg_refresh(void)",
+      "returns": "void",
+      "brief": "Refresh (feed) the watchdog. Call this periodically in your main loop to prevent a watchdog reset.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_iwdg_caused_reset",
+      "signature": "ll_iwdg_caused_reset(void)",
+      "returns": "int",
+      "brief": "Check if the last reset was caused by the IWDG. Call early in main() to detect watchdog resets.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rcc_clear_reset_flags",
+      "signature": "ll_rcc_clear_reset_flags(void)",
+      "returns": "void",
+      "brief": "Clear the reset flags (so the next check gives a fresh result). Clears all reset flags, not just IWDG.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

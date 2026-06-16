@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "i2c",
   "label": "Core.I2C",
   "icon": "⇄",
   "header": "core_i2c.h",
+  "headers": {
+    "core": "core_i2c.h"
+  },
   "functions": [
     {
       "name": "_core_i2c_timing",
@@ -17,7 +20,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_init",
@@ -38,7 +42,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_init_cfg",
@@ -59,7 +64,8 @@
           "ctype": "const hal_i2c_config_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_write",
@@ -84,7 +90,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_read",
@@ -109,7 +116,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_write_reg",
@@ -138,7 +146,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_read_reg",
@@ -167,7 +176,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_write_byte",
@@ -192,7 +202,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_read_byte",
@@ -217,7 +228,8 @@
           "ctype": "uint8_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_probe",
@@ -234,7 +246,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_scan",
@@ -259,7 +272,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_i2c_write_byte_bus",
@@ -284,7 +298,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_i2c_read_byte_bus",
@@ -305,7 +320,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_i2c_probe_bus",
@@ -322,7 +338,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "usb",
   "label": "Core.USB",
   "icon": "❝",
   "header": "core_usb.h",
+  "headers": {
+    "core": "core_usb.h"
+  },
   "functions": [
     {
       "name": "core_usb_init",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Initialize USB CDC. Device appears as /dev/tty.usbmodem* on the host.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_connected",
@@ -20,7 +24,8 @@
       "returns": "int",
       "brief": "Returns 1 if a host terminal is connected (DTR set).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_write",
@@ -37,7 +42,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_print",
@@ -51,7 +57,8 @@
           "description": "The message to print."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_usb_print_int",
@@ -65,7 +72,8 @@
           "description": "The integer to print (decimal)."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_usb_print_float",
@@ -79,7 +87,8 @@
           "description": "The float to print."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_usb_print_bool",
@@ -93,7 +102,8 @@
           "description": "The boolean to print."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_usb_on_receive",
@@ -112,7 +122,8 @@
           "description": "User context passed to callback; may be NULL"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_available",
@@ -120,7 +131,8 @@
       "returns": "uint16_t",
       "brief": "Returns the number of bytes available to read (ring buffer mode).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_getc",
@@ -128,7 +140,8 @@
       "returns": "uint8_t",
       "brief": "Read a single byte (blocking — waits for data).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_read",
@@ -145,7 +158,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_usb_try_read",
@@ -158,7 +172,8 @@
           "ctype": "uint8_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }

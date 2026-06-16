@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "serial",
   "label": "Core.Serial",
   "icon": "⌨",
   "header": "core_serial.h",
+  "headers": {
+    "core": "core_serial.h"
+  },
   "functions": [
     {
       "name": "core_serial_init",
@@ -25,7 +28,8 @@
           "ctype": "const hal_uart_config_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_init_clk",
@@ -50,7 +54,8 @@
           "ctype": "const hal_uart_config_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_write",
@@ -71,7 +76,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_print",
@@ -88,7 +94,8 @@
           "ctype": "const char *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_putc",
@@ -105,7 +112,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_available",
@@ -118,7 +126,8 @@
           "ctype": "hal_uart_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_getc",
@@ -131,7 +140,8 @@
           "ctype": "hal_uart_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_read",
@@ -152,7 +162,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_serial_print_bus",
@@ -169,7 +180,8 @@
           "ctype": "const char *"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_serial_putc_bus",
@@ -186,7 +198,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

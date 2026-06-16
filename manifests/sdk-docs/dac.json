@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "dac",
   "label": "Core.DAC",
   "icon": "◓",
   "header": "core_dac.h",
+  "headers": {
+    "core": "core_dac.h"
+  },
   "functions": [
     {
       "name": "core_dac_init",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Initialize the DAC (clock, GPIO, peripheral). Call once from `on start` before any writes.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_dac_write",
@@ -30,7 +34,8 @@
           "description": "Raw DAC value."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_dac_write_mv",
@@ -48,7 +53,8 @@
           "description": "Output voltage in millivolts."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_dac_read",
@@ -56,7 +62,8 @@
       "returns": "uint16_t",
       "brief": "Read back the current DAC output register value (12-bit).",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

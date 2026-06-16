@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "rng",
   "label": "Core.RNG",
   "icon": "🎲",
   "header": "core_rng.h",
+  "headers": {
+    "core": "core_rng.h"
+  },
   "functions": [
     {
       "name": "core_rng_init",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Initialize the hardware RNG. Enables the peripheral clock, configures the RNG, and waits for the first random number to be ready. On Core.U: requires HSI48 to be running (auto-enabled if USB is used, otherwise call ll_rcc_hsi48_enable() first).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_rng_read",
@@ -20,7 +24,8 @@
       "returns": "uint32_t",
       "brief": "Read a single 32-bit random value (blocking). Returns 0 on timeout — check core_rng_error() if this happens.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rng_fill",
@@ -39,7 +44,8 @@
           "description": "Number of uint32_t values to generate"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_rng_error",
@@ -47,7 +53,8 @@
       "returns": "int",
       "brief": "Check if the RNG has a seed error (entropy source failure).",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_rng_deinit",
@@ -55,7 +62,8 @@
       "returns": "void",
       "brief": "Power down the RNG peripheral.",
       "params": [],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }

@@ -228,14 +228,15 @@ static inline void hal_nvic_clear_pending(uint32_t irqn)
  * Utility: simple timeout helper using SysTick
  * ============================================================ */
 
-/** Get current SysTick-based tick count (requires ll_systick_init) */
 extern volatile uint32_t _systick_ticks;
 
+/** Milliseconds since boot, from the SysTick counter (requires ll_systick_init). */
 static inline uint32_t hal_tick(void)
 {
     return _systick_ticks;
 }
 
+/** Wrap-safe check that timeout_ms has elapsed since the tick value start. */
 static inline int hal_timeout_expired(uint32_t start, uint32_t timeout_ms)
 {
     return (hal_tick() - start) >= timeout_ms;

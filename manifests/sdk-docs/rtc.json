@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "rtc",
   "label": "Core.RTC",
   "icon": "◴",
   "header": "core_rtc.h",
+  "headers": {
+    "core": "core_rtc.h"
+  },
   "functions": [
     {
       "name": "core_rtc_init",
@@ -12,7 +15,8 @@
       "returns": "void",
       "brief": "Initialize the RTC using LSI (~32kHz internal RC). Call once from `on start` before setting time, date, or alarms. For LSE, call ll_rtc_init(1) directly in hand-written C.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_set_time",
@@ -48,7 +52,8 @@
           "description": "Seconds."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_get_time",
@@ -69,7 +74,8 @@
           "ctype": "uint8_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_rtc_set_date",
@@ -114,7 +120,8 @@
           "description": "Weekday (1 = Mon, 7 = Sun)."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_get_date",
@@ -139,7 +146,8 @@
           "ctype": "uint8_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_rtc_wakeup",
@@ -157,7 +165,8 @@
           "description": "Wakeup interval in seconds."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_wakeup_stop",
@@ -165,7 +174,8 @@
       "returns": "void",
       "brief": "Disable the periodic wakeup timer.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_set_alarm",
@@ -201,7 +211,8 @@
           "description": "0-59, or 255 (0xFF) to match any second."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_clear_alarm",
@@ -209,7 +220,8 @@
       "returns": "void",
       "brief": "Clear the alarm (disable Alarm A).",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_rtc_alarm_fired",
@@ -217,7 +229,8 @@
       "returns": "int",
       "brief": "Check if the alarm has fired (poll mode). Clears the flag on read.",
       "params": [],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     }
   ]
 }

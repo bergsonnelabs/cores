@@ -1,10 +1,15 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "pad",
   "label": "Core.Pad",
   "icon": "◼",
   "header": "core_pad.h",
+  "headers": {
+    "core": "core_pad.h",
+    "hal": "hal_gpio.h",
+    "ll": "ll_gpio.h"
+  },
   "functions": [
     {
       "name": "core_pad_output",
@@ -17,7 +22,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_output_od",
@@ -34,7 +40,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_input",
@@ -51,7 +58,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_write",
@@ -78,7 +86,8 @@
           "description": "0 for low, 1 for high."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_pad_read",
@@ -96,7 +105,8 @@
           "description": "Tile pad number."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_pad_toggle",
@@ -114,7 +124,8 @@
           "description": "Tile pad number."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_pad_analog",
@@ -127,7 +138,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_speed",
@@ -144,7 +156,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_on_change",
@@ -173,7 +186,8 @@
           "description": "Opaque pointer passed to cb"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pad_on_change_stop",
@@ -186,7 +200,454 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "hal_pad_lookup",
+      "signature": "hal_pad_lookup(uint8_t pad)",
+      "returns": "hal_pad_gpio_t",
+      "brief": "Look up the GPIO port and pin for a tile pad number. Returns {NULL, 0} for pads with no GPIO (power, reset, etc.).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_output",
+      "signature": "hal_pad_output(uint8_t pad)",
+      "returns": "void",
+      "brief": "Configure a pad as push-pull output. Enables the port clock.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_output_od",
+      "signature": "hal_pad_output_od(uint8_t pad, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pad as open-drain output with pull selection. Enables the port clock.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_input",
+      "signature": "hal_pad_input(uint8_t pad, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pad as input with pull selection.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_analog",
+      "signature": "hal_pad_analog(uint8_t pad)",
+      "returns": "void",
+      "brief": "Configure a pad as analog (for ADC, DAC, comparator).",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_af",
+      "signature": "hal_pad_af(uint8_t pad, uint32_t af, uint32_t otype, uint32_t speed, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pad for alternate function.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "af",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "otype",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "speed",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_write",
+      "signature": "hal_pad_write(uint8_t pad, int state)",
+      "returns": "void",
+      "brief": "Write a pad: 0 = low, non-zero = high",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "state",
+          "ctype": "int"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_read",
+      "signature": "hal_pad_read(uint8_t pad)",
+      "returns": "int",
+      "brief": "Read a pad. Returns 0 or 1.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_pad_toggle",
+      "signature": "hal_pad_toggle(uint8_t pad)",
+      "returns": "void",
+      "brief": "Toggle a pad.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_gpio_set",
+      "signature": "ll_gpio_set(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Set one or more pins high (write 1s to BSRR lower half)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_clear",
+      "signature": "ll_gpio_clear(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Set one or more pins low (write 1s to BSRR upper half)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_toggle",
+      "signature": "ll_gpio_toggle(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "void",
+      "brief": "Toggle one or more pins (XOR with ODR)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_read",
+      "signature": "ll_gpio_read(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "uint32_t",
+      "brief": "Read the input state of one or more pins",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_read_output",
+      "signature": "ll_gpio_read_output(GPIO_TypeDef * port, uint32_t pin_mask)",
+      "returns": "uint32_t",
+      "brief": "Read the output state of one or more pins",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set_mode",
+      "signature": "ll_gpio_set_mode(GPIO_TypeDef * port, uint32_t pin, uint32_t mode)",
+      "returns": "void",
+      "brief": "Set the mode for a single pin. mode: LL_GPIO_MODE_INPUT, _OUTPUT, _AF, or _ANALOG",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "mode",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set_output_type",
+      "signature": "ll_gpio_set_output_type(GPIO_TypeDef * port, uint32_t pin, uint32_t otype)",
+      "returns": "void",
+      "brief": "Set the output type for a single pin. otype: LL_GPIO_OTYPE_PP (push-pull) or LL_GPIO_OTYPE_OD (open-drain)",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "otype",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set_speed",
+      "signature": "ll_gpio_set_speed(GPIO_TypeDef * port, uint32_t pin, uint32_t speed)",
+      "returns": "void",
+      "brief": "Set the output speed for a single pin. speed: LL_GPIO_SPEED_LOW, _MED, _HIGH, or _VHIGH",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "speed",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set_pull",
+      "signature": "ll_gpio_set_pull(GPIO_TypeDef * port, uint32_t pin, uint32_t pull)",
+      "returns": "void",
+      "brief": "Set the pull-up/pull-down for a single pin. pull: LL_GPIO_PULL_NONE, _UP, or _DOWN",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_set_af",
+      "signature": "ll_gpio_set_af(GPIO_TypeDef * port, uint32_t pin, uint32_t af)",
+      "returns": "void",
+      "brief": "Set the alternate function for a single pin (0-15). Pins 0-7 use AFR[0] (AFRL), pins 8-15 use AFR[1] (AFRH).",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "af",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_config_output",
+      "signature": "ll_gpio_config_output(GPIO_TypeDef * port, uint32_t pin)",
+      "returns": "void",
+      "brief": "Configure a pin as general-purpose output (push-pull, no pull, medium speed).",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_config_input",
+      "signature": "ll_gpio_config_input(GPIO_TypeDef * port, uint32_t pin, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pin as input with optional pull.",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_config_af",
+      "signature": "ll_gpio_config_af(GPIO_TypeDef * port, uint32_t pin, uint32_t af, uint32_t otype, uint32_t speed, uint32_t pull)",
+      "returns": "void",
+      "brief": "Configure a pin for an alternate function. af:    alternate function number (0-15) otype: LL_GPIO_OTYPE_PP or _OD speed: LL_GPIO_SPEED_LOW/MED/HIGH/VHIGH pull:  LL_GPIO_PULL_NONE/UP/DOWN",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "af",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "otype",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "speed",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "pull",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_gpio_config_analog",
+      "signature": "ll_gpio_config_analog(GPIO_TypeDef * port, uint32_t pin)",
+      "returns": "void",
+      "brief": "Configure a pin as analog (disconnects from digital logic).",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

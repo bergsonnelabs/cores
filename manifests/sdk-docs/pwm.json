@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "pwm",
   "label": "Core.PWM",
   "icon": "◲",
   "header": "core_pwm.h",
+  "headers": {
+    "core": "core_pwm.h"
+  },
   "functions": [
     {
       "name": "core_pwm_init",
@@ -25,7 +28,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_init_clk",
@@ -50,7 +54,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_set",
@@ -71,7 +76,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_set_freq",
@@ -88,7 +94,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_start",
@@ -101,7 +108,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_stop",
@@ -114,7 +122,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_init_pad",
@@ -135,7 +144,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_set_pad",
@@ -156,7 +166,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_pwm_duty",
@@ -183,7 +194,8 @@
           "description": "0 = off, 500 = 50%, 1000 = fully on."
         }
       ],
-      "studio_exposed": true
+      "studio_exposed": true,
+      "layer": "core"
     },
     {
       "name": "core_every_us",
@@ -212,7 +224,8 @@
           "ctype": "void *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_every_us_clk",
@@ -245,7 +258,8 @@
           "ctype": "void *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_every_start",
@@ -258,7 +272,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_every_stop",
@@ -271,7 +286,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }

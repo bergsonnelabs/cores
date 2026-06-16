@@ -1,10 +1,13 @@
 {
-  "schema": "studio-sdk-docs/v1",
-  "source": "tiles@d131f0f",
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@a98c73d",
   "category": "timer",
   "label": "Core.Timer",
   "icon": "◷",
   "header": "core_timer.h",
+  "headers": {
+    "core": "core_timer.h"
+  },
   "functions": [
     {
       "name": "core_timer_init_freq",
@@ -25,7 +28,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_init_tick",
@@ -46,7 +50,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_start",
@@ -59,7 +64,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_stop",
@@ -72,7 +78,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_set_freq",
@@ -89,7 +96,8 @@
           "ctype": "uint32_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_pwm_set",
@@ -110,7 +118,8 @@
           "ctype": "uint16_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_capture_init",
@@ -127,7 +136,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_capture_read",
@@ -144,7 +154,8 @@
           "ctype": "uint8_t"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_enable_tick",
@@ -165,7 +176,8 @@
           "ctype": "void *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_timer_disable_tick",
@@ -178,7 +190,8 @@
           "ctype": "core_timer_t *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     },
     {
       "name": "core_tick_init",
@@ -207,7 +220,8 @@
           "ctype": "void *"
         }
       ],
-      "studio_exposed": false
+      "studio_exposed": false,
+      "layer": "core"
     }
   ]
 }
