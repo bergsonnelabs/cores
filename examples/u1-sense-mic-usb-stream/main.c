@@ -5,7 +5,7 @@
  *   Host sends 's' → firmware starts streaming binary packets
  *   Host sends 'x' → firmware stops streaming
  *
- * Binary packet format (64 bytes = one USB bulk packet):
+ * Binary packet format (62 bytes = 2 sync + 30 × 16-bit samples):
  *   [0xAA] [0x55] [30 × 16-bit little-endian samples]
  *
  * Rate messages (text, prefixed with '#'):
