@@ -4,114 +4,124 @@
   "freq": "80 MHz",
   "arch": "M4",
   "features": {
-    "system.init":  "verified",
-    "system.led":   "verified",
-    "system.tick":  "verified",
+    "system.init": "verified",
+    "system.led": "verified",
     "system.delay": "verified",
-    "system.fault": { "status": "verified", "note": "Register dump over polled USB CDC + SOS blink. HardFault verified on Core.U.2 (projects/fault-test)" },
-    "system.wdog":  { "status": "verified", "note": "2s IWDG resets MCU after starved refresh — USB + PWM ramp test (projects/timers-pwmg_u2)" },
-
-    "clocks.hsi":  "verified",
-    "clocks.hse":  "na",
-    "clocks.csi":  "na",
-    "clocks.msi":  "verified",
-    "clocks.pll":  "verified",
-
-    "memory.eeprom":    "na",
-    "memory.flash_emu": "",
-
-    "gpio.digital":  "verified",
-    "gpio.exti":     "verified",
-    "gpio.af":       "verified",
-    "gpio.od_pull":  "verified",
-
+    "system.tick": "verified",
+    "system.fault": {
+      "status": "verified",
+      "note": "Register dump over polled USB CDC + SOS blink. HardFault verified on Core.U.2 (projects/fault-test)"
+    },
+    "clocks.hsi": "verified",
+    "clocks.hse": "na",
+    "clocks.msi": "verified",
+    "clocks.csi": "na",
+    "clocks.pll": "verified",
+    "gpio.digital": "verified",
+    "gpio.exti": "verified",
+    "gpio.af": "verified",
+    "gpio.od_pull": "verified",
     "uart.polling": "compile",
-    "uart.irq":     "compile",
-    "uart.lp":      "compile",
-
-    "i2c.std":  "verified",
+    "uart.irq": "compile",
+    "uart.lp": "compile",
+    "i2c.std": "verified",
     "i2c.fast": "verified",
-    "i2c.fmp":  "compile",
-    "i2c.pullups": "verified",
-    "i2c.stretch": "",
-    "i2c.gcall": "",
-    "i2c.slave": "",
-    "i2c.dma":   "",
-    "i2c.smbus": "",
-    "i2c.irq":   "",
+    "i2c.fmp": "compile",
+    "i2c.irq": "",
+    "i2c.dma": "",
     "i2c.10bit": "",
-
+    "i2c.smbus": "",
     "spi.master": "compile",
-
-    "adc.raw":      "verified",
-    "adc.mv":       "verified",
-    "adc.temp":     "verified",
-    "adc.res":      "verified",
-    "adc.oversamp": "verified",
-    "adc.cont":     "verified",
-    "adc.dma":      "verified",
-    "adc.watchdog": "",
-
-    "timer.tick":    { "status": "verified", "note": "Verified on Core.U.2 — LED blink via ISR (projects/timer-ticker)" },
-    "timer.pwm":     { "status": "verified", "note": "TIM15 PWM → EXTI loopback verified on Core.U.2 (projects/timers-pwmg_u2)" },
-    "timer.capture": { "status": "verified", "note": "TIM2 32-bit capture measuring TIM15 PWM period — 499995 us @ 2 Hz (projects/timers-pwmg_u2)" },
+    "spi.octo": "na",
+    "timer.tick": {
+      "status": "verified",
+      "note": "Verified on Core.U.2 — LED blink via ISR (projects/timer-ticker)"
+    },
+    "timer.pwm": {
+      "status": "verified",
+      "note": "TIM15 PWM → EXTI loopback verified on Core.U.2 (projects/timers-pwmg_u2)"
+    },
+    "timer.capture": {
+      "status": "verified",
+      "note": "TIM2 32-bit capture measuring TIM15 PWM period — 499995 us @ 2 Hz (projects/timers-pwmg_u2)"
+    },
     "timer.oneshot": "",
     "timer.encoder": "",
-    "timer.lptim":   "",
-
-    "coregen.gpio":   "verified",
-    "coregen.i2c":    "verified",
+    "timer.lptim": "",
+    "timer.wdog": {
+      "status": "verified",
+      "note": "2s IWDG resets MCU after starved refresh — USB + PWM ramp test (projects/timers-pwmg_u2)"
+    },
+    "adc.raw": "verified",
+    "adc.mv": "verified",
+    "adc.temp": "verified",
+    "adc.res": "verified",
+    "adc.oversamp": "verified",
+    "adc.dma": "verified",
+    "adc.cont": "verified",
+    "adc.watchdog": "",
+    "coregen.gpio": "verified",
+    "coregen.i2c": "verified",
     "coregen.analog": "verified",
-    "coregen.spi":    "compile",
-    "coregen.uart":   "compile",
-    "coregen.timer":  { "status": "compile", "note": "Generates PAD_n_TIM/CH defines and core_pad_timer_info(); tested on adc-pwm example" },
-
-    "usb.cdc":      "verified",
-    "usb.hid":      "",
-    "usb.msc":      "",
-    "usb.host":     "na",
-
-    "progdebug.swd_flash":  "verified",
-    "progdebug.dfu_flash":  "verified",
-    "progdebug.uart_flash": "",
-    "progdebug.i2c_flash":  "",
-    "progdebug.spi_flash":  "",
-    "progdebug.ota":        "na",
-    "progdebug.custom_dfu": { "status": "verified", "note": "App-request DFU bootloader (2.7KB). 1200-baud touch auto-triggers from make flash-dfu. projects/bootloader + projects/hello" },
-    "progdebug.gdb":        "",
-    "progdebug.swo_trace":  "na",
-
-
-    "ble.adv": "na",
-    "ble.connect": "na",
-    "ble.gatt_svc": "na",
-    "ble.gatt_rw": "na",
-    "ble.notify": "na",
-    "ble.pair_legacy": "na",
-    "ble.pair_sc": "na",
-    "ble.txpower": "na",
-    "ble.interval": "na",
-
-    "fdcan.bus":    "na",
-
-    "power.sleep":     { "status": "verified", "note": "WFI sleep, wakes on SysTick (projects/power-test)" },
-    "power.stop":      { "status": "verified", "note": "Stop 1 + RTC wakeup + clock recovery to 80MHz PLL (projects/power-test)" },
-    "power.standby":   { "status": "verified", "note": "Standby + RTC wakeup, full reset on wake (projects/power-test)" },
-    "power.rtc_wake":  { "status": "verified", "note": "LSI RTC wakeup from Stop and Standby (projects/power-test)" },
-    "power.exti_wake": { "status": "verified", "note": "Falling edge on pad 10 wakes from Stop 1 + clock recovery (projects/power-test)" },
-    "power.wkup_wake": { "status": "verified", "note": "core_standby_until_on_change(8, EDGE_FALLING) verified on Core.U.2 (projects/power-test)" },
-    "power.rtc_alarm": { "status": "partial", "note": "LL+Core Alarm A implemented. ALRMAR writes read back 0 on test L422 — hw investigation needed. RTC time set/get and ticking verified (tests/val-backup-rng-alarm-u)" },
-    "power.backup":    { "status": "partial", "note": "Core API implemented. BKPxR writes read back 0 on test L422 — same root cause as alarm (hw investigation). All access bits correct (DBP, RTCEN, WPR)" },
-
-    "security.rng":  { "status": "verified", "note": "HSI48 + CCIPR mux. 6/6 tests pass: init, read, uniqueness, fill, error check, deinit/reinit (tests/val-backup-rng-alarm-u)" },
-    "security.aes":  "none",
-    "security.pka":  "na",
+    "coregen.spi": "compile",
+    "coregen.uart": "compile",
+    "coregen.timer": {
+      "status": "compile",
+      "note": "Generates PAD_n_TIM/CH defines and core_pad_timer_info(); tested on adc-pwm example"
+    },
+    "power.sleep": {
+      "status": "verified",
+      "note": "WFI sleep, wakes on SysTick (projects/power-test)"
+    },
+    "power.stop": {
+      "status": "verified",
+      "note": "Stop 1 + RTC wakeup + clock recovery to 80MHz PLL (projects/power-test)"
+    },
+    "power.standby": {
+      "status": "verified",
+      "note": "Standby + RTC wakeup, full reset on wake (projects/power-test)"
+    },
+    "power.rtc_wake": {
+      "status": "verified",
+      "note": "LSI RTC wakeup from Stop and Standby (projects/power-test)"
+    },
+    "power.exti_wake": {
+      "status": "verified",
+      "note": "Falling edge on pad 10 wakes from Stop 1 + clock recovery (projects/power-test)"
+    },
+    "power.wkup_wake": {
+      "status": "verified",
+      "note": "core_standby_until_on_change(8, EDGE_FALLING) verified on Core.U.2 (projects/power-test)"
+    },
+    "power.rtc_alarm": {
+      "status": "partial",
+      "note": "LL+Core Alarm A implemented. ALRMAR writes read back 0 on test L422 — hw investigation needed. RTC time set/get and ticking verified (tests/val-backup-rng-alarm-u)"
+    },
+    "power.backup": {
+      "status": "partial",
+      "note": "Core API implemented. BKPxR writes read back 0 on test L422 — same root cause as alarm (hw investigation). All access bits correct (DBP, RTCEN, WPR)"
+    },
+    "security.rng": {
+      "status": "verified",
+      "note": "HSI48 + CCIPR mux. 6/6 tests pass: init, read, uniqueness, fill, error check, deinit/reinit (tests/val-backup-rng-alarm-u)"
+    },
+    "security.aes": "none",
+    "security.pka": "na",
     "security.hash": "na",
-
-    "spi.octo":       "na",
-    "i3c.ctrl":   "na",
-    "i3c.target": "na",
-    "adc.comp":       { "status": "compile", "note": "L422 has COMP1/COMP2; pins available on Core.U.2" },
-    "adc.dac":        "na"
+    "conn.usb_cdc": "verified",
+    "conn.usb_hid": "",
+    "conn.usb_msc": "",
+    "conn.dfu": "verified",
+    "conn.ble": "na",
+    "conn.ble_adv": "na",
+    "conn.ble_gatt": "na",
+    "conn.fdcan": "na",
+    "adv.i3c_ctrl": "na",
+    "adv.i3c_target": "na",
+    "adv.comp": {
+      "status": "compile",
+      "note": "L422 has COMP1/COMP2; pins available on Core.U.2"
+    },
+    "adv.dac": "na"
   }
 }

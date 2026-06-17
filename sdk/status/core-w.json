@@ -3,77 +3,84 @@
   "mcu": "STM32WBA55",
   "freq": "100 MHz",
   "arch": "M33",
-  "bootloaders": ["uart", "i2c", "spi"],
+  "bootloaders": [
+    "uart",
+    "i2c",
+    "spi"
+  ],
   "features": {
-    "system.init":  "verified",
-    "system.led":   "verified",
-    "system.tick":  "verified",
+    "system.init": "verified",
+    "system.led": "verified",
     "system.delay": "verified",
+    "system.tick": "verified",
     "system.fault": "verified",
-
-    "clocks.hsi":  "verified",
-    "clocks.hse":  "verified",
-    "clocks.msi":  "na",
-    "clocks.pll":  "verified",
-
-    "gpio.digital":  "verified",
-    "gpio.exti":     "verified",
-    "gpio.af":       "verified",
-    "gpio.od_pull":  "verified",
-
+    "clocks.hsi": "verified",
+    "clocks.hse": "verified",
+    "clocks.msi": "na",
+    "clocks.csi": "na",
+    "clocks.pll": "verified",
+    "gpio.digital": "verified",
+    "gpio.exti": "verified",
+    "gpio.af": "verified",
+    "gpio.od_pull": "verified",
     "uart.polling": "verified",
-    "uart.irq":     "compile",
-    "uart.lp":      "compile",
-
-    "timer.tick":  "verified",
-    "timer.pwm":   "compile",
-
-    "i2c.std":  "verified",
+    "uart.irq": "compile",
+    "uart.lp": "compile",
+    "i2c.std": "verified",
     "i2c.fast": "verified",
-    "i2c.fmp":  "na",
-
-    "spi.master": { "status": "partial", "note": "APB7 clock + MODF bugs fixed; SPI v2 transfer sequence (CSTART/TSIZE) needs RM study — loopback times out on RXP" },
-
-    "adc.raw":      "verified",
-    "adc.mv":       "verified",
-    "adc.temp":     { "status": "partial", "note": "Reads hardware sensor; OTP cal (0x0BFA07xx) not bus-accessible on WBA55 — uses datasheet typical constants, ~±15°C accuracy" },
-    "adc.res":      { "status": "partial", "note": "12-bit hw-verified; 8 / 10-bit compile only" },
-    "adc.oversamp": "verified",
-    "adc.cont":     "verified",
-    "adc.dma":      "verified",
-
-    "coregen.gpio":   "verified",
-    "coregen.i2c":    "verified",
-    "coregen.analog": "verified",
-    "coregen.spi":    "compile",
-    "coregen.uart":   "compile",
-
-    "power.sleep":   "verified",
-    "power.stop":    "compile",
-    "power.standby": "compile",
-    "power.wkup_wake":"",
-    "power.rtc_alarm": { "status": "compile", "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.W" },
-    "power.backup":    { "status": "compile", "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.W" },
-
+    "i2c.fmp": "na",
+    "spi.master": {
+      "status": "partial",
+      "note": "APB7 clock + MODF bugs fixed; SPI v2 transfer sequence (CSTART/TSIZE) needs RM study — loopback times out on RXP"
+    },
+    "spi.octo": "na",
+    "timer.tick": "verified",
+    "timer.pwm": "compile",
     "timer.wdog": "compile",
-
-    "conn.usb_cdc":  "na",
-    "conn.usb_hid":  "na",
-    "conn.usb_msc":  "na",
-    "conn.dfu":      "na",
-    "conn.ble":      "verified",
-    "conn.ble_adv":  "verified",
-    "conn.ble_gatt": "verified",
-    "conn.fdcan":    "na",
-
-    "security.rng":  "verified",
-    "security.aes":  "verified",
-    "security.pka":  "none",
+    "adc.raw": "verified",
+    "adc.mv": "verified",
+    "adc.temp": {
+      "status": "partial",
+      "note": "Reads hardware sensor; OTP cal (0x0BFA07xx) not bus-accessible on WBA55 — uses datasheet typical constants, ~±15°C accuracy"
+    },
+    "adc.res": {
+      "status": "partial",
+      "note": "12-bit hw-verified; 8 / 10-bit compile only"
+    },
+    "adc.oversamp": "verified",
+    "adc.dma": "verified",
+    "adc.cont": "verified",
+    "coregen.gpio": "verified",
+    "coregen.i2c": "verified",
+    "coregen.analog": "verified",
+    "coregen.spi": "compile",
+    "coregen.uart": "compile",
+    "power.sleep": "verified",
+    "power.stop": "compile",
+    "power.standby": "compile",
+    "power.wkup_wake": "",
+    "power.rtc_alarm": {
+      "status": "compile",
+      "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.W"
+    },
+    "power.backup": {
+      "status": "compile",
+      "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.W"
+    },
+    "security.rng": "verified",
+    "security.aes": "verified",
+    "security.pka": "none",
     "security.hash": "na",
-
-    "spi.octo":       "na",
-    "adv.i3c_ctrl":   "na",
+    "conn.usb_cdc": "na",
+    "conn.usb_hid": "na",
+    "conn.usb_msc": "na",
+    "conn.dfu": "na",
+    "conn.ble": "verified",
+    "conn.ble_adv": "verified",
+    "conn.ble_gatt": "verified",
+    "conn.fdcan": "na",
+    "adv.i3c_ctrl": "na",
     "adv.i3c_target": "na",
-    "adv.dac":        "na"
+    "adv.dac": "na"
   }
 }
