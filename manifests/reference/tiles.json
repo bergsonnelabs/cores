@@ -1,0 +1,2123 @@
+{
+  "schema": "reference/v1",
+  "source": "tiles@f6cab80",
+  "tiles": [
+    {
+      "family": "Sense",
+      "name": "A.D3H",
+      "rev": "a",
+      "headline": "high-range digital triaxial accelerometer",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "A.D3L",
+      "rev": "a",
+      "headline": "low-range digital accelerometer",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "A.D3X",
+      "rev": "a",
+      "headline": "extra-high-range digital triaxial accelerometer",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "ACP",
+      "rev": "b",
+      "headline": "ambient light, RGB color, proximity",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x39",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "INT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "AQ",
+      "rev": "a",
+      "headline": "air quality",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "BBR",
+      "rev": "a",
+      "headline": "black-body radiation",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x5A",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.SDIO",
+              "type": "digital"
+            }
+          ]
+        },
+        "9": {
+          "default": {
+            "name": "INT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "BIO",
+      "rev": "a",
+      "headline": "bioimpedance",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "BP",
+      "rev": "a",
+      "headline": "dual-range absolute pressure",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x5D",
+          "alt": [
+            "0x5C"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            }
+          ]
+        },
+        "9": {
+          "default": {
+            "name": "INT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "CAM.M",
+      "rev": "a",
+      "headline": "MIPI Mira016 camera",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "CAM.N",
+      "rev": "a",
+      "headline": "NanEye camera",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "CAM.S",
+      "rev": "a",
+      "headline": "SPI-output CMOS camera",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "CO2",
+      "rev": "a",
+      "headline": "carbon dioxide monitor",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x29",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "F.I",
+      "rev": "a",
+      "headline": "integrated impedance-based force sensor",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "F.R",
+      "rev": "a",
+      "headline": "force-sensitive resistor and AFE",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "HR",
+      "rev": "a",
+      "headline": "heart rate, pulse oximetry, and hydration",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0xD5",
+          "alt": [
+            "0xD6"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            }
+          ]
+        },
+        "8": {
+          "default": {
+            "name": "INTB",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "VLED",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "I.6D",
+      "rev": "a",
+      "headline": "digital 6-DOF IMU with dual accelerometers",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x6B",
+          "alt": [
+            "0x6A"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            },
+            {
+              "name": "SPI3.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.CLK",
+              "type": "digital"
+            },
+            {
+              "name": "SPI3.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            },
+            {
+              "name": "SPI3.DAT",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.DAT",
+              "type": "digital"
+            }
+          ]
+        },
+        "9": {
+          "default": {
+            "name": "INT1",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "I.6P6",
+      "rev": "a",
+      "headline": "extended-range 6-DOF IMU",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x69",
+          "alt": [
+            "0x68"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.DAT",
+              "type": "digital"
+            }
+          ]
+        },
+        "8": {
+          "default": {
+            "name": "INT2",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "INT1",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "I.6P8",
+      "rev": "a",
+      "headline": "high-precision 6-DOF IMU",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x69",
+          "alt": [
+            "0x68"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            },
+            {
+              "name": "I3C.DAT",
+              "type": "digital"
+            }
+          ]
+        },
+        "8": {
+          "default": {
+            "name": "INT2",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "INT1",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "I.9",
+      "rev": "c",
+      "headline": "digital 9-DOF IMU",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x69",
+          "alt": [
+            "0x68"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "I2C.AD0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "I2C.EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            }
+          ]
+        },
+        "9": {
+          "default": {
+            "name": "INT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "M.3E",
+      "rev": "a",
+      "headline": "earth-field triaxial magnetometer",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "M.3M",
+      "rev": "a",
+      "headline": "50mT triaxial magnetometer",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "M.R",
+      "rev": "a",
+      "headline": "magnetic rotary encoder",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "MIC",
+      "rev": "a",
+      "headline": "I2C-output MEMS microphone",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x36",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "AOUT",
+            "type": "analog"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "OF",
+      "rev": "a",
+      "headline": "optical force",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "OT",
+      "rev": "a",
+      "headline": "optical tracking",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "R",
+      "rev": "a",
+      "headline": "Radar",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "RH",
+      "rev": "a",
+      "headline": "relative humidity",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "SG",
+      "rev": "a",
+      "headline": "strain-gauge amplifier",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "T.C",
+      "rev": "a",
+      "headline": "capacitive touch",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x44",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "RDY",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "C0",
+            "type": "analog"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "TOF",
+      "rev": "a",
+      "headline": "time-of-flight distance",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x41",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "EN",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "INT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Sense",
+      "name": "US.A",
+      "rev": "a",
+      "headline": "A-mode 1D ultrasound",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "US.D",
+      "rev": "a",
+      "headline": "Doppler ultrasound",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "US.P",
+      "rev": "a",
+      "headline": "ultrasound proximity (0.04-1.20m)",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Drive",
+      "name": "A.2",
+      "rev": "a",
+      "headline": "I2C/SPI-input dual 3W Class-D amplifier",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x49",
+          "alt": [
+            "0x48",
+            "0x4A",
+            "0x4B"
+          ]
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "GPIO",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MISO",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "A0",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.MOSI",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "SPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "6": {
+          "default": {
+            "name": "OUT.0-",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "OUT.0+",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "OUT.1-",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "OUT.1+",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Drive",
+      "name": "BLDC",
+      "rev": "a",
+      "headline": "brushless motor controller",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Drive",
+      "name": "DC.H",
+      "rev": "a",
+      "headline": "11V/2A H-bridge DC-motor driver",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "variant",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "EN",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "IN1",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "PH",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "IN2",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "NPROP",
+            "type": "analog"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "OUT1",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "OUT2",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "VM",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Drive",
+      "name": "H",
+      "rev": "a",
+      "headline": "haptic ERM/LRA driver",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x5A",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "TRIG",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "EN",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "OUT+",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "OUT-",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "V_MOTOR",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Drive",
+      "name": "P",
+      "rev": "a",
+      "headline": "piezoelectric sensor/actuator driver",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x5A",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "GPIO",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "I3C.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "I3C.DAT",
+              "type": "digital"
+            }
+          ]
+        },
+        "7": {
+          "default": {
+            "name": "OUT+",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "OUT-",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "V_DRIVE",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Drive",
+      "name": "STEP",
+      "rev": "a",
+      "headline": "stepper-motor driver",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Drive",
+      "name": "VC.S",
+      "rev": "a",
+      "headline": "100mA voice-coil driver",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x0E",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "OUT+",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "OUT-",
+            "type": "drive"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Power",
+      "name": "BB",
+      "rev": "a",
+      "headline": "multi-output buck-boost regulator",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Power",
+      "name": "I",
+      "rev": "a",
+      "headline": "inductive charge controller",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Power",
+      "name": "L.1N",
+      "rev": "a",
+      "headline": "1C Li-Ion charge manager w/ 1.8 & 3.3V out",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x6B",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "CC1",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "CC2",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "CHG",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "BATT",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "VSYS",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "3V3",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "1V8",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Power",
+      "name": "L.1T",
+      "rev": "b",
+      "headline": "single-cell Li-Ion charge controller with 1.8V LDO",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x6B",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "LP",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "SW",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "BATT-",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "BATT+",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "SUPPLY+",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "SUPPLY-",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Power",
+      "name": "P.N",
+      "rev": "a",
+      "headline": "primary-cell battery boost regulator",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x74",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "PG",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "reset",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "GPIO1",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "SHPHLD",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "VBATT+",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "VLDO",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "VOUT",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Power",
+      "name": "S",
+      "rev": "a",
+      "headline": "solar power collector",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Power",
+      "name": "U.PD",
+      "rev": "a",
+      "headline": "USB-C power-delivery controller",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Link",
+      "name": "B",
+      "rev": "a",
+      "headline": "BLE wireless transceiver",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Link",
+      "name": "U.E",
+      "rev": "a",
+      "headline": "USB2-eUSB2 redriver",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Link",
+      "name": "USB.H",
+      "rev": "a",
+      "headline": "USB2 high-speed transceiver",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Link",
+      "name": "V",
+      "rev": "a",
+      "headline": "V-band 480Mbps short-range wireless",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Link",
+      "name": "W",
+      "rev": "a",
+      "headline": "WiFi 6 (802.11ax) transceiver",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Display",
+      "name": "E.C",
+      "rev": "a",
+      "headline": "color eInk",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Display",
+      "name": "GRID",
+      "rev": "a",
+      "headline": "42-pixel dimmable LED matrix",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Display",
+      "name": "RGBW",
+      "rev": "a",
+      "headline": "Smart RGBW LED",
+      "i2c": [
+        {
+          "name": "I2C",
+          "default": "0x50",
+          "alt": []
+        }
+      ],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "EN",
+            "type": "digital"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "",
+            "type": "other"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Store",
+      "name": "O.128",
+      "rev": "a",
+      "headline": "128Mbit NOR flash",
+      "i2c": [],
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "SPI.MOSI",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.IO0",
+              "type": "digital"
+            }
+          ]
+        },
+        "3": {
+          "default": {
+            "name": "SPI.CS",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.CS",
+              "type": "digital"
+            }
+          ]
+        },
+        "4": {
+          "default": {
+            "name": "SPI.CLK",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.CLK",
+              "type": "digital"
+            }
+          ]
+        },
+        "5": {
+          "default": {
+            "name": "SPI.MISO",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.IO1",
+              "type": "digital"
+            }
+          ]
+        },
+        "6": {
+          "default": {
+            "name": "WP",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.IO2",
+              "type": "digital"
+            }
+          ]
+        },
+        "9": {
+          "default": {
+            "name": "HOLD",
+            "type": "digital"
+          },
+          "alt": [
+            {
+              "name": "QSPI.IO3",
+              "type": "digital"
+            }
+          ]
+        },
+        "10": {
+          "default": {
+            "name": "V+",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
+    },
+    {
+      "family": "Store",
+      "name": "O.256",
+      "rev": "a",
+      "headline": "256Mbit NOR flash",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Store",
+      "name": "O.32",
+      "rev": "a",
+      "headline": "32Mbit NOR flash",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Store",
+      "name": "SD.1G",
+      "rev": "a",
+      "headline": "1Gbit SD NAND flash",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Special",
+      "name": "HLED",
+      "rev": "a",
+      "headline": "",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Special",
+      "name": "TAK.12",
+      "rev": "a",
+      "headline": "fully integrated piezoelectric sensor/actuator module",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Special",
+      "name": "TAK.7",
+      "rev": "a",
+      "headline": "fully integrated piezoelectric sensor/actuator module",
+      "i2c": [],
+      "pads": {}
+    }
+  ]
+}
