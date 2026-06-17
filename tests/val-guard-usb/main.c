@@ -2,7 +2,7 @@
 /**
  * val-guard-usb -- USB availability guard
  *
- * Core.W (Core-W-b), clock=default
+ * Core.ST.W5.1, clock=default
  *
  * This test MUST FAIL to compile. It verifies that core_usb.h correctly
  * produces a #error when included on a Core that lacks USB hardware.

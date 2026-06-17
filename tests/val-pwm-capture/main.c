@@ -1,7 +1,7 @@
 /**
  * val-pwm-capture -- Validation: Timer PWM output + input capture
  *
- * Core.U (Core-U-2-a), clock=max
+ * Core.ST.L4.2, clock=max
  * Pad 7 = TIM15.1, Pad 8 = TIM2.1
  *
  * Exercises: core_timer_t, core_timer_init_freq, core_timer_pwm_set (permil!),

@@ -1,5 +1,5 @@
 {
-  "core": "Core-U-1-a",
+  "core": "Core.ST.L4.1",
   "clock": "medium",
   "bootloader": "rom",
   "usb": {

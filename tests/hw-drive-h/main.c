@@ -5,7 +5,7 @@
  * and Disp.RGBW LED for pass/fail indication. Requires an LRA
  * connected to Drive.H outputs.
  *
- * Core.U.1 (Core-U-1-a), clock=max
+ * Core.ST.L4.1, clock=max
  *   I2C1 @ 400 kHz — Disp.RGBW (status LED)
  *   I2C3 @ 400 kHz — Drive.H   (haptic driver)
  *

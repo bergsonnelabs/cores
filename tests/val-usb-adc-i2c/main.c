@@ -1,7 +1,7 @@
 /**
  * val-usb-adc-i2c -- Validation: USB CDC, ADC, I2C bus, timer tick
  *
- * Core.U (Core-U-2-a), clock=max
+ * Core.ST.L4.2, clock=max
  * USB enabled, Pad 4 = I2C1.CLK, Pad 5 = I2C1.DAT, Pad 8 = ADC5
  *
  * Exercises: core_init, core_usb_init, core_usb_printf,

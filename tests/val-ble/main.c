@@ -1,7 +1,7 @@
 /**
  * val-ble -- Minimal BLE advertising validation (green-field)
  *
- * Core.W (Core-W-b), BLE enabled, no pads, no pairing, no services.
+ * Core.ST.W5.1, BLE enabled, no pads, no pairing, no services.
  *
  * The absolute basics: bring up the stack and advertise a name.
  * If a scanner sees "val-ble", the radio + stack + advertising path

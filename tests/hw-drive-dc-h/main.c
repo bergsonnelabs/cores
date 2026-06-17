@@ -5,7 +5,7 @@
  * and Disp.RGBW LED for pass/fail indication. Connect a small
  * brushed DC motor to the Drive.DC.H outputs for motor tests.
  *
- * Core.U.1 (Core-U-1-a), clock=max
+ * Core.ST.L4.1, clock=max
  *   I2C1 @ 400 kHz — Disp.RGBW (status LED)
  *   I2C3 @ 400 kHz — Drive.DC.H (motor driver)
  *

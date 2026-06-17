@@ -24,6 +24,19 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+# ---- Core naming ----
+# Vendor-segmented public names (Core.ST.<family>.<n>) are the standard; they
+# map onto the DB-synced definition file stems. The Makefile carries the same
+# map so either form resolves to the right definition.
+CORE_NAME_ALIASES = {
+    "Core.ST.L0.1": "Core-L-1-a",
+    "Core.ST.L4.1": "Core-U-1-a",
+    "Core.ST.L4.2": "Core-U-2-a",
+    "Core.ST.W5.1": "Core-W-b",
+    "Core.ST.H5.1": "Core-H-1-a",
+}
+CORE_STEM_TO_PUBLIC = {stem: name for name, stem in CORE_NAME_ALIASES.items()}
+
 # ---- MCU database ----
 # Maps part numbers to build-relevant properties.
 
@@ -1387,10 +1400,13 @@ def generate(tile_path, output_dir, config_path=None):
         with open(config_path) as f:
             project = json.load(f)
 
-        # Validate core matches
+        # Validate core matches. Public names (Core.ST.<family>.<n>) resolve to
+        # the canonical definition stem, so a config written against the public
+        # name doesn't spuriously warn.
         proj_core = project.get("core", "")
+        proj_core_stem = CORE_NAME_ALIASES.get(proj_core, proj_core)
         tile_file_stem = os.path.basename(tile_path).replace(".json", "")
-        if proj_core and proj_core != tile_file_stem:
+        if proj_core and proj_core_stem != tile_file_stem:
             print(f"  NOTE: config.json targets '{proj_core}', building for '{tile_file_stem}' (TILE= override)")
             # Allow override — this is the multi-tile portability path
 
@@ -1542,10 +1558,11 @@ def generate(tile_path, output_dir, config_path=None):
         makefile_path = os.path.join(project_dir, "Makefile")
         if not os.path.exists(makefile_path):
             tile_stem = os.path.basename(tile_path).replace(".json", "")
+            tile_public = CORE_STEM_TO_PUBLIC.get(tile_stem, tile_stem)
             tiles_line = "TILES_ENABLED := 1\n" if ctx.get("tiles_config") else ""
             with open(makefile_path, "w") as f:
                 f.write(f"# Project Makefile — run make from inside the project folder\n")
-                f.write(f"TILE         := {tile_stem}\n")
+                f.write(f"TILE         := {tile_public}\n")
                 f.write(f"{tiles_line}")
                 f.write(f"PROJECT      := $(notdir $(CURDIR))\n")
                 f.write(f"ROOT         := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))../..)\n\n")

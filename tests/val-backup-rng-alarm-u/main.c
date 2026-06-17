@@ -1,7 +1,7 @@
 /**
  * val-backup-rng-alarm-u -- Hardware RNG, RTC, backup registers on Core.U.2
  *
- * Core.U.2 (Core-U-2-a), clock=max (80 MHz PLL)
+ * Core.ST.L4.2, clock=max (80 MHz PLL)
  * No external wiring needed — all on-chip peripherals.
  * Debug output via USB CDC.
  *

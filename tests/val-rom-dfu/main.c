@@ -1,7 +1,7 @@
 /**
  * val-rom-dfu -- Validation: ROM DFU bootloader on Core.U
  *
- * Core.U.2 (Core-U-2-a), clock=default, USB enabled, ROM_DFU=1
+ * Core.ST.L4.2, clock=default, USB enabled, ROM_DFU=1
  *
  * Tests the ROM DFU boot path:
  *   1. App starts at 0x08000000 (no custom bootloader partition)

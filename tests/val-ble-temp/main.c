@@ -1,7 +1,7 @@
 /**
  * val-ble-temp -- Validation: BLE GATT services + ADC temperature
  *
- * Core.W (Core-W-b), clock=default, BLE enabled
+ * Core.ST.W5.1, clock=default, BLE enabled
  * Pad 5 = ADC2
  *
  * Exercises: core_init, core_ble_set_services, core_ble_init,

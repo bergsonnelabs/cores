@@ -2,7 +2,7 @@
 /**
  * val-guard-ble -- BLE availability guard
  *
- * Core.U (Core-U-2-a), clock=default
+ * Core.ST.L4.2, clock=default
  *
  * This test MUST FAIL to compile. It verifies that core_ble.h correctly
  * produces a #error when included on a Core that lacks BLE hardware.

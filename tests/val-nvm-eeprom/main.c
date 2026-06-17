@@ -1,7 +1,7 @@
 /**
  * val-nvm-eeprom -- Validation: NVM (EEPROM) on Core.L
  *
- * Core.L (Core-L-1-a), clock=default
+ * Core.ST.L0.1, clock=default
  *
  * Exercises: core_init, core_nvm_read, core_nvm_write, core_nvm_size
  *

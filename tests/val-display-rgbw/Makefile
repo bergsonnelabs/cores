@@ -1,4 +1,4 @@
-TILE         := Core-U-1-a
+TILE         := Core.ST.L4.1
 TILES_ENABLED := 1
 BLE_ENABLED  := 0
 BOOTLOADER   := 0

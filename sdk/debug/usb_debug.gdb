@@ -1,6 +1,6 @@
 # USB debug script — run after flashing usb-serial
 # Usage: make openocd (terminal 1), then:
-#   arm-none-eabi-gdb build/Core-U-2-a/usb-serial/usb-serial.elf -x debug/usb_debug.gdb
+#   arm-none-eabi-gdb build/Core.ST.L4.2/usb-serial/usb-serial.elf -x debug/usb_debug.gdb
 
 target remote :3333
 monitor reset halt

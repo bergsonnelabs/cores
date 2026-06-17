@@ -1,4 +1,4 @@
-TILE         := Core-W-b
+TILE         := Core.ST.W5.1
 TILES_ENABLED := 0
 BLE_ENABLED  := 1
 BOOTLOADER   := 0

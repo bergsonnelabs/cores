@@ -1,6 +1,6 @@
 # Project Makefile — run `make` from this folder, or reference it from your own repo:
 #   make -C /path/to/cores TILE=<tile> PROJECT_DIR=$(PWD)
-TILE         := $(shell python3 -c "import json,sys; print(json.load(open('config.json'))['core'])" 2>/dev/null || echo Core-U-2-a)
+TILE         := $(shell python3 -c "import json,sys; print(json.load(open('config.json'))['core'])" 2>/dev/null || echo Core.ST.L4.2)
 TILES_ENABLED := 0
 PROJECT      := $(notdir $(CURDIR))
 PROJECT_DIR  := $(abspath $(CURDIR))

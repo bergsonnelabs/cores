@@ -1,7 +1,7 @@
 /**
  * val-i2c-spi-tile -- Validation: I2C + SPI buses
  *
- * Core.W (Core-W-b), clock=max
+ * Core.ST.W5.1, clock=max
  * Pad 10 = I2C1.CLK, Pad 11 = I2C1.DAT
  * Pad 9 = SPI1.CLK, Pad 8 = SPI1.CS
  *

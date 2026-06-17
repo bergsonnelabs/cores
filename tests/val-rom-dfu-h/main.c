@@ -1,7 +1,7 @@
 /**
  * val-rom-dfu-h -- Validation: ROM DFU bootloader on Core.H
  *
- * Core.H.1 (Core-H-1-a), clock=default, USB enabled, ROM_DFU=1
+ * Core.ST.H5.1, clock=default, USB enabled, ROM_DFU=1
  *
  * Tests the ROM DFU boot path on STM32H523 (Cortex-M33):
  *   1. App starts at 0x08000000 (no custom bootloader partition)
