@@ -1,4 +1,4 @@
-TILE         := Core-H-1-a
+TILE         := Core.ST.H5.1
 TILES_ENABLED := 1
 BLE_ENABLED  := 0
 BOOTLOADER   := 0

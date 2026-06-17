@@ -1,7 +1,7 @@
 /**
  * val-power-u -- Validation: Sleep, stop, standby on Core.U
  *
- * Core.U (Core-U-2-a), clock=max
+ * Core.ST.L4.2, clock=max
  * Pad 8 = GPIO.IN with EXTI falling edge
  *
  * Exercises: core_init, core_sleep, core_stop_for,

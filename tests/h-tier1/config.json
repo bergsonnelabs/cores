@@ -1,5 +1,5 @@
 {
-  "core": "Core-H-1-a",
+  "core": "Core.ST.H5.1",
   "clock": "medium",
   "usb": {
     "enabled": true

@@ -1,8 +1,8 @@
 # Core Firmware SDK — Top-level Makefile
 #
 # Usage (from SDK root, building an example):
-#   make                          # Build blink for Core.U.2 (default)
-#   make TILE=Core-U-2-a PROJECT=blink
+#   make                          # Build blink for Core.ST.L4.2 (default)
+#   make TILE=Core.ST.L4.2 PROJECT=blink
 #   make flash                    # Flash via USB DFU
 #   make generate                 # Run coregen only (no compile)
 #   make clean
@@ -11,7 +11,7 @@
 #   cd my-firmware && make        # Uses per-project Makefile which calls back here
 #
 # Usage (external project, explicit):
-#   make TILE=Core-W-b PROJECT=my-firmware PROJECT_DIR=/path/to/my-firmware
+#   make TILE=Core.ST.W5.1 PROJECT=my-firmware PROJECT_DIR=/path/to/my-firmware
 
 # ---- SDK root (absolute path to this file's directory) ----
 
@@ -33,8 +33,25 @@ endif
 
 # ---- Configuration ----
 
-TILE    ?= Core-U-2-a
+TILE    ?= Core.ST.L4.2
 PROJECT ?= blink
+
+# ---- Public Core name aliases ----
+# The vendor-segmented public names (Core.ST.<family>.<n>) resolve onto the
+# canonical, DB-synced definition stems. Either form is accepted as TILE; the
+# alias rewrites to the stem so the JSON lookup + MCU mapping below stay
+# unchanged. Each public name maps to the most-complete definition for its MCU.
+ifeq ($(TILE),Core.ST.L4.1)
+  override TILE := Core-U-1-a
+else ifeq ($(TILE),Core.ST.L4.2)
+  override TILE := Core-U-2-a
+else ifeq ($(TILE),Core.ST.H5.1)
+  override TILE := Core-H-1-a
+else ifeq ($(TILE),Core.ST.L0.1)
+  override TILE := Core-L-1-a
+else ifeq ($(TILE),Core.ST.W5.1)
+  override TILE := Core-W-b
+endif
 
 # Project directory — override to point at any folder outside the SDK
 PROJECT_DIR ?= $(SDK_DIR)examples/$(PROJECT)
@@ -94,7 +111,7 @@ else ifeq ($(TILE),Core-H-1-a)
   STARTUP     = $(SDK_DIR)sdk/device/stm32h5xx/startup_stm32h523xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32h5.cfg
 else
-  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a)
+  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a — or public names Core.ST.L0.1 / Core.ST.L4.1 / Core.ST.L4.2 / Core.ST.W5.1 / Core.ST.H5.1)
 endif
 
 # ---- Bootloader support ----
@@ -214,7 +231,7 @@ endif
 WAMR_ENABLED ?= 0
 ifeq ($(WAMR_ENABLED),1)
   ifneq ($(CPU),cortex-m33)
-    $(error WAMR_ENABLED=1 is only supported on Cortex-M33 Cores (Core-H-1-a, Core-W-b))
+    $(error WAMR_ENABLED=1 is only supported on Cortex-M33 Cores (Core.ST.H5.1, Core.ST.W5.1))
   endif
   include $(SDK_DIR)sdk/wamr/wamr.mk
 endif
@@ -237,7 +254,7 @@ ifeq ($(BLE_ENABLED),1)
     BLE_OBJS = $(addprefix $(BUILD_DIR)/sdk/ble/, $(notdir $(BLE_SOURCES:.c=.o)))
     BLE_OBJS += $(BUILD_DIR)/sdk/core/core_ble.o
   else
-    $(error BLE_ENABLED=1 is only supported for Core-W-b (STM32WBA55xx))
+    $(error BLE_ENABLED=1 is only supported for Core.ST.W5.1 (STM32WBA55xx))
   endif
 endif
 

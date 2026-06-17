@@ -1,7 +1,7 @@
 /**
  * val-watchdog-u -- Validation: Watchdog + fault callback on Core.U
  *
- * Core.U (Core-U-2-a), clock=max
+ * Core.ST.L4.2, clock=max
  *
  * Exercises: core_init, core_watchdog_start, core_watchdog_feed,
  *            core_watchdog_caused_reset, core_watchdog_clear_flags,

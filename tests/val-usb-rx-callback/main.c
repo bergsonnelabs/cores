@@ -1,7 +1,7 @@
 /**
  * val-usb-rx-callback -- Validation: USB CDC receive callback + polling reads
  *
- * Core.U (Core-U-2-a), clock=max, USB enabled
+ * Core.ST.L4.2, clock=max, USB enabled
  *
  * Exercises: core_init, core_usb_init, core_usb_on_receive (cb, ctx),
  *            core_usb_available, core_usb_connected, core_usb_try_read,

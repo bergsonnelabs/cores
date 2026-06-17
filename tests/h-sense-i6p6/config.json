@@ -1,5 +1,5 @@
 {
-  "core": "Core-H-1-a",
+  "core": "Core.ST.H5.1",
   "clock": "medium",
   "pads": {
     "4": "I2C1.CLK",

@@ -1,7 +1,7 @@
 # Test: HardFault → DFU reboot recovery
 # Flash this, wait for the deliberate crash, then verify 1200-touch still works.
 
-TILE         := Core-U-1-a
+TILE         := Core.ST.L4.1
 TILES_ENABLED := 1
 ROM_DFU      := 1
 PROJECT      := $(notdir $(CURDIR))

@@ -19,13 +19,18 @@ The **Cores SDK** is a firmware development kit for the Tiletown **Core** family
 
 ## Supported Cores (MCUs)
 
-| Core variant | MCU | Tile JSON key | Architecture |
+| Public name | MCU | Definition stem | Architecture |
 |---|---|---|---|
-| Core.L.1 | STM32L011E4 | `Core-L-1-a` | Cortex-M0+, 32 MHz max, ultra-low-power |
-| Core.U.1 | STM32L422TB | `Core-U-1-a` | Cortex-M4F, 80 MHz |
-| Core.U.2 | STM32L422TB | `Core-U-2-a` | Cortex-M4F, 80 MHz (more pads) |
-| Core.W | STM32WBA55HGF6 | `Core-W-b` | Cortex-M33, 100 MHz, BLE |
-| Core.H.1 | STM32H523HE | `Core-H-1-a` | Cortex-M33, 250 MHz |
+| `Core.ST.L0.1` | STM32L011E4 | `Core-L-1-a` | Cortex-M0+, 32 MHz max, ultra-low-power |
+| `Core.ST.L4.1` | STM32L422TB | `Core-U-1-a` | Cortex-M4F, 80 MHz (first shipping L4) |
+| `Core.ST.L4.2` | STM32L422TB | `Core-U-2-a` | Cortex-M4F, 80 MHz (more pads) |
+| `Core.ST.W5.1` | STM32WBA55HGF6 | `Core-W-b` | Cortex-M33, 100 MHz, BLE |
+| `Core.ST.H5.1` | STM32H523HE | `Core-H-1-a` | Cortex-M33, 250 MHz |
+
+Pass either the **public name** or the **definition stem** as `TILE`. The
+vendor-segmented public names resolve to their definition stem in the Makefile
+(e.g. `Core.ST.L4.1` → `Core-U-1-a`); the matching alias map lives in
+`tools/coregen/coregen.py`.
 
 MCU capabilities (PLL ranges, APB clocks, SPI/I2C peripheral mapping) live in `MCU_DB` inside `tools/coregen/coregen.py`.
 
@@ -81,7 +86,7 @@ cores/
 
 | Variable | Default | Description |
 |---|---|---|
-| `TILE` | `Core-U-2-a` | Core variant to build for |
+| `TILE` | `Core.ST.L4.2` | Core to build for — public name or definition stem |
 | `PROJECT` | `blink` | Project name (looks in `examples/` or `projects/`) |
 | `PROJECT_DIR` | `examples/$(PROJECT)` | Override if project lives elsewhere |
 | `TILES_ENABLED` | `0` or `1` | Auto-set: 1 if project has tiles configured |
@@ -92,9 +97,9 @@ cores/
 ### Common Commands
 
 ```bash
-make                                           # Build blink for Core-U-2-a
-make TILE=Core-W-b PROJECT=my-project         # Build specific core + project
-make TILE=Core-W-b PROJECT=my-project V=1     # Verbose build
+make                                           # Build blink for the default Core (Core.ST.L4.2 / Core-U-2-a)
+make TILE=Core.ST.W5.1 PROJECT=my-project     # Build specific core + project
+make TILE=Core.ST.W5.1 PROJECT=my-project V=1 # Verbose build
 make generate                                  # Run coregen only (no compile)
 make flash                                     # Flash via OpenOCD / ST-Link
 make flash-dfu                                 # Flash via USB DFU
@@ -145,7 +150,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
 
 ```jsonc
 {
-  "core": "Core-W-b",            // Must match a definitions/<name>.json
+  "core": "Core.ST.W5.1",        // Public name (or a definitions/<name>.json stem)
   "clock": "default",            // "low" | "default" | "max"  (see tile JSON for MHz values)
   "pads": {
     // Pad number (string) → function
@@ -182,7 +187,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
     "enabled": false
   },
   "ble": {
-    "enabled": true              // Core-W-b only; forces HSE clock (radio requires HSE)
+    "enabled": true              // Core.ST.W5.1 only; forces HSE clock (radio requires HSE)
   },
   "debug": {
     "interface": "swd",          // "swd" (default) | "jtag"
@@ -201,7 +206,7 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
 - All pads used by an interface must appear in `pads` before that interface is usable
 - A tile's `bus` must match a key in `interfaces`
 - SPI tiles require a `cs_pad`; I2C tiles do not
-- `ble.enabled` on Core-W-b auto-overrides any HSI16 clock level to the lowest HSE level
+- `ble.enabled` on Core.ST.W5.1 auto-overrides any HSI16 clock level to the lowest HSE level
 - `bootloader`: `"custom"` (8KB DFU at 0x08000000, app at 0x08002000, Core.U/H), `"rom"` (ST ROM DfuSe, app at 0x08000000, Core.U fully/Core.H needs power cycle), `"none"` (default, SWD only). `BOOTLOADER`/`ROM_DFU` Make vars auto-set from this key.
 - `debug` and `isp` emit comments/defines only — no init code. `isp.boot0_pad` emits `#define CORE_BOOT0_PAD`.
 
@@ -574,7 +579,7 @@ Layer values: `"LL"`, `"HAL"`, `"TAL"`, `"Core"` — implies all layers below ar
 ### Debug a coregen issue
 
 ```bash
-make generate TILE=Core-W-b PROJECT=my-project V=1
+make generate TILE=Core.ST.W5.1 PROJECT=my-project V=1
 # Check projects/my-project/coregen/ for generated files
 # coregen prints validation errors to stderr
 ```

@@ -1,4 +1,4 @@
-TILE         := $(shell python3 -c "import json; print(json.load(open('config.json'))['core'])" 2>/dev/null || echo Core-U-2-a)
+TILE         := $(shell python3 -c "import json; print(json.load(open('config.json'))['core'])" 2>/dev/null || echo Core.ST.L4.2)
 TILES_ENABLED := 0
 BOOTLOADER   := 1
 PROJECT      := $(notdir $(CURDIR))

@@ -1,5 +1,5 @@
 {
-  "core": "Core-W-b",
+  "core": "Core.ST.W5.1",
   "clock": "max",
   "pads": {
     "10": "I2C1.CLK",

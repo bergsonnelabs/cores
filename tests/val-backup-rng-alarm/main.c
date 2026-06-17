@@ -1,7 +1,7 @@
 /**
  * val-backup-rng-alarm — Validation: backup registers, RNG, RTC alarm
  *
- * Core.H (Core-H-1-a), clock=default (64 MHz)
+ * Core.ST.H5.1, clock=default (64 MHz)
  *
  * Exercises: core_backup_read/write, CORE_BACKUP_COUNT,
  *            core_rng_init/read/fill/error/deinit,
