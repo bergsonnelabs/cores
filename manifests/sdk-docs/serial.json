@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "serial",
   "label": "Core.Serial",
   "icon": "⌨",
   "header": "core_serial.h",
   "headers": {
-    "core": "core_serial.h"
+    "core": "core_serial.h",
+    "hal": "hal_uart.h",
+    "ll": "ll_uart.h"
   },
   "functions": [
     {
@@ -200,6 +202,452 @@
       ],
       "studio_exposed": true,
       "layer": "core"
+    },
+    {
+      "name": "hal_uart_init",
+      "signature": "hal_uart_init(hal_uart_t * h, USART_TypeDef * instance, uint32_t pclk_hz, const hal_uart_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": "Initialize a UART instance. h:        handle (caller provides storage) instance: USART peripheral (USART1, USART2, LPUART1) pclk_hz:  peripheral clock frequency feeding this USART cfg:      configuration (baud rate, interrupt RX enable) The peripheral clock is auto-enabled. TX/RX pins must be configured for AF (via tile_init or manually).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_uart_config_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_deinit",
+      "signature": "hal_uart_deinit(hal_uart_t * h)",
+      "returns": "void",
+      "brief": "Disable the UART and its interrupts",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_putc",
+      "signature": "hal_uart_putc(hal_uart_t * h, uint8_t byte)",
+      "returns": "void",
+      "brief": "Transmit a single byte (blocking)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "byte",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_tx",
+      "signature": "hal_uart_tx(hal_uart_t * h, const uint8_t * data, uint32_t len)",
+      "returns": "void",
+      "brief": "Transmit a buffer (blocking)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_tx_str",
+      "signature": "hal_uart_tx_str(hal_uart_t * h, const char * str)",
+      "returns": "void",
+      "brief": "Transmit a null-terminated string (blocking)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "str",
+          "ctype": "const char *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_printf",
+      "signature": "hal_uart_printf(hal_uart_t * h, const char * fmt)",
+      "returns": "int",
+      "brief": "Printf over UART (blocking, uses vsnprintf from newlib-nano)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "fmt",
+          "ctype": "const char *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_rx_ready",
+      "signature": "hal_uart_rx_ready(hal_uart_t * h)",
+      "returns": "int",
+      "brief": "Check if data is available (works for both polling and interrupt mode)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_rx",
+      "signature": "hal_uart_rx(hal_uart_t * h)",
+      "returns": "uint8_t",
+      "brief": "Receive a single byte (blocking — waits for data)",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_rx_try",
+      "signature": "hal_uart_rx_try(hal_uart_t * h, uint8_t * byte)",
+      "returns": "int",
+      "brief": "Try to receive a byte without blocking. Returns 1 if got one.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "byte",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_read",
+      "signature": "hal_uart_read(hal_uart_t * h, uint8_t * buf, uint16_t max_len)",
+      "returns": "uint16_t",
+      "brief": "Read available bytes from the RX ring buffer (interrupt mode). Non-blocking — returns immediately with however many bytes are available. Returns number of bytes read.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "max_len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_available",
+      "signature": "hal_uart_available(hal_uart_t * h)",
+      "returns": "uint16_t",
+      "brief": "Number of bytes available in the RX ring buffer",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_tx_dma",
+      "signature": "hal_uart_tx_dma(hal_uart_t * h, const uint8_t * data, uint32_t len, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Transmit a buffer via DMA (non-blocking). The data buffer must remain valid until the callback fires. Returns HAL_BUSY if a DMA TX is already in progress.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_uart_tx_busy",
+      "signature": "hal_uart_tx_busy(hal_uart_t * h)",
+      "returns": "int",
+      "brief": "Check if a DMA TX is in progress",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_uart_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_uart_init",
+      "signature": "ll_uart_init(USART_TypeDef * uart, uint32_t pclk_hz, uint32_t baud)",
+      "returns": "void",
+      "brief": "Initialize a USART for 8N1 at the given baud rate. uart:     USART instance (USART1, USART2, etc.) pclk_hz:  peripheral clock feeding this USART (APB1 or APB2) baud:     desired baud rate Prerequisites: - Peripheral clock enabled via ll_rcc_apb1/2_clk_enable() - TX/RX pins configured for AF via ll_gpio_config_af()",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "baud",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_lpuart_init",
+      "signature": "ll_lpuart_init(USART_TypeDef * uart, uint32_t pclk_hz, uint32_t baud)",
+      "returns": "void",
+      "brief": "Initialize an LPUART for 8N1. LPUART BRR calculation differs: BRR = 256 * pclk / baud",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "pclk_hz",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "baud",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_wait_txe",
+      "signature": "ll_uart_wait_txe(USART_TypeDef * uart)",
+      "returns": "void",
+      "brief": "Wait until transmit data register is empty",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_wait_tc",
+      "signature": "ll_uart_wait_tc(USART_TypeDef * uart)",
+      "returns": "void",
+      "brief": "Wait until transmission is complete (last byte fully shifted out)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_tx",
+      "signature": "ll_uart_tx(USART_TypeDef * uart, uint8_t data)",
+      "returns": "void",
+      "brief": "Transmit a single byte (blocking)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "data",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_tx_buf",
+      "signature": "ll_uart_tx_buf(USART_TypeDef * uart, const uint8_t * data, uint32_t len)",
+      "returns": "void",
+      "brief": "Transmit a buffer (blocking)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_tx_str",
+      "signature": "ll_uart_tx_str(USART_TypeDef * uart, const char * str)",
+      "returns": "void",
+      "brief": "Transmit a null-terminated string (blocking)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "str",
+          "ctype": "const char *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_rx_ready",
+      "signature": "ll_uart_rx_ready(USART_TypeDef * uart)",
+      "returns": "int",
+      "brief": "Check if received data is available",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_rx",
+      "signature": "ll_uart_rx(USART_TypeDef * uart)",
+      "returns": "uint8_t",
+      "brief": "Receive a single byte (blocking — waits until data arrives)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_rx_try",
+      "signature": "ll_uart_rx_try(USART_TypeDef * uart, uint8_t * data)",
+      "returns": "int",
+      "brief": "Try to receive a byte without blocking. Returns 1 if a byte was read (stored in *data), 0 if nothing available.",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        },
+        {
+          "name": "data",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_clear_errors",
+      "signature": "ll_uart_clear_errors(USART_TypeDef * uart)",
+      "returns": "void",
+      "brief": "Clear all error flags (PE, FE, NE, ORE)",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_uart_errors",
+      "signature": "ll_uart_errors(USART_TypeDef * uart)",
+      "returns": "uint32_t",
+      "brief": "Check for any error flags",
+      "params": [
+        {
+          "name": "uart",
+          "ctype": "USART_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

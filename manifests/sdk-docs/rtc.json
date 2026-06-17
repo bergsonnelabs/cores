@@ -1,12 +1,13 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "rtc",
   "label": "Core.RTC",
   "icon": "◴",
   "header": "core_rtc.h",
   "headers": {
-    "core": "core_rtc.h"
+    "core": "core_rtc.h",
+    "ll": "ll_rtc.h"
   },
   "functions": [
     {
@@ -231,6 +232,220 @@
       "params": [],
       "studio_exposed": true,
       "layer": "core"
+    },
+    {
+      "name": "ll_rtc_init",
+      "signature": "ll_rtc_init(int use_lse)",
+      "returns": "void",
+      "brief": "Initialize the RTC with LSE or LSI. use_lse: 1 = use LSE (32.768kHz crystal), 0 = use LSI (~32kHz) Prerequisites: - PWR clock enabled - Backup domain access enabled",
+      "params": [
+        {
+          "name": "use_lse",
+          "ctype": "int"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_set_time",
+      "signature": "ll_rtc_set_time(uint8_t hours, uint8_t minutes, uint8_t seconds)",
+      "returns": "void",
+      "brief": "Set the time (24h format)",
+      "params": [
+        {
+          "name": "hours",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "minutes",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "seconds",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_get_time",
+      "signature": "ll_rtc_get_time(uint8_t * hours, uint8_t * minutes, uint8_t * seconds)",
+      "returns": "void",
+      "brief": "Read the current time",
+      "params": [
+        {
+          "name": "hours",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "minutes",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "seconds",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_set_date",
+      "signature": "ll_rtc_set_date(uint8_t year, uint8_t month, uint8_t day, uint8_t weekday)",
+      "returns": "void",
+      "brief": "Set the date",
+      "params": [
+        {
+          "name": "year",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "month",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "day",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "weekday",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_get_date",
+      "signature": "ll_rtc_get_date(uint8_t * year, uint8_t * month, uint8_t * day, uint8_t * weekday)",
+      "returns": "void",
+      "brief": "Read the current date",
+      "params": [
+        {
+          "name": "year",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "month",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "day",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "weekday",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_wakeup_config",
+      "signature": "ll_rtc_wakeup_config(uint32_t seconds)",
+      "returns": "void",
+      "brief": "Configure the RTC wakeup timer. seconds: wakeup interval in seconds (1-65535 with 1Hz clock) Uses WUCKSEL = 1Hz (CK_SPRE) for simple second-based intervals. EXTI: line 20 on L0/L4/WBA, line 17 on H5 (direct event).",
+      "params": [
+        {
+          "name": "seconds",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_wakeup_disable",
+      "signature": "ll_rtc_wakeup_disable(void)",
+      "returns": "void",
+      "brief": "Disable the wakeup timer",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_alarm_a_set",
+      "signature": "ll_rtc_alarm_a_set(uint8_t hours, uint8_t minutes, uint8_t seconds)",
+      "returns": "void",
+      "brief": "Set Alarm A to trigger at a specific time (24h format). Set hours/minutes/seconds to the desired alarm time. Fields with 0xFF are masked (ignored for matching). Example: alarm at 08:30:00 every day: ll_rtc_alarm_a_set(8, 30, 0); Example: alarm every hour at XX:30:00: ll_rtc_alarm_a_set(0xFF, 30, 0);",
+      "params": [
+        {
+          "name": "hours",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "minutes",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "seconds",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_alarm_a_disable",
+      "signature": "ll_rtc_alarm_a_disable(void)",
+      "returns": "void",
+      "brief": "Disable Alarm A.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_alarm_a_flag",
+      "signature": "ll_rtc_alarm_a_flag(void)",
+      "returns": "int",
+      "brief": "Check if Alarm A flag is set.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_alarm_a_clear_flag",
+      "signature": "ll_rtc_alarm_a_clear_flag(void)",
+      "returns": "void",
+      "brief": "Clear the Alarm A flag.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_bkp_read",
+      "signature": "ll_rtc_bkp_read(uint32_t n)",
+      "returns": "uint32_t",
+      "brief": "Read backup register n (0–31). No clock setup needed.",
+      "params": [
+        {
+          "name": "n",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rtc_bkp_write",
+      "signature": "ll_rtc_bkp_write(uint32_t n, uint32_t val)",
+      "returns": "void",
+      "brief": "Write backup register n (0–31). Requires backup domain access.",
+      "params": [
+        {
+          "name": "n",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "val",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

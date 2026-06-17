@@ -81,6 +81,64 @@ LAYER_HEADERS = {
              "ll_rcc_set_ahb_div", "ll_rcc_set_apb1_div", "ll_rcc_set_apb2_div"],
         ),
     },
+    "serial": {
+        "hal": ("hal_uart.h", None),
+        "ll": ("ll_uart.h", None),
+    },
+    "i2c": {
+        "hal": ("hal_i2c.h", None),
+        "ll": (
+            "ll_i2c.h",
+            ["ll_i2c_init", "ll_i2c_init_fmp", "ll_i2c_write", "ll_i2c_read",
+             "ll_i2c_timing_100k", "ll_i2c_timing_400k", "ll_i2c_timing_1m"],
+        ),
+    },
+    "spi": {
+        "hal": ("hal_spi.h", None),
+        "ll": ("ll_spi.h", None),
+    },
+    "timer": {
+        "hal": ("hal_timer.h", None),
+        "ll": ("ll_tim.h", None),
+    },
+    "adc": {
+        "hal": ("hal_adc.h", None),
+        "ll": ("ll_adc.h", None),
+    },
+    "dac": {
+        "hal": ("hal_dac.h", None),
+        "ll": ("ll_dac.h", None),
+    },
+    "power": {
+        "ll": (
+            "ll_pwr.h",
+            ["ll_pwr_enable_backup_access", "ll_pwr_sleep_wfi", "ll_pwr_stop",
+             "ll_pwr_standby", "ll_pwr_woke_from_standby", "ll_pwr_clear_standby_flag"],
+        ),
+    },
+    "rng": {
+        "ll": ("ll_rng.h", None),
+    },
+    "usb": {
+        # Curated (not None): a documented typedef in the header otherwise
+        # parses as a stray "void" entry.
+        "hal": (
+            "hal_usb_cdc.h",
+            ["hal_usb_cdc_init", "hal_usb_cdc_connected", "hal_usb_cdc_write",
+             "hal_usb_cdc_printf", "hal_usb_cdc_set_rx_callback", "hal_usb_cdc_rx_ready",
+             "hal_usb_cdc_getc", "hal_usb_cdc_rx_try", "hal_usb_cdc_read",
+             "hal_usb_cdc_available", "hal_usb_cdc_poll", "hal_usb_hid_send_report"],
+        ),
+    },
+    "rtc": {
+        "ll": (
+            "ll_rtc.h",
+            ["ll_rtc_init", "ll_rtc_set_time", "ll_rtc_get_time", "ll_rtc_set_date",
+             "ll_rtc_get_date", "ll_rtc_wakeup_config", "ll_rtc_wakeup_disable",
+             "ll_rtc_alarm_a_set", "ll_rtc_alarm_a_disable", "ll_rtc_alarm_a_flag",
+             "ll_rtc_alarm_a_clear_flag", "ll_rtc_bkp_read", "ll_rtc_bkp_write"],
+        ),
+    },
 }
 
 C_TO_DSL = {

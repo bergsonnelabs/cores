@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "spi",
   "label": "Core.SPI",
   "icon": "⇆",
   "header": "core_spi.h",
   "headers": {
-    "core": "core_spi.h"
+    "core": "core_spi.h",
+    "hal": "hal_spi.h",
+    "ll": "ll_spi.h"
   },
   "functions": [
     {
@@ -240,6 +242,416 @@
       ],
       "studio_exposed": true,
       "layer": "core"
+    },
+    {
+      "name": "hal_spi_init",
+      "signature": "hal_spi_init(hal_spi_t * h, SPI_TypeDef * instance, const hal_spi_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": "Initialize SPI in master mode, 8-bit, MSB-first. The peripheral clock is auto-enabled. SCK/MOSI/MISO pins must be configured for AF (via coregen or manually).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *",
+          "description": "Handle (zero-initialized by this function)"
+        },
+        {
+          "name": "instance",
+          "ctype": "SPI_TypeDef *",
+          "description": "SPI peripheral (SPI1, SPI2, SPI3)"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_spi_config_t *",
+          "description": "Clock prescaler, polarity, and phase"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_deinit",
+      "signature": "hal_spi_deinit(hal_spi_t * h)",
+      "returns": "void",
+      "brief": "Disable the SPI peripheral and release the handle.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_set_cs",
+      "signature": "hal_spi_set_cs(hal_spi_t * h, GPIO_TypeDef * port, uint32_t pin)",
+      "returns": "void",
+      "brief": "Assign a CS GPIO pin for automatic chip-select management. The pin is configured as push-pull output and deasserted (high).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *",
+          "description": "SPI handle"
+        },
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *",
+          "description": "GPIO port (e.g. GPIOA)"
+        },
+        {
+          "name": "pin",
+          "ctype": "uint32_t",
+          "description": "Pin number (0–15)"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_select",
+      "signature": "hal_spi_select(hal_spi_t * h)",
+      "returns": "void",
+      "brief": "Assert CS (drive active — low by default).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_deselect",
+      "signature": "hal_spi_deselect(hal_spi_t * h)",
+      "returns": "void",
+      "brief": "Deassert CS (drive inactive — high by default).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_transfer",
+      "signature": "hal_spi_transfer(hal_spi_t * h, uint8_t tx)",
+      "returns": "uint8_t",
+      "brief": "Full-duplex single byte: send tx, return received byte.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        },
+        {
+          "name": "tx",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_transfer_buf",
+      "signature": "hal_spi_transfer_buf(hal_spi_t * h, uint8_t * buf, uint32_t len)",
+      "returns": "void",
+      "brief": "Full-duplex buffer transfer (in-place: rx overwrites buf).",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_write",
+      "signature": "hal_spi_write(hal_spi_t * h, const uint8_t * data, uint32_t len)",
+      "returns": "void",
+      "brief": "Write-only: send data, discard received bytes.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_read",
+      "signature": "hal_spi_read(hal_spi_t * h, uint8_t * buf, uint32_t len)",
+      "returns": "void",
+      "brief": "Read-only: send zeros, capture received bytes.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_xfer",
+      "signature": "hal_spi_xfer(hal_spi_t * h, const uint8_t * tx, uint8_t * rx, uint32_t len)",
+      "returns": "void",
+      "brief": "Convenience: select → full-duplex transfer → deselect. tx and rx can be the same buffer. Either can be NULL.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        },
+        {
+          "name": "tx",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "rx",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_xfer_dma",
+      "signature": "hal_spi_xfer_dma(hal_spi_t * h, const uint8_t * tx, uint8_t * rx, uint32_t len, hal_callback_t cb, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Start a full-duplex DMA transfer.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *",
+          "description": "SPI handle"
+        },
+        {
+          "name": "tx",
+          "ctype": "const uint8_t *",
+          "description": "TX buffer (NULL = send zeros)"
+        },
+        {
+          "name": "rx",
+          "ctype": "uint8_t *",
+          "description": "RX buffer (NULL = discard received data)"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t",
+          "description": "Number of bytes"
+        },
+        {
+          "name": "cb",
+          "ctype": "hal_callback_t",
+          "description": "Completion callback (from DMA ISR context)"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context for callback"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_spi_busy",
+      "signature": "hal_spi_busy(hal_spi_t * h)",
+      "returns": "int",
+      "brief": "Returns 1 if a DMA transfer is in progress.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "hal_spi_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_spi_init",
+      "signature": "ll_spi_init(SPI_TypeDef * spi, uint32_t prescaler, uint32_t cpol, uint32_t cpha)",
+      "returns": "void",
+      "brief": "Initialize SPI in master mode, 8-bit, MSB-first. spi:       SPI instance prescaler: LL_SPI_PRESCALER_* (clock divider) cpol:      LL_SPI_CPOL_LOW or _HIGH cpha:      LL_SPI_CPHA_1EDGE or _2EDGE Prerequisites: - Peripheral clock enabled via ll_rcc_apb1/2_clk_enable() - SCK/MOSI/MISO pins configured for AF via ll_gpio_config_af() - CS managed manually via GPIO (not hardware NSS)",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "prescaler",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cpol",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cpha",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_transfer",
+      "signature": "ll_spi_transfer(SPI_TypeDef * spi, uint8_t tx_data)",
+      "returns": "uint8_t",
+      "brief": "Transfer a single byte (full-duplex): send tx_data, return received byte.",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "tx_data",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_transfer_buf",
+      "signature": "ll_spi_transfer_buf(SPI_TypeDef * spi, uint8_t * buf, uint32_t len)",
+      "returns": "void",
+      "brief": "Transfer a buffer (full-duplex, in-place). tx_buf is sent; received data overwrites tx_buf. Pass NULL for tx_buf to send zeros (read-only).",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_write",
+      "signature": "ll_spi_write(SPI_TypeDef * spi, uint8_t data)",
+      "returns": "void",
+      "brief": "Write-only transfer (discard received data).",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "data",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_read",
+      "signature": "ll_spi_read(SPI_TypeDef * spi)",
+      "returns": "uint8_t",
+      "brief": "Read-only transfer (send zeros, return received byte).",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_enable_dma_rx",
+      "signature": "ll_spi_enable_dma_rx(SPI_TypeDef * spi)",
+      "returns": "void",
+      "brief": "Enable DMA requests for RX",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_disable_dma_rx",
+      "signature": "ll_spi_disable_dma_rx(SPI_TypeDef * spi)",
+      "returns": "void",
+      "brief": "Disable DMA requests for RX",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_enable_dma_tx",
+      "signature": "ll_spi_enable_dma_tx(SPI_TypeDef * spi)",
+      "returns": "void",
+      "brief": "Enable DMA requests for TX",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_disable_dma_tx",
+      "signature": "ll_spi_disable_dma_tx(SPI_TypeDef * spi)",
+      "returns": "void",
+      "brief": "Disable DMA requests for TX",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

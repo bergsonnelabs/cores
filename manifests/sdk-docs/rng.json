@@ -1,12 +1,13 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "rng",
   "label": "Core.RNG",
   "icon": "🎲",
   "header": "core_rng.h",
   "headers": {
-    "core": "core_rng.h"
+    "core": "core_rng.h",
+    "ll": "ll_rng.h"
   },
   "functions": [
     {
@@ -64,6 +65,78 @@
       "params": [],
       "studio_exposed": false,
       "layer": "core"
+    },
+    {
+      "name": "ll_rng_enable",
+      "signature": "ll_rng_enable(void)",
+      "returns": "void",
+      "brief": "Enable the RNG peripheral with proper clock and conditioning. On STM32WBA55, two things are needed before RNGEN: 1. Select the RNG kernel clock source (HSI16 via RCC_CCIPR2) 2. Perform a conditioning soft reset (CONDRST toggle) Must call ll_rcc_ahb2_clk_enable(LL_AHB2_RNG) before this.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_disable",
+      "signature": "ll_rng_disable(void)",
+      "returns": "void",
+      "brief": "Disable the RNG peripheral.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_data_ready",
+      "signature": "ll_rng_data_ready(void)",
+      "returns": "int",
+      "brief": "Check if a random number is ready.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_seed_error",
+      "signature": "ll_rng_seed_error(void)",
+      "returns": "int",
+      "brief": "Check for seed error.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_clock_error",
+      "signature": "ll_rng_clock_error(void)",
+      "returns": "int",
+      "brief": "Check for clock error.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_read",
+      "signature": "ll_rng_read(void)",
+      "returns": "uint32_t",
+      "brief": "Read a random 32-bit value (blocking). Returns 0 on timeout or error.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_rng_fill",
+      "signature": "ll_rng_fill(uint32_t * buf, uint32_t count)",
+      "returns": "uint32_t",
+      "brief": "Fill a buffer with random 32-bit values (blocking). Returns number of values successfully read.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "uint32_t *"
+        },
+        {
+          "name": "count",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }

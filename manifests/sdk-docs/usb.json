@@ -1,12 +1,13 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "usb",
   "label": "Core.USB",
   "icon": "❝",
   "header": "core_usb.h",
   "headers": {
-    "core": "core_usb.h"
+    "core": "core_usb.h",
+    "hal": "hal_usb_cdc.h"
   },
   "functions": [
     {
@@ -174,6 +175,160 @@
       ],
       "studio_exposed": false,
       "layer": "core"
+    },
+    {
+      "name": "hal_usb_cdc_init",
+      "signature": "hal_usb_cdc_init(void)",
+      "returns": "void",
+      "brief": "Initialize USB CDC. This function: - Enables HSI48 + CRS (crystal-less 48MHz for USB) - Selects HSI48 as USB clock source - Enables VDDUSB power supply - Configures PA11/PA12 as AF10 - Enables USB peripheral clock - Configures USB device and endpoints - Enables USB interrupt - Connects DP pull-up (host sees device)",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_connected",
+      "signature": "hal_usb_cdc_connected(void)",
+      "returns": "int",
+      "brief": "Check if the host has opened the virtual COM port. Returns 1 if configured and DTR is set (terminal connected).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_write",
+      "signature": "hal_usb_cdc_write(const uint8_t * buf, uint16_t len)",
+      "returns": "int",
+      "brief": "Transmit data over USB CDC (blocking). Waits for the host to consume data if the EP is busy. Returns number of bytes sent, or -1 if not configured.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_printf",
+      "signature": "hal_usb_cdc_printf(const char * fmt)",
+      "returns": "int",
+      "brief": "Printf over USB CDC (blocking). Returns number of characters written (from vsnprintf).",
+      "params": [
+        {
+          "name": "fmt",
+          "ctype": "const char *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_set_rx_callback",
+      "signature": "hal_usb_cdc_set_rx_callback(hal_usb_cdc_rx_cb_t cb, void * ctx)",
+      "returns": "void",
+      "brief": "Set a callback for received data. Called from the USB ISR with a pointer to data copied from PMA. If set, data is NOT stored in the ring buffer. If not set, data goes into the ring buffer for polling reads.",
+      "params": [
+        {
+          "name": "cb",
+          "ctype": "hal_usb_cdc_rx_cb_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_rx_ready",
+      "signature": "hal_usb_cdc_rx_ready(void)",
+      "returns": "int",
+      "brief": "Check if data is available to read (ring buffer mode).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_getc",
+      "signature": "hal_usb_cdc_getc(void)",
+      "returns": "uint8_t",
+      "brief": "Read a single byte (blocking — waits for data).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_rx_try",
+      "signature": "hal_usb_cdc_rx_try(uint8_t * byte)",
+      "returns": "int",
+      "brief": "Try to read a byte without blocking. Returns 1 if a byte was read, 0 if no data available.",
+      "params": [
+        {
+          "name": "byte",
+          "ctype": "uint8_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_read",
+      "signature": "hal_usb_cdc_read(uint8_t * buf, uint16_t max_len)",
+      "returns": "uint16_t",
+      "brief": "Read available bytes into buffer (non-blocking). Returns number of bytes actually read.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "uint8_t *"
+        },
+        {
+          "name": "max_len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_available",
+      "signature": "hal_usb_cdc_available(void)",
+      "returns": "uint16_t",
+      "brief": "Number of bytes available in the RX buffer.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_cdc_poll",
+      "signature": "hal_usb_cdc_poll(void)",
+      "returns": "void",
+      "brief": "Poll USB events (call from main loop). Use this as an alternative to interrupt-driven operation.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_hid_send_report",
+      "signature": "hal_usb_hid_send_report(const uint8_t * buf, uint16_t len)",
+      "returns": "int",
+      "brief": "Send a HID report (up to 64 bytes) via EP3 interrupt IN. Blocking — waits for previous report to complete. Returns bytes sent, or -1 if not configured.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
     }
   ]
 }

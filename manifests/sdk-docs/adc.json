@@ -1,12 +1,14 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@a98c73d",
+  "source": "tiles@6bbf0d8",
   "category": "adc",
   "label": "Core.ADC",
   "icon": "◐",
   "header": "core_adc.h",
   "headers": {
-    "core": "core_adc.h"
+    "core": "core_adc.h",
+    "hal": "hal_adc.h",
+    "ll": "ll_adc.h"
   },
   "functions": [
     {
@@ -234,6 +236,357 @@
       ],
       "studio_exposed": false,
       "layer": "core"
+    },
+    {
+      "name": "hal_adc_init",
+      "signature": "hal_adc_init(hal_adc_t * adc, ADC_TypeDef * instance, uint32_t sysclk_hz, hal_adc_res_t res)",
+      "returns": "hal_status_t",
+      "brief": "Initialise an ADC instance. Enables the peripheral clock, exits deep power-down (L4/H5), runs self-calibration, and enables the ADC. Must be called before add_channel or read. ADC input pins must already be configured analog (hal_pad_analog).",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *",
+          "description": "Handle to zero or uninitialised memory"
+        },
+        {
+          "name": "instance",
+          "ctype": "ADC_TypeDef *",
+          "description": "ADC peripheral (ADC1, ADC4, …)"
+        },
+        {
+          "name": "sysclk_hz",
+          "ctype": "uint32_t",
+          "description": "System clock in Hz (used to choose ADC clock divisor)"
+        },
+        {
+          "name": "res",
+          "ctype": "hal_adc_res_t",
+          "description": "Conversion resolution"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_add_channel",
+      "signature": "hal_adc_add_channel(hal_adc_t * adc, uint8_t channel, hal_adc_samp_t samp)",
+      "returns": "hal_status_t",
+      "brief": "Add a channel to the conversion sequence. Channels are converted in the order they are added. Call after hal_adc_init, before hal_adc_read or hal_adc_start_dma.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        },
+        {
+          "name": "samp",
+          "ctype": "hal_adc_samp_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_set_oversample",
+      "signature": "hal_adc_set_oversample(hal_adc_t * adc, hal_adc_oversample_t ratio)",
+      "returns": "hal_status_t",
+      "brief": "Set hardware oversampling ratio for noise reduction (applies to all channels). The right-shift equals log2(N), so the output word stays at the configured resolution. Can be called after init; takes effect on the next conversion.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "ratio",
+          "ctype": "hal_adc_oversample_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_set_oversample_ex",
+      "signature": "hal_adc_set_oversample_ex(hal_adc_t * adc, hal_adc_oversample_t ratio, uint8_t shift)",
+      "returns": "hal_status_t",
+      "brief": "Set hardware oversampling with explicit right-shift for resolution extension. shift controls how many bits the hardware divides the accumulator by before writing to DR.  Valid range: 0 – log2(N) where N is the oversampling ratio. shift = log2(N)      → same as hal_adc_set_oversample (noise reduction only) shift < log2(N)      → output word is wider; effective_bits increases shift = 0            → raw accumulator in DR; max bit depth Example — 12-bit ADC, 256× oversampling, shift = 4: accumulator = up to 20 bits; DR = accumulator >> 4 = 16-bit result effective_bits = 16; hal_adc_read_mv scales against 65535 automatically.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *",
+          "description": "Initialised handle"
+        },
+        {
+          "name": "ratio",
+          "ctype": "hal_adc_oversample_t",
+          "description": "Oversampling ratio (HAL_ADC_OVERSAMPLE_4X … _256X)"
+        },
+        {
+          "name": "shift",
+          "ctype": "uint8_t",
+          "description": "Right-shift applied by hardware (0 = none, ratio/2 = full)"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read",
+      "signature": "hal_adc_read(hal_adc_t * adc, uint8_t channel)",
+      "returns": "uint16_t",
+      "brief": "Single-shot blocking read of one channel. Returns the raw ADC count (range depends on resolution). The channel must have been added via hal_adc_add_channel.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_mv",
+      "signature": "hal_adc_read_mv(hal_adc_t * adc, uint8_t channel)",
+      "returns": "uint32_t",
+      "brief": "Read a channel and convert to millivolts. Uses the VREFINT factory calibration to derive the actual VDDA supply voltage, so the result is correct even when VDD ≠ 3.3 V. The VDDA measurement is cached after the first call.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_temp_decidegc",
+      "signature": "hal_adc_read_temp_decidegc(hal_adc_t * adc)",
+      "returns": "int32_t",
+      "brief": "Read die temperature in tenths of a degree C. Example: returns 253 for 25.3 °C. Uses TS_CAL1 / TS_CAL2 factory calibration values. Automatically adds the internal temperature sensor channel on first call.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_vdda_mv",
+      "signature": "hal_adc_read_vdda_mv(hal_adc_t * adc)",
+      "returns": "uint32_t",
+      "brief": "Read the actual VDD supply voltage in millivolts via VREFINT. Result is accurate regardless of nominal supply.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_all",
+      "signature": "hal_adc_read_all(hal_adc_t * adc, uint16_t * buf)",
+      "returns": "void",
+      "brief": "Read all configured channels into buf[]. Buffer order matches the order channels were added via hal_adc_add_channel. buf must be at least adc->n_channels elements.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint16_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_start_dma",
+      "signature": "hal_adc_start_dma(hal_adc_t * adc, uint16_t * buf, uint16_t len, hal_callback_t callback, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Start continuous ADC conversion with DMA circular buffer. callback is invoked at both half-complete and complete events, supporting a double-buffered processing pattern: - At half-complete: process buf[0 .. len/2 - 1] - At complete:      process buf[len/2 .. len - 1] Channels must already be configured via hal_adc_add_channel. DMA and ADC peripheral clocks are enabled automatically.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *",
+          "description": "Handle"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint16_t *",
+          "description": "uint16_t buffer for DMA destination (must stay valid)"
+        },
+        {
+          "name": "len",
+          "ctype": "uint16_t",
+          "description": "Number of uint16_t elements (multiple of n_channels)"
+        },
+        {
+          "name": "callback",
+          "ctype": "hal_callback_t",
+          "description": "Called on HT and TC interrupts (may be NULL)"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_stop_dma",
+      "signature": "hal_adc_stop_dma(hal_adc_t * adc)",
+      "returns": "void",
+      "brief": "Stop DMA conversion and disable the DMA channel.",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_init_simple",
+      "signature": "hal_adc_init_simple(hal_adc_t * adc, ADC_TypeDef * instance)",
+      "returns": "hal_status_t",
+      "brief": null,
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "instance",
+          "ctype": "ADC_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_pad",
+      "signature": "hal_adc_read_pad(hal_adc_t * adc, uint8_t pad)",
+      "returns": "uint16_t",
+      "brief": null,
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_adc_read_pad_mv",
+      "signature": "hal_adc_read_pad_mv(hal_adc_t * adc, uint8_t pad)",
+      "returns": "uint32_t",
+      "brief": null,
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "hal_adc_t *"
+        },
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_adc_calibrate",
+      "signature": "ll_adc_calibrate(ADC_TypeDef * adc)",
+      "returns": "void",
+      "brief": "Run ADC self-calibration. Must be called before enabling ADC. ADC must be disabled (ADEN=0).",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "ADC_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_adc_init",
+      "signature": "ll_adc_init(ADC_TypeDef * adc, uint32_t smpr)",
+      "returns": "void",
+      "brief": "Initialize ADC for single-shot conversion, 12-bit resolution. adc:     ADC instance smpr:    sampling time (LL_ADC_SMPR_* — applies to all channels) Prerequisites: - ADC peripheral clock enabled - ADC pins configured as analog via ll_gpio_config_analog()",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "ADC_TypeDef *"
+        },
+        {
+          "name": "smpr",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_adc_read",
+      "signature": "ll_adc_read(ADC_TypeDef * adc, uint32_t channel)",
+      "returns": "uint16_t",
+      "brief": "Read a single ADC channel (blocking). adc:     ADC instance channel: ADC channel number (0-18, depends on pin mapping) Returns: 12-bit ADC reading (0-4095)",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "ADC_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_adc_read_mv",
+      "signature": "ll_adc_read_mv(ADC_TypeDef * adc, uint32_t channel, uint32_t vref_mv)",
+      "returns": "uint32_t",
+      "brief": "Read a channel and convert to millivolts. vref_mv: reference voltage in millivolts (typically 3300 for 3.3V)",
+      "params": [
+        {
+          "name": "adc",
+          "ctype": "ADC_TypeDef *"
+        },
+        {
+          "name": "channel",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "vref_mv",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
     }
   ]
 }
