@@ -77,10 +77,14 @@ typedef struct {
 
 /* CR1 bits */
 #define LL_SPI_CR1_SPE          (1UL << 0)
-#define LL_SPI_CR1_CSTART       (1UL << 9)
+#define LL_SPI_CR1_MASRX        (1UL << 8)   /* Master auto-suspend (RX) */
+#define LL_SPI_CR1_CSTART       (1UL << 9)   /* Master transfer start */
+#define LL_SPI_CR1_CSUSP        (1UL << 10)  /* Master suspend request */
+#define LL_SPI_CR1_HDDIR        (1UL << 11)  /* Half-duplex dir: 1=Tx, 0=Rx */
+#define LL_SPI_CR1_SSI          (1UL << 12)  /* Internal SS level */
 
 /* CR2 bits */
-#define LL_SPI_CR2_TSIZE_SHIFT  0
+#define LL_SPI_CR2_TSIZE_SHIFT  0            /* TSIZE[15:0]: frame count (0=endless) */
 
 /* CFG1 bits */
 #define LL_SPI_CFG1_RXDMAEN    (1UL << 14)  /* RX DMA enable */
@@ -97,12 +101,22 @@ typedef struct {
 #define LL_SPI_CFG2_SSOM        (1UL << 29)
 #define LL_SPI_CFG2_SSOE        (1UL << 30)
 #define LL_SPI_CFG2_AFCNTR      (1UL << 31)
+/* COMM[18:17]: communication mode */
+#define LL_SPI_CFG2_COMM_SHIFT  17
+#define LL_SPI_CFG2_COMM_FULL   (0x0UL << 17)  /* full-duplex */
+#define LL_SPI_CFG2_COMM_TX     (0x1UL << 17)  /* simplex transmitter */
+#define LL_SPI_CFG2_COMM_RX     (0x2UL << 17)  /* simplex receiver */
+#define LL_SPI_CFG2_COMM_HALF   (0x3UL << 17)  /* half-duplex (1-line, bidir) */
+
+/* IER bits */
+#define LL_SPI_IER_EOTIE        (1UL << 3)   /* EOT / SUSP / TXC interrupt enable */
 
 /* SR bits */
 #define LL_SPI_SR_RXP           (1UL << 0)   /* RX packet available */
 #define LL_SPI_SR_TXP           (1UL << 1)   /* TX packet space available */
 #define LL_SPI_SR_EOT           (1UL << 3)   /* End of transfer */
 #define LL_SPI_SR_OVR           (1UL << 6)   /* Overrun */
+#define LL_SPI_SR_TXC           (1UL << 12)  /* TX complete (FIFO empty + idle) */
 
 /* IFCR bits */
 #define LL_SPI_IFCR_EOTC        (1UL << 3)
@@ -188,6 +202,11 @@ static inline void ll_spi_init(SPI_TypeDef *spi, uint32_t prescaler,
     /* New SPI v2 IP */
     spi->CR1 = 0;
 
+    /* Raise SSI (internal SS) high BEFORE enabling MASTER: with software SS,
+     * setting MASTER while SSI=0 makes the internal SS read low, which trips a
+     * mode fault (MODF) that auto-clears MASTER and silently drops to slave. */
+    spi->CR1 = (1UL << 12);                            /* SSI = 1 */
+
     spi->CFG1 = (7UL << LL_SPI_CFG1_DSIZE_SHIFT)     /* 8-bit data */
               | (prescaler << LL_SPI_CFG1_MBR_SHIFT);  /* Baud rate */
 
@@ -197,10 +216,7 @@ static inline void ll_spi_init(SPI_TypeDef *spi, uint32_t prescaler,
               | (cpol ? LL_SPI_CFG2_CPOL : 0)
               | (cpha ? LL_SPI_CFG2_CPHA : 0);
 
-    /* SSI must be high in master mode with SSM to prevent MODF.
-     * Clear any latched MODF before enabling SPE. */
-    spi->CR1 = (1UL << 12);                            /* SSI = 1 */
-    spi->IFCR = (1UL << 9);                            /* Clear MODF */
+    spi->IFCR = (1UL << 9);                            /* Clear any latched MODF */
     spi->CR1 = (1UL << 12) | LL_SPI_CR1_SPE;          /* SSI + Enable */
 #endif
 }
@@ -369,5 +385,130 @@ static inline void ll_spi_disable_dma_tx(SPI_TypeDef *spi)
     CLR_BITS(spi->CFG1, LL_SPI_CFG1_TXDMAEN);
 #endif
 }
+
+/* ============================================================
+ * Half-duplex (1-line bidirectional) — SPI v2 only (WBA / H5)
+ *
+ * One data line (MOSI) carries both directions; HDDIR selects Tx vs Rx. This
+ * is what the NanEyeC SEIM interface needs (SCLK on SCK, SDAT on MOSI). AFCNTR
+ * is kept set so the AF pins don't glitch while SPE/HDDIR are toggled — which
+ * is exactly what direction flips between transfers require.
+ *
+ * SPE is left disabled by init: on SPI v2, TSIZE must be programmed while
+ * SPE=0, so each transfer (or DMA arm) sets TSIZE then enables SPE itself.
+ * ============================================================ */
+#if defined(STM32WBA55xx) || defined(STM32H523xx)
+
+/**
+ * Initialize SPI v2 as a half-duplex (1-line) master, 8-bit, MSB-first,
+ * starting in transmit direction. Leaves SPE disabled.
+ * Pin/clock prerequisites are the same as ll_spi_init().
+ */
+static inline void ll_spi_init_halfduplex(SPI_TypeDef *spi, uint32_t prescaler,
+                                          uint32_t cpol, uint32_t cpha)
+{
+    /* Raise SSI (internal SS) high BEFORE enabling MASTER: with software SS,
+     * setting MASTER while SSI=0 makes the internal SS read low, which trips a
+     * mode fault (MODF) that auto-clears MASTER. Start as transmitter (HDDIR). */
+    spi->CR1  = LL_SPI_CR1_SSI | LL_SPI_CR1_HDDIR;
+
+    spi->CFG1 = (7UL << LL_SPI_CFG1_DSIZE_SHIFT)     /* 8-bit data */
+              | (prescaler << LL_SPI_CFG1_MBR_SHIFT);
+
+    spi->CFG2 = LL_SPI_CFG2_MASTER
+              | LL_SPI_CFG2_SSM                       /* software CS */
+              | LL_SPI_CFG2_AFCNTR                    /* hold AF pins across SPE toggles */
+              | LL_SPI_CFG2_COMM_HALF                 /* 1-line bidirectional */
+              | (cpol ? LL_SPI_CFG2_CPOL : 0)
+              | (cpha ? LL_SPI_CFG2_CPHA : 0);
+
+    spi->IFCR = (1UL << 9);                            /* clear any latched MODF */
+    /* SPE left disabled: TSIZE must be programmed per-transfer while SPE=0. */
+}
+
+/**
+ * Select half-duplex data direction (1 = transmit, 0 = receive).
+ * Must be called with SPE=0 (HDDIR is config-protected while enabled).
+ */
+static inline void ll_spi_halfduplex_set_dir(SPI_TypeDef *spi, int tx)
+{
+    if (tx) SET_BITS(spi->CR1, LL_SPI_CR1_HDDIR);
+    else    CLR_BITS(spi->CR1, LL_SPI_CR1_HDDIR);
+}
+
+/**
+ * Polled half-duplex master transmit of `len` bytes. Programs TSIZE (with SPE
+ * disabled), enables the peripheral, starts the master clock, feeds the FIFO,
+ * and waits for end-of-transfer. Leaves SPE disabled so the next call can
+ * reprogram TSIZE. Returns 1 on success, 0 on overrun/timeout.
+ */
+static inline int ll_spi_halfduplex_write(SPI_TypeDef *spi,
+                                          const uint8_t *data, uint32_t len)
+{
+    if (len == 0) return 1;
+
+    CLR_BITS(spi->CR1, LL_SPI_CR1_SPE);               /* TSIZE writable only when off */
+    SET_BITS(spi->CR1, LL_SPI_CR1_HDDIR);             /* transmitter */
+    spi->CR2 = (len & 0xFFFFUL);                       /* TSIZE = frame count */
+    SET_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    SET_BITS(spi->CR1, LL_SPI_CR1_CSTART);            /* begin clocking */
+
+    for (uint32_t i = 0; i < len; i++) {
+        uint32_t guard = 1000000;
+        while (!(spi->SR & LL_SPI_SR_TXP) && --guard) { }
+        if (guard == 0) { CLR_BITS(spi->CR1, LL_SPI_CR1_SPE); return 0; }
+        *(volatile uint8_t *)&spi->TXDR = data[i];
+    }
+
+    uint32_t guard = 1000000;
+    while (!(spi->SR & LL_SPI_SR_EOT) && --guard) { }
+    int ok = (guard != 0) && !(spi->SR & LL_SPI_SR_OVR);
+
+    spi->IFCR = LL_SPI_IFCR_EOTC | LL_SPI_IFCR_TXTFC | LL_SPI_IFCR_OVRC;
+    CLR_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    return ok;
+}
+
+/* ---- DMA-driven master transfers (SPI v2) ----
+ * The GPDMA channel must be configured AND enabled to feed TXDR / drain RXDR
+ * (CTR2 REQSEL = spi<n>_tx / spi<n>_rx with DREQ for TX, hardware request)
+ * BEFORE calling start — the channel then waits for the SPI's TXP/RXP requests.
+ * tsize = frame count, or 0 for endless streaming (stop via ll_spi_dma_stop).
+ *
+ * NOTE (NanEyeC M3 direction flips): there is no SPI-EOT GPDMA trigger on WBA
+ * (RM0493 Table 127), so phase-boundary HDDIR flips are driven by the SPI EOT
+ * interrupt in a CPU ISR (approach A). If that proves too tight, the fallback
+ * is gpdma1_chX_tc cross-triggers (TRIGSEL 20-27) to chain a control channel
+ * — keeping in mind DMA-TC fires at FIFO-fill, not bus EOT.
+ */
+static inline void ll_spi_dma_tx_start(SPI_TypeDef *spi, uint16_t tsize)
+{
+    CLR_BITS(spi->CR1, LL_SPI_CR1_SPE);       /* TSIZE/HDDIR writable only when off */
+    SET_BITS(spi->CR1, LL_SPI_CR1_HDDIR);     /* transmitter (ignored in full-duplex) */
+    spi->CR2 = tsize;
+    SET_BITS(spi->CFG1, LL_SPI_CFG1_TXDMAEN);
+    SET_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    SET_BITS(spi->CR1, LL_SPI_CR1_CSTART);
+}
+
+static inline void ll_spi_dma_rx_start(SPI_TypeDef *spi, uint16_t tsize)
+{
+    CLR_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    CLR_BITS(spi->CR1, LL_SPI_CR1_HDDIR);     /* receiver */
+    spi->CR2 = tsize;
+    SET_BITS(spi->CFG1, LL_SPI_CFG1_RXDMAEN);
+    SET_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    SET_BITS(spi->CR1, LL_SPI_CR1_CSTART);
+}
+
+/** Stop a DMA transfer: disable the peripheral + DMA request generation, clear flags. */
+static inline void ll_spi_dma_stop(SPI_TypeDef *spi)
+{
+    CLR_BITS(spi->CR1, LL_SPI_CR1_SPE);
+    CLR_BITS(spi->CFG1, LL_SPI_CFG1_TXDMAEN | LL_SPI_CFG1_RXDMAEN);
+    spi->IFCR = LL_SPI_IFCR_EOTC | LL_SPI_IFCR_TXTFC | LL_SPI_IFCR_OVRC;
+}
+
+#endif /* SPI v2 half-duplex */
 
 #endif /* LL_SPI_H */
