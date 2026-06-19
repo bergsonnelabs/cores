@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@d3cff63",
   "category": "spi",
   "label": "Core.SPI",
   "icon": "⇆",
@@ -644,6 +644,86 @@
       "signature": "ll_spi_disable_dma_tx(SPI_TypeDef * spi)",
       "returns": "void",
       "brief": "Disable DMA requests for TX",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_init_halfduplex",
+      "signature": "ll_spi_init_halfduplex(SPI_TypeDef * spi, uint32_t prescaler, uint32_t cpol, uint32_t cpha)",
+      "returns": "void",
+      "brief": "Initialize SPI v2 as a half-duplex (1-line) master, 8-bit, MSB-first, starting in transmit direction. Leaves SPE disabled. Pin/clock prerequisites are the same as ll_spi_init().",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "prescaler",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cpol",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "cpha",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_halfduplex_set_dir",
+      "signature": "ll_spi_halfduplex_set_dir(SPI_TypeDef * spi, int tx)",
+      "returns": "void",
+      "brief": "Select half-duplex data direction (1 = transmit, 0 = receive). Must be called with SPE=0 (HDDIR is config-protected while enabled).",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "tx",
+          "ctype": "int"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_halfduplex_write",
+      "signature": "ll_spi_halfduplex_write(SPI_TypeDef * spi, const uint8_t * data, uint32_t len)",
+      "returns": "int",
+      "brief": "Polled half-duplex master transmit of `len` bytes. Programs TSIZE (with SPE disabled), enables the peripheral, starts the master clock, feeds the FIFO, and waits for end-of-transfer. Leaves SPE disabled so the next call can reprogram TSIZE. Returns 1 on success, 0 on overrun/timeout.",
+      "params": [
+        {
+          "name": "spi",
+          "ctype": "SPI_TypeDef *"
+        },
+        {
+          "name": "data",
+          "ctype": "const uint8_t *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_spi_dma_stop",
+      "signature": "ll_spi_dma_stop(SPI_TypeDef * spi)",
+      "returns": "void",
+      "brief": "Stop a DMA transfer: disable the peripheral + DMA request generation, clear flags.",
       "params": [
         {
           "name": "spi",
