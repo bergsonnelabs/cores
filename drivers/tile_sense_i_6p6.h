@@ -54,13 +54,15 @@
  * @studio event name=tap mask=ICM42686P_INT_STATUS3_TAP_DET payload=count:int,axis:int,direction:int read=tile_sense_i_6p6_get_tap_result read_type=sense_i_6p6_tap_result_t
  * @studio event name=wake_on_motion mask=ICM42686P_INT_STATUS2_WOM_ANY
  *
- * Driver gaps (chip capabilities not exposed by this driver):
+ * Unsupported capabilities (gating noted per item — a HARDWARE gap means the
+ * chip can do it but the tile doesn't wire the pin out, NOT a driver omission):
  *
- * @studio unsupported severity=advanced category="FSYNC external-clock / timestamping"
- *   Hardware-gated. ICM-42686-P can take a 31–50 kHz FSYNC input and
- *   stamp samples against external timing (TIMESTAMP_FSYNC_EN in
- *   FIFO_CONFIG). The FSYNC pin isn't routed to a tile pad on
- *   Sense-I-6P6-a — closing this gap requires a tile hardware revision.
+ * @studio unsupported severity=advanced category="External timing pins (FSYNC / CLKIN)"
+ *   Hardware-gated (not a driver gap). The ICM-42686-P can take a 31–50 kHz
+ *   FSYNC input (TIMESTAMP_FSYNC_EN) for sample time-stamping and a ~32 kHz
+ *   external CLKIN (RTC) for precise ODR. Neither pin is routed to a tile pad
+ *   on Sense-I-6P6-a, so the capability simply isn't wired out — closing
+ *   requires a tile hardware revision, not driver work.
  *
  * @studio unsupported severity=niche category="FIFO 20-bit hi-res mode"
  *   Design-gated. FIFO_HIRES_EN switches FIFO packets to 20-bit accel
@@ -76,6 +78,23 @@
  *   straps I3C on pads 3/4/5. The driver framework currently uses
  *   tiles_pal I²C calls only; closing requires a new bus abstraction
  *   in Studio. Defer to a multi-bus driver framework pass.
+ *
+ * @studio unsupported severity=advanced category="APEX raise-to-wake / raise-to-sleep"
+ *   Driver-deferred (true driver gap — hardware supports it). The APEX engine
+ *   detects raise-to-wake / raise-to-sleep gestures (RWR), routable to INT via
+ *   INT_SOURCE6/7. The driver wraps pedometer / tilt / tap / WOM / SMD but not
+ *   RWR; no hardware or framework blocker — closing is a driver pass.
+ *
+ * @studio unsupported severity=advanced category="UI notch / anti-alias filter tuning"
+ *   Driver-deferred (true driver gap). set_filter_bw / set_filter_order expose
+ *   the UI filter bandwidth and order, but not the notch-filter centre
+ *   frequency / Q (Bank-1 GYRO_CFG_STATIC registers) for rejecting a specific
+ *   vibration band.
+ *
+ * @studio unsupported severity=niche category="Standalone timestamp (TMSTVAL) read"
+ *   Driver-deferred (true driver gap). FIFO packets carry a 16-bit timestamp,
+ *   but the chip's free-running timestamp counter (Bank-1 TMSTVAL0-2) isn't
+ *   exposed as a direct read.
  */
 
 #ifndef INC_TILE_SENSE_I_6P6_H_
