@@ -39,6 +39,7 @@ ACTIVE_TILES = [
     "tile_drive_dc_h",
     "tile_drive_h",
     "tile_drive_p",
+    "tile_power_l_1n",
     "tile_power_l_1t",
     "tile_sense_bp",
     "tile_sense_i_6p6",

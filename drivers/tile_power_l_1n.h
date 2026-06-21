@@ -1,84 +1,311 @@
-#ifndef INC_TILE_POWER_L_1N_
-#define INC_TILE_POWER_L_1N_
+/**
+ * @file   tile_power_l_1n.h
+ * @brief  Power.L.1N tile driver — Nordic nPM1300 PMIC.
+ *
+ * Battery charger + 2 buck regulators + system supply (VSYS) + 3 indicator
+ * LEDs. Platform-agnostic: all bus access goes through tiles_pal_t.
+ *
+ * The bucks come up at fixed boot voltages chosen by the tile's VSET pulldown
+ * resistors (no I2C needed): VSET1 = 47 kΩ → VOUT1 = 1.8 V, VSET2 = 330 kΩ →
+ * VOUT2 = 3.3 V. buck_set_mv() switches a buck to software control to override
+ * its VSET default at runtime.
+ *
+ * Tile LEDs (physical colours, per the tile schematic):
+ *   LED0 = GREEN  → driven in HOST mode    (firmware "ready"/status)
+ *   LED1 = YELLOW → driven in CHARGING mode (auto, on while charging)
+ *   LED2 = RED    → driven in ERROR mode    (auto, on for charger faults)
+ *
+ *   #include "core_tiles.h"
+ *   tile_t pmic;
+ *   tile_power_l_1n_init(core_tiles_pal(&core_i2c1), 0, &pmic, NULL);
+ *
+ * Datasheet: Nordic nPM1300 Product Specification v1.1 (4490_483).
+ *
+ * @studio tile label=Power.L.1N icon=battery
+ * @studio event name=charge_complete mask=NPM1300_CHG_COMPLETED
+ * @studio event name=charging mask=NPM1300_CHG_CONSTANTCURRENT
+ *
+ * Unsupported capabilities (gating noted per item — a HARDWARE gap means the
+ * chip can do it but the tile doesn't wire the pin out, NOT a driver omission):
+ *
+ * @studio unsupported severity=advanced category="NTC battery thermistor"
+ *   Hardware-gated (not a driver gap). The nPM1300 can sense battery temperature
+ *   via an NTC thermistor for JEITA charge regulation. NTC is tied to GND on
+ *   Power-L-1N-a (no thermistor fitted), so the driver disables NTC monitoring
+ *   (ADCNTCRSEL=0, DISABLENTC). Closing requires a tile hardware revision.
+ *
+ * @studio unsupported severity=niche category="Load switches / LDOs (LSIN/LSOUT)"
+ *   Hardware-gated (not a driver gap). The nPM1300's two load-switch/LDO outputs
+ *   are tied off (LSIN1/2, LSOUT1/2 grounded) on this tile, so there's nothing
+ *   to control.
+ *
+ * @studio unsupported severity=niche category="GPIO0-3"
+ *   Hardware-gated (not a driver gap). The nPM1300 GPIOs aren't routed to tile
+ *   pads on Power-L-1N-a, so there's no externally useful GPIO function.
+ *
+ * @studio unsupported severity=advanced category="Ship / hibernate mode"
+ *   Driver-deferred. The chip supports ultra-low-power ship/hibernate modes
+ *   (battery disconnect for storage). Not yet exposed — the ship-mode task
+ *   register address needs datasheet confirmation before wiring.
+ *
+ * @studio unsupported severity=niche category="POF warning + buck retention / forced-PWM"
+ *   Driver-deferred. Power-fail early-warning (via GPIO) and buck
+ *   retention-voltage / forced-PWM modes aren't exposed yet.
+ */
 
-#include "main.h"
-#include "stdint.h"
+#ifndef INC_TILE_POWER_L_1N_H_
+#define INC_TILE_POWER_L_1N_H_
 
-// LED 0 (red) - error condition
-// LED 1 (orange) - charging
-// LED 2 (green) - host
+#include "tiles.h"
+#include <stdint.h>
 
-#define NPM1300_I2C_ADDR				0x6B
+/* -------------------------------------------------------------- */
+/* Driver version                                                  */
+/* -------------------------------------------------------------- */
 
-#define NPM1300_REG_TASKSWRESET			0x0001
-#define NPM1300_REG_EVENTSBCHARGER1SET 	0x000A
+#define TILE_POWER_L_1N_VERSION_MAJOR  1
+#define TILE_POWER_L_1N_VERSION_MINOR  0
+#define TILE_POWER_L_1N_VERSION_PATCH  0
 
-#define NPM1300_REG_BCHGENABLESET		0x0304
-#define NPM1300_REG_BCHGENABLECLR		0x0305
-#define NPM1300_REG_BCHGDISABLESET		0x0306
-#define NPM1300_REG_BCHGISETMSB			0x0308
-#define NPM1300_REG_BCHGVTERM			0x030C
-#define NPM1300_REG_BCHGVTERMR			0x030D
-#define NPM1300_REG_BCHGCHARGESTATUS 	0x0334
-#define NPM1300_REG_BCHGERRREASON		0x0336
+TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 
-#define NPM1300_REG_TASKVBATMEASURE		0x0500
-#define NPM1300_REG_ADCCONFIG			0x0509
-#define NPM1300_REG_ADCNTCRSEL			0x050A
-#define NPM1300_REG_ADCDELTIMCONF		0x050D
-#define NPM1300_REG_ADCVBATRESULTMSB	0x0511
+#define NPM1300_I2C_ADDR                0x6B
 
-#define NPM1300_REG_LEDDRV0MODESEL		0x0A00
-#define NPM1300_REG_LEDDRV1MODESEL		0x0A01
-#define NPM1300_REG_LEDDRV2MODESEL		0x0A02
-#define NPM1300_REG_LEDDRV0SET			0x0A03
-#define NPM1300_REG_LEDDRV0CLR			0x0A04
-#define NPM1300_REG_LEDDRV1SET			0x0A05
-#define NPM1300_REG_LEDDRV1CLR			0x0A06
-#define NPM1300_REG_LEDDRV2SET			0x0A07
-#define NPM1300_REG_LEDDRV2CLR			0x0A08
+/* ── charger (BCHARGER, base 0x03) ─────────────────────────────────────────── */
+#define NPM1300_REG_BCHGENABLESET       0x0304
+#define NPM1300_REG_BCHGENABLECLR       0x0305
+#define NPM1300_REG_BCHGDISABLESET      0x0306
+#define NPM1300_REG_BCHGISETMSB         0x0308
+#define NPM1300_REG_BCHGISETLSB         0x0309
+#define NPM1300_REG_BCHGVTERM           0x030C
+#define NPM1300_REG_BCHGVTERMR          0x030D
+#define NPM1300_REG_BCHGCHARGESTATUS    0x0334
+#define NPM1300_REG_BCHGERRREASON       0x0336
 
-#define NPM1300_REG_SHPHLDCONFIG		0x0B04
+/* charge-status bits — the return value of get_charge_status() */
+#define NPM1300_CHG_BATTERYDETECTED     (1 << 0)  /**< Battery detected             */
+#define NPM1300_CHG_COMPLETED           (1 << 1)  /**< Charge complete (full)       */
+#define NPM1300_CHG_TRICKLECHARGE       (1 << 2)  /**< Trickle-charge phase         */
+#define NPM1300_CHG_CONSTANTCURRENT     (1 << 3)  /**< Constant-current phase       */
+#define NPM1300_CHG_CONSTANTVOLTAGE     (1 << 4)  /**< Constant-voltage phase       */
+#define NPM1300_CHG_RECHARGE            (1 << 5)  /**< Recharge (top-up) in progress*/
+#define NPM1300_CHG_DIETEMPHIGHPAUSED   (1 << 6)  /**< Paused: die too hot          */
+#define NPM1300_CHG_SUPPLEMENTACTIVE    (1 << 7)  /**< Battery supplementing VSYS    */
 
-#define NPM1300_REG_SCRATCH0			0x0E01
-#define NPM1300_REG_SCRATCH1			0x0E02
-#define NPM1300_REG_RSTCAUSE			0x0E03
-#define NPM1300_REG_CHARGERERRREASON	0x0E04
-#define NPM1300_REG_CHARGERERRSENSOR	0x0E05
+/* ── bucks (BUCK, base 0x04) ───────────────────────────────────────────────── */
+#define NPM1300_REG_BUCK1ENASET         0x0400
+#define NPM1300_REG_BUCK1ENACLR         0x0401
+#define NPM1300_REG_BUCK2ENASET         0x0402
+#define NPM1300_REG_BUCK2ENACLR         0x0403
+#define NPM1300_REG_BUCK1NORMVOUT       0x0408
+#define NPM1300_REG_BUCK2NORMVOUT       0x040A
+#define NPM1300_REG_BUCKSWCTRLSEL       0x040F  /* bit0=BUCK1, bit1=BUCK2: 1=use NORMVOUT, not VSET pin */
 
+/* ── ADC (base 0x05) ───────────────────────────────────────────────────────── */
+#define NPM1300_REG_TASKVBATMEASURE     0x0500
+#define NPM1300_REG_TASKTEMPMEASURE     0x0502
+#define NPM1300_REG_TASKVSYSMEASURE     0x0503
+#define NPM1300_REG_ADCCONFIG           0x0509
+#define NPM1300_REG_ADCNTCRSEL          0x050A
+#define NPM1300_REG_ADCVBATRESULTMSB    0x0511
+#define NPM1300_REG_ADCTEMPRESULTMSB    0x0513
+#define NPM1300_REG_ADCVSYSRESULTMSB    0x0514
+#define NPM1300_REG_ADCGP0RESULTLSBS    0x0515  /* packed low 2 bits: [1:0]VBAT [3:2]NTC [5:4]TEMP [7:6]VSYS */
 
-/**********************************************************
+/* ── LED drivers (base 0x0A) ───────────────────────────────────────────────── */
+#define NPM1300_REG_LEDDRV0MODESEL      0x0A00
+#define NPM1300_REG_LEDDRV1MODESEL      0x0A01
+#define NPM1300_REG_LEDDRV2MODESEL      0x0A02
+#define NPM1300_REG_LEDDRV0SET          0x0A03
+#define NPM1300_REG_LEDDRV0CLR          0x0A04
+#define NPM1300_REG_LEDDRV1SET          0x0A05
+#define NPM1300_REG_LEDDRV1CLR          0x0A06
+#define NPM1300_REG_LEDDRV2SET          0x0A07
+#define NPM1300_REG_LEDDRV2CLR          0x0A08
 
-	CHECK IF THE TILE IS PRESENT
+#define NPM1300_REG_RSTCAUSE            0x0E03
 
-	parameters
-	-------------------------------------------------------
-	hi2c		handle to the pre-configured I2C port
+/** LED indicator mode (LEDDRVxMODESEL). */
+typedef enum {
+    NPM1300_LED_ERROR    = 0,  /**< auto: on for charger error        */
+    NPM1300_LED_CHARGING = 1,  /**< auto: on while charging           */
+    NPM1300_LED_HOST     = 2,  /**< software-controlled via led_set() */
+    NPM1300_LED_NOTUSED  = 3,  /**< disabled                          */
+} power_l_1n_led_mode_t;
 
-	returns
-	-------------------------------------------------------
-	success		1 = success, 0 = error
+/** Optional init config (pass NULL for defaults: 100 mA, 4.20 V, charging on). */
+typedef struct {
+    uint16_t charge_current_ma;  /**< 32-800 mA. 0 = default (100 mA).     */
+    uint16_t term_mv;            /**< 3500-4450 mV. 0 = default (4200 mV). */
+    uint8_t  enable_charging;    /**< 0 = leave charging off, 1 = enable.  */
+} power_l_1n_cfg_t;
 
-**********************************************************/
-uint8_t tile_power_l_1n_find(I2C_HandleTypeDef* hi2c);
+/**
+ * @brief  Check whether an nPM1300 is present on the I2C bus.
+ *
+ * @param  hal       Platform HAL handle
+ * @param  instance  Instance index (0 = default, see mapping table)
+ * @return 1 if the device ACKs, 0 otherwise
+ */
+uint8_t tile_power_l_1n_find(tiles_pal_t* hal, uint8_t instance);
 
-/**********************************************************
+/**
+ * @brief  Initialize the nPM1300 PMIC.
+ *
+ * Sets the indicator LED modes (LED0=HOST, LED1=CHARGING, LED2=ERROR),
+ * disables NTC monitoring (no thermistor on this tile), and applies the
+ * charger settings. The buck regulators are left at their boot voltages
+ * (1.8 V / 3.3 V, fixed by the VSET resistors) — they are already up.
+ * Pass cfg=NULL for defaults (100 mA, 4.20 V, charging enabled).
+ *
+ * @param  hal       Platform HAL handle
+ * @param  instance  Instance index (0 = default, see mapping table)
+ * @param  tile      Pointer to tile handle (populated by this function)
+ * @param  cfg       Optional config, or NULL for defaults
+ */
+void tile_power_l_1n_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
+                          const power_l_1n_cfg_t* cfg);
 
-	INITIALIZE THE TILE
+/* ── charger ───────────────────────────────────────────────────────────────── */
 
-	parameters
-	-------------------------------------------------------
-	hi2c		handle to the pre-configured I2C port
+/**
+ * @brief  Enable or disable battery charging.
+ * @studio expose category=tile name=charger_enable section=config
+ * @param  on  1 = enable charging, 0 = disable.
+ */
+void tile_power_l_1n_charger_enable(tile_t* tile, uint8_t on);
 
-	returns
-	-------------------------------------------------------
-	success		1 = success, 0 = error
+/**
+ * @brief  Set the constant-current charge level.
+ *
+ * Programmable 32-800 mA in 2 mA steps; out-of-range values clamp.
+ *
+ * @studio expose category=tile name=set_charge_current_ma section=config
+ * @param  ma  [32..800] Charge current in milliamps.
+ */
+void tile_power_l_1n_set_charge_current_ma(tile_t* tile, uint16_t ma);
 
-**********************************************************/
-uint8_t tile_power_l_1n_init(I2C_HandleTypeDef* hi2c);
+/**
+ * @brief  Set the charge-termination (full) voltage.
+ *
+ * Selectable 3.50-3.65 V or 4.00-4.45 V in 50 mV steps; the 3.70-3.95 V
+ * gap is not supported and clamps to 3.65 V.
+ *
+ * @studio expose category=tile name=set_term_mv section=config
+ * @param  mv  Termination voltage in millivolts (e.g. 4200).
+ */
+void tile_power_l_1n_set_term_mv(tile_t* tile, uint16_t mv);
 
-uint16_t tile_power_l_1n_get_status(void);
+/**
+ * @brief  Read the raw charge-status register.
+ * @studio expose category=tile name=get_charge_status section=runtime
+ * @return BCHGCHARGESTATUS bits (NPM1300_CHG_* mask).
+ */
+uint8_t tile_power_l_1n_get_charge_status(tile_t* tile);
 
-uint16_t tile_power_l_1n_get_vbat(void);
+/**
+ * @brief  Read the charger error-reason register.
+ * @studio expose category=tile name=get_charge_error section=runtime
+ * @return BCHGERRREASON bits (0 = no error).
+ */
+uint8_t tile_power_l_1n_get_charge_error(tile_t* tile);
 
-#endif
+/**
+ * @brief  Whether the charger is actively charging (trickle / CC / CV).
+ * @studio expose category=tile name=is_charging returns=bool section=runtime
+ * @return 1 if charging, 0 otherwise.
+ */
+uint8_t tile_power_l_1n_is_charging(tile_t* tile);
+
+/**
+ * @brief  Whether charging has completed (battery full).
+ * @studio expose category=tile name=is_charge_complete returns=bool section=runtime
+ * @return 1 if charge complete, 0 otherwise.
+ */
+uint8_t tile_power_l_1n_is_charge_complete(tile_t* tile);
+
+/**
+ * @brief  Whether a battery is detected.
+ * @studio expose category=tile name=battery_present returns=bool section=runtime
+ * @return 1 if a battery is present, 0 otherwise.
+ */
+uint8_t tile_power_l_1n_battery_present(tile_t* tile);
+
+/* ── measurements (ADC) ────────────────────────────────────────────────────── */
+
+/**
+ * @brief  Measure the battery voltage.
+ * @studio expose category=tile name=get_vbat_mv section=runtime
+ * @return VBAT in millivolts (0-5000).
+ */
+uint16_t tile_power_l_1n_get_vbat_mv(tile_t* tile);
+
+/**
+ * @brief  Measure the system (VSYS) voltage.
+ * @studio expose category=tile name=get_vsys_mv section=runtime
+ * @return VSYS in millivolts (0-6375).
+ */
+uint16_t tile_power_l_1n_get_vsys_mv(tile_t* tile);
+
+/**
+ * @brief  Measure the PMIC die temperature.
+ * @studio expose category=tile name=get_die_temp_c section=runtime
+ * @return Die temperature in degrees Celsius.
+ */
+int16_t  tile_power_l_1n_get_die_temp_c(tile_t* tile);
+
+/* ── buck regulators (buck = 1 or 2) ───────────────────────────────────────── */
+
+/**
+ * @brief  Enable or disable a buck regulator.
+ * @studio expose category=tile name=buck_enable section=config
+ * @param  buck  1 (VOUT1) or 2 (VOUT2).
+ * @param  on    1 = enable, 0 = disable.
+ */
+void tile_power_l_1n_buck_enable(tile_t* tile, uint8_t buck, uint8_t on);
+
+/**
+ * @brief  Set a buck regulator's output voltage.
+ *
+ * Selects software voltage control for that buck (overriding its VSET
+ * resistor) and applies the new target.
+ *
+ * @studio expose category=tile name=buck_set_mv section=config
+ * @param  buck  1 (VOUT1) or 2 (VOUT2).
+ * @param  mv    [1000..3300] Output voltage in mV, 100 mV steps.
+ */
+void tile_power_l_1n_buck_set_mv(tile_t* tile, uint8_t buck, uint16_t mv);
+
+/* ── indicator LEDs (led = 0/1/2) ──────────────────────────────────────────── */
+
+/**
+ * @brief  Set an indicator LED's drive mode.
+ *
+ * LED0 is green, LED1 yellow, LED2 red. In auto modes (ERROR/CHARGING)
+ * the charger drives the LED directly; HOST mode hands control to led_set().
+ *
+ * @studio expose category=tile name=led_set_mode section=config
+ * @param  led   0, 1 or 2.
+ * @param  mode  power_l_1n_led_mode_t.
+ */
+void tile_power_l_1n_led_set_mode(tile_t* tile, uint8_t led, power_l_1n_led_mode_t mode);
+
+/**
+ * @brief  Turn a host-controlled LED on or off.
+ *
+ * Only effective when the LED is in HOST mode (see led_set_mode).
+ *
+ * @studio expose category=tile name=led_set section=runtime
+ * @param  led  0, 1 or 2.
+ * @param  on   1 = on, 0 = off.
+ */
+void tile_power_l_1n_led_set(tile_t* tile, uint8_t led, uint8_t on);
+
+/**
+ * @brief  Read the reset-cause register (why the PMIC last reset).
+ * @studio expose category=tile name=get_reset_cause section=advanced
+ * @return RSTCAUSE bits.
+ */
+uint8_t tile_power_l_1n_get_reset_cause(tile_t* tile);
+
+#endif /* INC_TILE_POWER_L_1N_H_ */
