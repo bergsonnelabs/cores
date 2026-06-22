@@ -1,6 +1,6 @@
 {
   "rev": "b",
-  "name": "W",
+  "name": "ST.W5",
   "pads": [
     {
       "pad": "1",
@@ -787,6 +787,12 @@
       ]
     }
   ],
+  "twin": {
+    "score": 1,
+    "source": "// Digital twin for Core.ST.W5 (formerly Core.W) — the BLE MCU host board itself.\n//\n// A Core, not a peripheral: no tile driver, no host calls. The twin models the\n// board standards — STM32WBA55 power across run/sleep/stop/standby (LDO vs SMPS\n// regulator path), the BLE radio as a power state (the on-board Johanson 2450AT\n// chip antenna is RF-only, no pad), the on-board status LED, and the optional\n// I2C pull-ups.\n//\n// Power numbers: STM32WBA5xxx datasheet (DS14127 Rev 7, TYP @ 3.3 V / 25 °C),\n// MCU Tables 45/46/49/51/52/54 and BLE radio Table 37. Pad map per Core-W-b.json\n// (V+ pad 14, GND pad 1, I2C3 CLK/DAT pads 4/5).\nimport type { TileSim } from '../tileSim';\n\n// power_mode slider index → mode.\nconst MODES = ['run', 'sleep', 'stop0', 'stop1', 'standby'] as const;\n// sysclk slider index → MHz.\nconst CLOCKS = [16, 32, 100] as const;\n// ble_state slider index → activity.\nconst BLE = ['off', 'advertising', 'connected', 'tx', 'rx'] as const;\n\n// MCU core current (µA) by clock, per regulator path (LDO / SMPS).\nconst RUN_UA = { ldo: { 16: 910, 32: 2290, 100: 6160 }, smps: { 16: 450, 32: 1470, 100: 3350 } };\nconst SLEEP_UA = { ldo: { 16: 340, 32: 950, 100: 2140 }, smps: { 16: 220, 32: 820, 100: 1500 } };\n// Fixed low-power modes (µA) — SMPS path largely matches in deep stop/standby.\nconst FIXED_UA: Record<string, { ldo: number; smps: number }> = {\n  stop0: { ldo: 49, smps: 11 },\n  stop1: { ldo: 22.6, smps: 22.6 },\n  standby: { ldo: 0.37, smps: 0.37 },\n};\n// BLE radio adder (µA) on top of core current (Table 37, 0 dBm Tx / 1 Mbps Rx).\n// advertising/connected are duty-cycled averages (estimated — datasheet gives peaks only).\nconst RADIO_UA: Record<string, { ldo: number; smps: number }> = {\n  off: { ldo: 0, smps: 0 },\n  advertising: { ldo: 800, smps: 500 },\n  connected: { ldo: 1200, smps: 700 },\n  tx: { ldo: 10510, smps: 5540 },\n  rx: { ldo: 7910, smps: 5220 },\n};\n\nconst RAIL_MV = 3300;\nconst LED_R_OHM = 40; // R2 (schematic) — atypically low, see provenance\nconst LED_VF_MV = 1900;\n\ninterface State {\n  power_mode: number;\n  sysclk: number;\n  regulator: number; // 0 = LDO, 1 = SMPS\n  led_on: number; // on-board red LED (PB12, active-high)\n  ble_state: number;\n  i2c_pullups: number; // optional 2.2k pull-ups on I2C3 (pads 4/5)\n  [field: string]: number;\n}\n\nconst clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));\nconst modeOf = (s: State) => MODES[clamp(s.power_mode, 0, MODES.length - 1)];\nconst clockOf = (s: State) => CLOCKS[clamp(s.sysclk, 0, CLOCKS.length - 1)];\nconst bleOf = (s: State) => BLE[clamp(s.ble_state, 0, BLE.length - 1)];\nconst regOf = (s: State): 'ldo' | 'smps' => (s.regulator ? 'smps' : 'ldo');\n\nconst ledUa = (s: State) =>\n  s.led_on && RAIL_MV > LED_VF_MV ? Math.round(((RAIL_MV - LED_VF_MV) / LED_R_OHM) * 1000) : 0;\n\nfunction coreUa(s: State): number {\n  const reg = regOf(s);\n  const mode = modeOf(s);\n  if (mode === 'run') return RUN_UA[reg][clockOf(s)];\n  if (mode === 'sleep') return SLEEP_UA[reg][clockOf(s)];\n  return FIXED_UA[mode][reg];\n}\n// Radio only runs when the MCU is awake (run/sleep); deep-sleep modes drop it.\nfunction radioUa(s: State): number {\n  const mode = modeOf(s);\n  if (mode !== 'run' && mode !== 'sleep') return 0;\n  return RADIO_UA[bleOf(s)][regOf(s)];\n}\n\nconst sim: TileSim<State> = {\n  tile: 'Core.ST.W5',\n\n  defaultState: {\n    power_mode: 0, // run\n    sysclk: 1, // 32 MHz\n    regulator: 1, // SMPS (default firmware path)\n    led_on: 0,\n    ble_state: 0, // off\n    i2c_pullups: 1,\n  },\n\n  controls: [\n    {\n      type: 'slider',\n      field: 'power_mode',\n      label: 'Mode (0 run·1 sleep·2 stop0·3 stop1·4 standby)',\n      min: 0,\n      max: 4,\n      step: 1,\n    },\n    {\n      type: 'slider',\n      field: 'sysclk',\n      label: 'Clock (0:16·1:32·2:100 MHz)',\n      min: 0,\n      max: 2,\n      step: 1,\n    },\n    { type: 'toggle', field: 'regulator', label: 'SMPS regulator (off = LDO)' },\n    {\n      type: 'slider',\n      field: 'ble_state',\n      label: 'BLE (0 off·1 adv·2 conn·3 tx·4 rx)',\n      min: 0,\n      max: 4,\n      step: 1,\n    },\n    { type: 'toggle', field: 'led_on', label: 'On-board LED (PB12)' },\n    { type: 'toggle', field: 'i2c_pullups', label: 'I2C3 pull-ups populated' },\n  ],\n\n  hostCalls: {},\n\n  provenance: {\n    power: 'inferred', // MCU + Tx/Rx currents canonical (DS14127); adv/connected averages + LED estimated\n  },\n\n  // Optional 2.2k pull-ups idle I2C3 (pads 4 CLK / 5 DAT) high. LED (PB12) and the\n  // antenna (RF matching network) are internal — neither is a numbered pad.\n  padOutputs(state) {\n    const up = state.i2c_pullups ? 1 : 0;\n    return { 'I2C3.CLK': up, 'I2C3.DAT': up };\n  },\n\n  // Supply draw on V+ (pad 14) / GND (pad 1): MCU-mode + BLE radio + LED.\n  power(state) {\n    const ua = coreUa(state) + radioUa(state) + ledUa(state);\n    const ble = bleOf(state);\n    return {\n      draw_ua: Math.round(ua * 1000) / 1000,\n      rails: [\n        {\n          name: 'V+',\n          role: 'supply',\n          v_mv: RAIL_MV,\n          i_ua: Math.round(ua * 1000) / 1000,\n          pads: ['14'],\n          note: `STM32WBA55 ${modeOf(state)}/${regOf(state)}${ble !== 'off' ? ' +BLE ' + ble : ''}${state.led_on ? ' +LED' : ''}`,\n        },\n      ],\n    };\n  },\n};\n\nexport default sim;\n",
+    "status": "validated",
+    "updated_at": "2026-06-22T12:44:21.678Z"
+  },
   "power": [
     {
       "max": 3.6,
@@ -1660,6 +1666,134 @@
           }
         },
         "SAI1": {
+          "fields": {
+            "mclk": {
+              "kind": "boolean",
+              "when": {
+                "protocol": "i2s"
+              },
+              "label": "Output MCLK",
+              "default": false
+            },
+            "role": {
+              "kind": "select",
+              "when": {
+                "enabled": true
+              },
+              "label": "Clocking",
+              "default": "master",
+              "options": [
+                {
+                  "label": "Master (drives BCLK/FS)",
+                  "value": "master"
+                },
+                {
+                  "label": "Slave (external BCLK/FS)",
+                  "value": "slave"
+                }
+              ]
+            },
+            "dataSize": {
+              "kind": "select",
+              "when": {
+                "protocol": "i2s"
+              },
+              "label": "Word length",
+              "default": 24,
+              "options": [
+                {
+                  "label": "16-bit",
+                  "value": 16
+                },
+                {
+                  "label": "24-bit",
+                  "value": 24
+                },
+                {
+                  "label": "32-bit",
+                  "value": 32
+                }
+              ]
+            },
+            "pdmClock": {
+              "kind": "select",
+              "when": {
+                "protocol": "pdm"
+              },
+              "label": "PDM clock",
+              "default": 2400000,
+              "options": [
+                {
+                  "label": "1.0 MHz (low power)",
+                  "value": 1000000
+                },
+                {
+                  "label": "2.4 MHz (normal)",
+                  "value": 2400000
+                },
+                {
+                  "label": "3.072 MHz",
+                  "value": 3072000
+                }
+              ]
+            },
+            "protocol": {
+              "kind": "select",
+              "when": {
+                "enabled": true
+              },
+              "label": "Audio protocol",
+              "default": "i2s",
+              "options": [
+                {
+                  "label": "I²S (Philips)",
+                  "value": "i2s"
+                },
+                {
+                  "label": "PDM (microphone)",
+                  "value": "pdm"
+                }
+              ]
+            },
+            "sampleRate": {
+              "kind": "select",
+              "when": {
+                "protocol": "i2s"
+              },
+              "label": "Sample rate",
+              "default": 48000,
+              "options": [
+                {
+                  "label": "8 kHz",
+                  "value": 8000
+                },
+                {
+                  "label": "16 kHz",
+                  "value": 16000
+                },
+                {
+                  "label": "32 kHz",
+                  "value": 32000
+                },
+                {
+                  "label": "44.1 kHz",
+                  "value": 44100
+                },
+                {
+                  "label": "48 kHz",
+                  "value": 48000
+                },
+                {
+                  "label": "96 kHz",
+                  "value": 96000
+                },
+                {
+                  "label": "192 kHz",
+                  "value": 192000
+                }
+              ]
+            }
+          },
           "netlist": {
             "when": {
               "enabled": true
@@ -1684,6 +1818,26 @@
           }
         },
         "SPI1": {
+          "fields": {
+            "wires": {
+              "kind": "select",
+              "when": {
+                "enabled": true
+              },
+              "label": "Wiring",
+              "default": "4wire",
+              "options": [
+                {
+                  "label": "4-wire (separate MISO)",
+                  "value": "4wire"
+                },
+                {
+                  "label": "3-wire (bidirectional)",
+                  "value": "3wire"
+                }
+              ]
+            }
+          },
           "netlist": {
             "when": {
               "enabled": true
@@ -1708,6 +1862,26 @@
           }
         },
         "SPI3": {
+          "fields": {
+            "wires": {
+              "kind": "select",
+              "when": {
+                "enabled": true
+              },
+              "label": "Wiring",
+              "default": "4wire",
+              "options": [
+                {
+                  "label": "4-wire (separate MISO)",
+                  "value": "4wire"
+                },
+                {
+                  "label": "3-wire (bidirectional)",
+                  "value": "3wire"
+                }
+              ]
+            }
+          },
           "netlist": {
             "when": {
               "enabled": true
@@ -1889,11 +2063,13 @@
     {
       "name": "SPI1",
       "type": "SPI",
+      "modeKey": "wires",
       "parameters": {
         "modes": [
           "master, slave"
         ]
       },
+      "modeDefault": "4wire",
       "pad_assignments": [
         {
           "pad": "8",
@@ -1903,16 +2079,37 @@
         {
           "pad": "9",
           "role": "bus",
+          "byMode": {
+            "3wire": {
+              "required": true
+            },
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI1.CLK"
         },
         {
           "pad": "10",
           "role": "bus",
+          "byMode": {
+            "3wire": {
+              "required": true
+            },
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI1.MOSI"
         },
         {
           "pad": "11",
           "role": "bus",
+          "byMode": {
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI1.MISO"
         }
       ],
@@ -1925,15 +2122,25 @@
     {
       "name": "SPI3",
       "type": "SPI",
+      "modeKey": "wires",
       "parameters": {
         "modes": [
           "master, slave"
         ]
       },
+      "modeDefault": "4wire",
       "pad_assignments": [
         {
           "pad": "2",
           "role": "bus",
+          "byMode": {
+            "3wire": {
+              "required": true
+            },
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI3.CLK"
         },
         {
@@ -1944,11 +2151,24 @@
         {
           "pad": "6",
           "role": "bus",
+          "byMode": {
+            "3wire": {
+              "required": true
+            },
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI3.MOSI"
         },
         {
           "pad": "7",
           "role": "bus",
+          "byMode": {
+            "4wire": {
+              "required": true
+            }
+          },
           "function": "SPI3.MISO"
         }
       ],
@@ -2002,33 +2222,66 @@
     {
       "name": "SAI1",
       "type": "SAI",
+      "modeKey": "protocol",
       "parameters": {
         "modes": []
       },
+      "modeDefault": "i2s",
       "pad_assignments": [
         {
           "pad": "3",
           "role": "bus",
+          "byMode": {
+            "i2s": {
+              "required": false
+            },
+            "pdm": {
+              "required": true
+            }
+          },
           "function": "SAI1.D2"
         },
         {
           "pad": "4",
           "role": "bus",
+          "byMode": {
+            "i2s": {
+              "required": true
+            },
+            "pdm": {
+              "required": true
+            }
+          },
           "function": "SAI1.CK2"
         },
         {
           "pad": "4",
           "role": "bus",
+          "byMode": {
+            "i2s": {
+              "required": false
+            }
+          },
           "function": "SAI1.MCLK_A"
         },
         {
           "pad": "5",
           "role": "bus",
+          "byMode": {
+            "i2s": {
+              "required": true
+            }
+          },
           "function": "SAI1.SCK_A"
         },
         {
           "pad": "9",
           "role": "bus",
+          "byMode": {
+            "i2s": {
+              "required": false
+            }
+          },
           "function": "SAI1.MCLK_B"
         }
       ],
@@ -2039,9 +2292,9 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:36:00.831Z",
+  "updated_at": "2026-06-19T00:00:00.000Z",
   "description": "The Core.W tile combines the powerful STM32WBA55 100-MHz 32-bit Cortex-M33 processor together with an integrated 2.4GHz antenna on double-size T48 (4.0 x 8.0 mm) SMD package.  The tile provides a user-configurable combination of: SW debug & bootloading; 1MB flash & 128KB SRAM; wireless communications (BLE 5.4, Thread, Matter, Zigbee, proprietary); two FM+ (1MHz) I2C ports; two SPI ports; one USART; five 12-bit 2.5Msps ADC inputs (16-bit with oversampling); many timers; ten capacitive touch inputs; one serial-audio interface; IR output; and an on-board LED",
-  "json_version": "0.38",
+  "json_version": "0.39",
   "application_notes": [
     {
       "sort": 0,

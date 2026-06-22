@@ -29,11 +29,11 @@ from jinja2 import Environment, FileSystemLoader
 # map onto the DB-synced definition file stems. The Makefile carries the same
 # map so either form resolves to the right definition.
 CORE_NAME_ALIASES = {
-    "Core.ST.L0.1": "Core-L-1-a",
-    "Core.ST.L4.1": "Core-U-1-a",
-    "Core.ST.L4.2": "Core-U-2-a",
-    "Core.ST.W5": "Core-W-b",
-    "Core.ST.H5.1": "Core-H-1-a",
+    "Core.ST.L0.1": "Core-ST-L0-1-a",
+    "Core.ST.L4.1": "Core-ST-L4-1-b",  # rev b — superset of rev a (adds PA13/PA14)
+    "Core.ST.L4.2": "Core-ST-L4-2-a",
+    "Core.ST.W5": "Core-ST-W5-b",
+    "Core.ST.H5.1": "Core-ST-H5-1-a",
 }
 CORE_STEM_TO_PUBLIC = {stem: name for name, stem in CORE_NAME_ALIASES.items()}
 

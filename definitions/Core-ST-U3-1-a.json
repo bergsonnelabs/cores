@@ -1,6 +1,6 @@
 {
   "rev": "a",
-  "name": "F.1",
+  "name": "ST.U3.1",
   "pads": [],
   "power": [],
   "family": "Core",
@@ -11,18 +11,18 @@
     "size_y": 4000,
     "size_z": 0
   },
-  "tile_id": 32,
-  "headline": "FPGA",
+  "tile_id": 88,
+  "headline": "ultra low power MCU",
   "components": [
     {
       "url": "",
-      "part": "ICE40",
+      "part": "STM32U3C5",
       "datasheet": "",
-      "manufacturer": "Lattice Semiconductor"
+      "manufacturer": "ST Microelectronics"
     }
   ],
   "interfaces": [],
-  "updated_at": "2026-03-12T20:52:41.510Z",
+  "updated_at": "2026-06-05T15:37:33.226Z",
   "description": "",
   "json_version": "0.1",
   "application_notes": []

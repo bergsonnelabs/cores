@@ -1,9 +1,9 @@
 {
   "rev": "a",
-  "name": "STEP",
+  "name": "M.3G",
   "pads": [],
   "power": [],
-  "family": "Drive",
+  "family": "Sense",
   "package": {
     "pads": 10,
     "type": "T44",
@@ -11,19 +11,19 @@
     "size_y": 4000,
     "size_z": 0
   },
-  "tile_id": 36,
-  "headline": "stepper-motor driver",
+  "tile_id": 29,
+  "headline": "triaxial geomagnetic magnetometer",
   "components": [
     {
       "url": "",
-      "part": "STSPIN220",
+      "part": "BMM350",
       "datasheet": "",
-      "manufacturer": "ST Microelectronics"
+      "manufacturer": "Bosch Sensotec"
     }
   ],
   "interfaces": [],
-  "updated_at": "2026-03-02T09:43:54.856Z",
+  "updated_at": "2026-06-04T14:39:51.945Z",
   "description": "",
-  "json_version": "0.1",
+  "json_version": "0.3",
   "application_notes": []
 }

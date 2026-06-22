@@ -1,8 +1,250 @@
 {
   "rev": "a",
   "name": "BB",
-  "pads": [],
-  "power": [],
+  "pads": [
+    {
+      "pad": "1",
+      "geometry": {
+        "size_x": 1000,
+        "size_y": 400,
+        "center_x": -1500,
+        "center_y": 1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "power",
+          "function": "GND",
+          "direction": "input"
+        }
+      ]
+    },
+    {
+      "pad": "2",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": -1600,
+        "center_y": 800
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "",
+          "function": "",
+          "direction": ""
+        }
+      ]
+    },
+    {
+      "pad": "3",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": -1600,
+        "center_y": 0
+      },
+      "functions": [
+        {
+          "note": "1.8-5.5V",
+          "type": "power",
+          "function": "VIN",
+          "direction": "input"
+        }
+      ]
+    },
+    {
+      "pad": "4",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": -1600,
+        "center_y": -800
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "interface",
+          "function": "I2C.CLK",
+          "direction": "bidirectional"
+        }
+      ]
+    },
+    {
+      "pad": "5",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": -1600,
+        "center_y": -1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "interface",
+          "function": "I2C.DAT",
+          "direction": "bidirectional"
+        }
+      ]
+    },
+    {
+      "pad": "6",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": 1600,
+        "center_y": -1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "",
+          "function": "",
+          "direction": ""
+        }
+      ]
+    },
+    {
+      "pad": "7",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": 1600,
+        "center_y": -800
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "",
+          "function": "",
+          "direction": ""
+        }
+      ]
+    },
+    {
+      "pad": "8",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": 1600,
+        "center_y": 0
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "power",
+          "function": "5V0",
+          "direction": "output"
+        }
+      ]
+    },
+    {
+      "pad": "9",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": 1600,
+        "center_y": 800
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "power",
+          "function": "3V3",
+          "direction": "output"
+        }
+      ]
+    },
+    {
+      "pad": "10",
+      "geometry": {
+        "size_x": 800,
+        "size_y": 400,
+        "center_x": 1600,
+        "center_y": 1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "power",
+          "function": "1V8",
+          "direction": "output"
+        }
+      ]
+    }
+  ],
+  "twin": {
+    "score": 1,
+    "source": "// Digital twin for Power.BB — multi-output buck-boost regulator. DRIVERLESS:\n// the tile has no comms interface, so there are no host calls — it's a pure power\n// transform, modeled entirely by the electrical layer.\n//\n// Topology (from the tile schematic; the tile JSON is empty): VIN (pad 3) feeds a\n// TPS63901 buck-boost → 5V0 (pad 8), which feeds two TPS7A20 LDOs → 3V3 (pad 9)\n// and 1V8 (pad 10). EN is strapped to VIN (always-on). GND on pad 1; pads\n// 2/4/5/6/7 are unconnected. So one wide-range input becomes three regulated\n// rails.\n//\n// Output voltages + topology are canonical (schematic); quiescent is datasheet\n// (TPS63901 ~75 µA + 2× TPS7A20 ~5 µA). VIN current is left to the solver to\n// back-fill from whatever the three rails feed downstream, so power is inferred.\nimport type { PowerCtx, TileSim } from '../tileSim';\n\nconst UVLO_MV = 1800; // buck-boost needs at least this on VIN to hold the rails up\nconst BB_IQ_UA = 75; // TPS63901 quiescent\nconst LDO_IQ_UA = 5; // TPS7A20 quiescent (×2)\nconst QUIESCENT_UA = BB_IQ_UA + 2 * LDO_IQ_UA;\n\ninterface State {\n  vin_mv: number; // fallback input voltage when pad 3 isn't wired\n  [field: string]: number;\n}\n\n// VIN comes from the WIRING (pad 3) when available, else the fallback control —\n// same pattern as the PMIC twins, so an upstream battery/USB tile drives it.\nconst vinOf = (s: State, ctx?: PowerCtx) => {\n  const p = ctx?.padVoltage?.['3'];\n  return p != null ? p : s.vin_mv || 0;\n};\n\nconst sim: TileSim<State> = {\n  tile: 'Power.BB',\n\n  defaultState: { vin_mv: 3700 },\n\n  // Only knob is the fallback input voltage (used when pad 3 isn't wired to an\n  // upstream source). EN is hardware-strapped on, so there's nothing to toggle.\n  controls: [\n    {\n      type: 'slider',\n      field: 'vin_mv',\n      label: 'VIN (if unwired)',\n      min: 0,\n      max: 5500,\n      step: 50,\n      unit: 'mV',\n    },\n  ],\n\n  // Regulated rails on/off (1/0): 5V0 (pad 8), 3V3 (pad 9), 1V8 (pad 10).\n  padOutputs(state) {\n    const on = (state.vin_mv || 0) >= UVLO_MV ? 1 : 0;\n    return { '5V0': on, '3V3': on, '1V8': on };\n  },\n\n  // Electrical. VIN (pad 3) → buck-boost 5V0 (pad 8) → LDOs 3V3 (pad 9) / 1V8\n  // (pad 10). VIN omits i_ua so the solver back-fills it from the downstream\n  // loads on the three output nets; draw_ua is the tile's own quiescent floor.\n  power(state, ctx) {\n    const vin = vinOf(state, ctx);\n    const on = vin >= UVLO_MV;\n    return {\n      draw_ua: QUIESCENT_UA,\n      rails: [\n        {\n          name: 'VIN',\n          role: 'supply',\n          v_mv: vin,\n          pads: ['3'],\n          note: 'buck-boost input (solver back-fills load)',\n        },\n        {\n          name: '5V0',\n          role: 'output',\n          v_mv: on ? 5000 : 0,\n          pads: ['8'],\n          note: 'TPS63901 buck-boost output',\n        },\n        {\n          name: '3V3',\n          role: 'output',\n          v_mv: on ? 3300 : 0,\n          pads: ['9'],\n          note: 'TPS7A20 LDO from 5V0',\n        },\n        {\n          name: '1V8',\n          role: 'output',\n          v_mv: on ? 1800 : 0,\n          pads: ['10'],\n          note: 'TPS7A20 LDO from 5V0',\n        },\n      ],\n    };\n  },\n\n  provenance: {\n    power: 'inferred', // rail voltages/topology canonical; VIN load back-filled by the solver\n  },\n};\n\nexport default sim;\n",
+    "status": "validated",
+    "updated_at": "2026-06-22 02:38:28"
+  },
+  "power": [
+    {
+      "max": 5.5,
+      "min": 1.8,
+      "type": "system",
+      "notes": "",
+      "gnd_pad": [
+        "1"
+      ],
+      "function": "",
+      "direction": "input",
+      "is_required": true,
+      "max_current": "",
+      "positive_pad": [
+        "3"
+      ]
+    },
+    {
+      "max": 1.8,
+      "min": 1.8,
+      "type": "system",
+      "notes": "",
+      "gnd_pad": [
+        "1"
+      ],
+      "function": "",
+      "direction": "output",
+      "is_required": false,
+      "max_current": "",
+      "positive_pad": [
+        "10"
+      ]
+    },
+    {
+      "max": 3.3,
+      "min": 3.3,
+      "type": "system",
+      "notes": "",
+      "gnd_pad": [
+        "1"
+      ],
+      "function": "",
+      "direction": "output",
+      "is_required": false,
+      "max_current": "",
+      "positive_pad": [
+        "9"
+      ]
+    },
+    {
+      "max": 5,
+      "min": 5,
+      "type": "system",
+      "notes": "",
+      "gnd_pad": [
+        "1"
+      ],
+      "function": "",
+      "direction": "output",
+      "is_required": false,
+      "max_current": "",
+      "positive_pad": [
+        "8"
+      ]
+    }
+  ],
   "family": "Power",
   "package": {
     "pads": 10,
@@ -13,10 +255,23 @@
   },
   "tile_id": 42,
   "headline": "multi-output buck-boost regulator",
-  "components": [],
+  "components": [
+    {
+      "url": "",
+      "part": "TPS63901",
+      "datasheet": "",
+      "manufacturer": "Texas Instruments"
+    },
+    {
+      "url": "",
+      "part": "TPS7A20",
+      "datasheet": "",
+      "manufacturer": "Texas Instruments"
+    }
+  ],
   "interfaces": [],
-  "updated_at": "2026-02-20T10:11:58.598Z",
+  "updated_at": "2026-06-05T08:51:25.996Z",
   "description": "",
-  "json_version": "0.1",
+  "json_version": "0.3",
   "application_notes": []
 }

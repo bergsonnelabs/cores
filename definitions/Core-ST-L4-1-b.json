@@ -1,6 +1,6 @@
 {
-  "rev": "a",
-  "name": "U.1",
+  "rev": "b",
+  "name": "ST.L4.1",
   "pads": [
     {
       "pad": "1",
@@ -473,8 +473,76 @@
           "direction": "input"
         }
       ]
+    },
+    {
+      "pad": "13",
+      "geometry": {
+        "size_x": 400,
+        "size_y": 800,
+        "center_x": -400,
+        "center_y": -1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "digital",
+          "function": "A14",
+          "direction": "bidirectional"
+        },
+        {
+          "af": 0,
+          "note": "",
+          "type": "system",
+          "function": "SWCLK",
+          "direction": ""
+        },
+        {
+          "af": 4,
+          "note": "",
+          "type": "digital",
+          "function": "I2C1.SMBA",
+          "direction": ""
+        },
+        {
+          "af": 1,
+          "note": "",
+          "type": "timer",
+          "function": "LPTIM1.OUT",
+          "direction": ""
+        }
+      ]
+    },
+    {
+      "pad": "14",
+      "geometry": {
+        "size_x": 400,
+        "size_y": 800,
+        "center_x": 400,
+        "center_y": -1600
+      },
+      "functions": [
+        {
+          "note": "",
+          "type": "digital",
+          "function": "A13",
+          "direction": "bidirectional"
+        },
+        {
+          "af": 0,
+          "note": "",
+          "type": "system",
+          "function": "SWDIO",
+          "direction": ""
+        }
+      ]
     }
   ],
+  "twin": {
+    "score": 1,
+    "source": "// Digital twin for Core.ST.L4.1 (formerly Core.U.1) — the MCU host board itself.\n//\n// A Core, not a peripheral: no tile driver and no host calls. The twin models the\n// board-level standards — STM32L422 power across run / low-power / stop / standby\n// modes, the on-board status LED, and the optional I2C pull-ups.\n//\n// MCU: STM32L422TB (Cortex-M4). Power numbers from its datasheet (DS12470 Rev 6,\n// TYP @ 3.0 V / 25 °C). Pad map per Core-U-1-b.json (V+ pad 10, GND pad 1,\n// I2C1 CLK/DAT pads 4/5).\nimport type { TileSim } from '../tileSim';\n\n// power_mode slider index → mode (datasheet operating modes).\nconst MODES = [\n  'run',\n  'lp_run',\n  'sleep',\n  'lp_sleep',\n  'stop0',\n  'stop1',\n  'stop2',\n  'standby',\n  'shutdown',\n] as const;\n// clock_idx slider index → MHz (matches the tile's MSI/HSI16/PLL clock options).\nconst CLOCKS = [1, 2, 16, 32] as const;\n\n// Run / Sleep current (µA) by clock (DS12470 T25 / T31, 3 V typ).\nconst RUN_UA: Record<number, number> = { 1: 190, 2: 265, 16: 1550, 32: 3000 };\nconst SLEEP_UA: Record<number, number> = { 1: 100, 2: 150, 16: 425, 32: 725 };\n// Fixed-current modes (µA) — clock-independent (T31/T33/T34/T35/T36/T37).\nconst FIXED_UA: Record<string, number> = {\n  lp_run: 190, // LP run @ 2 MHz MSI\n  lp_sleep: 52.5, // LP sleep @ 2 MHz\n  stop0: 115,\n  stop1: 4.0,\n  stop2: 0.75,\n  standby: 0.12, // 120 nA\n  shutdown: 0.031, // 31 nA\n};\n\nconst RAIL_MV = 3300; // V+ operating typical\nconst LED_R_OHM = 400; // R1 (schematic)\nconst LED_VF_MV = 1900; // red LED forward drop (assumed)\n\ninterface State {\n  power_mode: number; // index into MODES\n  clock_idx: number; // index into CLOCKS (run/sleep only)\n  led_on: number; // on-board red LED (PA8, active-high)\n  i2c_pullups: number; // optional 2.2k pull-ups on pads 4/5 populated\n  [field: string]: number;\n}\n\nconst clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));\nconst modeOf = (s: State) => MODES[clamp(s.power_mode, 0, MODES.length - 1)];\nconst clockOf = (s: State) => CLOCKS[clamp(s.clock_idx, 0, CLOCKS.length - 1)];\n\n// LED current when lit (Ohm's law on R1; off below the rail's Vf).\nconst ledUa = (s: State) =>\n  s.led_on && RAIL_MV > LED_VF_MV ? Math.round(((RAIL_MV - LED_VF_MV) / LED_R_OHM) * 1000) : 0;\n\n// MCU supply current (µA) for the selected mode.\nfunction coreUa(s: State): number {\n  const mode = modeOf(s);\n  if (mode === 'run') return RUN_UA[clockOf(s)];\n  if (mode === 'sleep') return SLEEP_UA[clockOf(s)];\n  return FIXED_UA[mode];\n}\n\nconst sim: TileSim<State> = {\n  tile: 'Core.ST.L4.1',\n\n  defaultState: {\n    power_mode: 0, // run\n    clock_idx: 1, // 2 MHz (MSI default)\n    led_on: 0,\n    i2c_pullups: 1,\n  },\n\n  controls: [\n    {\n      type: 'slider',\n      field: 'power_mode',\n      label: 'Mode (0 run·1 lpRun·2 sleep·3 lpSleep·4-6 stop0/1/2·7 standby·8 shutdown)',\n      min: 0,\n      max: 8,\n      step: 1,\n    },\n    {\n      type: 'slider',\n      field: 'clock_idx',\n      label: 'Clock (0:1·1:2·2:16·3:32 MHz, run/sleep only)',\n      min: 0,\n      max: 3,\n      step: 1,\n    },\n    { type: 'toggle', field: 'led_on', label: 'On-board LED (PA8)' },\n    { type: 'toggle', field: 'i2c_pullups', label: 'I2C pull-ups populated' },\n  ],\n\n  // No host calls — a Core has no peripheral driver.\n  hostCalls: {},\n\n  provenance: {\n    power: 'inferred', // MCU-mode currents canonical (DS12470); LED current estimated\n  },\n\n  // The board's only standing pad behaviour: when the optional 2.2k pull-ups are\n  // populated, I2C1 (pads 4 CLK / 5 DAT) idles high. The LED (PA8) is internal,\n  // not a numbered pad, so it isn't a pad output.\n  padOutputs(state) {\n    const up = state.i2c_pullups ? 1 : 0;\n    return { 'I2C1.CLK': up, 'I2C1.DAT': up };\n  },\n\n  // Supply draw on V+ (pad 10) / GND (pad 1): MCU-mode current + LED when lit.\n  power(state) {\n    const ua = coreUa(state) + ledUa(state);\n    return {\n      draw_ua: Math.round(ua * 1000) / 1000,\n      rails: [\n        {\n          name: 'V+',\n          role: 'supply',\n          v_mv: RAIL_MV,\n          i_ua: Math.round(ua * 1000) / 1000,\n          pads: ['10'],\n          note: `STM32L422 ${modeOf(state)}${state.led_on ? ' + LED' : ''}`,\n        },\n      ],\n    };\n  },\n};\n\nexport default sim;\n",
+    "status": "validated",
+    "updated_at": "2026-06-22T12:44:21.678Z"
+  },
   "power": [
     {
       "max": 3.6,
@@ -909,6 +977,58 @@
               }
             }
           ]
+        },
+        "13": {
+          "label": "Pad 13",
+          "default": "A14",
+          "options": [
+            {
+              "value": "A14",
+              "derived": {
+                "role": "gpio"
+              }
+            },
+            {
+              "af": 0,
+              "value": "SWCLK",
+              "derived": {
+                "role": "system"
+              }
+            },
+            {
+              "af": 4,
+              "value": "I2C1.SMBA",
+              "derived": {
+                "role": "gpio"
+              }
+            },
+            {
+              "af": 1,
+              "value": "LPTIM1.OUT",
+              "derived": {
+                "role": "timer-output"
+              }
+            }
+          ]
+        },
+        "14": {
+          "label": "Pad 14",
+          "default": "A13",
+          "options": [
+            {
+              "value": "A13",
+              "derived": {
+                "role": "gpio"
+              }
+            },
+            {
+              "af": 0,
+              "value": "SWDIO",
+              "derived": {
+                "role": "system"
+              }
+            }
+          ]
         }
       },
       "derives": "catalog.pads"
@@ -965,6 +1085,39 @@
           ]
         }
       ]
+    },
+    "pullups": {
+      "kind": "multiselect",
+      "group": "Pull-ups",
+      "label": "Enable software pull-ups",
+      "default": [],
+      "options": [
+        {
+          "label": "Pad 4 pull-up (via PA9)",
+          "value": "pad4",
+          "firmware_contract": [
+            {
+              "pin": "PA9",
+              "mode": "output",
+              "type": "gpio",
+              "drive": "high"
+            }
+          ]
+        },
+        {
+          "label": "Pad 5 pull-up (via PC15)",
+          "value": "pad5",
+          "firmware_contract": [
+            {
+              "pin": "PC15",
+              "mode": "output",
+              "type": "gpio",
+              "drive": "high"
+            }
+          ]
+        }
+      ],
+      "description": "Drive the on-tile pull-up resistors via their control pins. Useful for high-speed I2C (or any time pads 4 / 5 need a pull-up) without adding external resistors."
     },
     "bootloader": {
       "kind": "multiselect",
@@ -1251,13 +1404,13 @@
   },
   "family": "Core",
   "package": {
-    "pads": 12,
+    "pads": 14,
     "type": "T44",
     "size_x": 4000,
     "size_y": 4000,
     "size_z": 0
   },
-  "tile_id": 1,
+  "tile_id": 73,
   "features": {
     "led": {
       "kind": "led",
@@ -1292,6 +1445,30 @@
         }
       ],
       "boot_source": "hsi16"
+    },
+    "pullup_pad4": {
+      "kind": "pullup",
+      "label": "Software pull-up on pad 4",
+      "value": "2.2k",
+      "control": {
+        "pin": "PA9",
+        "via": "gpio",
+        "polarity": "active-high"
+      },
+      "target_pad": "4",
+      "description": "On-tile 2.2kΩ resistor between pad 4 and chip pin PA9 to support FM+ I2C communications. Drive PA9 high to engage; leave unconfigured / Hi-Z to disengage."
+    },
+    "pullup_pad5": {
+      "kind": "pullup",
+      "label": "Software pull-up on pad 5",
+      "value": "2.2k",
+      "control": {
+        "pin": "PC15",
+        "via": "gpio",
+        "polarity": "active-high"
+      },
+      "target_pad": "5",
+      "description": "On-tile 2.2kΩ resistor between pad 5 and chip pin PC15 to support FM+ I2C communications. Drive PC15 high to engage; leave unconfigured / Hi-Z to disengage."
     }
   },
   "headline": "USB-programmable Cortex-M4",
@@ -1480,9 +1657,9 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:36:00.552Z",
-  "description": "The USB-programmable Core.U.1 is based on the 80-MHz 32-bit Cortex-M4 STM32L422 with 128KB flash, 40KB SRAM, and a CoreMark score of 273.55.  The exposed pads provide a user-configurable combination of two fast-mode-plus I2C ports, one SPI port, three 12-bit ADCs, multiple timers, USART, an onboard comparator, and capacitive-touch input.  A programmable onboard LED provides a convenient status indicator.  If more I/O is needed, consider the larger Core.U.2 in a T48-22 package.",
-  "json_version": "0.33",
+  "updated_at": "2026-06-02T11:43:29.054Z",
+  "description": "The USB-programmable Core.ST.L4.1 is based on the 80-MHz 32-bit Cortex-M4 STM32L422 with 128KB flash, 40KB SRAM, and a CoreMark score of 273.55.  The exposed pads provide a user-configurable combination of two fast-mode-plus I2C ports, one SPI port, three 12-bit ADCs, multiple timers, USART, an onboard comparator, and capacitive-touch input.  A programmable onboard LED provides a convenient status indicator.  If more I/O is needed, consider the larger Core.ST.L4.2 in a T48-22 package.",
+  "json_version": "0.39",
   "application_notes": [
     {
       "details": "When the chip is blank, it will default into the bootloader when connected over USB.  Once there is code in the program space, you need to hold the BOOT0 pin low during reset (either power-on or via the NRST pin) to enter the bootloader.",
@@ -1491,6 +1668,12 @@
     {
       "details": "The onboard LED is connected to PA8 in an active-high configuration.",
       "heading": "LED"
+    },
+    {
+      "sort": 2,
+      "details": "The single-wire debug port is available on pads 13 (SWCLK) and 14 (SWDIO).  While not absolutely required, it is often helpful to have the ability to hold pads 22 (NRST) low when connecting to the debugger.  You can likely also use BOOT0 to help the debugger connect.",
+      "heading": "Single-Wire Debug & Bootloading",
+      "image_url": ""
     }
   ]
 }
