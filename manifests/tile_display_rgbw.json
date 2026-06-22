@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@abe7695",
   "tile": "Display.RGBW",
   "palette": {
     "label": "Display.RGBW",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_display_rgbw",
     "header": "tile_display_rgbw.h",
-    "version": "2.1.0"
+    "version": "2.2.0"
   },
   "handle": {
     "type": "tile_t",
@@ -436,6 +436,263 @@
       "returns": "uint8_t",
       "dsl_returns": "bool",
       "icon": "◑",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "ms_to_slope"
+      ],
+      "symbol": "tile_display_rgbw_ms_to_slope",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Convert a duration in milliseconds to the nearest AEU slope/pause code.",
+      "params": [
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Duration in milliseconds (0-8050)."
+        }
+      ],
+      "returns": "uint8_t"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_autonomous"
+      ],
+      "symbol": "tile_display_rgbw_set_autonomous",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Put a channel into (or out of) autonomous animation mode.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3 (R, B, G, W)."
+        },
+        {
+          "name": "enabled",
+          "type": "int",
+          "description": "1 = autonomous, 0 = manual."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_aeu"
+      ],
+      "symbol": "tile_display_rgbw_set_aeu",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Program one AEU sub-engine of a channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3."
+        },
+        {
+          "name": "aeu",
+          "type": "int",
+          "description": "Sub-engine index 1-3."
+        },
+        {
+          "name": "prog",
+          "type": "?const display_rgbw_aeu_t *",
+          "description": "5-keyframe ramp + slope times + repeat."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_animation"
+      ],
+      "symbol": "tile_display_rgbw_set_animation",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Set a channel's overall autonomous playback.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3."
+        },
+        {
+          "name": "num_aeu",
+          "type": "int",
+          "description": "How many AEUs to chain, 1-3."
+        },
+        {
+          "name": "pause_start",
+          "type": "int",
+          "description": "Start-of-pattern pause code (0-15, see ms_to_slope)."
+        },
+        {
+          "name": "pause_end",
+          "type": "int",
+          "description": "End-of-pattern pause code (0-15)."
+        },
+        {
+          "name": "repeats",
+          "type": "int",
+          "description": "Whole-pattern repeat: 0-14, 15 = infinite."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_exp_dimming"
+      ],
+      "symbol": "tile_display_rgbw_set_exp_dimming",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Enable/disable exponential PWM dimming for a channel (Dev_Config_5).",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3."
+        },
+        {
+          "name": "enabled",
+          "type": "int",
+          "description": "1 = exponential curve, 0 = linear."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_phase_align"
+      ],
+      "symbol": "tile_display_rgbw_set_phase_align",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Set a channel's PWM phase-align method (Dev_Config_7).",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3."
+        },
+        {
+          "name": "mode",
+          "type": "int",
+          "description": "0/1 = forward, 2 = middle, 3 = backward align."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "update"
+      ],
+      "symbol": "tile_display_rgbw_update",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Latch pending config/animation register writes (CMD_Update = 0x55).",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "animate_start"
+      ],
+      "symbol": "tile_display_rgbw_animate_start",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Start (or restart) autonomous animation on all enabled channels.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "animate_stop"
+      ],
+      "symbol": "tile_display_rgbw_animate_stop",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Stop autonomous animation and return to the INITIAL state.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "animate_pause"
+      ],
+      "symbol": "tile_display_rgbw_animate_pause",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Pause autonomous animation, holding the current output.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "animate_continue"
+      ],
+      "symbol": "tile_display_rgbw_animate_continue",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Resume autonomous animation after a pause.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "breathe_auto"
+      ],
+      "symbol": "tile_display_rgbw_breathe_auto",
+      "header": "tile_display_rgbw.h",
+      "category": "tile",
+      "description": "Configure + start an autonomous breathe on one channel.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-3."
+        },
+        {
+          "name": "peak",
+          "type": "int",
+          "description": "Peak brightness 0-255."
+        },
+        {
+          "name": "period_ms",
+          "type": "int",
+          "description": "Full breathe period (up+down) in ms."
+        },
+        {
+          "name": "repeats",
+          "type": "int",
+          "description": "Whole-pattern repeat: 0-14, 15 = infinite."
+        }
+      ],
+      "returns": "void",
       "receiver": "tile_t *"
     }
   ],

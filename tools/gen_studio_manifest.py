@@ -1086,7 +1086,7 @@ def main():
             "definition": ROOT / "definitions/Display-RGBW-a.json",
             "prefix": "tile_display_rgbw",
             "init": "tile_display_rgbw_init",
-            "version": "2.1.0",
+            "version": "2.2.0",
         },
         {
             "path": ROOT / "drivers/tile_sense_i_6p6.h",
@@ -1164,6 +1164,13 @@ def main():
             "prefix": "tile_drive_dc_h",
             "init": "tile_drive_dc_h_init",
             "version": "4.1.0",
+        },
+        {
+            "path": ROOT / "drivers/tile_store_o_128.h",
+            "definition": ROOT / "definitions/Store-O-128-a.json",
+            "prefix": "tile_store_o_128",
+            "init": "tile_store_o_128_init",
+            "version": "1.0.0",
         },
     ]
 
