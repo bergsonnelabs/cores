@@ -1,5 +1,5 @@
 /**
- * DFU Bootloader for Core.H (STM32H523HE)
+ * DFU Bootloader for Core.ST.H5 (STM32H523HE)
  *
  * Boot flow:
  *   1. Check noinit SRAM (0x20043FF0) for magic value (0xDEADBEEF)
@@ -14,7 +14,7 @@
  * USB DFU 1.1 class device — uses control transfers only (EP0).
  * Flash programming: sector erase (8KB) + double-word (8-byte) writes.
  *
- * Ported from the Core.U (STM32L422) bootloader. Uses the H5 USB DRD
+ * Ported from the Core.ST.L4 (STM32L422) bootloader. Uses the H5 USB DRD
  * peripheral (32-bit registers, 2KB PMA) via ll_usb_drd.h.
  */
 

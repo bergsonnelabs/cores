@@ -1,5 +1,5 @@
 /**
- * core_ble.h — BLE for Core.W
+ * core_ble.h — BLE for Core.ST.W5
  *
  * Simple BLE API: advertise, connect, define GATT services.
  * The BLE stack, sequencer, and radio are managed internally.
@@ -10,7 +10,7 @@
  *   core_ble_advertise("MY-DEVICE");
  *   while (1) { core_ble_process(); }
  *
- * Requires: Core.W (STM32WBA55), BLE_ENABLED=1, clock >= "default" (HSE).
+ * Requires: Core.ST.W5 (STM32WBA55), BLE_ENABLED=1, clock >= "default" (HSE).
  *
  * @studio category ble label=Core.BLE icon=ᛒ
  *
@@ -18,7 +18,7 @@
  *   id:    ble
  *   name:  BLE — Bluetooth Low Energy
  *   page:  /docs/sdk/ble
- *   blurb: Core.W-only API for BLE peripheral mode: advertise, define
+ *   blurb: Core.ST.W5-only API for BLE peripheral mode: advertise, define
  *          GATT services + characteristics, read/write/notify, and
  *          connect/disconnect callbacks. Currently Tier 1 only — there
  *          are no DSL bindings yet, and the API is C-callback heavy
@@ -30,7 +30,7 @@
 #define CORE_BLE_H
 
 #if !defined(STM32WBA55xx)
-#error "core_ble.h: BLE is only available on Core.W (STM32WBA55). This tile does not have a BLE radio."
+#error "core_ble.h: BLE is only available on Core.ST.W5 (STM32WBA55). This tile does not have a BLE radio."
 #endif
 
 #include <stdint.h>

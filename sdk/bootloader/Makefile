@@ -1,4 +1,4 @@
-# DFU Bootloader for Core.U (STM32L422TB)
+# DFU Bootloader for Core.ST.L4 (STM32L422TB)
 #
 # Standalone build — no coregen, no config.json.
 # Produces a minimal bootloader binary (<8KB) that checks RTC BKP0

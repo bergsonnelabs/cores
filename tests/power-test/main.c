@@ -1,7 +1,7 @@
 /**
  * Power Management Test
  *
- * Tests sleep modes and wakeup sources on Core.U.2.
+ * Tests sleep modes and wakeup sources on Core.ST.L4.2.
  * USB serial interface — type a command + Enter.
  *
  * Commands:

@@ -2,10 +2,10 @@
  * hal_adc.c — ADC HAL driver (Tier 1)
  *
  * Implementation covers:
- *   STM32L011xx (Core.L)  — ADC v3: simple CHSELR, no ADVREGEN
- *   STM32L422xx (Core.U)  — ADC v5: ADVREGEN, SMPR1/SMPR2, oversampling
- *   STM32WBA55xx (Core.W) — ADC4: similar to L0 layout, ADVREGEN, CCR
- *   STM32H523xx (Core.H)  — ADC v5+: like L4, 12-bit, 1024× oversample
+ *   STM32L011xx (Core.ST.L0)  — ADC v3: simple CHSELR, no ADVREGEN
+ *   STM32L422xx (Core.ST.L4)  — ADC v5: ADVREGEN, SMPR1/SMPR2, oversampling
+ *   STM32WBA55xx (Core.ST.W5) — ADC4: similar to L0 layout, ADVREGEN, CCR
+ *   STM32H523xx (Core.ST.H5)  — ADC v5+: like L4, 12-bit, 1024× oversample
  *
  * Per-family internal channel numbers:
  *   L0:  VREFINT = CH17, TEMP = CH16

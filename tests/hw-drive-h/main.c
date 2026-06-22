@@ -22,7 +22,7 @@
 #include "tile_display_rgbw.h"
 #include "tile_drive_h.h"
 
-#define TRIG_PAD  3  /* Core.U.1 pad 3 → Drive.H IN/TRIG */
+#define TRIG_PAD  3  /* Core.ST.L4.1 pad 3 → Drive.H IN/TRIG */
 
 static tile_t led;
 static tile_t haptic;

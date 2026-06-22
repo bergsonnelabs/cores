@@ -18,7 +18,7 @@
  *   id:    usb
  *   name:  USB — virtual serial port (CDC)
  *   page:  /docs/sdk/usb
- *   blurb: Core.U / Core.H only. CDC virtual COM port — printf-style
+ *   blurb: Core.ST.L4 / Core.ST.H5 only. CDC virtual COM port — printf-style
  *          output (print, print_int, print_float, print_bool) with
  *          full Twin coverage (the simulator's CDC pane is a real-time
  *          mirror), plus byte-level TX/RX, ring-buffer reads, and a
@@ -30,9 +30,9 @@
 #ifndef CORE_USB_H
 #define CORE_USB_H
 
-/* USB CDC requires a USB peripheral: Core.U (STM32L422) or Core.H (STM32H523). */
+/* USB CDC requires a USB peripheral: Core.ST.L4 (STM32L422) or Core.ST.H5 (STM32H523). */
 #if !defined(STM32L422xx) && !defined(STM32H523xx)
-#error "core_usb.h: USB is not available on this Core tile. Only Core.U and Core.H have USB hardware."
+#error "core_usb.h: USB is not available on this Core tile. Only Core.ST.L4 and Core.ST.H5 have USB hardware."
 #endif
 
 #include "hal_usb_cdc.h"
@@ -62,7 +62,7 @@ static inline int core_usb_write(const uint8_t *buf, uint16_t len)
 /**
  * Print a string followed by a newline. Thin wrapper for DSL-style callers.
  *
- * @studio expose category=usb icon=❝ name=print availability=Core.U,Core.H
+ * @studio expose category=usb icon=❝ name=print availability=Core.ST.L4,Core.ST.H5
  * @studio twin full
  * @param text The message to print.
  */
@@ -74,7 +74,7 @@ static inline void core_usb_print(const char *s)
 /**
  * Print a signed integer followed by a newline.
  *
- * @studio expose category=usb name=print_int availability=Core.U,Core.H
+ * @studio expose category=usb name=print_int availability=Core.ST.L4,Core.ST.H5
  * @studio twin full
  * @param value The integer to print (decimal).
  */
@@ -86,7 +86,7 @@ static inline void core_usb_print_int(int v)
 /**
  * Print a double with a newline. %g trims trailing zeros for readability.
  *
- * @studio expose category=usb name=print_float availability=Core.U,Core.H
+ * @studio expose category=usb name=print_float availability=Core.ST.L4,Core.ST.H5
  * @studio twin full
  * @param value The float to print.
  */
@@ -98,7 +98,7 @@ static inline void core_usb_print_float(double v)
 /**
  * Print "true" / "false" followed by a newline.
  *
- * @studio expose category=usb name=print_bool availability=Core.U,Core.H
+ * @studio expose category=usb name=print_bool availability=Core.ST.L4,Core.ST.H5
  * @studio twin full
  * @param value {bool} The boolean to print.
  */
@@ -163,7 +163,7 @@ static inline int core_usb_try_read(uint8_t *byte)
 //   need persistent storage today reach for NVM or SD via SPI.
 //
 // @studio unsupported tier=1 value=M title="USB Host mode"
-//   Core.H has DRD silicon but the wrapper is device-only. Most
+//   Core.ST.H5 has DRD silicon but the wrapper is device-only. Most
 //   projects don't need host mode; the few that do (USB-keyboard /
 //   thumb-drive readers) drop into the lower-layer USB stack.
 //

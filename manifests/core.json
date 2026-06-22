@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@2a1a847",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -165,7 +165,7 @@
             0,
             31
           ],
-          "description": "Register index (Core.L caps at 4; others at 31)."
+          "description": "Register index (Core.ST.L0 caps at 4; others at 31)."
         }
       ],
       "returns": "uint32_t",
@@ -188,7 +188,7 @@
             0,
             31
           ],
-          "description": "Register index (Core.L caps at 4; others at 31)."
+          "description": "Register index (Core.ST.L0 caps at 4; others at 31)."
         },
         {
           "name": "value",
@@ -211,7 +211,7 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.H"
+          "Core.ST.H5"
         ]
       }
     },
@@ -238,7 +238,7 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.H"
+          "Core.ST.H5"
         ]
       }
     },
@@ -265,7 +265,7 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.H"
+          "Core.ST.H5"
         ]
       }
     },
@@ -283,7 +283,7 @@
       "dsl_returns": "int",
       "availability": {
         "cores": [
-          "Core.H"
+          "Core.ST.H5"
         ]
       }
     },
@@ -1076,8 +1076,8 @@
       "icon": "❝",
       "availability": {
         "cores": [
-          "Core.U",
-          "Core.H"
+          "Core.ST.L4",
+          "Core.ST.H5"
         ]
       }
     },
@@ -1100,8 +1100,8 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.U",
-          "Core.H"
+          "Core.ST.L4",
+          "Core.ST.H5"
         ]
       }
     },
@@ -1124,8 +1124,8 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.U",
-          "Core.H"
+          "Core.ST.L4",
+          "Core.ST.H5"
         ]
       }
     },
@@ -1148,8 +1148,8 @@
       "returns": "void",
       "availability": {
         "cores": [
-          "Core.U",
-          "Core.H"
+          "Core.ST.L4",
+          "Core.ST.H5"
         ]
       }
     },

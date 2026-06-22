@@ -1,11 +1,11 @@
 /**
- * val-nvm-eeprom -- Validation: NVM (EEPROM) on Core.L
+ * val-nvm-eeprom -- Validation: NVM (EEPROM) on Core.ST.L0
  *
  * Core.ST.L0.1, clock=default
  *
  * Exercises: core_init, core_nvm_read, core_nvm_write, core_nvm_size
  *
- * Core.L (STM32L011) has 512 bytes of true EEPROM at 0x08080000.
+ * Core.ST.L0 (STM32L011) has 512 bytes of true EEPROM at 0x08080000.
  * This test writes a 4-byte pattern, reads it back, and checks size.
  */
 
@@ -17,7 +17,7 @@ int main(void)
     core_init();
     core_led_init();
 
-    /* Check NVM size -- 512 bytes on Core.L */
+    /* Check NVM size -- 512 bytes on Core.ST.L0 */
     uint32_t nvm_sz = core_nvm_size();
     (void)nvm_sz;
 

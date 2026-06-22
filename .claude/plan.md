@@ -1,7 +1,7 @@
 # USB CDC Implementation Plan
 
 ## Goal
-Add USB CDC (virtual serial port) support to the Core firmware SDK, targeting Core.U.2 (STM32L422). When a Core.U.2 is plugged into a Mac via USB, it shows up as `/dev/tty.usbmodem*` and the firmware can send/receive data — replacing the need for a UART adapter.
+Add USB CDC (virtual serial port) support to the Core firmware SDK, targeting Core.ST.L4.2 (STM32L422). When a Core.ST.L4.2 is plugged into a Mac via USB, it shows up as `/dev/tty.usbmodem*` and the firmware can send/receive data — replacing the need for a UART adapter.
 
 ## Architecture
 
@@ -96,7 +96,7 @@ int main(void) {
     while (!hal_usb_cdc_connected())
         ;  // Wait for host to open port
 
-    hal_usb_cdc_printf("Hello from Core.U.2!\n");
+    hal_usb_cdc_printf("Hello from Core.ST.L4.2!\n");
 
     while (1) {
         // Echo + ADC reading

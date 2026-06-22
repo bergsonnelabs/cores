@@ -4,7 +4,7 @@
  * Register definitions, PMA (Packet Memory Area / USBSRAM) access helpers,
  * and endpoint register manipulation for STM32H5 USB DRD Full-Speed.
  *
- * This peripheral is present on STM32H523 (Core.H).
+ * This peripheral is present on STM32H523 (Core.ST.H5).
  * STM32L4 uses a different USB IP (USB Device FS) — see ll_usb.h.
  *
  * Key differences from L4 USB Device FS:

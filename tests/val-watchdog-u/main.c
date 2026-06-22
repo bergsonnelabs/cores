@@ -1,5 +1,5 @@
 /**
- * val-watchdog-u -- Validation: Watchdog + fault callback on Core.U
+ * val-watchdog-u -- Validation: Watchdog + fault callback on Core.ST.L4
  *
  * Core.ST.L4.2, clock=max
  *

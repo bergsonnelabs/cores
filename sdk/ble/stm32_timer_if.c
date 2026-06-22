@@ -6,7 +6,7 @@
  * interrupt at the exact timeout. This provides deterministic timing
  * for BLE connection event scheduling.
  *
- * LPTIM2 is not exposed on any Core.W pads, so it's safe to reserve
+ * LPTIM2 is not exposed on any Core.ST.W5 pads, so it's safe to reserve
  * for BLE. Timer ticks = milliseconds.
  */
 

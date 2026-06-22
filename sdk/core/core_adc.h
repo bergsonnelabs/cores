@@ -29,7 +29,7 @@ typedef hal_adc_t core_adc_t;
 
 /** Default ADC instance — emitted by coregen into core_init.c when the
  * project declares any ADC pad. Today this is always `core_adc1`; multi-ADC
- * (Core.H) lands when tile JSON grows per-pad peripheral tagging. */
+ * (Core.ST.H5) lands when tile JSON grows per-pad peripheral tagging. */
 extern core_adc_t core_adc1;
 
 /* ============================================================
@@ -205,7 +205,7 @@ static inline uint16_t core_adc_dma_read(core_adc_t *adc, uint8_t pad)
 //
 // @studio unsupported tier=2 value=M title="No multi-instance ADC dispatch"
 //   Tier 2 wrappers always hit core_adc1. Cores with multiple ADCs
-//   (Core.H has ADC1 + ADC2) need per-pad peripheral tagging in tile
+//   (Core.ST.H5 has ADC1 + ADC2) need per-pad peripheral tagging in tile
 //   JSON before coregen can emit the dispatch. Until then DSL programs
 //   are limited to whichever pads coregen routed to ADC1.
 //

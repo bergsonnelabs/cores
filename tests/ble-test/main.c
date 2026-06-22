@@ -21,7 +21,7 @@ int main(void)
     /* ---- BLE ---- */
     core_ble_set_services(app_ble_services);
     core_ble_init(CORE_BLE_PAIRING_NONE);
-    core_ble_advertise("Core.W");
+    core_ble_advertise("Core.ST.W5");
 
     uint8_t counter = 0;
     uint32_t last_notify = 0;

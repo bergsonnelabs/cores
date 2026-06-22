@@ -1,5 +1,5 @@
 /**
- * val-lpuart -- Validation: LPUART1 pad assignments on Core.L
+ * val-lpuart -- Validation: LPUART1 pad assignments on Core.ST.L0
  *
  * Core.ST.L0.1, clock=high
  * Pad 4 = LPUART1.TX, Pad 2 = LPUART1.RX

@@ -4,8 +4,8 @@
  * Sends debug text over the SWD trace pin (SWO) to the debug
  * probe. No UART adapter needed — uses the same cable you flash with.
  *
- * Available on Cortex-M3, M4, M33 (Core.U, Core.W, Core.H).
- * NOT available on Cortex-M0+ (Core.L — no ITM hardware).
+ * Available on Cortex-M3, M4, M33 (Core.ST.L4, Core.ST.W5, Core.ST.H5).
+ * NOT available on Cortex-M0+ (Core.ST.L0 — no ITM hardware).
  *
  * Usage:
  *   ll_itm_init(80000000);       // Call once with SYSCLK
@@ -48,7 +48,7 @@
  *   sysclk_hz:  system clock frequency (e.g., 80000000)
  *   swo_baud:   desired SWO baud rate (2000000 is typical)
  *
- * The SWO pin (TRACESWO) must be available — on Core.U.2 this
+ * The SWO pin (TRACESWO) must be available — on Core.ST.L4.2 this
  * is PB3 (Pad 12), but it's directly connected to the ST-Link
  * trace input, so no GPIO config is needed.
  *

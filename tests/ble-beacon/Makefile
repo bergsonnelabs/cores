@@ -1,5 +1,5 @@
 # Project Makefile — run make from inside the project folder
-TILE         := Core.ST.W5.1
+TILE         := Core.ST.W5
 PROJECT      := $(notdir $(CURDIR))
 PROJECT_DIR  := $(CURDIR)
 ROOT         := $(realpath $(dir $(lastword $(MAKEFILE_LIST)))../..)

@@ -1,8 +1,8 @@
 /**
  * hal_adc.h — ADC HAL driver (Tier 1)
  *
- * Supports all four Core families: L0 (Core.L), L4 (Core.U),
- * WBA (Core.W), H5 (Core.H).
+ * Supports all four Core families: L0 (Core.ST.L0), L4 (Core.ST.L4),
+ * WBA (Core.ST.W5), H5 (Core.ST.H5).
  *
  * Features:
  *   - Configurable resolution (6/8/10/12-bit)

@@ -1,5 +1,5 @@
 /**
- * Core.L — Timer PWM + Capture via pad 2↔9
+ * Core.ST.L0 — Timer PWM + Capture via pad 2↔9
  *
  * Pad 2 = PA3 → TIM2.CH4 (AF2) PWM output
  * Pad 9 = PB0 → TIM2.CH2 (AF2) input capture

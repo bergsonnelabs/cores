@@ -13,7 +13,7 @@
  * call core_usb_init() first, then use core_usb_hid_send() /
  * core_usb_hid_set_rx_callback().
  *
- * Only available on Core.U (STM32L422) and Core.H (STM32H523).
+ * Only available on Core.ST.L4 (STM32L422) and Core.ST.H5 (STM32H523).
  *
  * VID:1209 PID:0001, Interface 2 = HID (vendor-defined, usage page 0xFF00).
  *
@@ -21,7 +21,7 @@
  *   id:    usb_hid
  *   name:  USB HID — vendor reports
  *   blurb: Tier 1 only. Bidirectional 64-byte vendor HID reports over the
- *          composite CDC+HID device on Core.U / Core.H — send via
+ *          composite CDC+HID device on Core.ST.L4 / Core.ST.H5 — send via
  *          core_usb_hid_send(), receive via a callback. Useful for
  *          high-throughput driverless host I/O (hidapi / pyusb / Web HID),
  *          e.g. the CMSIS-DAP probe transport. No DSL surface —
@@ -32,7 +32,7 @@
 #define CORE_USB_HID_H
 
 #if !defined(STM32L422xx) && !defined(STM32H523xx)
-#error "core_usb_hid.h: USB HID is not available on this Core tile. Only Core.U and Core.H have USB hardware."
+#error "core_usb_hid.h: USB HID is not available on this Core tile. Only Core.ST.L4 and Core.ST.H5 have USB hardware."
 #endif
 
 #include "hal_usb_cdc.h"

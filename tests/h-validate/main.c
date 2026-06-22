@@ -1,5 +1,5 @@
 /**
- * Core.H Power Test — Clean End-to-End
+ * Core.ST.H5 Power Test — Clean End-to-End
  *
  * Tests sleep and stop modes using the SDK API.
  *
@@ -33,7 +33,7 @@ int main(void)
         core_delay_ms(100);
     core_delay_ms(500);
 
-    core_usb_printf("\r\n*** Core.H Power Test ***\r\n\r\n");
+    core_usb_printf("\r\n*** Core.ST.H5 Power Test ***\r\n\r\n");
 
     /* ---- Test 1: Sleep ---- */
     core_usb_printf("TEST 1: Sleep for ~2s...\r\n");

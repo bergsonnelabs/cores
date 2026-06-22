@@ -7,7 +7,7 @@
  * This test MUST FAIL to compile. It verifies that core_dac.h correctly
  * produces a #error when included on a Core that lacks DAC hardware.
  *
- * Core.L is STM32L011 -- no DAC peripheral. core_dac.h contains:
+ * Core.ST.L0 is STM32L011 -- no DAC peripheral. core_dac.h contains:
  *   #if !defined(STM32H523xx)
  *   #error "core_dac.h: DAC is not available on this Core tile."
  *   #endif
@@ -18,7 +18,7 @@
 
 #include "core.h"
 
-/* This include MUST trigger a compile-time #error on Core.L */
+/* This include MUST trigger a compile-time #error on Core.ST.L0 */
 #include "core_dac.h"
 
 int main(void)

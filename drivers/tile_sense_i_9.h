@@ -839,7 +839,7 @@ uint8_t tile_sense_i_9_mag_self_test(tile_t* tile);
 /* the ICM-20948 datasheet to detect a flip or read a heading.     */
 /*                                                                  */
 /* All conversions are integer-only so they run cheaply on the     */
-/* Cortex-M0+ in Core.U / Core.W without pulling in the soft-FP    */
+/* Cortex-M0+ in Core.ST.L4 / Core.ST.W5 without pulling in the soft-FP    */
 /* library.                                                         */
 /* ============================================================== */
 

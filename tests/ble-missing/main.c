@@ -11,7 +11,7 @@ int main(void)
     /* To add GATT services, export from the BLE Contract Editor into ble_services/ */
     /* core_ble_set_services(app_ble_services); */
     core_ble_init(CORE_BLE_PAIRING_NONE);
-    core_ble_advertise("Core.W");
+    core_ble_advertise("Core.ST.W5");
 
     while (1) {
         core_ble_process();

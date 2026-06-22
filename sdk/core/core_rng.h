@@ -2,8 +2,8 @@
  * core_rng.h — Hardware Random Number Generator
  *
  * Generates true random numbers using analog noise sources.
- * Available on Core.U (STM32L422), Core.W (STM32WBA55), and Core.H (STM32H523).
- * Not available on Core.L (STM32L011).
+ * Available on Core.ST.L4 (STM32L422), Core.ST.W5 (STM32WBA55), and Core.ST.H5 (STM32H523).
+ * Not available on Core.ST.L0 (STM32L011).
  *
  * Usage:
  *   core_rng_init();
@@ -17,8 +17,8 @@
  * @studio coverage
  *   id:    rng
  *   name:  RNG — hardware random numbers
- *   blurb: Wraps the analog-noise RNG peripheral on Core.U / Core.W /
- *          Core.H (Core.L has no RNG). Tier 2 exposes a single 32-bit
+ *   blurb: Wraps the analog-noise RNG peripheral on Core.ST.L4 / Core.ST.W5 /
+ *          Core.ST.H5 (Core.ST.L0 has no RNG). Tier 2 exposes a single 32-bit
  *          read (`rng.read32 -> int`); the Twin backs it with a seeded
  *          xorshift PRNG so DSL programs replay identically across runs.
  *          Bulk fill, seed-error check, and deinit stay Tier 1.
@@ -28,7 +28,7 @@
 #define CORE_RNG_H
 
 #if !defined(STM32L422xx) && !defined(STM32WBA55xx) && !defined(STM32H523xx)
-#error "core_rng.h: Hardware RNG is not available on this Core tile. Only Core.U, Core.W, and Core.H have an RNG peripheral."
+#error "core_rng.h: Hardware RNG is not available on this Core tile. Only Core.ST.L4, Core.ST.W5, and Core.ST.H5 have an RNG peripheral."
 #endif
 
 #include "ll_rng.h"
@@ -39,7 +39,7 @@
  * Enables the peripheral clock, configures the RNG, and waits
  * for the first random number to be ready.
  *
- * On Core.U: requires HSI48 to be running (auto-enabled if USB is used,
+ * On Core.ST.L4: requires HSI48 to be running (auto-enabled if USB is used,
  * otherwise call ll_rcc_hsi48_enable() first).
  */
 static inline void core_rng_init(void)

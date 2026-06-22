@@ -1,6 +1,6 @@
 # h1-wasm-blink — the A4c proof-of-life. Loads a precompiled `.wasm`
 # module into WAMR and drives a host-import loop that flashes the
-# onboard LED via core_led_heartbeat. Core.H only today; Core.W gets
+# onboard LED via core_led_heartbeat. Core.ST.H5 only today; Core.ST.W5 gets
 # its own example once WAMR is verified here.
 #
 # Run from this folder: `make`. Flash: `make flash-dfu`.

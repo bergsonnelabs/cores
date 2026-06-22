@@ -1,5 +1,5 @@
 /**
- * Wire + UART + SPI Loopback Diagnostic — Core.W
+ * Wire + UART + SPI Loopback Diagnostic — Core.ST.W5
  *
  * Phase 1: GPIO wire check (PA12 output → PB4 input, no AF)
  * Phase 2: UART loopback (USART2: PA12 TX → PB4 RX)

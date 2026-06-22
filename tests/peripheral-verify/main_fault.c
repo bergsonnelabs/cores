@@ -1,5 +1,5 @@
 /**
- * Fault Handler Test — Core.W
+ * Fault Handler Test — Core.ST.W5
  *
  * Blinks LED 5 times rapidly, then triggers a HardFault.
  * Expected result: LED switches to SOS pattern (3 short, 3 long, 3 short).

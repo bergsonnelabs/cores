@@ -125,11 +125,11 @@ static void fault_usb_reg(const char *name, uint32_t val)
 
 /* MCU-specific LED pin.  Must match the tile JSON for each family. */
 #if defined(STM32WBA55xx) || defined(STM32H523xx)
-  /* Core.W: PB12 (active-high)    Core.H: PB12 (active-high) */
+  /* Core.ST.W5: PB12 (active-high)    Core.ST.H5: PB12 (active-high) */
   #define FAULT_LED_PORT   GPIOB
   #define FAULT_LED_PIN    12
 #else
-  /* Core.U / Core.L: PA8 (active-high) */
+  /* Core.ST.L4 / Core.ST.L0: PA8 (active-high) */
   #define FAULT_LED_PORT   GPIOA
   #define FAULT_LED_PIN    8
 #endif

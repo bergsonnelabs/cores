@@ -4,7 +4,7 @@
  * 32-bit registers that persist through resets and Standby mode.
  * Useful for crash counters, boot flags, and state preservation.
  *
- * Count: Core.L has 5 registers (0–4), all others have 32 (0–31).
+ * Count: Core.ST.L0 has 5 registers (0–4), all others have 32 (0–31).
  * Retained as long as VBAT or VDD is present.
  *
  * Usage:
@@ -21,7 +21,7 @@
  *   blurb: 32-bit registers retained through reset and Standby (and across
  *          power loss when VBAT is wired). Tier 2 read/write helpers take
  *          an index and resolve the underlying RTC/TAMP block per Core
- *          family — Core.L exposes 5 registers, others expose 32. Useful
+ *          family — Core.ST.L0 exposes 5 registers, others expose 32. Useful
  *          for boot counters, sticky flags, and small scraps of state.
  */
 
@@ -76,7 +76,7 @@ static inline void _core_backup_ensure_clk(void)
  *
  * @studio expose category=backup name=read returns=int
  * @studio twin full
- * @param index [0..31] Register index (Core.L caps at 4; others at 31).
+ * @param index [0..31] Register index (Core.ST.L0 caps at 4; others at 31).
  */
 static inline uint32_t core_backup_read(uint8_t index)
 {
@@ -90,7 +90,7 @@ static inline uint32_t core_backup_read(uint8_t index)
  *
  * @studio expose category=backup name=write
  * @studio twin full
- * @param index [0..31] Register index (Core.L caps at 4; others at 31).
+ * @param index [0..31] Register index (Core.ST.L0 caps at 4; others at 31).
  * @param value 32-bit value to store.
  */
 static inline void core_backup_write(uint8_t index, uint32_t value)

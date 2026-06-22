@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@2a1a847",
   "category": "backup",
   "label": "Core.Backup",
   "icon": "◫",
@@ -31,7 +31,7 @@
             0,
             31
           ],
-          "description": "Register index (Core.L caps at 4; others at 31)."
+          "description": "Register index (Core.ST.L0 caps at 4; others at 31)."
         }
       ],
       "studio_exposed": true,
@@ -50,7 +50,7 @@
             0,
             31
           ],
-          "description": "Register index (Core.L caps at 4; others at 31)."
+          "description": "Register index (Core.ST.L0 caps at 4; others at 31)."
         },
         {
           "name": "value",

@@ -1,5 +1,5 @@
 /**
- * Core.H — Watchdog test (self-verifying)
+ * Core.ST.H5 — Watchdog test (self-verifying)
  *
  * Boot 1: 3 scope pulses, start IWDG (2s), feed 4×, stop feeding → reset
  * Boot 2: detects IWDG flag → 10 rapid pulses = SUCCESS, then heartbeat

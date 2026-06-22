@@ -1,5 +1,5 @@
 {
-  "id": "Core.L",
+  "id": "Core.ST.L0",
   "mcu": "STM32L011",
   "freq": "32 MHz",
   "arch": "M0+",
@@ -58,7 +58,7 @@
     "coregen.i2c": "compile",
     "coregen.analog": {
       "status": "compile",
-      "note": "Code generic; hw-verified on Core.W"
+      "note": "Code generic; hw-verified on Core.ST.W5"
     },
     "coregen.spi": "na",
     "coregen.uart": "compile",
@@ -74,11 +74,11 @@
     "power.wkup_wake": "",
     "power.rtc_alarm": {
       "status": "compile",
-      "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.L"
+      "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.ST.L0"
     },
     "power.backup": {
       "status": "compile",
-      "note": "5 backup registers (BKP0-4) at RTC+0x50. Not yet hw-tested on Core.L"
+      "note": "5 backup registers (BKP0-4) at RTC+0x50. Not yet hw-tested on Core.ST.L0"
     },
     "security.rng": "na",
     "security.aes": "na",
@@ -96,7 +96,7 @@
     "adv.i3c_target": "na",
     "adv.comp": {
       "status": "compile",
-      "note": "L011 has COMP1/COMP2 but not routed on Core.L.1 pinout"
+      "note": "L011 has COMP1/COMP2 but not routed on Core.ST.L0.1 pinout"
     },
     "adv.dac": "na"
   }

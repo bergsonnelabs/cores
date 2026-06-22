@@ -2,7 +2,7 @@
  * ll_dac.h — Low-level DAC (Digital-to-Analog Converter)
  *
  * Minimal driver for the 12-bit DAC on STM32H5. Single channel,
- * direct output to a GPIO pin (PA5 on Core.H pad 9).
+ * direct output to a GPIO pin (PA5 on Core.ST.H5 pad 9).
  *
  * Usage:
  *   ll_rcc_ahb2_clk_enable(LL_AHB2_DAC1);
@@ -33,7 +33,7 @@
 #define DAC_CR_EN1          (1UL << 0)
 #define DAC_CR_TEN1         (1UL << 1)
 
-/* CR bits — channel 2 (PA5, pad 9 on Core.H) */
+/* CR bits — channel 2 (PA5, pad 9 on Core.ST.H5) */
 #define DAC_CR_EN2          (1UL << 16)
 #define DAC_CR_TEN2         (1UL << 17)
 
@@ -47,7 +47,7 @@
 #define LL_AHB2_DAC1        (1UL << 11)
 
 /**
- * Initialize DAC channel 2 (PA5, pad 9 on Core.H).
+ * Initialize DAC channel 2 (PA5, pad 9 on Core.ST.H5).
  * Enables the DAC with output buffer connected to the pin.
  * GPIO must already be configured as analog.
  * AHB2 clock must be enabled: ll_rcc_ahb2_clk_enable(LL_AHB2_DAC1).

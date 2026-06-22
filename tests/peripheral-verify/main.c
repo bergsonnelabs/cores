@@ -1,5 +1,5 @@
 /**
- * Peripheral Verification Phase 2 — Core.W (STM32WBA55)
+ * Peripheral Verification Phase 2 — Core.ST.W5 (STM32WBA55)
  *
  * Extends the original autonomous test suite with:
  *   7.  Watchdog    — start IWDG(10s), feed 3×, verify no reset; detect WDT reset flag

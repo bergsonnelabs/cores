@@ -1,5 +1,5 @@
 /**
- * Core.H — CSI 4 MHz test (clock = "low")
+ * Core.ST.H5 — CSI 4 MHz test (clock = "low")
  */
 
 #include "core.h"

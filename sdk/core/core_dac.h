@@ -4,7 +4,7 @@
  * Output a 12-bit analog voltage on a DAC-capable pad.
  * The DAC instance is configured by coregen based on config.json.
  *
- * Only available on Core.H (STM32H523).
+ * Only available on Core.ST.H5 (STM32H523).
  *
  * Usage:
  *   core_dac_init();
@@ -16,7 +16,7 @@
  * @studio coverage
  *   id:    dac
  *   name:  DAC — analog-to-digital output
- *   blurb: Core.H-only API for the on-chip 12-bit DAC. Tier 2 helpers
+ *   blurb: Core.ST.H5-only API for the on-chip 12-bit DAC. Tier 2 helpers
  *          init the default instance (resolved by coregen from
  *          config.json) and write a raw count, write millivolts, or
  *          read back the current output register. No waveform / DMA
@@ -27,7 +27,7 @@
 #define CORE_DAC_H
 
 #if !defined(STM32H523xx)
-#error "core_dac.h: DAC is not available on this Core tile. Only Core.H (STM32H523) has a DAC peripheral."
+#error "core_dac.h: DAC is not available on this Core tile. Only Core.ST.H5 (STM32H523) has a DAC peripheral."
 #endif
 
 #include "hal_dac.h"
@@ -40,7 +40,7 @@ extern hal_dac_t core_dac;
  * Initialize the DAC (clock, GPIO, peripheral). Call once from `on start`
  * before any writes.
  *
- * @studio expose category=dac name=init availability=Core.H
+ * @studio expose category=dac name=init availability=Core.ST.H5
  * @studio twin full
  */
 static inline void core_dac_init(void)
@@ -51,7 +51,7 @@ static inline void core_dac_init(void)
 /**
  * Write a raw 12-bit value. Output = val / 4095 × VREF+.
  *
- * @studio expose category=dac name=write availability=Core.H
+ * @studio expose category=dac name=write availability=Core.ST.H5
  * @studio twin full
  * @param val [0..4095] Raw DAC value.
  */
@@ -63,7 +63,7 @@ static inline void core_dac_write(uint16_t val)
 /**
  * Write a voltage in millivolts.
  *
- * @studio expose category=dac name=write_mv availability=Core.H
+ * @studio expose category=dac name=write_mv availability=Core.ST.H5
  * @studio twin full
  * @param mv [0..3300] Output voltage in millivolts.
  */
@@ -75,7 +75,7 @@ static inline void core_dac_write_mv(uint16_t mv)
 /**
  * Read back the current DAC output register value (12-bit).
  *
- * @studio expose category=dac name=read returns=int availability=Core.H
+ * @studio expose category=dac name=read returns=int availability=Core.ST.H5
  * @studio twin full
  */
 static inline uint16_t core_dac_read(void)
