@@ -604,9 +604,9 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:38:57.944Z",
+  "updated_at": "2026-06-05T08:43:58.805Z",
   "description": "The Sense.I.6D tile embeds the STMicroelectronics LSM6DSV320X digital IMU with dual-range accelerometers and sophisticated on-board activity tracking.  Serial communications via I2C (up to 1-MHz fast-mode plus), I3C, or SPI (up to 10-MHz) provide access to simultaneous 16-bit measurements of triaxial low-g accelerations (±2g-16g), triaxial high-g accelerations (±32-320g), and triaxial angular rate measurements (±250-4000 dps) with output data rates ranging from 7.5 Hz to 7.68 kHz.  The output path includes a 4.5-kB smart FIFO with dynamic data compression.  Onboard filtering, sensor fusion, and a 960-Hz finite state machine provide accurate motion computation and activity tracking, including attitude quaternions, gravity vector and gyro bias tracking, pedometry, step detection, step counting, and programmable motion-event interrupts (free fall, wake, tilt, tap, etc.).",
-  "json_version": "0.15",
+  "json_version": "0.17",
   "application_notes": [
     {
       "details": "The Z axis of the IMU protrudes through the center of the tile, while the XY plane is approximately 1.0mm from the bottom surface of the tile, with the X axis pointing toward the left side (pads 1-5), as shown.",

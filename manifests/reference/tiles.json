@@ -1,6 +1,6 @@
 {
   "schema": "reference/v1",
-  "source": "tiles@f6cab80",
+  "source": "tiles@1743afe",
   "tiles": [
     {
       "family": "Sense",
@@ -75,14 +75,6 @@
           "alt": []
         }
       }
-    },
-    {
-      "family": "Sense",
-      "name": "AQ",
-      "rev": "a",
-      "headline": "air quality",
-      "i2c": [],
-      "pads": {}
     },
     {
       "family": "Sense",
@@ -249,6 +241,14 @@
           "alt": []
         }
       }
+    },
+    {
+      "family": "Sense",
+      "name": "C.PAG",
+      "rev": "a",
+      "headline": "",
+      "i2c": [],
+      "pads": {}
     },
     {
       "family": "Sense",
@@ -864,9 +864,17 @@
     },
     {
       "family": "Sense",
-      "name": "M.3E",
+      "name": "I.9",
+      "rev": "d",
+      "headline": "9-DOF IMU",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "M.3G",
       "rev": "a",
-      "headline": "earth-field triaxial magnetometer",
+      "headline": "triaxial geomagnetic magnetometer",
       "i2c": [],
       "pads": {}
     },
@@ -938,17 +946,17 @@
     },
     {
       "family": "Sense",
-      "name": "OF",
+      "name": "OFP",
       "rev": "a",
-      "headline": "optical force",
+      "headline": "optical force & proximity",
       "i2c": [],
       "pads": {}
     },
     {
       "family": "Sense",
-      "name": "OT",
+      "name": "OST",
       "rev": "a",
-      "headline": "optical tracking",
+      "headline": "optical surface tracking",
       "i2c": [],
       "pads": {}
     },
@@ -1111,6 +1119,14 @@
       "name": "US.P",
       "rev": "a",
       "headline": "ultrasound proximity (0.04-1.20m)",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Sense",
+      "name": "VOC",
+      "rev": "a",
+      "headline": "air quality",
       "i2c": [],
       "pads": {}
     },
@@ -1298,14 +1314,14 @@
         },
         "7": {
           "default": {
-            "name": "OUT1",
+            "name": "OUT2",
             "type": "drive"
           },
           "alt": []
         },
         "8": {
           "default": {
-            "name": "OUT2",
+            "name": "OUT1",
             "type": "drive"
           },
           "alt": []
@@ -1487,7 +1503,7 @@
     },
     {
       "family": "Drive",
-      "name": "STEP",
+      "name": "S.L",
       "rev": "a",
       "headline": "stepper-motor driver",
       "i2c": [],
@@ -1556,7 +1572,78 @@
       "rev": "a",
       "headline": "multi-output buck-boost regulator",
       "i2c": [],
-      "pads": {}
+      "pads": {
+        "1": {
+          "default": {
+            "name": "GND",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "2": {
+          "default": {
+            "name": "",
+            "type": ""
+          },
+          "alt": []
+        },
+        "3": {
+          "default": {
+            "name": "VIN",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "4": {
+          "default": {
+            "name": "I2C.CLK",
+            "type": "interface"
+          },
+          "alt": []
+        },
+        "5": {
+          "default": {
+            "name": "I2C.DAT",
+            "type": "interface"
+          },
+          "alt": []
+        },
+        "6": {
+          "default": {
+            "name": "",
+            "type": ""
+          },
+          "alt": []
+        },
+        "7": {
+          "default": {
+            "name": "",
+            "type": ""
+          },
+          "alt": []
+        },
+        "8": {
+          "default": {
+            "name": "5V0",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "9": {
+          "default": {
+            "name": "3V3",
+            "type": "power"
+          },
+          "alt": []
+        },
+        "10": {
+          "default": {
+            "name": "1V8",
+            "type": "power"
+          },
+          "alt": []
+        }
+      }
     },
     {
       "family": "Power",
@@ -1655,7 +1742,7 @@
       "family": "Power",
       "name": "L.1T",
       "rev": "b",
-      "headline": "single-cell Li-Ion charge controller with 1.8V LDO",
+      "headline": "single-cell Li-Ion charge controller with adjustable LDO output",
       "i2c": [
         {
           "name": "I2C",
@@ -2116,6 +2203,14 @@
       "name": "TAK.7",
       "rev": "a",
       "headline": "fully integrated piezoelectric sensor/actuator module",
+      "i2c": [],
+      "pads": {}
+    },
+    {
+      "family": "Flow",
+      "name": "ICE.P5.1",
+      "rev": "a",
+      "headline": "ICE40 FPGA w/ on-board flash",
       "i2c": [],
       "pads": {}
     }

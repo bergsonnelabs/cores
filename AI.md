@@ -21,15 +21,15 @@ The **Cores SDK** is a firmware development kit for the Tiletown **Core** family
 
 | Public name | MCU | Definition stem | Architecture |
 |---|---|---|---|
-| `Core.ST.L0.1` | STM32L011E4 | `Core-L-1-a` | Cortex-M0+, 32 MHz max, ultra-low-power |
-| `Core.ST.L4.1` | STM32L422TB | `Core-U-1-a` | Cortex-M4F, 80 MHz (first shipping L4) |
-| `Core.ST.L4.2` | STM32L422TB | `Core-U-2-a` | Cortex-M4F, 80 MHz (more pads) |
-| `Core.ST.W5` | STM32WBA55HGF6 | `Core-W-b` | Cortex-M33, 100 MHz, BLE |
-| `Core.ST.H5.1` | STM32H523HE | `Core-H-1-a` | Cortex-M33, 250 MHz |
+| `Core.ST.L0.1` | STM32L011E4 | `Core-ST-L0-1-a` | Cortex-M0+, 32 MHz max, ultra-low-power |
+| `Core.ST.L4.1` | STM32L422TB | `Core-ST-L4-1-b` | Cortex-M4F, 80 MHz (first shipping L4) |
+| `Core.ST.L4.2` | STM32L422TB | `Core-ST-L4-2-a` | Cortex-M4F, 80 MHz (more pads) |
+| `Core.ST.W5` | STM32WBA55HGF6 | `Core-ST-W5-b` | Cortex-M33, 100 MHz, BLE |
+| `Core.ST.H5.1` | STM32H523HE | `Core-ST-H5-1-a` | Cortex-M33, 250 MHz |
 
 Pass either the **public name** or the **definition stem** as `TILE`. The
 vendor-segmented public names resolve to their definition stem in the Makefile
-(e.g. `Core.ST.L4.1` → `Core-U-1-a`); the matching alias map lives in
+(e.g. `Core.ST.L4.1` → `Core-ST-L4-1-b`); the matching alias map lives in
 `tools/coregen/coregen.py`.
 
 MCU capabilities (PLL ranges, APB clocks, SPI/I2C peripheral mapping) live in `MCU_DB` inside `tools/coregen/coregen.py`.
@@ -97,7 +97,7 @@ cores/
 ### Common Commands
 
 ```bash
-make                                           # Build blink for the default Core (Core.ST.L4.2 / Core-U-2-a)
+make                                           # Build blink for the default Core (Core.ST.L4.2 / Core-ST-L4-2-a)
 make TILE=Core.ST.W5 PROJECT=my-project     # Build specific core + project
 make TILE=Core.ST.W5 PROJECT=my-project V=1 # Verbose build
 make generate                                  # Run coregen only (no compile)

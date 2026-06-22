@@ -1,6 +1,6 @@
 {
-  "rev": "b",
-  "name": "U.1",
+  "rev": "a",
+  "name": "ST.L4.1",
   "pads": [
     {
       "pad": "1",
@@ -473,68 +473,6 @@
           "direction": "input"
         }
       ]
-    },
-    {
-      "pad": "13",
-      "geometry": {
-        "size_x": 400,
-        "size_y": 800,
-        "center_x": -400,
-        "center_y": -1600
-      },
-      "functions": [
-        {
-          "note": "",
-          "type": "digital",
-          "function": "A14",
-          "direction": "bidirectional"
-        },
-        {
-          "af": 0,
-          "note": "",
-          "type": "system",
-          "function": "SWCLK",
-          "direction": ""
-        },
-        {
-          "af": 4,
-          "note": "",
-          "type": "digital",
-          "function": "I2C1.SMBA",
-          "direction": ""
-        },
-        {
-          "af": 1,
-          "note": "",
-          "type": "timer",
-          "function": "LPTIM1.OUT",
-          "direction": ""
-        }
-      ]
-    },
-    {
-      "pad": "14",
-      "geometry": {
-        "size_x": 400,
-        "size_y": 800,
-        "center_x": 400,
-        "center_y": -1600
-      },
-      "functions": [
-        {
-          "note": "",
-          "type": "digital",
-          "function": "A13",
-          "direction": "bidirectional"
-        },
-        {
-          "af": 0,
-          "note": "",
-          "type": "system",
-          "function": "SWDIO",
-          "direction": ""
-        }
-      ]
     }
   ],
   "power": [
@@ -971,58 +909,6 @@
               }
             }
           ]
-        },
-        "13": {
-          "label": "Pad 13",
-          "default": "A14",
-          "options": [
-            {
-              "value": "A14",
-              "derived": {
-                "role": "gpio"
-              }
-            },
-            {
-              "af": 0,
-              "value": "SWCLK",
-              "derived": {
-                "role": "system"
-              }
-            },
-            {
-              "af": 4,
-              "value": "I2C1.SMBA",
-              "derived": {
-                "role": "gpio"
-              }
-            },
-            {
-              "af": 1,
-              "value": "LPTIM1.OUT",
-              "derived": {
-                "role": "timer-output"
-              }
-            }
-          ]
-        },
-        "14": {
-          "label": "Pad 14",
-          "default": "A13",
-          "options": [
-            {
-              "value": "A13",
-              "derived": {
-                "role": "gpio"
-              }
-            },
-            {
-              "af": 0,
-              "value": "SWDIO",
-              "derived": {
-                "role": "system"
-              }
-            }
-          ]
         }
       },
       "derives": "catalog.pads"
@@ -1079,39 +965,6 @@
           ]
         }
       ]
-    },
-    "pullups": {
-      "kind": "multiselect",
-      "group": "Pull-ups",
-      "label": "Enable software pull-ups",
-      "default": [],
-      "options": [
-        {
-          "label": "Pad 4 pull-up (via PA9)",
-          "value": "pad4",
-          "firmware_contract": [
-            {
-              "pin": "PA9",
-              "mode": "output",
-              "type": "gpio",
-              "drive": "high"
-            }
-          ]
-        },
-        {
-          "label": "Pad 5 pull-up (via PC15)",
-          "value": "pad5",
-          "firmware_contract": [
-            {
-              "pin": "PC15",
-              "mode": "output",
-              "type": "gpio",
-              "drive": "high"
-            }
-          ]
-        }
-      ],
-      "description": "Drive the on-tile pull-up resistors via their control pins. Useful for high-speed I2C (or any time pads 4 / 5 need a pull-up) without adding external resistors."
     },
     "bootloader": {
       "kind": "multiselect",
@@ -1398,13 +1251,13 @@
   },
   "family": "Core",
   "package": {
-    "pads": 14,
+    "pads": 12,
     "type": "T44",
     "size_x": 4000,
     "size_y": 4000,
     "size_z": 0
   },
-  "tile_id": 73,
+  "tile_id": 1,
   "features": {
     "led": {
       "kind": "led",
@@ -1439,30 +1292,6 @@
         }
       ],
       "boot_source": "hsi16"
-    },
-    "pullup_pad4": {
-      "kind": "pullup",
-      "label": "Software pull-up on pad 4",
-      "value": "2.2k",
-      "control": {
-        "pin": "PA9",
-        "via": "gpio",
-        "polarity": "active-high"
-      },
-      "target_pad": "4",
-      "description": "On-tile 2.2kΩ resistor between pad 4 and chip pin PA9. Drive PA9 high to engage; leave unconfigured / Hi-Z to disengage."
-    },
-    "pullup_pad5": {
-      "kind": "pullup",
-      "label": "Software pull-up on pad 5",
-      "value": "2.2k",
-      "control": {
-        "pin": "PC15",
-        "via": "gpio",
-        "polarity": "active-high"
-      },
-      "target_pad": "5",
-      "description": "On-tile 2.2kΩ resistor between pad 5 and chip pin PC15. Drive PC15 high to engage; leave unconfigured / Hi-Z to disengage."
     }
   },
   "headline": "USB-programmable Cortex-M4",
@@ -1651,9 +1480,9 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:30:05.445Z",
-  "description": "The USB-programmable Core.U.1 is based on the 80-MHz 32-bit Cortex-M4 STM32L422 with 128KB flash, 40KB SRAM, and a CoreMark score of 273.55.  The exposed pads provide a user-configurable combination of two fast-mode-plus I2C ports, one SPI port, three 12-bit ADCs, multiple timers, USART, an onboard comparator, and capacitive-touch input.  A programmable onboard LED provides a convenient status indicator.  If more I/O is needed, consider the larger Core.U.2 in a T48-22 package.",
-  "json_version": "0.37",
+  "updated_at": "2026-06-02T12:36:00.552Z",
+  "description": "The USB-programmable Core.ST.L4.1 (formerly Core.U.1) is based on the 80-MHz 32-bit Cortex-M4 STM32L422 with 128KB flash, 40KB SRAM, and a CoreMark score of 273.55.  The exposed pads provide a user-configurable combination of two fast-mode-plus I2C ports, one SPI port, three 12-bit ADCs, multiple timers, USART, an onboard comparator, and capacitive-touch input.  A programmable onboard LED provides a convenient status indicator.  If more I/O is needed, consider the larger Core.ST.L4.2 in a T48-22 package.",
+  "json_version": "0.34",
   "application_notes": [
     {
       "details": "When the chip is blank, it will default into the bootloader when connected over USB.  Once there is code in the program space, you need to hold the BOOT0 pin low during reset (either power-on or via the NRST pin) to enter the bootloader.",
@@ -1662,12 +1491,6 @@
     {
       "details": "The onboard LED is connected to PA8 in an active-high configuration.",
       "heading": "LED"
-    },
-    {
-      "sort": 2,
-      "details": "The single-wire debug port is available on pads 13 (SWCLK) and 14 (SWDIO).  While not absolutely required, it is often helpful to have the ability to hold pads 22 (NRST) low when connecting to the debugger.  You can likely also use BOOT0 to help the debugger connect.",
-      "heading": "Single-Wire Debug & Bootloading",
-      "image_url": ""
     }
   ]
 }

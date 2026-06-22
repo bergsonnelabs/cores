@@ -42,15 +42,15 @@ PROJECT ?= blink
 # alias rewrites to the stem so the JSON lookup + MCU mapping below stay
 # unchanged. Each public name maps to the most-complete definition for its MCU.
 ifeq ($(TILE),Core.ST.L4.1)
-  override TILE := Core-U-1-a
+  override TILE := Core-ST-L4-1-b
 else ifeq ($(TILE),Core.ST.L4.2)
-  override TILE := Core-U-2-a
+  override TILE := Core-ST-L4-2-a
 else ifeq ($(TILE),Core.ST.H5.1)
-  override TILE := Core-H-1-a
+  override TILE := Core-ST-H5-1-a
 else ifeq ($(TILE),Core.ST.L0.1)
-  override TILE := Core-L-1-a
+  override TILE := Core-ST-L0-1-a
 else ifeq ($(TILE),Core.ST.W5)
-  override TILE := Core-W-b
+  override TILE := Core-ST-W5-b
 endif
 
 # Project directory — override to point at any folder outside the SDK
@@ -75,7 +75,7 @@ GEN_DIR      = $(PROJECT_DIR)/coregen
 # coregen generates the headers; the Makefile still needs to know
 # CPU architecture and linker script for compiler flags.
 
-ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
+ifeq ($(TILE),$(filter $(TILE),Core-ST-L4-1-a Core-ST-L4-1-b Core-ST-L4-2-a))
   MCU_FAMILY  = stm32l4xx
   MCU_PART    = STM32L422xx
   CPU         = cortex-m4
@@ -84,14 +84,14 @@ ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32l422tb.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32l4xx/startup_stm32l422xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32l4.cfg
-else ifeq ($(TILE),Core-L-1-a)
+else ifeq ($(TILE),Core-ST-L0-1-a)
   MCU_FAMILY  = stm32l0xx
   MCU_PART    = STM32L011xx
   CPU         = cortex-m0plus
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32l011e4.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32l0xx/startup_stm32l011xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32l0.cfg
-else ifeq ($(TILE),Core-W-b)
+else ifeq ($(TILE),Core-ST-W5-b)
   MCU_FAMILY  = stm32wbaxx
   MCU_PART    = STM32WBA55xx
   CPU         = cortex-m33
@@ -101,7 +101,7 @@ else ifeq ($(TILE),Core-W-b)
   STARTUP     = $(SDK_DIR)sdk/device/stm32wbaxx/startup_stm32wba55xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32wba.cfg
   FLASH_TOOL  = cubeprog
-else ifeq ($(TILE),Core-H-1-a)
+else ifeq ($(TILE),Core-ST-H5-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
   CPU         = cortex-m33
@@ -111,7 +111,7 @@ else ifeq ($(TILE),Core-H-1-a)
   STARTUP     = $(SDK_DIR)sdk/device/stm32h5xx/startup_stm32h523xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32h5.cfg
 else
-  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a — or public names Core.ST.L0.1 / Core.ST.L4.1 / Core.ST.L4.2 / Core.ST.W5 / Core.ST.H5.1)
+  $(error Unknown TILE: $(TILE). Supported: Core-ST-L0-1-a, Core-ST-L4-1-a, Core-ST-L4-1-b, Core-ST-L4-2-a, Core-ST-W5-b, Core-ST-H5-1-a — or public names Core.ST.L0.1 / Core.ST.L4.1 / Core.ST.L4.2 / Core.ST.W5 / Core.ST.H5.1)
 endif
 
 # ---- Bootloader support ----
@@ -143,16 +143,16 @@ ifeq ($(BOOTLOADER),1)
   endif
   APP_ADDR   = 0x08002000
   APP_OFFSET = $(APP_ADDR)UL
-  ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
+  ifeq ($(TILE),$(filter $(TILE),Core-ST-L4-1-a Core-ST-L4-1-b Core-ST-L4-2-a))
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_app.ld
   endif
-  ifeq ($(TILE),Core-H-1-a)
+  ifeq ($(TILE),Core-ST-H5-1-a)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32h523he_app.ld
   endif
 endif
 
 ifeq ($(ROM_DFU),1)
-  ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
+  ifeq ($(TILE),$(filter $(TILE),Core-ST-L4-1-a Core-ST-L4-1-b Core-ST-L4-2-a))
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_romdfu.ld
   endif
   # Core.ST.H5: standard linker script already has noinit reservation and

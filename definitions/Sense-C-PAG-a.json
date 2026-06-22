@@ -1,0 +1,29 @@
+{
+  "rev": "a",
+  "name": "C.PAG",
+  "pads": [],
+  "power": [],
+  "family": "Sense",
+  "package": {
+    "pads": 10,
+    "type": "T44",
+    "size_x": 4000,
+    "size_y": 4000,
+    "size_z": 0
+  },
+  "tile_id": 78,
+  "headline": "",
+  "components": [
+    {
+      "url": "",
+      "part": "PAG7920J3",
+      "datasheet": "",
+      "manufacturer": "PixArt"
+    }
+  ],
+  "interfaces": [],
+  "updated_at": "2026-06-05T08:52:25.517Z",
+  "description": "",
+  "json_version": "0.2",
+  "application_notes": []
+}

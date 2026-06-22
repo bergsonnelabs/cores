@@ -31,7 +31,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] Core.ST.H5 clock source mislabeled**: Tile JSON `Core-H-1-a.json` labels the 64 MHz internal RC as `"type": "hsi16"`. The H5 has HSI at 64 MHz, not 16 MHz. The description acknowledges this ("64MHz internal RC (HSI on H5)") but `type: "hsi16"` is wrong. Coregen and the Configurator both key on this string.
+- **[BUG] Core.ST.H5 clock source mislabeled**: Tile JSON `Core-ST-H5-1-a.json` labels the 64 MHz internal RC as `"type": "hsi16"`. The H5 has HSI at 64 MHz, not 16 MHz. The description acknowledges this ("64MHz internal RC (HSI on H5)") but `type: "hsi16"` is wrong. Coregen and the Configurator both key on this string.
 
 - **[BUG] L0 PLL modeled as M/N/R**: `MCU_DB` for L011 uses the L4-style PLL topology (M, N, R dividers) but the L0 has a simpler MUL/DIV PLL. `solve_pll()` iterates N continuously, which could pick values (e.g., N=9) that don't correspond to valid `PLLMUL` settings ({3,4,6,8,12,16,24,32,48}). Works by accident for 32 MHz (16×4/2) but is architecturally wrong.
 
@@ -60,9 +60,9 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] SPI1.M0SI typo**: Core-U-1-a.json and Core-U-2-a.json pad 2 has `"SPI1.M0SI"` (zero instead of letter O). This will cause coregen to fail when trying to match the function for SPI MOSI assignment.
+- **[BUG] SPI1.M0SI typo**: Core-ST-L4-1-a.json and Core-ST-L4-2-a.json pad 2 has `"SPI1.M0SI"` (zero instead of letter O). This will cause coregen to fail when trying to match the function for SPI MOSI assignment.
 
-- **[BUG] TIM171.N malformed**: Core-W-b.json pad 11 has `"TIM171.N"` instead of `"TIM17.1N"`. References a non-existent timer.
+- **[BUG] TIM171.N malformed**: Core-ST-W5-b.json pad 11 has `"TIM171.N"` instead of `"TIM17.1N"`. References a non-existent timer.
 
 - **[INCONSISTENCY] ADC naming**: Core.ST.H5 uses differential-style `ADC7+`, `ADC3-`. All others use `ADC3`, `ADC12`. Coregen's `extract_adc_channel()` handles both but the inconsistency could confuse users.
 
@@ -70,11 +70,11 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[INCONSISTENCY] Comparator naming**: Core.ST.L0 uses `COMP1.IN+`; Core.ST.L4 uses `COMP1.+`. Inconsistent across tiles.
 
-- **[INCONSISTENCY] USART prefix missing**: Core-U-1-a.json USART1 pad_assignments use short names (`TX`, `RX`) without the `USART1.` prefix. Core-U-2-a.json uses the full form.
+- **[INCONSISTENCY] USART prefix missing**: Core-ST-L4-1-a.json USART1 pad_assignments use short names (`TX`, `RX`) without the `USART1.` prefix. Core-ST-L4-2-a.json uses the full form.
 
-- **[INCONSISTENCY] Digital pin naming**: Core-U-2-a.json pad 21 uses `"PH3"` (with port prefix); Core-U-1-a.json pad 11 uses `"H3"` (without).
+- **[INCONSISTENCY] Digital pin naming**: Core-ST-L4-2-a.json pad 21 uses `"PH3"` (with port prefix); Core-ST-L4-1-a.json pad 11 uses `"H3"` (without).
 
-- **[GAP] Missing `is_default`**: Core-L-1-a.json pad 9 digital function B0 lacks `"is_default": true`.
+- **[GAP] Missing `is_default`**: Core-ST-L0-1-a.json pad 9 digital function B0 lacks `"is_default": true`.
 
 - **[GAP] Missing `is_required` flags**: Core.ST.L0 has no `is_required` on any interface pad_assignment. Core.ST.W5 missing on SPI and USART. Others have them.
 
@@ -97,7 +97,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] ADC_14BIT phantom macro**: `core_adc.h` defines `ADC_14BIT = HAL_ADC_RES_14BIT` but this enum value doesn't exist in `hal_adc.h` (which only goes to 12-bit). Will cause compile error if used. H523 is 12-bit only.
 
-- **[BUG] Core.ST.L0 COMP2 referenced but doesn't exist**: Core-L-1-a.json references COMP2 on multiple pads, but the STM32L011E4 (Cat 1) does not have COMP2. These pad functions are wrong.
+- **[BUG] Core.ST.L0 COMP2 referenced but doesn't exist**: Core-ST-L0-1-a.json references COMP2 on multiple pads, but the STM32L011E4 (Cat 1) does not have COMP2. These pad functions are wrong.
 
 - **[INCONSISTENCY] `hal_adc_init_simple()` hardcodes 80 MHz**: Deprecated shim uses 80000000UL as SYSCLK, which is only correct for Core.ST.L4.
 
@@ -159,7 +159,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] SPI_CLK_MAP incomplete**: Missing SPI3 for L422 and SPI2 for H523. If any tile exposes these instances, coregen will error during generation (not validation).
 
-- **[BUG] Core-H-1-a.json SPI1 interface pads swapped**: MISO and RDY are assigned to wrong pads (pad 2 should be RDY, pad 3 should be MISO per pad functions).
+- **[BUG] Core-ST-H5-1-a.json SPI1 interface pads swapped**: MISO and RDY are assigned to wrong pads (pad 2 should be RDY, pad 3 should be MISO per pad functions).
 
 - **[INCONSISTENCY] SPI v2 performance**: `ll_spi_transfer()` on WBA/H5 disables+re-enables SPE per byte with TSIZE=1. Multi-byte transfers are O(n) SPE toggles — extremely slow.
 
@@ -187,7 +187,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] Core-H-1-a.json I2C3 pad_assignments CLK/DAT reversed**: Interface says pad 2 = I2C3.DAT and pad 3 = I2C3.CLK, but pad functions show pad 2 = I2C3.CLK (AF4) and pad 3 = I2C3.DAT (AF9). The pad functions match the H523 datasheet; the interface assignments are wrong.
+- **[BUG] Core-ST-H5-1-a.json I2C3 pad_assignments CLK/DAT reversed**: Interface says pad 2 = I2C3.DAT and pad 3 = I2C3.CLK, but pad functions show pad 2 = I2C3.CLK (AF4) and pad 3 = I2C3.DAT (AF9). The pad functions match the H523 datasheet; the interface assignments are wrong.
 
 - **[BUG] FMP on L422 may not work**: `ll_i2c_init_fmp()` sets CR1.FMP, but this bit may be reserved on L4. L422 FMP requires SYSCFG register manipulation to enable 20 mA GPIO drivers.
 
@@ -221,7 +221,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] LPUART type not recognized by Configurator**: `deriveCoreConfig()` filters `type === 'USART' || type === 'UART'` but LPUART1 has `type: 'LPUART'`. Core.ST.L0's LPUART1 is silently dropped from the UI.
 
-- **[BUG] Core-U-2-a.json USART2.CK missing from pad 19**: Interface references pad 19 for USART2.CK but pad 19's function list doesn't include it. Per L422 datasheet, PA4 is USART2_CK at AF7 — the pad function is missing.
+- **[BUG] Core-ST-L4-2-a.json USART2.CK missing from pad 19**: Interface references pad 19 for USART2.CK but pad 19's function list doesn't include it. Per L422 datasheet, PA4 is USART2_CK at AF7 — the pad function is missing.
 
 - **[GAP] UART DMA**: `hal_uart_tx_dma()` always returns `HAL_ERROR`. Not implemented.
 
@@ -249,7 +249,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] Core-H-1-a.json USB.SOF wrong pad**: Interface says pad 3 = USB.SOF, but pad 2 has USB.SOF (AF10). Pad 3 has no USB.SOF function.
+- **[BUG] Core-ST-H5-1-a.json USB.SOF wrong pad**: Interface says pad 3 = USB.SOF, but pad 2 has USB.SOF (AF10). Pad 3 has no USB.SOF function.
 
 - **[GAP] No USB availability validation in coregen**: `usb_enabled` is blindly read from config.json. A project targeting Core.ST.L0 with `"usb": {"enabled": true}` would generate HSI48/CRS init code that won't compile.
 
@@ -304,7 +304,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] TIM6/TIM7 IRQ number missing on H5**: `hal_timer.c` `_tim_irq()` returns 0 for TIM6 and TIM7 on H523. IRQ 0 is WWDG on H5. Tick callbacks on these timers would enable the wrong interrupt.
 
-- **[BUG] Core-W-b.json TIM171.N**: Already noted under GPIO — `"TIM171.N"` should be `"TIM17.1N"`.
+- **[BUG] Core-ST-W5-b.json TIM171.N**: Already noted under GPIO — `"TIM171.N"` should be `"TIM17.1N"`.
 
 - **[GAP] Timer one-shot mode**: Not implemented. Simple OPM bit setting.
 
@@ -431,7 +431,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **[SYNC] Tile JSONs partially out of sync**: tiletown copies have `bootloaders` arrays and JTAG annotations not present in cores repo. Cores repo is behind.
 
-**[SYNC] Core-U-2-a.json LPUART1 pad error**: Interface references pad 16 for LPUART1.RTS_DE, but the function exists on pad 15.
+**[SYNC] Core-ST-L4-2-a.json LPUART1 pad error**: Interface references pad 16 for LPUART1.RTS_DE, but the function exists on pad 15.
 
 ---
 
@@ -460,13 +460,13 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 | 3 | TIM6/TIM7 IRQ returns 0 on H5 (enables WWDG IRQ) | Timers | 30m |
 | 4 | ADC_14BIT phantom macro (compile error on use) | ADC | 15m |
 | 5 | ll_dac.h docs say "channel 1", code uses channel 2 | DAC | 15m |
-| 6 | Core-H-1-a.json: I2C3 CLK/DAT reversed in interface | Tile JSON | 15m |
-| 7 | Core-H-1-a.json: USB.SOF wrong pad | Tile JSON | 15m |
-| 8 | Core-H-1-a.json: SPI1 MISO/RDY swapped | Tile JSON | 15m |
-| 9 | Core-U-1/2-a.json: SPI1.M0SI typo (zero not O) | Tile JSON | 5m |
-| 10 | Core-W-b.json: TIM171.N should be TIM17.1N | Tile JSON | 5m |
-| 11 | Core-L-1-a.json: COMP2 referenced but doesn't exist on L011E4 | Tile JSON | 15m |
-| 12 | Core-U-2-a.json: LPUART1 wrong pad for RTS_DE | Tile JSON | 5m |
+| 6 | Core-ST-H5-1-a.json: I2C3 CLK/DAT reversed in interface | Tile JSON | 15m |
+| 7 | Core-ST-H5-1-a.json: USB.SOF wrong pad | Tile JSON | 15m |
+| 8 | Core-ST-H5-1-a.json: SPI1 MISO/RDY swapped | Tile JSON | 15m |
+| 9 | Core-ST-L4-1-a/-2-a.json: SPI1.M0SI typo (zero not O) | Tile JSON | 5m |
+| 10 | Core-ST-W5-b.json: TIM171.N should be TIM17.1N | Tile JSON | 5m |
+| 11 | Core-ST-L0-1-a.json: COMP2 referenced but doesn't exist on L011E4 | Tile JSON | 15m |
+| 12 | Core-ST-L4-2-a.json: LPUART1 wrong pad for RTS_DE | Tile JSON | 5m |
 | 13 | Core-H clock source labeled "hsi16" at 64 MHz | Tile JSON | 15m |
 
 ### Should-Fix (gaps that cause user confusion)

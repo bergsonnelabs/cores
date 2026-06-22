@@ -1,6 +1,6 @@
 {
   "rev": "a",
-  "name": "U.2",
+  "name": "ST.L4.2",
   "pads": [
     {
       "pad": "1",
@@ -2754,9 +2754,9 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:36:00.689Z",
-  "description": "The expanded-I/O USB-programmable Core.U.2 is based on the same 80-MHz Cortex-M4 STM32L422 as the smaller Core.U.1, with the top 12 pads (1-5 and 16-22) matching the pad layout of the Core.U.1.  The additional I/O pads provide a user-configurable combination of single-wire and trace debugging, two I2C ports, one SPI port, one quad SPI port, ten 12-bit ADC inputs, multiple timers, capacitive-touch inputs, and an on-board comparator.  The board also includes an onboard LED and a physical button for reset and bootloading (see Application Notes).",
-  "json_version": "0.59",
+  "updated_at": "2026-06-02T10:37:39.541Z",
+  "description": "The expanded-I/O USB-programmable Core.U.2 is based on the same 80-MHz Cortex-M4 STM32L422 as the smaller Core.ST.L4.1, with the top 12 pads (1-5 and 16-22) matching the pad layout of the Core.U.1.  The additional I/O pads provide a user-configurable combination of single-wire and trace debugging, two I2C ports, one SPI port, one quad SPI port, ten 12-bit ADC inputs, multiple timers, capacitive-touch inputs, and an on-board comparator.  The board also includes an onboard LED and a physical button for reset and bootloading (see Application Notes).",
+  "json_version": "0.61",
   "application_notes": [
     {
       "sort": 0,

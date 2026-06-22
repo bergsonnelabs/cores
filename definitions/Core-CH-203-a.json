@@ -1,6 +1,6 @@
 {
   "rev": "a",
-  "name": "H.2",
+  "name": "CH.203",
   "pads": [],
   "power": [],
   "family": "Core",
@@ -11,19 +11,19 @@
     "size_y": 4000,
     "size_z": 0
   },
-  "tile_id": 34,
-  "headline": "expanded-I/O 250MHz Cortex-M33",
+  "tile_id": 75,
+  "headline": "144MHz USB RISC-V",
   "components": [
     {
       "url": "",
-      "part": "STM32H523HE",
+      "part": "CH32V203F8U6",
       "datasheet": "",
-      "manufacturer": "ST Microelectronics"
+      "manufacturer": "WCH"
     }
   ],
   "interfaces": [],
-  "updated_at": "2026-03-02T09:39:42.853Z",
+  "updated_at": "2026-06-03T17:24:30.617Z",
   "description": "",
-  "json_version": "0.3",
+  "json_version": "0.2",
   "application_notes": []
 }

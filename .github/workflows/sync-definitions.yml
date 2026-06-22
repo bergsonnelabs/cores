@@ -1,0 +1,53 @@
+name: sync-definitions
+
+# Mirror the canonical product DB into definitions/. Runs nightly (and on
+# demand) and opens a PR whenever the checked-in definitions have drifted
+# from the DB — so a DB rename/edit can never silently go stale in git again.
+#
+# Requires repo secret TILES_DB_PASSWORD (the product DB's read password).
+# Host/user/db default to the library instance; override via TILES_DB_* if needed.
+
+on:
+  schedule:
+    - cron: '17 6 * * *' # 06:17 UTC nightly
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - run: pip install mysql-connector-python
+
+      - name: Mirror DB → definitions/
+        env:
+          TILES_DB_PASSWORD: ${{ secrets.TILES_DB_PASSWORD }}
+        run: python3 tools/sync_definitions.py --apply
+
+      - name: Open a PR if definitions drifted
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- definitions/; then
+            echo "definitions/ already match the DB — nothing to sync."
+            exit 0
+          fi
+          branch="auto/sync-definitions-${{ github.run_id }}"
+          git config user.name  "tiles-sync[bot]"
+          git config user.email "tiles-sync@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add definitions/
+          git commit -m "chore(definitions): sync from canonical product DB"
+          git push -u origin "$branch"
+          gh pr create --fill \
+            --title "chore(definitions): sync from canonical product DB" \
+            --body "Automated drift sync from the product DB via \`tools/sync_definitions.py\`. Review the definition changes before merging — renames/deletes here ripple into coregen aliases, the Makefile, manifests, and the web mirrors."
