@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@00ef0ed",
+  "source": "tiles@a2f9518",
   "file": "tile_store_o_128.h",
   "brief": "Store.O.128 tile driver — Renesas/Adesto AT25QL128A 128 Mbit QSPI NOR flash.",
   "description": "16 MB serial NOR flash on SPI / Quad-SPI. Standard SPI-NOR command set:\nJEDEC ID, status, write-enable, page program (256 B pages), 4 KB sector /\n64 KB block / chip erase, read, deep power-down.\n\nPlatform-agnostic: uses the framework's raw SPI transaction primitive\n(`tiles_pal_t.spi_transfer`) so command + 24-bit address + data fit one CS\nassertion. A platform that doesn't implement spi_transfer yet leaves it NULL;\nevery call here guards against that and reports an error rather than faulting.\n\n  #include \"core_tiles.h\"\n  tile_t flash;\n  tile_store_o_128_init(core_tiles_pal(&core_spi1), 0, &flash, NULL);\n  if (tile_is_ready(&flash)) {\n      tile_store_o_128_read(&flash, 0x000000, buf, sizeof buf);\n  }\n\nDatasheet: Renesas AT25QL128A.\n\n@studio tile label=Store.O.128 icon=memory\n\n@studio unsupported severity=niche category=\"Quad / QPI I/O modes\"\n  The AT25QL128A supports Dual/Quad SPI and QPI (≤4 data lines). This driver\n  drives standard single-lane SPI only; quad modes need a quad-capable SPI\n  transfer in the platform layer (driver-deferred, not chip-gated).",
@@ -385,5 +385,8 @@
     }
   ],
   "source_file": "tile_store_o_128.h",
-  "version": "1.0.0"
+  "version": "1.0.0",
+  "tile_family": "Store",
+  "tile_name": "O.128",
+  "display_name": "Store.O.128"
 }
