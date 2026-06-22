@@ -25,12 +25,14 @@
 /* ============================================================
  * PMA buffer layout (1024 bytes total, BTABLE=0, PMA_ACCESS=1)
  *
- * BDT:  0x00 - 0x27  (5 endpoints x 8 bytes = 40 bytes)
+ * BDT:  0x00 - 0x27  (5 endpoints x 8 bytes = 40 bytes; EP3 slot incl.)
  * EP0 TX: 0x28 - 0x67  (64 bytes)
  * EP0 RX: 0x68 - 0xA7  (64 bytes)
  * EP1 TX: 0xA8 - 0xE7  (64 bytes)
  * EP1 RX: 0xE8 - 0x127 (64 bytes)
  * EP2 TX: 0x128 - 0x137 (16 bytes)
+ * EP3 TX: 0x138 - 0x177 (64 bytes) — HID reports IN  (device -> host)
+ * EP3 RX: 0x178 - 0x1B7 (64 bytes) — HID reports OUT (host -> device)
  * ============================================================ */
 
 #define PMA_EP0_TX          0x28
@@ -38,10 +40,13 @@
 #define PMA_EP1_TX          0xA8
 #define PMA_EP1_RX          0xE8
 #define PMA_EP2_TX          0x128
+#define PMA_EP3_TX          0x138
+#define PMA_EP3_RX          0x178
 
 #define EP0_MAX_PACKET      64
 #define EP1_MAX_PACKET      64
 #define EP2_MAX_PACKET      8
+#define EP3_MAX_PACKET      64
 
 /* ============================================================
  * USB descriptor data
@@ -76,15 +81,27 @@
 #define CDC_ACM_SUBCLASS            0x02
 #define CDC_AT_PROTOCOL             0x01
 
+/* Composite device: CDC-ACM (serial) + HID (generic reports).
+ * Uses IAD (Interface Association Descriptor) to group CDC interfaces. */
+#define USB_DESC_IAD            0x0B
+#define USB_DESC_HID            0x21
+#define USB_DESC_HID_REPORT     0x22
+
+/* HID class requests */
+#define HID_GET_REPORT          0x01
+#define HID_GET_IDLE            0x02
+#define HID_SET_REPORT          0x09
+#define HID_SET_IDLE            0x0A
+
 /* Device descriptor
  * VID=0x1209 (pid.codes open source), PID=0x0001 (placeholder) */
 static const uint8_t dev_desc[] = {
     18,                     /* bLength */
     USB_DESC_DEVICE,        /* bDescriptorType */
     0x00, 0x02,             /* bcdUSB = 2.00 */
-    0x02,                   /* bDeviceClass = Communications */
-    0x02,                   /* bDeviceSubClass = ACM */
-    0x00,                   /* bDeviceProtocol */
+    0xEF,                   /* bDeviceClass = Miscellaneous (composite) */
+    0x02,                   /* bDeviceSubClass = Common Class */
+    0x01,                   /* bDeviceProtocol = IAD */
     EP0_MAX_PACKET,         /* bMaxPacketSize0 */
     0x09, 0x12,             /* idVendor = 0x1209 (pid.codes) */
     0x01, 0x00,             /* idProduct = 0x0001 (placeholder) */
@@ -95,20 +112,51 @@ static const uint8_t dev_desc[] = {
     1,                      /* bNumConfigurations */
 };
 
-/* Configuration descriptor (config + interfaces + CDC descriptors + endpoints)
- * Total = 9 + 9 + 5 + 4 + 5 + 5 + 7 + 9 + 7 + 7 = 67 bytes */
-#define CONFIG_DESC_TOTAL_LEN   67
+/* HID Report Descriptor — generic vendor-defined, bidirectional 64-byte
+ * reports (Input + Output). Identical to the H523 reference. */
+static const uint8_t hid_report_desc[] = {
+    0x06, 0x00, 0xFF,       /* Usage Page (Vendor Defined 0xFF00) */
+    0x09, 0x01,             /* Usage (Vendor Usage 1) */
+    0xA1, 0x01,             /* Collection (Application) */
+    0x15, 0x00,             /*   Logical Minimum (0) */
+    0x26, 0xFF, 0x00,       /*   Logical Maximum (255) */
+    0x75, 0x08,             /*   Report Size (8 bits) */
+    0x95, 0x40,             /*   Report Count (64) */
+    0x09, 0x01,             /*   Usage (Vendor Usage 1) */
+    0x81, 0x02,             /*   Input (Data, Variable, Absolute) */
+    0x09, 0x02,             /*   Usage (Vendor Usage 2) */
+    0x91, 0x02,             /*   Output (Data, Variable, Absolute) */
+    0xC0,                   /* End Collection */
+};
+
+#define HID_REPORT_DESC_LEN  sizeof(hid_report_desc)
+
+/* Configuration descriptor — composite CDC-ACM (serial) + HID (vendor reports).
+ * Config(9) + IAD(8) + CDC_IF0(9) + Func(5+4+5+5=19) + EP2(7) +
+ * CDC_IF1(9) + EP1_OUT(7) + EP1_IN(7) + HID_IF2(9) + HID_Desc(9) +
+ * EP3_IN(7) + EP3_OUT(7) = 107 bytes */
+#define CONFIG_DESC_TOTAL_LEN   107
 
 static const uint8_t cfg_desc[] = {
     /* Configuration descriptor */
     9,                      /* bLength */
     USB_DESC_CONFIGURATION, /* bDescriptorType */
     CONFIG_DESC_TOTAL_LEN, 0x00, /* wTotalLength */
-    2,                      /* bNumInterfaces */
+    3,                      /* bNumInterfaces (CDC control + data + HID) */
     1,                      /* bConfigurationValue */
     0,                      /* iConfiguration */
     0x80,                   /* bmAttributes: bus-powered */
     250,                    /* bMaxPower: 500mA */
+
+    /* ---- IAD: group CDC interfaces 0+1 ---- */
+    8,                      /* bLength */
+    USB_DESC_IAD,           /* bDescriptorType */
+    0,                      /* bFirstInterface */
+    2,                      /* bInterfaceCount */
+    0x02,                   /* bFunctionClass: Communications */
+    CDC_ACM_SUBCLASS,       /* bFunctionSubClass: ACM */
+    CDC_AT_PROTOCOL,        /* bFunctionProtocol: AT commands */
+    0,                      /* iFunction */
 
     /* ---- CDC Control Interface (Interface 0) ---- */
     9,                      /* bLength */
@@ -167,7 +215,52 @@ static const uint8_t cfg_desc[] = {
     0x02,                   /* bmAttributes: Bulk */
     EP1_MAX_PACKET, 0x00,   /* wMaxPacketSize */
     0,                      /* bInterval */
+
+    /* ---- HID Interface (Interface 2) ---- */
+    9,                      /* bLength */
+    USB_DESC_INTERFACE,     /* bDescriptorType */
+    2,                      /* bInterfaceNumber */
+    0,                      /* bAlternateSetting */
+    2,                      /* bNumEndpoints (EP3 IN + EP3 OUT) */
+    0x03,                   /* bInterfaceClass: HID */
+    0x00,                   /* bInterfaceSubClass: none */
+    0x00,                   /* bInterfaceProtocol: none */
+    0,                      /* iInterface */
+
+    /* HID Descriptor */
+    9,                      /* bLength */
+    USB_DESC_HID,           /* bDescriptorType */
+    0x11, 0x01,             /* bcdHID = 1.11 */
+    0x00,                   /* bCountryCode = 0 */
+    1,                      /* bNumDescriptors */
+    USB_DESC_HID_REPORT,    /* bDescriptorType = Report */
+    HID_REPORT_DESC_LEN, 0, /* wDescriptorLength */
+
+    /* EP3 IN — HID reports (interrupt, device -> host) */
+    7,                      /* bLength */
+    USB_DESC_ENDPOINT,      /* bDescriptorType */
+    0x83,                   /* bEndpointAddress: EP3 IN */
+    0x03,                   /* bmAttributes: Interrupt */
+    EP3_MAX_PACKET, 0x00,   /* wMaxPacketSize */
+    1,                      /* bInterval: 1ms for fastest polling */
+
+    /* EP3 OUT — HID reports (interrupt, host -> device) */
+    7,                      /* bLength */
+    USB_DESC_ENDPOINT,      /* bDescriptorType */
+    0x03,                   /* bEndpointAddress: EP3 OUT */
+    0x03,                   /* bmAttributes: Interrupt */
+    EP3_MAX_PACKET, 0x00,   /* wMaxPacketSize */
+    1,                      /* bInterval: 1ms */
 };
+
+/* Offset of the HID descriptor within cfg_desc (for GET_DESCRIPTOR HID).
+ * Config(9) + IAD(8) + CDC_IF0(9) + Func(19) + EP2(7) + CDC_IF1(9)
+ * + EP1out(7) + EP1in(7) + HID_IF(9) = 84 */
+#define CFG_DESC_HID_OFFSET  84
+
+/* Guard the hand-computed descriptor length against future edits. */
+_Static_assert(sizeof(cfg_desc) == CONFIG_DESC_TOTAL_LEN,
+               "cfg_desc length != CONFIG_DESC_TOTAL_LEN");
 
 /* String descriptor 0: Language ID */
 static const uint8_t str0_desc[] = { 4, USB_DESC_STRING, 0x09, 0x04 };
@@ -238,8 +331,11 @@ static struct {
     const uint8_t       *ep0_tx_ptr;
     uint16_t             ep0_tx_remain;
 
-    /* EP0 OUT data receive */
-    uint8_t              ep0_rx_buf[8];
+    /* EP0 OUT data receive (sized for a full 64-byte HID SET_REPORT payload) */
+    uint8_t              ep0_rx_buf[EP0_MAX_PACKET];
+    /* What the pending EP0 DATA OUT stage is carrying (0 = CDC line coding,
+     * 1 = HID SET_REPORT). Set by _handle_setup(), consumed on DATA OUT. */
+    volatile uint8_t     ep0_out_is_hid;
 
     /* CDC line coding (host-set baud rate etc.) */
     cdc_line_coding_t    line_coding;
@@ -254,6 +350,12 @@ static struct {
     /* RX ring buffer (used when no callback is set) */
     hal_ringbuf_t        rx_ring;
     uint8_t              rx_buf[HAL_USB_CDC_RX_BUF_SIZE];
+
+    /* HID state */
+    volatile uint8_t     hid_tx_busy;
+    uint8_t              hid_idle_rate;
+    hal_usb_hid_rx_cb_t  hid_rx_cb;       /* HID OUT report sink (EP3 OUT + SET_REPORT) */
+    void                *hid_rx_cb_ctx;
 } _cdc;
 
 /* ============================================================
@@ -359,6 +461,21 @@ static void _handle_setup(void)
                 /* Full-speed only — STALL qualifier requests */
                 _ep0_stall();
                 return;
+
+            case USB_DESC_HID:
+                /* HID class descriptor (9 bytes within cfg_desc) */
+                if (setup.wIndex == 2) {  /* Interface 2 = HID */
+                    _ep0_send(cfg_desc + CFG_DESC_HID_OFFSET, 9, setup.wLength);
+                    return;
+                }
+                break;
+
+            case USB_DESC_HID_REPORT:
+                if (setup.wIndex == 2) {
+                    _ep0_send(hid_report_desc, sizeof(hid_report_desc), setup.wLength);
+                    return;
+                }
+                break;
             }
             break;
         }
@@ -386,6 +503,17 @@ static void _handle_setup(void)
                 ll_usb_bdt_set_tx_addr(2, PMA_EP2_TX);
                 ll_usb_bdt_set_tx_count(2, 0);
                 ll_usb_ep_set_stat_tx(2, USB_EP_STAT_NAK);
+
+                /* Configure EP3 (HID interrupt, bidirectional):
+                 * IN  = report device -> host, armed on demand (NAK until sent)
+                 * OUT = report host -> device, armed VALID to receive */
+                ll_usb_ep_config(3, USB_EP_INTERRUPT, 3);
+                ll_usb_bdt_set_tx_addr(3, PMA_EP3_TX);
+                ll_usb_bdt_set_tx_count(3, 0);
+                ll_usb_bdt_set_rx_addr(3, PMA_EP3_RX);
+                ll_usb_bdt_set_rx_count(3, EP3_MAX_PACKET);
+                ll_usb_ep_set_stat(3, USB_EP_STAT_NAK, USB_EP_STAT_VALID);
+                _cdc.hid_tx_busy = 0;
             } else {
                 _cdc.state = USB_STATE_ADDRESS;
                 _cdc.configured = 0;
@@ -413,42 +541,79 @@ static void _handle_setup(void)
         }
     }
 
-    /* ---- CDC class requests (bmRequestType = 0x21 or 0xA1) ---- */
+    /* ---- Class requests — route by interface (wIndex) ---- */
     if (type == 0x20) {
-        switch (setup.bRequest) {
+        uint16_t iface = setup.wIndex;
 
-        case CDC_SET_LINE_CODING:
-            /* Host sends 7 bytes of line coding data in DATA phase */
-            _cdc.ep0_state = EP0_DATA_OUT;
-            ll_usb_ep_set_stat_rx(0, USB_EP_STAT_VALID);
-            return;
+        /* CDC class requests (interfaces 0 and 1) */
+        if (iface <= 1) {
+            switch (setup.bRequest) {
 
-        case CDC_GET_LINE_CODING:
-            _ep0_send((const uint8_t *)&_cdc.line_coding, 7, setup.wLength);
-            return;
+            case CDC_SET_LINE_CODING:
+                /* Host sends 7 bytes of line coding data in DATA phase */
+                _cdc.ep0_out_is_hid = 0;
+                _cdc.ep0_state = EP0_DATA_OUT;
+                ll_usb_ep_set_stat_rx(0, USB_EP_STAT_VALID);
+                return;
 
-        case CDC_SET_CONTROL_LINE_STATE: {
-            uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
+            case CDC_GET_LINE_CODING:
+                _ep0_send((const uint8_t *)&_cdc.line_coding, 7, setup.wLength);
+                return;
 
-            /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot.
-             * This is the Arduino convention — host opens port at 1200 baud
-             * then closes it. make flash-dfu uses this to auto-enter DFU. */
-            if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
+            case CDC_SET_CONTROL_LINE_STATE: {
+                uint8_t new_dtr = (setup.wValue & 0x01) ? 1 : 0;
+
+                /* 1200-baud touch: DTR drop while baud=1200 triggers DFU reboot.
+                 * This is the Arduino convention — host opens port at 1200 baud
+                 * then closes it. make flash-dfu uses this to auto-enter DFU. */
+                if (_cdc.dtr && !new_dtr && _cdc.line_coding.dwDTERate == 1200) {
+                    _ep0_send_status();
+                    /* Small delay so the ZLP status reaches the host */
+                    for (volatile int i = 0; i < 100000; i++)
+                        ;
+                    hal_dfu_reboot();
+                }
+
+                _cdc.dtr = new_dtr;
                 _ep0_send_status();
-                /* Small delay so the ZLP status reaches the host */
-                for (volatile int i = 0; i < 100000; i++)
-                    ;
-                hal_dfu_reboot();
+                return;
             }
 
-            _cdc.dtr = new_dtr;
-            _ep0_send_status();
-            return;
+            case CDC_SEND_BREAK:
+                _ep0_send_status();
+                return;
+            }
         }
 
-        case CDC_SEND_BREAK:
-            _ep0_send_status();
-            return;
+        /* HID class requests (interface 2) */
+        if (iface == 2) {
+            switch (setup.bRequest) {
+
+            case HID_SET_IDLE:
+                _cdc.hid_idle_rate = (setup.wValue >> 8) & 0xFF;
+                _ep0_send_status();
+                return;
+
+            case HID_GET_IDLE: {
+                static uint8_t idle;
+                idle = _cdc.hid_idle_rate;
+                _ep0_send(&idle, 1, setup.wLength);
+                return;
+            }
+
+            case HID_GET_REPORT:
+                /* Not implemented — host should read via EP3 interrupt IN */
+                _ep0_stall();
+                return;
+
+            case HID_SET_REPORT:
+                /* Accept the report payload in the EP0 DATA OUT stage and
+                 * route it to the HID OUT sink (alongside the EP3 OUT path). */
+                _cdc.ep0_out_is_hid = 1;
+                _cdc.ep0_state = EP0_DATA_OUT;
+                ll_usb_ep_set_stat_rx(0, USB_EP_STAT_VALID);
+                return;
+            }
         }
     }
 
@@ -511,11 +676,17 @@ static void _handle_ctr(void)
                 /* DATA OUT phase */
                 if (_cdc.ep0_state == EP0_DATA_OUT) {
                     uint16_t count = ll_usb_bdt_get_rx_count(0);
-                    if (count <= 8) {
-                        ll_usb_pma_read(PMA_EP0_RX, _cdc.ep0_rx_buf, count);
-                    }
-                    /* For SET_LINE_CODING, copy the 7 bytes */
-                    if (count == 7) {
+                    if (count > sizeof(_cdc.ep0_rx_buf))
+                        count = sizeof(_cdc.ep0_rx_buf);
+                    ll_usb_pma_read(PMA_EP0_RX, _cdc.ep0_rx_buf, count);
+
+                    if (_cdc.ep0_out_is_hid) {
+                        /* HID SET_REPORT payload — deliver to the OUT sink */
+                        if (_cdc.hid_rx_cb)
+                            _cdc.hid_rx_cb(_cdc.ep0_rx_buf, count, _cdc.hid_rx_cb_ctx);
+                        _cdc.ep0_out_is_hid = 0;
+                    } else if (count == 7) {
+                        /* CDC SET_LINE_CODING — copy the 7 bytes */
                         memcpy(&_cdc.line_coding, _cdc.ep0_rx_buf, 7);
                     }
                     _ep0_send_status();
@@ -584,6 +755,31 @@ static void _handle_ctr(void)
         if (ep1r & USB_EP_CTR_TX) {
             ll_usb_ep_clr_ctr_tx(1);
             _cdc.tx_busy = 0;
+        }
+    }
+
+    else if (ep == 3) {
+        uint16_t ep3r = ll_usb_ep_read(3);
+
+        /* ---- EP3 RX (HID OUT report — host -> device) ---- */
+        if (ep3r & USB_EP_CTR_RX) {
+            ll_usb_ep_clr_ctr_rx(3);
+
+            uint16_t count = ll_usb_bdt_get_rx_count(3);
+            if (count > EP3_MAX_PACKET) count = EP3_MAX_PACKET;
+            if (count > 0 && _cdc.hid_rx_cb) {
+                uint8_t tmp[EP3_MAX_PACKET];
+                ll_usb_pma_read(PMA_EP3_RX, tmp, count);
+                _cdc.hid_rx_cb(tmp, count, _cdc.hid_rx_cb_ctx);
+            }
+            /* Re-arm RX for the next report */
+            ll_usb_ep_set_stat_rx(3, USB_EP_STAT_VALID);
+        }
+
+        /* ---- EP3 TX (HID report sent) ---- */
+        if (ep3r & USB_EP_CTR_TX) {
+            ll_usb_ep_clr_ctr_tx(3);
+            _cdc.hid_tx_busy = 0;
         }
     }
 }
@@ -762,6 +958,41 @@ uint16_t hal_usb_cdc_available(void)
     return hal_ringbuf_count(&_cdc.rx_ring);
 }
 
+/* ============================================================
+ * HID API
+ * ============================================================ */
+
+void hal_usb_hid_set_rx_callback(hal_usb_hid_rx_cb_t cb, void *ctx)
+{
+    _cdc.hid_rx_cb     = cb;
+    _cdc.hid_rx_cb_ctx = ctx;
+}
+
+int hal_usb_hid_send_report(const uint8_t *buf, uint16_t len)
+{
+    if (!_cdc.configured) return -1;
+    if (len > EP3_MAX_PACKET) len = EP3_MAX_PACKET;
+
+    /* Wait for previous report to complete */
+    while (_cdc.hid_tx_busy) {
+        if (!_cdc.configured) return -1;
+    }
+
+    /* Zero-pad to 64 bytes — HID report descriptor declares fixed-size reports.
+     * macOS (and some other hosts) ignore reports shorter than declared size. */
+    uint8_t padded[EP3_MAX_PACKET];
+    __builtin_memcpy(padded, buf, len);
+    if (len < EP3_MAX_PACKET)
+        __builtin_memset(padded + len, 0, EP3_MAX_PACKET - len);
+
+    ll_usb_pma_write(PMA_EP3_TX, padded, EP3_MAX_PACKET);
+    ll_usb_bdt_set_tx_count(3, EP3_MAX_PACKET);
+    _cdc.hid_tx_busy = 1;
+    ll_usb_ep_set_stat_tx(3, USB_EP_STAT_VALID);
+
+    return (int)len;
+}
+
 /* ################################################################
  * STM32H523 — USB DRD Full-Speed (32-bit registers, 2KB PMA)
  *
@@ -793,7 +1024,8 @@ uint16_t hal_usb_cdc_available(void)
  * EP1 TX:  0xC0 - 0xFF  (64 bytes)  — CDC bulk
  * EP1 RX:  0x100 - 0x13F (64 bytes) — CDC bulk
  * EP2 TX:  0x140 - 0x14F (16 bytes) — CDC notification
- * EP3 TX:  0x150 - 0x18F (64 bytes) — HID reports
+ * EP3 TX:  0x150 - 0x18F (64 bytes) — HID reports IN  (device -> host)
+ * EP3 RX:  0x190 - 0x1CF (64 bytes) — HID reports OUT (host -> device)
  * ============================================================ */
 
 #define PMA_EP0_TX          0x40
@@ -802,6 +1034,7 @@ uint16_t hal_usb_cdc_available(void)
 #define PMA_EP1_RX          0x100
 #define PMA_EP2_TX          0x140
 #define PMA_EP3_TX          0x150
+#define PMA_EP3_RX          0x190
 
 #define EP0_MAX_PACKET      64
 #define EP1_MAX_PACKET      64
@@ -867,7 +1100,8 @@ static const uint8_t dev_desc[] = {
     1,                      /* bNumConfigurations */
 };
 
-/* HID Report Descriptor — generic vendor-defined, 64-byte IN reports */
+/* HID Report Descriptor — generic vendor-defined, bidirectional 64-byte
+ * reports (Input + Output). */
 static const uint8_t hid_report_desc[] = {
     0x06, 0x00, 0xFF,       /* Usage Page (Vendor Defined 0xFF00) */
     0x09, 0x01,             /* Usage (Vendor Usage 1) */
@@ -887,9 +1121,10 @@ static const uint8_t hid_report_desc[] = {
 
 /* Configuration descriptor:
  * Config(9) + IAD(8) + CDC_IF0(9) + CDC_Func(5+4+5+5) + EP2(7) +
- * CDC_IF1(9) + EP1_OUT(7) + EP1_IN(7) + HID_IF2(9) + HID_Desc(9) + EP3(7)
- * = 9 + 8 + 9 + 19 + 7 + 9 + 7 + 7 + 9 + 9 + 7 = 100 */
-#define CONFIG_DESC_TOTAL_LEN   100
+ * CDC_IF1(9) + EP1_OUT(7) + EP1_IN(7) + HID_IF2(9) + HID_Desc(9) +
+ * EP3_IN(7) + EP3_OUT(7)
+ * = 9 + 8 + 9 + 19 + 7 + 9 + 7 + 7 + 9 + 9 + 7 + 7 = 107 */
+#define CONFIG_DESC_TOTAL_LEN   107
 
 static const uint8_t cfg_desc[] = {
     /* Configuration descriptor */
@@ -921,8 +1156,8 @@ static const uint8_t cfg_desc[] = {
     7, USB_DESC_ENDPOINT, 0x81, 0x02, EP1_MAX_PACKET, 0x00, 0,
 
     /* ---- HID Interface (Interface 2) ---- */
-    9, USB_DESC_INTERFACE, 2, 0, 1, 0x03, 0x00, 0x00, 0,
-    /* bInterfaceClass=0x03 (HID), no subclass, no protocol */
+    9, USB_DESC_INTERFACE, 2, 0, 2, 0x03, 0x00, 0x00, 0,
+    /* bNumEndpoints=2 (EP3 IN + EP3 OUT); class=0x03 (HID), no subclass/protocol */
 
     /* HID Descriptor */
     9, USB_DESC_HID,
@@ -932,15 +1167,22 @@ static const uint8_t cfg_desc[] = {
     USB_DESC_HID_REPORT,    /* bDescriptorType = Report */
     HID_REPORT_DESC_LEN, 0,/* wDescriptorLength */
 
-    /* EP3 IN — HID reports (interrupt) */
+    /* EP3 IN — HID reports (interrupt, device -> host) */
     7, USB_DESC_ENDPOINT, 0x83, 0x03, EP3_MAX_PACKET, 0x00, 1,
     /* bInterval=1ms for fastest polling */
+
+    /* EP3 OUT — HID reports (interrupt, host -> device) */
+    7, USB_DESC_ENDPOINT, 0x03, 0x03, EP3_MAX_PACKET, 0x00, 1,
 };
 
 /* Offset of the HID descriptor within cfg_desc (for GET_DESCRIPTOR HID).
  * Config(9) + IAD(8) + CDC_IF0(9) + Func(5+4+5+5=19) + EP2(7) +
  * CDC_IF1(9) + EP1out(7) + EP1in(7) + HID_IF(9) = 84 */
 #define CFG_DESC_HID_OFFSET  84
+
+/* Guard the hand-computed descriptor length against future edits. */
+_Static_assert(sizeof(cfg_desc) == CONFIG_DESC_TOTAL_LEN,
+               "cfg_desc length != CONFIG_DESC_TOTAL_LEN");
 
 static const uint8_t str0_desc[] = { 4, USB_DESC_STRING, 0x09, 0x04 };
 
@@ -1002,7 +1244,10 @@ static struct {
     const uint8_t       *ep0_tx_ptr;
     uint16_t             ep0_tx_remain;
 
-    uint8_t              ep0_rx_buf[8];
+    /* EP0 OUT data receive (sized for a full 64-byte HID SET_REPORT payload) */
+    uint8_t              ep0_rx_buf[EP0_MAX_PACKET];
+    /* Pending EP0 DATA OUT target (0 = CDC line coding, 1 = HID SET_REPORT) */
+    volatile uint8_t     ep0_out_is_hid;
 
     cdc_line_coding_t    line_coding;
 
@@ -1017,6 +1262,8 @@ static struct {
     /* HID state */
     volatile uint8_t     hid_tx_busy;
     uint8_t              hid_idle_rate;
+    hal_usb_hid_rx_cb_t  hid_rx_cb;       /* HID OUT report sink (EP3 OUT + SET_REPORT) */
+    void                *hid_rx_cb_ctx;
 } _cdc;
 
 /* ============================================================
@@ -1165,10 +1412,13 @@ static void _handle_setup(void)
                 ll_usb_drd_bdt_set_tx(2, PMA_EP2_TX, 0);
                 ll_usb_drd_chep_set_stat_tx(2, USB_CHEP_STAT_NAK);
 
-                /* Configure EP3 (HID interrupt IN) */
+                /* Configure EP3 (HID interrupt, bidirectional):
+                 * IN  = report device -> host, NAK until a report is queued
+                 * OUT = report host -> device, armed VALID to receive */
                 ll_usb_drd_chep_config(3, USB_CHEP_INTERRUPT, 3);
                 ll_usb_drd_bdt_set_tx(3, PMA_EP3_TX, 0);
-                ll_usb_drd_chep_set_stat_tx(3, USB_CHEP_STAT_NAK);
+                ll_usb_drd_bdt_set_rx(3, PMA_EP3_RX, EP3_MAX_PACKET);
+                ll_usb_drd_chep_set_stat(3, USB_CHEP_STAT_NAK, USB_CHEP_STAT_VALID);
                 _cdc.hid_tx_busy = 0;
             } else {
                 _cdc.state = USB_STATE_ADDRESS;
@@ -1206,6 +1456,7 @@ static void _handle_setup(void)
             switch (setup.bRequest) {
 
             case CDC_SET_LINE_CODING:
+                _cdc.ep0_out_is_hid = 0;
                 _cdc.ep0_state = EP0_DATA_OUT;
                 ll_usb_drd_chep_set_stat_rx(0, USB_CHEP_STAT_VALID);
                 return;
@@ -1258,8 +1509,11 @@ static void _handle_setup(void)
                 return;
 
             case HID_SET_REPORT:
-                /* Not implemented — would need EP0 DATA OUT handling */
-                _ep0_stall();
+                /* Accept the report payload in the EP0 DATA OUT stage and
+                 * route it to the HID OUT sink (alongside the EP3 OUT path). */
+                _cdc.ep0_out_is_hid = 1;
+                _cdc.ep0_state = EP0_DATA_OUT;
+                ll_usb_drd_chep_set_stat_rx(0, USB_CHEP_STAT_VALID);
                 return;
             }
         }
@@ -1321,10 +1575,17 @@ static void _handle_ctr(void)
             } else {
                 if (_cdc.ep0_state == EP0_DATA_OUT) {
                     uint16_t count = ll_usb_drd_bdt_get_rx_count(0);
-                    if (count <= 8) {
-                        ll_usb_drd_pma_read(PMA_EP0_RX, _cdc.ep0_rx_buf, count);
-                    }
-                    if (count == 7) {
+                    if (count > sizeof(_cdc.ep0_rx_buf))
+                        count = sizeof(_cdc.ep0_rx_buf);
+                    ll_usb_drd_pma_read(PMA_EP0_RX, _cdc.ep0_rx_buf, count);
+
+                    if (_cdc.ep0_out_is_hid) {
+                        /* HID SET_REPORT payload — deliver to the OUT sink */
+                        if (_cdc.hid_rx_cb)
+                            _cdc.hid_rx_cb(_cdc.ep0_rx_buf, count, _cdc.hid_rx_cb_ctx);
+                        _cdc.ep0_out_is_hid = 0;
+                    } else if (count == 7) {
+                        /* CDC SET_LINE_CODING — copy the 7 bytes */
                         memcpy(&_cdc.line_coding, _cdc.ep0_rx_buf, 7);
                     }
                     _ep0_send_status();
@@ -1392,6 +1653,21 @@ static void _handle_ctr(void)
 
     else if (ep == 3) {
         uint32_t chep3 = ll_usb_drd_chep_read(3);
+
+        /* ---- EP3 RX (HID OUT report — host -> device) ---- */
+        if (chep3 & USB_CHEP_VTRX) {
+            ll_usb_drd_chep_clr_vtrx(3);
+
+            uint16_t count = ll_usb_drd_bdt_get_rx_count(3);
+            if (count > EP3_MAX_PACKET) count = EP3_MAX_PACKET;
+            if (count > 0 && _cdc.hid_rx_cb) {
+                uint8_t tmp[EP3_MAX_PACKET];
+                ll_usb_drd_pma_read(PMA_EP3_RX, tmp, count);
+                _cdc.hid_rx_cb(tmp, count, _cdc.hid_rx_cb_ctx);
+            }
+            /* Re-arm RX for the next report */
+            ll_usb_drd_chep_set_stat_rx(3, USB_CHEP_STAT_VALID);
+        }
 
         /* ---- EP3 TX (HID report sent) ---- */
         if (chep3 & USB_CHEP_VTTX) {
@@ -1597,6 +1873,12 @@ uint16_t hal_usb_cdc_available(void)
 /* ============================================================
  * HID API
  * ============================================================ */
+
+void hal_usb_hid_set_rx_callback(hal_usb_hid_rx_cb_t cb, void *ctx)
+{
+    _cdc.hid_rx_cb     = cb;
+    _cdc.hid_rx_cb_ctx = ctx;
+}
 
 int hal_usb_hid_send_report(const uint8_t *buf, uint16_t len)
 {

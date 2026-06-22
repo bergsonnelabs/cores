@@ -1,14 +1,17 @@
 /**
  * core_usb_hid.h — USB HID (generic vendor reports)
  *
- * Send raw binary reports to the host over USB HID. No drivers
+ * Send and receive raw binary reports over USB HID. No drivers
  * needed on the host — works with hidapi, pyusb, or any HID reader.
  *
  * Reports are automatically zero-padded to 64 bytes. You can send
  * any struct up to 64 bytes — just cast to uint8_t* and pass its size.
+ * Inbound reports (host -> device) are delivered one at a time to a
+ * callback registered with core_usb_hid_set_rx_callback().
  *
  * The HID interface is part of the composite CDC+HID device —
- * call core_usb_init() first, then use core_usb_hid_send().
+ * call core_usb_init() first, then use core_usb_hid_send() /
+ * core_usb_hid_set_rx_callback().
  *
  * Only available on Core.U (STM32L422) and Core.H (STM32H523).
  *
@@ -17,11 +20,12 @@
  * @studio coverage
  *   id:    usb_hid
  *   name:  USB HID — vendor reports
- *   blurb: Tier 1 only. Single-function header for sending raw 64-byte
- *          HID reports over the composite CDC+HID device on Core.U /
- *          Core.H. Useful for high-throughput driverless host I/O
- *          (hidapi / pyusb / Web HID). No DSL surface — pointer-buffer
- *          ABI doesn't fit the current host-call shape.
+ *   blurb: Tier 1 only. Bidirectional 64-byte vendor HID reports over the
+ *          composite CDC+HID device on Core.U / Core.H — send via
+ *          core_usb_hid_send(), receive via a callback. Useful for
+ *          high-throughput driverless host I/O (hidapi / pyusb / Web HID),
+ *          e.g. the CMSIS-DAP probe transport. No DSL surface —
+ *          pointer-buffer ABI doesn't fit the current host-call shape.
  */
 
 #ifndef CORE_USB_HID_H
@@ -43,16 +47,23 @@ static inline int core_usb_hid_send(const uint8_t *buf, uint16_t len)
     return hal_usb_hid_send_report(buf, len);
 }
 
+/**
+ * Register a callback for inbound HID reports (host -> device).
+ * Fires from the USB ISR with one report per call (up to 64 bytes),
+ * delivered via the EP3 OUT interrupt endpoint or HID SET_REPORT.
+ * Pass NULL to disable; unhandled reports are dropped.
+ */
+static inline void core_usb_hid_set_rx_callback(hal_usb_hid_rx_cb_t cb, void *ctx)
+{
+    hal_usb_hid_set_rx_callback(cb, ctx);
+}
+
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
 // @studio unsupported tier=2 value=M title="No DSL surface for HID"
 //   Sending a HID report needs a buffer pointer + length. The DSL's
 //   array-host ABI (used for tile reads) could carry it, but no
 //   default-instance wrapper is wired up.
-//
-// @studio unsupported tier=1 value=M title="TX only — no HID receive"
-//   Wrapper sends reports; receiving host-to-device reports (Set Report
-//   / output reports) is not exposed. Unidirectional comms only.
 //
 // @studio unsupported tier=1 value=L title="Vendor descriptor only"
 //   The HID descriptor is hard-coded as a 64-byte vendor report with

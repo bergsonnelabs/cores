@@ -127,7 +127,8 @@ LAYER_HEADERS = {
             ["hal_usb_cdc_init", "hal_usb_cdc_connected", "hal_usb_cdc_write",
              "hal_usb_cdc_printf", "hal_usb_cdc_set_rx_callback", "hal_usb_cdc_rx_ready",
              "hal_usb_cdc_getc", "hal_usb_cdc_rx_try", "hal_usb_cdc_read",
-             "hal_usb_cdc_available", "hal_usb_cdc_poll", "hal_usb_hid_send_report"],
+             "hal_usb_cdc_available", "hal_usb_cdc_poll", "hal_usb_hid_send_report",
+             "hal_usb_hid_set_rx_callback"],
         ),
     },
     "rtc": {
