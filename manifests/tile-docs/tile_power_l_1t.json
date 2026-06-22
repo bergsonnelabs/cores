@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@a5cb41d",
   "file": "tile_power_l_1t.h",
   "brief": "Li-Ion charge controller driver for the Power.L.1T tile (rev a).",
-  "description": "Embeds the Texas Instruments BQ25150, a single-cell Li-Ion charge\ncontroller with programmable 1.8 V LDO output and 12-bit ADC for\nbattery and system monitoring.\n\nKey specifications:\n  - Charge input:     3.4–5.5 V (up to 500 mA)\n  - Battery voltage:  3.6–4.6 V (programmable in 10 mV steps)\n  - LDO output:       1.8 V on this tile (chip is programmable)\n  - ADC:              12-bit, 6 input channels\n  - Charge current:   1.25–500 mA programmable\n  - JEITA-style NTC:  cold / cool / warm / hot thresholds\n\nDatasheet: https://www.bergsonne.io/tiles/power/l1t\nIC datasheet: https://www.ti.com/lit/ds/symlink/bq25150.pdf\n\n@studio tile label=Power.L.1T icon=☷\n\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"MR button + INT pin handling\" section=advanced\n  The chip's MR (push-button) and INT (interrupt) pins aren't\n  routed to tile pads on the current revision — nothing for a\n  Core GPIO to attach to. Closing this gap requires a tile\n  hardware revision that routes at least INT to a connector\n  pad. Until then, MASK0–3 / MRCTRL register writes have no\n  external effect.",
+  "description": "Embeds the Texas Instruments BQ25150, a single-cell Li-Ion charge\ncontroller with programmable 1.8 V LDO output and 12-bit ADC for\nbattery and system monitoring.\n\nKey specifications:\n  - Charge input:     3.4–5.5 V (up to 500 mA)\n  - Battery voltage:  3.6–4.6 V (programmable in 10 mV steps)\n  - LDO output:       1.8 V on this tile (chip is programmable)\n  - ADC:              12-bit, 6 input channels\n  - Charge current:   1.25–500 mA programmable\n  - JEITA-style NTC:  cold / cool / warm / hot thresholds\n\nDatasheet: https://www.bergsonne.io/tiles/power/l1t\nIC datasheet: https://www.ti.com/lit/ds/symlink/bq25150.pdf\n\n@studio tile label=Power.L.1T icon=☷\n\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"MR button + INT pin handling\"\n  The chip's MR (push-button) and INT (interrupt) pins aren't\n  routed to tile pads on the current revision — nothing for a\n  Core GPIO to attach to. Closing this gap requires a tile\n  hardware revision that routes at least INT to a connector\n  pad. Until then, MASK0–3 / MRCTRL register writes have no\n  external effect.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -15,8 +15,7 @@
     {
       "severity": "advanced",
       "category": "MR button + INT pin handling",
-      "brief": "The chip's MR (push-button) and INT (interrupt) pins aren't routed to tile pads on the current revision — nothing for a Core GPIO to attach to. Closing this gap requires a tile hardware revision that routes at least INT to a connector pad. Until then, MASK0–3 / MRCTRL register writes have no external effect.",
-      "section": "advanced"
+      "brief": "The chip's MR (push-button) and INT (interrupt) pins aren't routed to tile pads on the current revision — nothing for a Core GPIO to attach to. Closing this gap requires a tile hardware revision that routes at least INT to a connector pad. Until then, MASK0–3 / MRCTRL register writes have no external effect."
     }
   ],
   "defines": [
@@ -28,7 +27,7 @@
     },
     {
       "name": "TILE_POWER_L_1T_VERSION_MINOR",
-      "value": "1",
+      "value": "2",
       "description": "",
       "section": ""
     },
@@ -45,6 +44,24 @@
       "section": ""
     },
     {
+      "name": "BQ25150_FLAG2_COMP1_ALARM",
+      "value": "0x40",
+      "description": "Comparator 1 threshold crossed",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_FLAG2_COMP2_ALARM",
+      "value": "0x20",
+      "description": "Comparator 2 threshold crossed",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_FLAG2_COMP3_ALARM",
+      "value": "0x10",
+      "description": "Comparator 3 threshold crossed",
+      "section": ""
+    },
+    {
       "name": "BQ25150_DEVICE_ID_DEFAULT",
       "value": "0x20",
       "description": "Expected DEVICE_ID register value.",
@@ -52,6 +69,107 @@
     }
   ],
   "enums": [
+    {
+      "name": "power_l_1t_safety_timer_t",
+      "brief": "Charge safety-timer limit (CHARGERCTRL0[2:1]).",
+      "description": "",
+      "members": [
+        {
+          "name": "POWER_L_1T_SAFETY_3H",
+          "value": "0",
+          "description": "3-hour fast-charge timer"
+        },
+        {
+          "name": "POWER_L_1T_SAFETY_6H",
+          "value": "1",
+          "description": "6-hour (default)"
+        },
+        {
+          "name": "POWER_L_1T_SAFETY_12H",
+          "value": "2",
+          "description": "12-hour"
+        },
+        {
+          "name": "POWER_L_1T_SAFETY_OFF",
+          "value": "3",
+          "description": "disabled"
+        }
+      ]
+    },
+    {
+      "name": "power_l_1t_pmid_mode_t",
+      "brief": "PMID power-path mode (ICCTRL1[1:0]).",
+      "description": "",
+      "members": [
+        {
+          "name": "POWER_L_1T_PMID_AUTO",
+          "value": "0",
+          "description": "powered from BAT or VIN (default)"
+        },
+        {
+          "name": "POWER_L_1T_PMID_BAT_ONLY",
+          "value": "1",
+          "description": "forced from BAT even when VIN present"
+        },
+        {
+          "name": "POWER_L_1T_PMID_FLOAT",
+          "value": "2",
+          "description": "disconnected, floating"
+        },
+        {
+          "name": "POWER_L_1T_PMID_PULLDOWN",
+          "value": "3",
+          "description": "disconnected, pulled down"
+        }
+      ]
+    },
+    {
+      "name": "power_l_1t_adc_channel_t",
+      "brief": "ADC channel selector for the programmable comparators (ADC_COMPn).",
+      "description": "",
+      "members": [
+        {
+          "name": "POWER_L_1T_ADC_CH_DISABLED",
+          "value": "0",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_ADCIN",
+          "value": "1",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_TS",
+          "value": "2",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_VBAT",
+          "value": "3",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_ICHARGE",
+          "value": "4",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_VIN",
+          "value": "5",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_PMID",
+          "value": "6",
+          "description": ""
+        },
+        {
+          "name": "POWER_L_1T_ADC_CH_IIN",
+          "value": "7",
+          "description": ""
+        }
+      ]
+    },
     {
       "name": "power_l_1t_ldo_mode_t",
       "brief": "LDO output mode — regulated voltage vs pass-through load switch.",
@@ -673,10 +791,104 @@
       "brief": "Block until charge_done is observed, or timeout.",
       "description": "Polls the charge_done bit at a 1 s cadence (charge state changes\non the order of minutes for a typical cell — faster polling wastes\nMCU cycles and bus bandwidth without finer-grained answers).\nReturns 1 immediately if the cycle is already finished.",
       "name": "tile_power_l_1t_wait_for_charge_done"
+    },
+    {
+      "signature": "void tile_power_l_1t_charger_enable(tile_t* tile, uint8_t on)",
+      "params": [
+        {
+          "name": "on",
+          "description": "1 = allow charging, 0 = disable charging."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Enable or disable battery charging over I²C.",
+      "description": "Sets/clears ICCTRL2.CHARGER_DISABLE. Note the hardware /CE pin still\ngates charging: when /CE is high, charging is off regardless of this\nbit; this only takes effect when /CE is held low (the tile's default).",
+      "name": "tile_power_l_1t_charger_enable"
+    },
+    {
+      "signature": "void tile_power_l_1t_set_battery_uvlo_mv(tile_t* tile, uint16_t mv)",
+      "params": [
+        {
+          "name": "mv",
+          "description": "Desired UVLO in mV (2200-3000)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the battery under-voltage lockout (discharge cutoff) threshold.",
+      "description": "BUVLO[2:0]: 3.0 / 2.8 / 2.6 / 2.4 / 2.2 V (nearest below `mv` is chosen);\ndeeper cutoff trades battery life for runtime. Other BUVLO fields\n(precharge threshold, OCP limit) are preserved.",
+      "name": "tile_power_l_1t_set_battery_uvlo_mv"
+    },
+    {
+      "signature": "void tile_power_l_1t_set_safety_timer(tile_t* tile, power_l_1t_safety_timer_t mode)",
+      "params": [
+        {
+          "name": "mode",
+          "description": "power_l_1t_safety_timer_t (3h / 6h / 12h / off)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the charge safety-timer limit.",
+      "description": "",
+      "name": "tile_power_l_1t_set_safety_timer"
+    },
+    {
+      "signature": "void tile_power_l_1t_set_pmid_mode(tile_t* tile, power_l_1t_pmid_mode_t mode)",
+      "params": [
+        {
+          "name": "mode",
+          "description": "power_l_1t_pmid_mode_t."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the PMID power-path mode (ICCTRL1[1:0]).",
+      "description": "",
+      "name": "tile_power_l_1t_set_pmid_mode"
+    },
+    {
+      "signature": "void tile_power_l_1t_set_adc_comparator(tile_t* tile, uint8_t comp, power_l_1t_adc_channel_t channel, uint16_t threshold)",
+      "params": [
+        {
+          "name": "comp",
+          "description": "Comparator index 1-3."
+        },
+        {
+          "name": "channel",
+          "description": "power_l_1t_adc_channel_t to monitor."
+        },
+        {
+          "name": "threshold",
+          "description": "16-bit raw ADC threshold."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Configure a programmable ADC comparator (threshold alarm).",
+      "description": "Routes ADC channel `channel` to comparator `comp` (1-3) and sets its\n16-bit threshold (left-justified, same scale as the channel's ADC\nresult). When the measurement crosses the threshold, the matching\nCOMPn_ALARM bit latches in FLAG2 (read via get_adc_comparators()).\nPass channel = POWER_L_1T_ADC_CH_DISABLED to turn a comparator off.\n\nNote: the chip's above/below polarity bit (ADCALARM_ABOVE) is not\nexposed by this driver yet — the comparator uses its default sense.",
+      "name": "tile_power_l_1t_set_adc_comparator"
+    },
+    {
+      "signature": "uint8_t tile_power_l_1t_get_adc_comparators(tile_t* tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "return": "BQ25150_FLAG2_COMPn_ALARM bits that have tripped since last read.",
+      "brief": "Read (and clear) the ADC comparator alarm flags.",
+      "description": "",
+      "name": "tile_power_l_1t_get_adc_comparators"
     }
   ],
   "source_file": "tile_power_l_1t.h",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "tile_family": "Power",
   "tile_name": "L.1T",
   "display_name": "Power.L.1T"

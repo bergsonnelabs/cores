@@ -105,6 +105,21 @@ int main(void)
     uint8_t wait_done = tile_power_l_1t_wait_for_charge_done(&battery, 5);
     (void)charging; (void)done; (void)low; (void)powered; (void)wait_done;
 
+    /* ---- v3.2 capability additions ---- */
+    tile_power_l_1t_charger_enable(&battery, 0);
+    tile_power_l_1t_charger_enable(&battery, 1);
+    tile_power_l_1t_set_battery_uvlo_mv(&battery, 3000);
+    tile_power_l_1t_set_battery_uvlo_mv(&battery, 2400);
+    tile_power_l_1t_set_safety_timer(&battery, POWER_L_1T_SAFETY_6H);
+    tile_power_l_1t_set_safety_timer(&battery, POWER_L_1T_SAFETY_OFF);
+    tile_power_l_1t_set_pmid_mode(&battery, POWER_L_1T_PMID_AUTO);
+    tile_power_l_1t_set_pmid_mode(&battery, POWER_L_1T_PMID_BAT_ONLY);
+    tile_power_l_1t_set_adc_comparator(&battery, 1, POWER_L_1T_ADC_CH_VBAT, 0x8000);
+    tile_power_l_1t_set_adc_comparator(&battery, 2, POWER_L_1T_ADC_CH_VIN, 0xC000);
+    tile_power_l_1t_set_adc_comparator(&battery, 3, POWER_L_1T_ADC_CH_DISABLED, 0);
+    uint8_t alarms = tile_power_l_1t_get_adc_comparators(&battery);
+    (void)alarms;
+
     while (1) {
         core_delay_ms(1000);
     }
