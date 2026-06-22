@@ -22,6 +22,7 @@
 
 #include "ll_systick.h"
 #include "hal_common.h"
+#include "core_config.h"  /* SYSCLK_MHZ — for core_delay_ns() */
 
 /**
  * Blocking delay in milliseconds.
@@ -73,6 +74,56 @@ static inline uint32_t core_millis(void)
 static inline int core_timeout(uint32_t start, uint32_t ms)
 {
     return hal_timeout_expired(start, ms);
+}
+
+/* ---- Cycle-accurate delay (sub-µs) ----
+ *
+ * core_delay_us/ms bottom out at ~1 µs. Tight bitbang timing (e.g. SWCLK
+ * rate control in a software CMSIS-DAP probe) needs finer steps. These use
+ * the DWT cycle counter on Cortex-M4/M33 (Core.ST.L4/H5/W5); the Cortex-M0+
+ * Core.ST.L0 has no DWT, so it falls back to a calibrated busy loop (coarser,
+ * but the bitbang use case targets the M4/M33 cores). Call core_cycle_init()
+ * once at startup before the first core_delay_cycles/ns. C-only — no DSL surface.
+ */
+
+#if !defined(STM32L011xx)  /* Cortex-M4/M33 have the DWT cycle counter */
+
+#define CORE_DWT_DEMCR   (*(volatile uint32_t *)0xE000EDFCUL)  /* bit24 TRCENA   */
+#define CORE_DWT_CTRL    (*(volatile uint32_t *)0xE0001000UL)  /* bit0  CYCCNTENA */
+#define CORE_DWT_CYCCNT  (*(volatile uint32_t *)0xE0001004UL)
+
+/** Enable the DWT cycle counter. Idempotent; call once at startup. */
+static inline void core_cycle_init(void)
+{
+    CORE_DWT_DEMCR |= (1UL << 24);
+    CORE_DWT_CTRL  |= 1UL;
+}
+
+/** Busy-wait `cycles` CPU cycles (≈ ±a few cycles of loop overhead). */
+static inline void core_delay_cycles(uint32_t cycles)
+{
+    uint32_t start = CORE_DWT_CYCCNT;
+    while ((CORE_DWT_CYCCNT - start) < cycles) { }
+}
+
+#else  /* Cortex-M0+ : no DWT — calibrated busy loop (~3 cycles/iteration) */
+
+static inline void core_cycle_init(void) { }
+
+static inline void core_delay_cycles(uint32_t cycles)
+{
+    volatile uint32_t n = cycles / 3u;
+    while (n--) { __asm volatile("nop"); }
+}
+
+#endif
+
+/** Busy-wait `ns` nanoseconds (rounds to whole CPU cycles). */
+static inline void core_delay_ns(uint32_t ns)
+{
+    /* cycles = ns * (SYSCLK_HZ / 1e9) = ns * SYSCLK_MHZ / 1000 (32-bit-safe
+     * for ns up to ~17 ms at 250 MHz). */
+    core_delay_cycles((ns * (uint32_t)SYSCLK_MHZ) / 1000u);
 }
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */

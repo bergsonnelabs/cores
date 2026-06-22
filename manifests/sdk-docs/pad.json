@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@777be99",
   "category": "pad",
   "label": "Core.Pad",
   "icon": "◼",
@@ -125,6 +125,102 @@
         }
       ],
       "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_resolve",
+      "signature": "core_pad_resolve(uint8_t pad)",
+      "returns": "core_pad_fast_t",
+      "brief": "Resolve a pad to a fast handle once, outside the hot loop.",
+      "params": [
+        {
+          "name": "pad",
+          "ctype": "uint8_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_fast_set",
+      "signature": "core_pad_fast_set(core_pad_fast_t h)",
+      "returns": "void",
+      "brief": "Drive the resolved pad high — single BSRR write.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_pad_fast_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_fast_clear",
+      "signature": "core_pad_fast_clear(core_pad_fast_t h)",
+      "returns": "void",
+      "brief": "Drive the resolved pad low — single BSRR write.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_pad_fast_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_fast_write",
+      "signature": "core_pad_fast_write(core_pad_fast_t h, int state)",
+      "returns": "void",
+      "brief": "Drive the resolved pad to `state` (0/1) — single BSRR write.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_pad_fast_t"
+        },
+        {
+          "name": "state",
+          "ctype": "int"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_fast_read",
+      "signature": "core_pad_fast_read(core_pad_fast_t h)",
+      "returns": "int",
+      "brief": "Read the resolved pad — single IDR load. Returns 0 or 1.",
+      "params": [
+        {
+          "name": "h",
+          "ctype": "core_pad_fast_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pad_bulk_write",
+      "signature": "core_pad_bulk_write(GPIO_TypeDef * port, uint32_t set_mask, uint32_t clear_mask)",
+      "returns": "void",
+      "brief": "Bulk update many pins on ONE port in a single atomic BSRR write: pins in `set_mask` go high, pins in `clear_mask` go low (set wins on overlap, per BSRR). Build the masks from the generated PAD_n_MASK defines. Useful for synchronized buses / LED matrices without per-pad jitter.",
+      "params": [
+        {
+          "name": "port",
+          "ctype": "GPIO_TypeDef *"
+        },
+        {
+          "name": "set_mask",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "clear_mask",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
       "layer": "core"
     },
     {

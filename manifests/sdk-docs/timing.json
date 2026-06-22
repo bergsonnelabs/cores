@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@777be99",
   "category": "timing",
   "label": "Core.Timing",
   "icon": "⏱",
@@ -80,6 +80,43 @@
         }
       ],
       "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "core_cycle_init",
+      "signature": "core_cycle_init(void)",
+      "returns": "void",
+      "brief": "Enable the DWT cycle counter. Idempotent; call once at startup.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_delay_cycles",
+      "signature": "core_delay_cycles(uint32_t cycles)",
+      "returns": "void",
+      "brief": "Busy-wait `cycles` CPU cycles (≈ ±a few cycles of loop overhead).",
+      "params": [
+        {
+          "name": "cycles",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_delay_ns",
+      "signature": "core_delay_ns(uint32_t ns)",
+      "returns": "void",
+      "brief": "Busy-wait `ns` nanoseconds (rounds to whole CPU cycles).",
+      "params": [
+        {
+          "name": "ns",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
       "layer": "core"
     },
     {
