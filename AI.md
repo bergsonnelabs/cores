@@ -184,7 +184,12 @@ Every project in `projects/<name>/` has a `config.json`. It is the single source
   ],
   "bootloader": "custom",          // "custom" | "rom" | "none" (default: "none")
   "usb": {
-    "enabled": false
+    "enabled": false,
+    "vid": "0x1209",                 // optional descriptor overrides; each unset
+    "pid": "0xDA01",                 // field falls back to the SDK default
+    "product": "CoreProbe CMSIS-DAP",// (0x1209/0x0001, "Bergsonne"/"Core Tile"/
+    "manufacturer": "Bergsonne",     // "000001"). CMSIS-DAP hosts auto-detect by
+    "serial": "CP-0001"              // matching "CMSIS-DAP" in the product string.
   },
   "ble": {
     "enabled": true              // Core.ST.W5 only; forces HSE clock (radio requires HSE)

@@ -1448,7 +1448,20 @@ def generate(tile_path, output_dir, config_path=None):
         _hsi16_i2c_parts = {"STM32WBA55xx"}
         ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
         ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
-        ctx["usb_enabled"] = project.get("usb", {}).get("enabled", False)
+        _usb_cfg = project.get("usb", {})
+        ctx["usb_enabled"] = _usb_cfg.get("enabled", False)
+        # Per-project USB identity → descriptor overrides in hal_usb_cdc.c
+        # (each unset field falls back to the SDK default). CMSIS-DAP hosts
+        # auto-detect by matching "CMSIS-DAP" in the product string.
+        def _parse_usb_id(v):
+            if v is None or v == "":
+                return None
+            return v if isinstance(v, int) else int(str(v), 16)
+        ctx["usb_vid"] = _parse_usb_id(_usb_cfg.get("vid"))
+        ctx["usb_pid"] = _parse_usb_id(_usb_cfg.get("pid"))
+        ctx["usb_product"] = _usb_cfg.get("product")
+        ctx["usb_manufacturer"] = _usb_cfg.get("manufacturer")
+        ctx["usb_serial"] = _usb_cfg.get("serial")
         # USB-capable MCUs always get CDC init in core_init() so the
         # DFU bootloader's 1200-baud touch reboot always works — even
         # when main.c forgets to call core_usb_init().
