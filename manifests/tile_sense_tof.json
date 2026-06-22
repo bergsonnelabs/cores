@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@293d8d2",
   "tile": "Sense.TOF",
   "palette": {
     "label": "Sense.TOF",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_sense_tof",
     "header": "tile_sense_tof.h",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "handle": {
     "type": "tile_t",
@@ -361,6 +361,74 @@
         }
       ],
       "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_kilo_iters"
+      ],
+      "symbol": "tile_sense_tof_set_kilo_iters",
+      "header": "tile_sense_tof.h",
+      "category": "tile",
+      "description": "Change the per-measurement iteration count on the fly.",
+      "params": [
+        {
+          "name": "kilo_iters",
+          "type": "int",
+          "description": "Iterations in thousands (e.g. 900 = 900k)."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_threshold"
+      ],
+      "symbol": "tile_sense_tof_set_threshold",
+      "header": "tile_sense_tof.h",
+      "category": "tile",
+      "description": "Change the detection threshold on the fly.",
+      "params": [
+        {
+          "name": "threshold",
+          "type": "int",
+          "description": "Detection threshold, 0-63."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_signal_quality"
+      ],
+      "symbol": "tile_sense_tof_get_signal_quality_flat",
+      "header": "tile_sense_tof.h",
+      "category": "tile",
+      "description": "Read signal-quality diagnostics into flat out-params (Studio).",
+      "params": [
+        {
+          "name": "reference_hits",
+          "type": "?int32_t *",
+          "description": "Reference-channel hit count (or NULL)."
+        },
+        {
+          "name": "object_hits",
+          "type": "?int32_t *",
+          "description": "Object-channel hit count (or NULL)."
+        },
+        {
+          "name": "crosstalk",
+          "type": "?int32_t *",
+          "description": "Cross-talk count (or NULL)."
+        }
+      ],
+      "returns": "void",
+      "dsl_returns": "int",
       "receiver": "tile_t *"
     },
     {

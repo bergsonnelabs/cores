@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@293d8d2",
   "file": "tile_sense_tof.h",
   "brief": "TMF8806 time-of-flight distance sensor.",
-  "description": "Platform-agnostic driver for the AMS/Sciosense TMF8806 direct time-of-flight\n(dToF) sensor with integrated VCSEL emitter and SPAD detector array.\n\nKey specifications:\n - Distance measurement up to 5000 mm (short-range, 2.5 m, and 5 m modes)\n - 16-bit distance output in millimeters\n - Configurable measurement period (30 ms to 2000 ms, or single-shot)\n - Configurable iteration count for accuracy vs. speed trade-off\n - 6-bit reliability indicator (0 = no object, 63 = highest confidence)\n - On-chip factory calibration with host-side storage and reload\n - Algorithm state save/restore for ultra-low-power resume\n - Embedded 8-bit temperature sensor\n\n\nDatasheet: https://ams.com/tmf8806\n\n@studio tile label=Sense.TOF icon=◊\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=common category=\"10 m extended-range mode\" section=advanced\n  Deferred to a dedicated session. TMF8806 App0 firmware supports\n  up to 5 m range out of ROM; 10 m mode requires downloading a\n  binary RAM patch from AMS via the bootloader's W_RAM +\n  RAMREMAP_RESET protocol — non-trivial firmware-loading flow not\n  in scope for this driver-coverage pass.\n\n@studio unsupported severity=niche category=\"GPIO0 / GPIO1 external trigger\"\n  Hardware-gated. Chip's GPIO0/1 (external trigger / status\n  output) aren't routed to tile pads (verified in\n  Sense-TOF-a.json — pads 6/7/8 carry no function). Future tile\n  revisions could expose them for hardware-synchronized ranging.\n\n@note All bus I/O is routed through tiles_pal_t function pointers.\n      This driver contains no platform-specific code.",
+  "description": "Platform-agnostic driver for the AMS/Sciosense TMF8806 direct time-of-flight\n(dToF) sensor with integrated VCSEL emitter and SPAD detector array.\n\nKey specifications:\n - Distance measurement up to 5000 mm (short-range, 2.5 m, and 5 m modes)\n - 16-bit distance output in millimeters\n - Configurable measurement period (30 ms to 2000 ms, or single-shot)\n - Configurable iteration count for accuracy vs. speed trade-off\n - 6-bit reliability indicator (0 = no object, 63 = highest confidence)\n - On-chip factory calibration with host-side storage and reload\n - Algorithm state save/restore for ultra-low-power resume\n - Embedded 8-bit temperature sensor\n\n\nDatasheet: https://ams.com/tmf8806\n\n@studio tile label=Sense.TOF icon=◊\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=common category=\"10 m extended-range mode\" section=advanced\n  Deferred to a dedicated session. TMF8806 App0 firmware supports\n  up to 5 m range out of ROM; 10 m mode requires downloading a\n  binary RAM patch from AMS via the bootloader's W_RAM +\n  RAMREMAP_RESET protocol — non-trivial firmware-loading flow not\n  in scope for this driver-coverage pass.\n\n@studio unsupported severity=niche category=\"GPIO0 / GPIO1 runtime control\"\n  GPIO0 is routed to tile pad 3 but is consumed as a hardware\n  strap: a 100 k on-board pull-up to V+ holds GPIO0 high at\n  startup, selecting the 1.8-3.3 V digital-I/O level required by\n  this tile's 2.7-3.6 V rail (TMF8806 datasheet §6.7). It is NOT\n  an I2C-address strap (the address is fixed at 0x41, changed only\n  via command 0x49). Because the strap fixes GPIO0 high, runtime\n  GPIO0 output modes (object-detect / VCSEL-sync, command 0x0F)\n  are not exposed — driving the pad would fight the pull-up and\n  risk changing the I/O level. GPIO1 is not routed to a pad.\n\n@note All bus I/O is routed through tiles_pal_t function pointers.\n      This driver contains no platform-specific code.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -20,8 +20,8 @@
     },
     {
       "severity": "niche",
-      "category": "GPIO0 / GPIO1 external trigger",
-      "brief": "Hardware-gated. Chip's GPIO0/1 (external trigger / status output) aren't routed to tile pads (verified in Sense-TOF-a.json — pads 6/7/8 carry no function). Future tile revisions could expose them for hardware-synchronized ranging."
+      "category": "GPIO0 / GPIO1 runtime control",
+      "brief": "GPIO0 is routed to tile pad 3 but is consumed as a hardware strap: a 100 k on-board pull-up to V+ holds GPIO0 high at startup, selecting the 1.8-3.3 V digital-I/O level required by this tile's 2.7-3.6 V rail (TMF8806 datasheet §6.7). It is NOT an I2C-address strap (the address is fixed at 0x41, changed only via command 0x49). Because the strap fixes GPIO0 high, runtime GPIO0 output modes (object-detect / VCSEL-sync, command 0x0F) are not exposed — driving the pad would fight the pull-up and risk changing the I/O level. GPIO1 is not routed to a pad."
     }
   ],
   "defines": [
@@ -33,7 +33,7 @@
     },
     {
       "name": "TILE_SENSE_TOF_VERSION_MINOR",
-      "value": "2",
+      "value": "3",
       "description": "",
       "section": ""
     },
@@ -113,6 +113,12 @@
       "name": "TMF8806_CMD_SERIAL",
       "value": "0x47",
       "description": "Read serial number",
+      "section": ""
+    },
+    {
+      "name": "TMF8806_FACTORY_CAL_KITERS",
+      "value": "0xA000",
+      "description": "",
       "section": ""
     },
     {
@@ -291,6 +297,28 @@
           "type": "uint8_t",
           "name": "patch",
           "description": "Patch version number."
+        }
+      ]
+    },
+    {
+      "name": "sense_tof_signal_t",
+      "brief": "Per-measurement signal-quality diagnostics from the TMF8806.",
+      "description": "Populated from the result block (registers 0x34-0x3D). Higher hit\ncounts mean a stronger return; crosstalk is the internal optical\nleakage the factory calibration measures and subtracts.",
+      "fields": [
+        {
+          "type": "uint32_t",
+          "name": "reference_hits",
+          "description": "Reference-channel photon hits (regs 0x34-0x37)."
+        },
+        {
+          "type": "uint32_t",
+          "name": "object_hits",
+          "description": "Object-channel photon hits (regs 0x38-0x3B)."
+        },
+        {
+          "type": "uint16_t",
+          "name": "crosstalk",
+          "description": "Cross-talk count (regs 0x3C-0x3D)."
         }
       ]
     }
@@ -722,6 +750,88 @@
       "name": "tile_sense_tof_set_period"
     },
     {
+      "signature": "void tile_sense_tof_set_kilo_iters(tile_t *tile, uint16_t kilo_iters)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "kilo_iters",
+          "description": "Iterations in thousands (e.g. 900 = 900k)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Change the per-measurement iteration count on the fly.",
+      "description": "Iterations (in thousands) trade power for SNR/range: more iterations\ngive a stronger return and longer reach at higher current draw.\nTypical range 10-4000 (10k-4M); the ranging default is 900. Stops any\nactive measurement, updates the cached value, and restarts.",
+      "name": "tile_sense_tof_set_kilo_iters"
+    },
+    {
+      "signature": "void tile_sense_tof_set_threshold(tile_t *tile, uint8_t threshold)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "threshold",
+          "description": "Detection threshold, 0-63."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Change the detection threshold on the fly.",
+      "description": "Sets cmd_data3[5:0] — the minimum confidence for a reported target.\nHigher values reject weak/spurious returns; 0 reports everything.\nStops any active measurement, updates the cached value, and restarts.",
+      "name": "tile_sense_tof_set_threshold"
+    },
+    {
+      "signature": "void tile_sense_tof_get_signal_quality(tile_t *tile, sense_tof_signal_t *sig)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "sig",
+          "description": "Caller-allocated struct, populated on return."
+        }
+      ],
+      "notes": [],
+      "brief": "Read per-measurement signal-quality diagnostics.",
+      "description": "Reads the reference/object hit counts and crosstalk from the most\nrecent result block. Useful for assessing return strength and\nreflectance beyond the reliability byte. Call after a result is ready.",
+      "name": "tile_sense_tof_get_signal_quality"
+    },
+    {
+      "signature": "void tile_sense_tof_get_signal_quality_flat(tile_t *tile, int32_t *reference_hits, int32_t *object_hits, int32_t *crosstalk)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "reference_hits",
+          "description": "Reference-channel hit count (or NULL)."
+        },
+        {
+          "name": "object_hits",
+          "description": "Object-channel hit count (or NULL)."
+        },
+        {
+          "name": "crosstalk",
+          "description": "Cross-talk count (or NULL)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Read signal-quality diagnostics into flat out-params (Studio).",
+      "description": "",
+      "name": "tile_sense_tof_get_signal_quality_flat"
+    },
+    {
       "signature": "void tile_sense_tof_save_state(tile_t *tile, uint8_t *data)",
       "params": [
         {
@@ -956,7 +1066,7 @@
     }
   ],
   "source_file": "tile_sense_tof.h",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "tile_family": "Sense",
   "tile_name": "TOF",
   "display_name": "Sense.TOF"

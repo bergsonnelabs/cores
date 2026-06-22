@@ -460,11 +460,20 @@ uint8_t tile_sense_tof_factory_calibrate(tile_t *tile, uint32_t timeout_ms)
 {
     tof_state_t *s = state_for(tile);
 
+    /* Factory calibration needs ~40M iterations (40960 kIters) per the TMF8806
+     * datasheet §6.9 / host-driver §8.4 — far more than the ranging default —
+     * to produce a low-noise crosstalk reference. Raise kIters for the
+     * calibration command only, then restore the ranging configuration. */
+    uint16_t saved_kiters = s->cfg.kilo_iters;
+    s->cfg.kilo_iters = TMF8806_FACTORY_CAL_KITERS;
+
     /* Clear any pending interrupt */
     tof_write_reg(tile, TMF8806_REG_INT_STATUS, TMF8806_INT_RESULT);
 
-    /* Issue factory calibration command with current mode settings */
+    /* Issue factory calibration command with the calibration iteration count */
     tof_write_cmd_payload(tile, TMF8806_CMD_FACTORY_CAL);
+
+    s->cfg.kilo_iters = saved_kiters;
 
     /* Wait for calibration result */
     uint32_t elapsed = 0;
@@ -557,6 +566,34 @@ void tile_sense_tof_set_period(tile_t *tile, uint8_t period_ms)
         tile_sense_tof_start(tile);
 }
 
+void tile_sense_tof_set_kilo_iters(tile_t *tile, uint16_t kilo_iters)
+{
+    tof_state_t *s = state_for(tile);
+    uint8_t was_measuring = s->measuring;
+
+    if (was_measuring)
+        tile_sense_tof_stop(tile);
+
+    s->cfg.kilo_iters = kilo_iters;
+
+    if (was_measuring)
+        tile_sense_tof_start(tile);
+}
+
+void tile_sense_tof_set_threshold(tile_t *tile, uint8_t threshold)
+{
+    tof_state_t *s = state_for(tile);
+    uint8_t was_measuring = s->measuring;
+
+    if (was_measuring)
+        tile_sense_tof_stop(tile);
+
+    s->cfg.threshold = threshold & 0x3F;
+
+    if (was_measuring)
+        tile_sense_tof_start(tile);
+}
+
 /* ---- Algorithm state (ultra-low-power) ---- */
 
 void tile_sense_tof_save_state(tile_t *tile, uint8_t *data)
@@ -569,6 +606,33 @@ void tile_sense_tof_restore_state(tile_t *tile, const uint8_t *data)
     tof_write_regs(tile, TMF8806_REG_STATE_DATA_WR, data, TMF8806_STATE_DATA_LEN);
     tof_state_t *s = state_for(tile);
     s->state_valid = 1;
+}
+
+/* ---- Signal-quality diagnostics ---- */
+
+void tile_sense_tof_get_signal_quality(tile_t *tile, sense_tof_signal_t *sig)
+{
+    /* reference_hits (0x34-0x37), object_hits (0x38-0x3B), xtalk (0x3C-0x3D)
+     * are contiguous — one 10-byte burst, little-endian. */
+    uint8_t buf[10];
+    tof_read_regs(tile, TMF8806_REG_REF_HITS_0, buf, sizeof(buf));
+    sig->reference_hits = (uint32_t)buf[0] | ((uint32_t)buf[1] << 8)
+                        | ((uint32_t)buf[2] << 16) | ((uint32_t)buf[3] << 24);
+    sig->object_hits    = (uint32_t)buf[4] | ((uint32_t)buf[5] << 8)
+                        | ((uint32_t)buf[6] << 16) | ((uint32_t)buf[7] << 24);
+    sig->crosstalk      = (uint16_t)((uint16_t)buf[8] | ((uint16_t)buf[9] << 8));
+}
+
+void tile_sense_tof_get_signal_quality_flat(tile_t *tile,
+                                            int32_t *reference_hits,
+                                            int32_t *object_hits,
+                                            int32_t *crosstalk)
+{
+    sense_tof_signal_t sig = {0};
+    tile_sense_tof_get_signal_quality(tile, &sig);
+    if (reference_hits) *reference_hits = (int32_t)sig.reference_hits;
+    if (object_hits)    *object_hits    = (int32_t)sig.object_hits;
+    if (crosstalk)      *crosstalk      = (int32_t)sig.crosstalk;
 }
 
 /* ---- Info (continued) ---- */
