@@ -121,6 +121,54 @@ static inline void core_pad_toggle(uint8_t pad)
     hal_pad_toggle(pad);
 }
 
+/* ---- Fast path (resolved handle + bulk BSRR) ----
+ *
+ * core_pad_write/read do a pad→port/pin table lookup every call. For tight
+ * bitbang inner loops (e.g. a software SWD/CMSIS-DAP clock) that's too slow:
+ * resolve the pad ONCE to a {port, mask} handle, then hit BSRR/IDR directly —
+ * each op compiles to a single store/load. C-only (struct ABI), no DSL surface.
+ */
+
+typedef struct {
+    GPIO_TypeDef *port;  /* NULL if the pad has no GPIO (power/reset/etc.) */
+    uint32_t      mask;  /* (1u << pin) */
+} core_pad_fast_t;
+
+/** Resolve a pad to a fast handle once, outside the hot loop. */
+static inline core_pad_fast_t core_pad_resolve(uint8_t pad)
+{
+    hal_pad_gpio_t g = hal_pad_lookup(pad);
+    core_pad_fast_t h = { g.port, g.port ? (1UL << g.pin) : 0UL };
+    return h;
+}
+
+/** Drive the resolved pad high — single BSRR write. */
+static inline void core_pad_fast_set(core_pad_fast_t h)   { h.port->BSRR = h.mask; }
+/** Drive the resolved pad low — single BSRR write. */
+static inline void core_pad_fast_clear(core_pad_fast_t h) { h.port->BSRR = h.mask << 16; }
+/** Drive the resolved pad to `state` (0/1) — single BSRR write. */
+static inline void core_pad_fast_write(core_pad_fast_t h, int state)
+{
+    h.port->BSRR = state ? h.mask : (h.mask << 16);
+}
+/** Read the resolved pad — single IDR load. Returns 0 or 1. */
+static inline int core_pad_fast_read(core_pad_fast_t h)
+{
+    return (h.port->IDR & h.mask) ? 1 : 0;
+}
+
+/**
+ * Bulk update many pins on ONE port in a single atomic BSRR write: pins in
+ * `set_mask` go high, pins in `clear_mask` go low (set wins on overlap, per
+ * BSRR). Build the masks from the generated PAD_n_MASK defines. Useful for
+ * synchronized buses / LED matrices without per-pad jitter.
+ */
+static inline void core_pad_bulk_write(GPIO_TypeDef *port,
+                                       uint32_t set_mask, uint32_t clear_mask)
+{
+    port->BSRR = set_mask | (clear_mask << 16);
+}
+
 /** Configure a pad as analog (for ADC, DAC, comparator). */
 static inline void core_pad_analog(uint8_t pad)
 {
@@ -185,9 +233,12 @@ static inline void core_pad_on_change_stop(uint8_t pad)
 //   annotation) for slew-rate would let DSL programs tune SPI/UART rise
 //   times without leaving the IDE.
 //
-// @studio unsupported tier=2 value=L title="No bulk pad write / read"
-//   Each call writes one pad. A vector form (mask + value) would let
-//   synchronized buses or LED matrices update pads in a single BSRR
-//   write, avoiding per-pad jitter.
+// @studio unsupported tier=2 value=L title="Bulk / fast pad write is C-only"
+//   The single-pad DSL ops do a pad→port/pin lookup each call. A C fast
+//   path now exists — core_pad_resolve() + core_pad_fast_* (resolved
+//   {port,mask} handle, direct BSRR/IDR) and core_pad_bulk_write() (one
+//   atomic BSRR for many pins) — used by bitbang inner loops like the
+//   CMSIS-DAP probe. Still no DSL surface (pointer/struct ABI), so
+//   synchronized-bus / LED-matrix updates from the IDE remain a gap.
 
 #endif /* CORE_PAD_H */
