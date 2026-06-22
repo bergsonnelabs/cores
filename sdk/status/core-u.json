@@ -109,7 +109,7 @@
     "security.pka": "na",
     "security.hash": "na",
     "conn.usb_cdc": "verified",
-    "conn.usb_hid": "",
+    "conn.usb_hid": "compile",
     "conn.usb_msc": "",
     "conn.dfu": "verified",
     "conn.ble": "na",

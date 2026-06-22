@@ -12,6 +12,31 @@
 
 #include "hal_usb_cdc.h"
 
+/* Per-project USB identity. coregen emits CORE_USB_* into core_config.h from
+ * the config.json "usb" block; anything unset falls back to the defaults
+ * below. CMSIS-DAP hosts (pyOCD/OpenOCD) auto-detect by matching "CMSIS-DAP"
+ * in the product string, so a probe sets usb.product accordingly. */
+#if defined(__has_include)
+#  if __has_include("core_config.h")
+#    include "core_config.h"
+#  endif
+#endif
+#ifndef CORE_USB_VID
+#  define CORE_USB_VID 0x1209  /* pid.codes open-source VID */
+#endif
+#ifndef CORE_USB_PID
+#  define CORE_USB_PID 0x0001  /* placeholder PID */
+#endif
+#ifndef CORE_USB_MANUFACTURER
+#  define CORE_USB_MANUFACTURER "Bergsonne"
+#endif
+#ifndef CORE_USB_PRODUCT
+#  define CORE_USB_PRODUCT "Core Tile"
+#endif
+#ifndef CORE_USB_SERIAL
+#  define CORE_USB_SERIAL "000001"
+#endif
+
 #if defined(STM32L422xx)
 
 #include "ll_usb.h"
@@ -103,8 +128,8 @@ static const uint8_t dev_desc[] = {
     0x02,                   /* bDeviceSubClass = Common Class */
     0x01,                   /* bDeviceProtocol = IAD */
     EP0_MAX_PACKET,         /* bMaxPacketSize0 */
-    0x09, 0x12,             /* idVendor = 0x1209 (pid.codes) */
-    0x01, 0x00,             /* idProduct = 0x0001 (placeholder) */
+    (CORE_USB_VID & 0xFF), ((CORE_USB_VID >> 8) & 0xFF),       /* idVendor */
+    (CORE_USB_PID & 0xFF), ((CORE_USB_PID >> 8) & 0xFF),       /* idProduct */
     0x00, 0x01,             /* bcdDevice = 1.00 */
     1,                      /* iManufacturer (string index 1) */
     2,                      /* iProduct (string index 2) */
@@ -442,15 +467,15 @@ static void _handle_setup(void)
                     _ep0_send(str0_desc, sizeof(str0_desc), setup.wLength);
                     return;
                 case 1:
-                    len = _str_to_desc("Bergsonne", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_MANUFACTURER, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 case 2:
-                    len = _str_to_desc("Core Tile", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_PRODUCT, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 case 3:
-                    len = _str_to_desc("000001", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_SERIAL, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 }
@@ -1091,8 +1116,8 @@ static const uint8_t dev_desc[] = {
     0x02,                   /* bDeviceSubClass = Common Class */
     0x01,                   /* bDeviceProtocol = IAD */
     EP0_MAX_PACKET,         /* bMaxPacketSize0 */
-    0x09, 0x12,             /* idVendor = 0x1209 (pid.codes) */
-    0x01, 0x00,             /* idProduct = 0x0001 (placeholder) */
+    (CORE_USB_VID & 0xFF), ((CORE_USB_VID >> 8) & 0xFF),       /* idVendor */
+    (CORE_USB_PID & 0xFF), ((CORE_USB_PID >> 8) & 0xFF),       /* idProduct */
     0x00, 0x01,             /* bcdDevice = 1.00 */
     1,                      /* iManufacturer (string index 1) */
     2,                      /* iProduct (string index 2) */
@@ -1350,15 +1375,15 @@ static void _handle_setup(void)
                     _ep0_send(str0_desc, sizeof(str0_desc), setup.wLength);
                     return;
                 case 1:
-                    len = _str_to_desc("Bergsonne", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_MANUFACTURER, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 case 2:
-                    len = _str_to_desc("Core Tile", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_PRODUCT, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 case 3:
-                    len = _str_to_desc("000001", str_buf, sizeof(str_buf));
+                    len = _str_to_desc(CORE_USB_SERIAL, str_buf, sizeof(str_buf));
                     _ep0_send(str_buf, len, setup.wLength);
                     return;
                 }

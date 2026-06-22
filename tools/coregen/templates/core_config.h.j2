@@ -88,6 +88,28 @@
 {% endfor %}
 {% endif %}
 
+{% if usb_vid is not none or usb_pid is not none or usb_product or usb_manufacturer or usb_serial %}
+/* ---- USB identity ---- */
+/* Per-project overrides for the CDC/HID descriptors (config.json "usb").
+ * Unset fields fall back to the SDK defaults in hal_usb_cdc.c. CMSIS-DAP
+ * hosts auto-detect by matching "CMSIS-DAP" in the product string. */
+{% if usb_vid is not none %}
+#define CORE_USB_VID          0x{{ '%04X' | format(usb_vid) }}
+{% endif %}
+{% if usb_pid is not none %}
+#define CORE_USB_PID          0x{{ '%04X' | format(usb_pid) }}
+{% endif %}
+{% if usb_product %}
+#define CORE_USB_PRODUCT      "{{ usb_product }}"
+{% endif %}
+{% if usb_manufacturer %}
+#define CORE_USB_MANUFACTURER "{{ usb_manufacturer }}"
+{% endif %}
+{% if usb_serial %}
+#define CORE_USB_SERIAL       "{{ usb_serial }}"
+{% endif %}
+{% endif %}
+
 {% if bootloader_mode != "none" %}
 /* ---- Bootloader ---- */
 /*   "custom" — Core DFU bootloader (1209:0002). App at 0x08002000.
