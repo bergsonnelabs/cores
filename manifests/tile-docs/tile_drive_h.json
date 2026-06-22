@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@a5cb41d",
   "file": "tile_drive_h.h",
   "brief": "LRA haptic driver for the Drive.H tile (rev a).",
-  "description": "Embeds the TI DRV2605L, a haptic driver for LRA (Linear Resonant\nActuator) and ERM actuators with a built-in waveform library\nof 123 effects.\n\nKey specifications:\n  - Output:       full-bridge, 3.0-5.2 Vrms into LRA\n  - Waveform lib: 123 haptic effects (6 libraries)\n  - Auto-cal:     automatic resonance tracking for LRA\n  - Modes:        Internal trigger, RTP, PWM, audio-to-vibe\n\nDatasheet: https://www.bergsonne.io/tiles/drive/h\nIC datasheet: https://www.ti.com/lit/ds/symlink/drv2605l.pdf\n\n\n@studio tile label=Drive.H icon=≋\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n(none — this driver covers every register-controllable feature of\nthe DRV2605L. OTP burning is implemented in firmware but\nintentionally not exposed to Studio because it permanently\nmodifies the chip; access it from C via tile_drive_h_program_otp().)",
+  "description": "Embeds the TI DRV2605L, a haptic driver for LRA (Linear Resonant\nActuator) and ERM actuators with a built-in waveform library\nof 123 effects.\n\nKey specifications:\n  - Output:       full-bridge, 3.0-5.2 Vrms into LRA\n  - Waveform lib: 123 haptic effects (6 libraries)\n  - Auto-cal:     automatic resonance tracking for LRA\n  - Modes:        Internal trigger, RTP, PWM, audio-to-vibe\n\nDatasheet: https://www.bergsonne.io/tiles/drive/h\nIC datasheet: https://www.ti.com/lit/ds/symlink/drv2605l.pdf\n\n\n@studio tile label=Drive.H icon=≋\n\nDriver gaps (chip capabilities not exposed by this driver):\n\nThis driver covers every register-controllable feature of the\nDRV2605L; the only deliberate omission is OTP waveform burning.\n\n@studio unsupported severity=niche category=\"OTP waveform burning\"\n  The DRV2605L can burn custom waveforms into one-time-programmable\n  memory. This is implemented in firmware (tile_drive_h_program_otp())\n  but intentionally NOT exposed to Studio: it permanently and\n  irreversibly modifies the chip. Driver-deferred by policy, not a\n  hardware gap — call it from C if you really need it.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -11,6 +11,13 @@
     }
   ],
   "studio_ready": true,
+  "studio_unsupported": [
+    {
+      "severity": "niche",
+      "category": "OTP waveform burning",
+      "brief": "The DRV2605L can burn custom waveforms into one-time-programmable memory. This is implemented in firmware (tile_drive_h_program_otp()) but intentionally NOT exposed to Studio: it permanently and irreversibly modifies the chip. Driver-deferred by policy, not a hardware gap — call it from C if you really need it."
+    }
+  ],
   "defines": [
     {
       "name": "TILE_DRIVE_H_VERSION_MAJOR",
