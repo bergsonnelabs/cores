@@ -40,6 +40,14 @@
  */
 typedef void (*hal_usb_cdc_rx_cb_t)(const uint8_t *data, uint16_t len, void *ctx);
 
+/** Called from USB ISR when a HID OUT report arrives (EP3 OUT or
+ *  HID SET_REPORT). Delivers one report per call (up to 64 bytes).
+ *  @param data  Report bytes copied from PMA
+ *  @param len   Number of bytes received
+ *  @param ctx   User context (passed at registration time)
+ */
+typedef void (*hal_usb_hid_rx_cb_t)(const uint8_t *data, uint16_t len, void *ctx);
+
 /* ============================================================
  * API
  * ============================================================ */
@@ -132,6 +140,15 @@ void hal_usb_cdc_poll(void);
  * Returns bytes sent, or -1 if not configured.
  */
 int hal_usb_hid_send_report(const uint8_t *buf, uint16_t len);
+
+/**
+ * Set a callback for HID OUT reports (host -> device).
+ * Called from the USB ISR with one report per call, copied from PMA.
+ * Reception arrives via the EP3 OUT interrupt endpoint and via the
+ * HID SET_REPORT control request. If no callback is set, OUT reports
+ * are dropped (the endpoint is still re-armed).
+ */
+void hal_usb_hid_set_rx_callback(hal_usb_hid_rx_cb_t cb, void *ctx);
 
 #endif /* STM32L422xx || STM32H523xx */
 

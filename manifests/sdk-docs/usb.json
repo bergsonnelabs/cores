@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@5d70049",
   "category": "usb",
   "label": "Core.USB",
   "icon": "❝",
@@ -325,6 +325,24 @@
         {
           "name": "len",
           "ctype": "uint16_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_usb_hid_set_rx_callback",
+      "signature": "hal_usb_hid_set_rx_callback(hal_usb_hid_rx_cb_t cb, void * ctx)",
+      "returns": "void",
+      "brief": "Set a callback for HID OUT reports (host -> device). Called from the USB ISR with one report per call, copied from PMA. Reception arrives via the EP3 OUT interrupt endpoint and via the HID SET_REPORT control request. If no callback is set, OUT reports are dropped (the endpoint is still re-armed).",
+      "params": [
+        {
+          "name": "cb",
+          "ctype": "hal_usb_hid_rx_cb_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
         }
       ],
       "studio_exposed": false,
