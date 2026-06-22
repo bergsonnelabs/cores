@@ -581,7 +581,7 @@ def parse_header(filepath):
         # Map known families
         family_map = {
             'sense': 'Sense', 'drive': 'Drive', 'power': 'Power',
-            'display': 'Display', 'tak': 'Tak',
+            'display': 'Display', 'tak': 'Tak', 'store': 'Store',
         }
         for prefix, family in family_map.items():
             if parts.startswith(prefix + '_'):
