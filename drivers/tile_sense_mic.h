@@ -1,14 +1,26 @@
 /**
  * @file   tile_sense_mic.h
- * @brief  Complete driver for the Sense.MIC tile (MAX11645 ADC + AMM-2742 MEMS mic).
+ * @brief  Complete driver for the Sense.MIC tile (analog MEMS mic + amp + ADC).
  *         I2C-only, command-based protocol via tiles_pal_t raw I2C.
- * @version 2.1.0
+ * @version 2.2.0
  *
- * I2C-output MEMS microphone tile combining:
- *   - PUI Audio AMM-2742-T-R: omnidirectional MEMS mic, 20 Hz–20 kHz,
- *     59 dB SNR, 123 dB AOP
+ * Analog signal chain: an analog MEMS microphone is AC-coupled into an
+ * AD8605 op-amp gain stage, whose output drives the MAX11645 ADC (and is
+ * also tapped out to a pad). Components:
+ *   - Same Sky / CUI CMM-2718AT-42316-TR: omnidirectional ANALOG MEMS mic,
+ *     −42 dBV/Pa sensitivity, 57 dBA SNR, 130 dB SPL AOP, 300 Ω output.
+ *   - Analog Devices AD8605: precision RRIO op-amp, non-inverting gain
+ *     ~48× (R4 47k / R3 1k → 1 + 47). The ADC therefore sees ~48× the
+ *     bare mic voltage — the mV→SPL conversion divides this back out.
  *   - Maxim MAX11645: 12-bit 2-channel ADC, up to 94.4 ksps,
- *     I2C up to 1.7 MHz, internal 2.048V reference
+ *     I2C up to 1.7 MHz, internal 2.048V reference.
+ *
+ * The amplified analog output is also brought out to a tile pad (the
+ * schematic routes it to pad 8). NOTE: as of this writing the canonical
+ * tile JSON is mid-reconciliation — it lists the older PUI AMM-2742 mic
+ * and labels pad 6 (not 8) as the analog out, and omits the AD8605. The
+ * driver here reflects the real schematic; the product DB still needs the
+ * mic part, the AD8605, and the analog-out pad (8) updated to match.
  *
  * The MAX11645 uses a command-based I2C protocol (no register addresses).
  * All bus access goes through tiles_pal_t i2c_write_raw / i2c_read_raw.
@@ -70,7 +82,7 @@
  * ================================================================ */
 
 #define TILE_SENSE_MIC_VERSION_MAJOR  2
-#define TILE_SENSE_MIC_VERSION_MINOR  1
+#define TILE_SENSE_MIC_VERSION_MINOR  2
 #define TILE_SENSE_MIC_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -532,20 +544,20 @@ uint16_t tile_sense_mic_amplitude_mv(tile_t *tile, uint16_t pp_raw);
  * These compose the tier-1 surface above into "did the thing happen"
  * calls. They take care of buffer capture, RMS computation, and
  * mV→dB SPL mapping internally so callers don't need to read the
- * AMM-2742 datasheet to write a clap detector.
+ * CMM-2718AT datasheet to write a clap detector.
  *
  * SPL accuracy regime
  * -------------------
- * The AMM-2742 sensitivity (−42 dBV/Pa typ.) and the integer
- * mV→dB lookup that backs read_spl_db() / is_loud() / wait_for_sound()
- * are tuned for "did something happen" event detection — knock,
- * clap, voice presence, ambient quiet vs. busy. They are NOT
- * calibrated for studio metering: expect roughly ±5 dB absolute
- * accuracy in the 50–100 dB SPL window, more error toward the
- * extremes (sub-50 dB falls into the noise floor of the ADC, above
- * ~110 dB the mic clips). A-weighting is approximated as flat —
- * the AMM-2742 has its own frequency response (20 Hz–20 kHz, mild
- * roll-off above 10 kHz) and we don't apply any weighting filter.
+ * The CMM-2718AT sensitivity (−42 dBV/Pa typ.) — through the AD8605's
+ * ~48× gain — and the integer mV→dB lookup that backs read_spl_db() /
+ * is_loud() / wait_for_sound() are tuned for "did something happen"
+ * event detection — knock, clap, voice presence, ambient quiet vs.
+ * busy. They are NOT calibrated for studio metering: expect roughly
+ * ±5 dB absolute accuracy in the 50–100 dB SPL window, more error
+ * toward the extremes (sub-50 dB falls into the noise floor of the
+ * ADC, above ~110 dB the mic clips at its 130 dB AOP). A-weighting is
+ * approximated as flat — the CMM-2718AT has its own frequency response
+ * (50 Hz–10 kHz) and we don't apply any weighting filter.
  * ================================================================ */
 
 /**
@@ -556,8 +568,8 @@ uint16_t tile_sense_mic_amplitude_mv(tile_t *tile, uint16_t pp_raw);
  * Captures a short sample buffer (~64 samples / ~5 ms at 12.5 ksps)
  * via @ref tile_sense_mic_get_samples, computes the RMS amplitude
  * relative to the calibrated DC offset, converts it to dB SPL via
- * the AMM-2742 sensitivity model, and compares against
- * `threshold_db` (in 0.1 dB units, e.g., 700 = 70.0 dB).
+ * the CMM-2718AT sensitivity model (with the AD8605 gain divided
+ * out), and compares against `threshold_db` (0.1 dB units, e.g. 700 = 70.0 dB).
  *
  * @note  Blocking. Takes ~5 ms while sampling.
  *
@@ -574,10 +586,11 @@ uint8_t tile_sense_mic_is_loud(tile_t *tile, int16_t threshold_db);
  *
  * Captures a short sample buffer (~64 samples), computes the RMS
  * amplitude relative to the calibrated DC offset, scales to mV
- * via the configured Vref, then maps mV→dB SPL using the AMM-2742's
- * −42 dBV/Pa typical sensitivity (1 Pa ≈ 7.94 mV RMS at the ADC
- * input, where 1 Pa SPL = 94 dB). The conversion is integer-only
- * with a 32-entry log10 lookup table (1..32 mV).
+ * via the configured Vref, then maps mV→dB SPL using the CMM-2718AT's
+ * −42 dBV/Pa typical sensitivity AND the AD8605's ~48× gain (1 Pa ≈
+ * 7.94 mV RMS at the mic → ~381 mV RMS at the ADC input, where 1 Pa
+ * SPL = 94 dB). The conversion is integer-only with a 32-entry log10
+ * lookup table (1..32 mV).
  *
  * Returns dB SPL in 0.1 dB units (e.g. 700 = 70.0 dB).
  *

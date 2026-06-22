@@ -424,14 +424,18 @@ uint16_t tile_sense_mic_amplitude_mv(tile_t *tile, uint16_t pp_raw)
 /* ================================================================
  * Tier-2 — SPL conversion + event-detection helpers
  *
- * Math: The AMM-2742 has a typical sensitivity of −42 dBV/Pa (analog
+ * Math: The CMM-2718AT has a typical sensitivity of −42 dBV/Pa (analog
  * output in V_RMS for 1 Pa input pressure). Translating that:
- *   -42 dBV  = 10^(-42/20) V_RMS = 7.943 mV_RMS per Pascal.
+ *   -42 dBV  = 10^(-42/20) V_RMS = 7.943 mV_RMS per Pascal AT THE MIC.
  *   1 Pa SPL = 94 dB SPL (since 0 dB SPL = 20 µPa).
- * Therefore for a measured signal mV_RMS at the ADC input:
- *   dB SPL  = 94 + 20*log10(mV_RMS / 7.943)
- *           = 20*log10(mV_RMS) + (94 − 20*log10(7.943))
- *           = 20*log10(mV_RMS) + 76 (approx)
+ * BUT the AD8605 amplifies the mic by ~48× before the ADC, so the ADC
+ * sees 48 × the mic voltage. We must divide that gain back out:
+ *   mic_mV = adc_mV / 48
+ *   dB SPL  = 94 + 20*log10((adc_mV / 48) / 7.943)
+ *           = 20*log10(adc_mV) + (94 − 20*log10(7.943)) − 20*log10(48)
+ *           = 20*log10(adc_mV) + 76 − 33.6
+ *           = 20*log10(adc_mV) + 42.4 (approx)
+ * (The earlier driver omitted the gain term and over-read SPL by ~33.6 dB.)
  *
  * We carry SPL in 0.1 dB units to keep integer precision tight
  * without floats. The 20*log10(mV_RMS) term is tabulated for
@@ -445,6 +449,11 @@ uint16_t tile_sense_mic_amplitude_mv(tile_t *tile, uint16_t pp_raw)
 
 /* SPL polling interval used by wait_for_sound / detect_clap. */
 #define MIC_TIER2_POLL_MS  5
+
+/* AD8605 non-inverting gain (R4 47k / R3 1k → 1 + 47 = 48×) expressed as
+ * 20*log10(48) in 0.1 dB units. The ADC sees the amplified signal, so this
+ * is subtracted from the mV→SPL offset to recover SPL at the microphone. */
+#define MIC_AMP_GAIN_DX_DB  336   /* 20*log10(48) ≈ 33.6 dB */
 
 /* 20*log10(n) in 0.1 dB units, indexed by integer n.
  * Index 0 is unused (log10(0) is −∞ — handled by the caller).
@@ -468,8 +477,9 @@ static int16_t mv_rms_to_spl_dx10(uint16_t mv_rms)
     }
     uint8_t idx = (mv_rms > 32) ? 32 : (uint8_t)mv_rms;
     int16_t log_term = k_log10_x20_table[idx];     /* 20*log10(mV) in 0.1 dB */
-    /* dB SPL = 20*log10(mV) + 76, in 0.1 dB units that's +760. */
-    return (int16_t)(log_term + 760);
+    /* dB SPL = 20*log10(adc_mV) + 76 − 20*log10(48), in 0.1 dB units:
+     * +760 − 336 = +424 (the AD8605 gain is divided back out). */
+    return (int16_t)(log_term + 760 - MIC_AMP_GAIN_DX_DB);
 }
 
 /* Capture a sample buffer + compute RMS in mV. Used by all SPL hosts. */
