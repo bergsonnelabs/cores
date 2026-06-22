@@ -293,3 +293,148 @@ uint8_t tile_display_rgbw_is_faulted(tile_t *tile)
     }
     return 0;
 }
+
+/* ============================================================== */
+/* Autonomous animation engine (AEU)                               */
+/* ============================================================== */
+
+/* Shared 16-entry time table (ms) for AEU slope times T1..T4 and the
+ * Auto_Pause start/end fields. Code 0 = no time (instant); the rest are
+ * the datasheet's geometric-ish ladder up to 8.05 s. */
+static const uint16_t lp_time_ms[16] = {
+    0, 90, 180, 360, 540, 800, 1070, 1520,
+    2060, 2500, 3040, 4020, 5010, 5990, 7060, 8050,
+};
+
+uint8_t tile_display_rgbw_ms_to_slope(uint16_t ms)
+{
+    /* Nearest-code lookup. Returns 0 for ms==0, else the closest entry. */
+    uint8_t best = 0;
+    uint16_t best_err = 0xFFFF;
+    for (uint8_t i = 0; i < 16; i++) {
+        uint16_t err = (ms > lp_time_ms[i]) ? (ms - lp_time_ms[i])
+                                            : (uint16_t)(lp_time_ms[i] - ms);
+        if (err < best_err) {
+            best_err = err;
+            best = i;
+        }
+    }
+    return best;
+}
+
+void tile_display_rgbw_set_autonomous(tile_t *tile, uint8_t channel, uint8_t enabled)
+{
+    if (channel > 3) return;
+    uint8_t v = lp_read(tile, LP5811_REG_CONFIG_3);
+    if (enabled) v |= (uint8_t)(1u << channel);
+    else         v &= (uint8_t)~(1u << channel);
+    lp_write(tile, LP5811_REG_CONFIG_3, v);
+}
+
+void tile_display_rgbw_set_aeu(tile_t *tile, uint8_t channel, uint8_t aeu,
+                               const display_rgbw_aeu_t *prog)
+{
+    if (channel > 3 || aeu < 1 || aeu > 3 || prog == NULL) return;
+
+    uint8_t base = (uint8_t)(LP5811_LED_ANIM_BASE(channel) + LP5811_AEU_OFFSET(aeu));
+
+    /* PWM1..PWM5 keyframe levels. */
+    for (uint8_t i = 0; i < 5; i++) {
+        lp_write(tile, (uint8_t)(base + i), prog->pwm[i]);
+    }
+    /* T12: t2 in [7:4], t1 in [3:0].  T34: t4 in [7:4], t3 in [3:0]. */
+    lp_write(tile, (uint8_t)(base + 5),
+             (uint8_t)(((prog->t[1] & 0x0F) << 4) | (prog->t[0] & 0x0F)));
+    lp_write(tile, (uint8_t)(base + 6),
+             (uint8_t)(((prog->t[3] & 0x0F) << 4) | (prog->t[2] & 0x0F)));
+    /* Playback: pt in [1:0], 3 = infinite. */
+    lp_write(tile, (uint8_t)(base + 7), (uint8_t)(prog->repeats & 0x03));
+}
+
+void tile_display_rgbw_set_animation(tile_t *tile, uint8_t channel, uint8_t num_aeu,
+                                     uint8_t pause_start, uint8_t pause_end, uint8_t repeats)
+{
+    if (channel > 3) return;
+    if (num_aeu < 1) num_aeu = 1;
+    if (num_aeu > 3) num_aeu = 3;
+
+    uint8_t base = LP5811_LED_ANIM_BASE(channel);
+
+    /* Auto_Pause: tp_ts in [7:4] (start), tp_te in [3:0] (end). */
+    lp_write(tile, base,
+             (uint8_t)(((pause_start & 0x0F) << 4) | (pause_end & 0x0F)));
+
+    /* Auto_Playback: aeu_num in [5:4] (0=AEU1, 1=AEU1+2, 2=AEU1+2+3),
+     * pt in [3:0] (0-14 repeats, Fh = infinite). */
+    uint8_t aeu_num = (uint8_t)(num_aeu - 1);  /* 1→0, 2→1, 3→2 */
+    lp_write(tile, (uint8_t)(base + 1),
+             (uint8_t)(((aeu_num & 0x03) << 4) | (repeats & 0x0F)));
+}
+
+void tile_display_rgbw_set_exp_dimming(tile_t *tile, uint8_t channel, uint8_t enabled)
+{
+    if (channel > 3) return;
+    uint8_t v = lp_read(tile, LP5811_REG_CONFIG_5);
+    if (enabled) v |= (uint8_t)(1u << channel);
+    else         v &= (uint8_t)~(1u << channel);
+    lp_write(tile, LP5811_REG_CONFIG_5, v);
+}
+
+void tile_display_rgbw_set_phase_align(tile_t *tile, uint8_t channel, uint8_t mode)
+{
+    if (channel > 3) return;
+    /* Two bits per channel in Dev_Config_7. */
+    uint8_t shift = (uint8_t)(channel * 2);
+    uint8_t v = lp_read(tile, LP5811_REG_CONFIG_7);
+    v &= (uint8_t)~(0x03 << shift);
+    v |= (uint8_t)((mode & 0x03) << shift);
+    lp_write(tile, LP5811_REG_CONFIG_7, v);
+}
+
+void tile_display_rgbw_update(tile_t *tile)
+{
+    lp_commit(tile);  /* CMD_Update = 0x55 */
+}
+
+void tile_display_rgbw_animate_start(tile_t *tile)
+{
+    lp_write(tile, LP5811_REG_CMD_START, 0xFF);
+}
+
+void tile_display_rgbw_animate_stop(tile_t *tile)
+{
+    lp_write(tile, LP5811_REG_CMD_STOP, 0xAA);
+}
+
+void tile_display_rgbw_animate_pause(tile_t *tile)
+{
+    lp_write(tile, LP5811_REG_CMD_PAUSE, 0x33);
+}
+
+void tile_display_rgbw_animate_continue(tile_t *tile)
+{
+    lp_write(tile, LP5811_REG_CMD_CONTINUE, 0xCC);
+}
+
+void tile_display_rgbw_breathe_auto(tile_t *tile, uint8_t channel, uint8_t peak,
+                                    uint16_t period_ms, uint8_t repeats)
+{
+    if (channel > 3) return;
+
+    /* Symmetric ramp 0 → peak → 0 across one AEU. The five keyframes are
+     * 0, peak/2, peak, peak/2, 0; each of the four legs takes a quarter of
+     * the period. */
+    uint8_t leg = tile_display_rgbw_ms_to_slope((uint16_t)(period_ms / 4u));
+    display_rgbw_aeu_t prog = {
+        .pwm = { 0, (uint8_t)(peak / 2), peak, (uint8_t)(peak / 2), 0 },
+        .t   = { leg, leg, leg, leg },
+        .repeats = 3,  /* AEU loops infinitely; whole-pattern repeat gates it */
+    };
+
+    tile_display_rgbw_set_aeu(tile, channel, 1, &prog);
+    tile_display_rgbw_set_animation(tile, channel, 1, 0, 0, repeats);
+    tile_display_rgbw_set_exp_dimming(tile, channel, 1);  /* eye-friendly */
+    tile_display_rgbw_set_autonomous(tile, channel, 1);
+    tile_display_rgbw_update(tile);
+    tile_display_rgbw_animate_start(tile);
+}

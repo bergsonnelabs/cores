@@ -24,17 +24,6 @@
  *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
- * @studio unsupported severity=common category="Animation Engine Unit (AEU)"
- *   The LP5811 has 4 autonomous animation engines (one per LED, with
- *   AEU1/AEU2/AEU3 sub-engines per channel) that play breathe / pulse /
- *   ramp patterns without MCU intervention. The bytecode-style register
- *   layout for the engine isn't documented in detail in the LP5811
- *   datasheet — the register-map TRM lists addresses 0x080–0x0E7 but
- *   not the timing-and-PWM semantics needed to compose programs.
- *   Closing this gap requires a TI specification (or careful
- *   reverse-engineering against TI's evaluation tool); deliberately
- *   deferred until that source is available.
- *
  * @studio unsupported severity=niche category="Multi-address support (0x50–0x53)"
  *   Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are
  *   selected by Bit4/Bit3 of the chip-address byte, but those bits
@@ -55,7 +44,7 @@
 /* ---- Driver version ---- */
 
 #define TILE_DISP_RGBW_VERSION_MAJOR  2
-#define TILE_DISP_RGBW_VERSION_MINOR  1
+#define TILE_DISP_RGBW_VERSION_MINOR  2
 #define TILE_DISP_RGBW_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -100,6 +89,29 @@ TILES_CHECK_VERSION(1, 0);
 #define LP5811_REG_LSD_STATUS_0 0x03  /* page 3, offset 0x03 (=0x303) */
 
 #define LP5811_CONFIG_2_DEFAULT 0xE4  /* Used to verify chip is alive */
+
+/* ---- Autonomous-animation config registers ---- */
+#define LP5811_REG_CONFIG_3     0x04  /* auto_en[3:0] — per-LED autonomous enable */
+#define LP5811_REG_CONFIG_5     0x06  /* exp_en[3:0]  — per-LED exponential dimming */
+#define LP5811_REG_CONFIG_7     0x08  /* phase_align — 2 bits per LED */
+
+/* ---- Animation command registers (write the magic byte to trigger) ---- */
+#define LP5811_REG_CMD_START    0x11  /* 0xFF = start / restart */
+#define LP5811_REG_CMD_STOP     0x12  /* 0xAA = stop → INITIAL state */
+#define LP5811_REG_CMD_PAUSE    0x13  /* 0x33 = pause */
+#define LP5811_REG_CMD_CONTINUE 0x14  /* 0xCC = continue */
+
+/* ---- Autonomous animation register block (page 0, 0x80–0xE7) ----
+ * Per-LED block of 0x1A bytes: base = 0x80 + channel*0x1A.
+ *   +0x00 Auto_Pause    (tp_ts[7:4] start pause, tp_te[3:0] end pause)
+ *   +0x01 Auto_Playback (aeu_num[5:4], pt[3:0] repeat: 0-14, Fh = infinite)
+ *   AEUk (k = 1..3) at +0x02 + (k-1)*0x08:
+ *     +0..+4  PWM1..PWM5 (0-255 = 0-100%, keyframe levels)
+ *     +5      T12 (t2[7:4], t1[3:0])  slope-time codes (PWM1→2, 2→3)
+ *     +6      T34 (t4[7:4], t3[3:0])  slope-time codes (PWM3→4, 4→5)
+ *     +7      Playback (pt[1:0], 3 = infinite) */
+#define LP5811_LED_ANIM_BASE(ch)  (uint8_t)(0x80 + (ch) * 0x1A)
+#define LP5811_AEU_OFFSET(aeu)    (uint8_t)(0x02 + ((aeu) - 1) * 0x08)
 
 /* ---- Maximum-current selection (MC bit) ---- */
 
@@ -428,5 +440,133 @@ void tile_display_rgbw_flash(tile_t *tile, uint8_t r, uint8_t g, uint8_t b,
  * @return 1 if any fault bit is set, 0 if healthy
  */
 uint8_t tile_display_rgbw_is_faulted(tile_t *tile);
+
+/* ============================================================== */
+/* Autonomous animation engine (AEU)                               */
+/* ============================================================== */
+
+/**
+ * @brief  One animation sub-engine (AEU) program for a channel.
+ *
+ * An AEU plays a 5-keyframe ramp PWM1→PWM2→PWM3→PWM4→PWM5 with four
+ * slope times between the keyframes, repeated `repeats` times. Three
+ * AEUs (1..3) can be chained per channel (see set_animation).
+ */
+typedef struct {
+    uint8_t pwm[5];   /**< Keyframe brightness levels, 0-255 = 0-100%.   */
+    uint8_t t[4];     /**< Slope-time codes T1..T4 (0-15, see ms_to_slope).
+                           0 = no time (instant), 0xF ≈ 8.05 s.          */
+    uint8_t repeats;  /**< AEU pattern repeat: 0-2, 3 = infinite.        */
+} display_rgbw_aeu_t;
+
+/**
+ * @brief  Convert a duration in milliseconds to the nearest AEU slope/pause code.
+ * @studio expose category=tile name=ms_to_slope section=config
+ * @param  ms  Duration in milliseconds (0-8050).
+ * @return 4-bit time code (0-15) for an AEU T-field or Auto_Pause field.
+ */
+uint8_t tile_display_rgbw_ms_to_slope(uint16_t ms);
+
+/**
+ * @brief  Put a channel into (or out of) autonomous animation mode.
+ *
+ * In autonomous mode the on-chip engine runs the channel's AEU program
+ * with no MCU intervention; in manual mode the channel follows the PWM
+ * registers (set / set_color). Call update() after configuring.
+ *
+ * @studio expose category=tile name=set_autonomous section=config
+ * @param  channel  0-3 (R, B, G, W).
+ * @param  enabled  1 = autonomous, 0 = manual.
+ */
+void tile_display_rgbw_set_autonomous(tile_t *tile, uint8_t channel, uint8_t enabled);
+
+/**
+ * @brief  Program one AEU sub-engine of a channel.
+ * @studio expose category=tile name=set_aeu section=config
+ * @param  channel  0-3.
+ * @param  aeu      Sub-engine index 1-3.
+ * @param  prog     5-keyframe ramp + slope times + repeat.
+ */
+void tile_display_rgbw_set_aeu(tile_t *tile, uint8_t channel, uint8_t aeu,
+                               const display_rgbw_aeu_t *prog);
+
+/**
+ * @brief  Set a channel's overall autonomous playback.
+ * @studio expose category=tile name=set_animation section=config
+ * @param  channel      0-3.
+ * @param  num_aeu      How many AEUs to chain, 1-3.
+ * @param  pause_start  Start-of-pattern pause code (0-15, see ms_to_slope).
+ * @param  pause_end    End-of-pattern pause code (0-15).
+ * @param  repeats      Whole-pattern repeat: 0-14, 15 = infinite.
+ */
+void tile_display_rgbw_set_animation(tile_t *tile, uint8_t channel, uint8_t num_aeu,
+                                     uint8_t pause_start, uint8_t pause_end, uint8_t repeats);
+
+/**
+ * @brief  Enable/disable exponential PWM dimming for a channel (Dev_Config_5).
+ * @studio expose category=tile name=set_exp_dimming section=config
+ * @param  channel  0-3.
+ * @param  enabled  1 = exponential curve, 0 = linear.
+ */
+void tile_display_rgbw_set_exp_dimming(tile_t *tile, uint8_t channel, uint8_t enabled);
+
+/**
+ * @brief  Set a channel's PWM phase-align method (Dev_Config_7).
+ * @studio expose category=tile name=set_phase_align section=config
+ * @param  channel  0-3.
+ * @param  mode     0/1 = forward, 2 = middle, 3 = backward align.
+ */
+void tile_display_rgbw_set_phase_align(tile_t *tile, uint8_t channel, uint8_t mode);
+
+/**
+ * @brief  Latch pending config/animation register writes (CMD_Update = 0x55).
+ *
+ * The LP5811 only acts on Dev_Config / animation writes once this is
+ * issued. Call after set_aeu / set_animation / set_autonomous and
+ * before animate_start.
+ *
+ * @studio expose category=tile name=update section=runtime
+ */
+void tile_display_rgbw_update(tile_t *tile);
+
+/**
+ * @brief  Start (or restart) autonomous animation on all enabled channels.
+ * @studio expose category=tile name=animate_start section=runtime
+ */
+void tile_display_rgbw_animate_start(tile_t *tile);
+
+/**
+ * @brief  Stop autonomous animation and return to the INITIAL state.
+ * @studio expose category=tile name=animate_stop section=runtime
+ */
+void tile_display_rgbw_animate_stop(tile_t *tile);
+
+/**
+ * @brief  Pause autonomous animation, holding the current output.
+ * @studio expose category=tile name=animate_pause section=runtime
+ */
+void tile_display_rgbw_animate_pause(tile_t *tile);
+
+/**
+ * @brief  Resume autonomous animation after a pause.
+ * @studio expose category=tile name=animate_continue section=runtime
+ */
+void tile_display_rgbw_animate_continue(tile_t *tile);
+
+/**
+ * @brief  Configure + start an autonomous breathe on one channel.
+ *
+ * Builds a single-AEU symmetric ramp (0 → peak → 0) on the channel,
+ * enables autonomous mode, latches, and starts. Convenience wrapper
+ * over the AEU API for the common case.
+ *
+ * @studio expose category=tile name=breathe_auto section=runtime
+ * @param  channel    0-3.
+ * @param  peak       Peak brightness 0-255.
+ * @param  period_ms  Full breathe period (up+down) in ms.
+ * @param  repeats    Whole-pattern repeat: 0-14, 15 = infinite.
+ */
+void tile_display_rgbw_breathe_auto(tile_t *tile, uint8_t channel, uint8_t peak,
+                                    uint16_t period_ms, uint8_t repeats);
 
 #endif /* INC_TILE_DISP_RGBW_H_ */

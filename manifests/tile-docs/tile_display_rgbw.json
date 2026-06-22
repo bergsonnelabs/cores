@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@00ef0ed",
   "file": "tile_display_rgbw.h",
   "brief": "RGBW LED driver for the Display.RGBW tile (LP5811).",
-  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=common category=\"Animation Engine Unit (AEU)\"\n  The LP5811 has 4 autonomous animation engines (one per LED, with\n  AEU1/AEU2/AEU3 sub-engines per channel) that play breathe / pulse /\n  ramp patterns without MCU intervention. The bytecode-style register\n  layout for the engine isn't documented in detail in the LP5811\n  datasheet — the register-map TRM lists addresses 0x080–0x0E7 but\n  not the timing-and-PWM semantics needed to compose programs.\n  Closing this gap requires a TI specification (or careful\n  reverse-engineering against TI's evaluation tool); deliberately\n  deferred until that source is available.\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50–0x53)\"\n  Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are\n  selected by Bit4/Bit3 of the chip-address byte, but those bits\n  are fixed by the factory material variant (LP5811A/B/C/D, see\n  datasheet §4 Device Comparison). They are not pin-strapped or\n  register-configurable. The Display.RGBW (rev a) tile ships only\n  the A variant. Adding the other three addresses requires a tile\n  hardware revision that places the alternate part numbers on the\n  PCB — not something the driver can close on its own.",
+  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50–0x53)\"\n  Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are\n  selected by Bit4/Bit3 of the chip-address byte, but those bits\n  are fixed by the factory material variant (LP5811A/B/C/D, see\n  datasheet §4 Device Comparison). They are not pin-strapped or\n  register-configurable. The Display.RGBW (rev a) tile ships only\n  the A variant. Adding the other three addresses requires a tile\n  hardware revision that places the alternate part numbers on the\n  PCB — not something the driver can close on its own.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -12,11 +12,6 @@
   ],
   "studio_ready": true,
   "studio_unsupported": [
-    {
-      "severity": "common",
-      "category": "Animation Engine Unit (AEU)",
-      "brief": "The LP5811 has 4 autonomous animation engines (one per LED, with AEU1/AEU2/AEU3 sub-engines per channel) that play breathe / pulse / ramp patterns without MCU intervention. The bytecode-style register layout for the engine isn't documented in detail in the LP5811 datasheet — the register-map TRM lists addresses 0x080–0x0E7 but not the timing-and-PWM semantics needed to compose programs. Closing this gap requires a TI specification (or careful reverse-engineering against TI's evaluation tool); deliberately deferred until that source is available."
-    },
     {
       "severity": "niche",
       "category": "Multi-address support (0x50–0x53)",
@@ -32,7 +27,7 @@
     },
     {
       "name": "TILE_DISP_RGBW_VERSION_MINOR",
-      "value": "1",
+      "value": "2",
       "description": "",
       "section": ""
     },
@@ -138,6 +133,18 @@
           "type": "uint8_t",
           "name": "reserved",
           "description": "Placeholder — no options yet."
+        }
+      ]
+    },
+    {
+      "name": "display_rgbw_aeu_t",
+      "brief": "One animation sub-engine (AEU) program for a channel.",
+      "description": "An AEU plays a 5-keyframe ramp PWM1→PWM2→PWM3→PWM4→PWM5 with four\nslope times between the keyframes, repeated `repeats` times. Three\nAEUs (1..3) can be chained per channel (see set_animation).",
+      "fields": [
+        {
+          "type": "uint8_t",
+          "name": "repeats",
+          "description": "AEU pattern repeat: 0-2, 3 = infinite."
         }
       ]
     }
@@ -520,10 +527,214 @@
       "brief": "Quick yes/no on whether any LP5811 fault is currently latched.",
       "description": "Wraps @ref tile_display_rgbw_read_faults and returns 1 if any fault\nbit is set — open-circuit (LOD), short-circuit (LSD), thermal\nshutdown (TSD), or configuration error. For per-channel detail\n(which LED is open / shorted), use `read_faults()` directly. Faults\nstay latched until cleared via @ref tile_display_rgbw_clear_faults.",
       "name": "tile_display_rgbw_is_faulted"
+    },
+    {
+      "signature": "uint8_t tile_display_rgbw_ms_to_slope(uint16_t ms)",
+      "params": [
+        {
+          "name": "ms",
+          "description": "Duration in milliseconds (0-8050)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "return": "4-bit time code (0-15) for an AEU T-field or Auto_Pause field.",
+      "brief": "Convert a duration in milliseconds to the nearest AEU slope/pause code.",
+      "description": "",
+      "name": "tile_display_rgbw_ms_to_slope"
+    },
+    {
+      "signature": "void tile_display_rgbw_set_autonomous(tile_t *tile, uint8_t channel, uint8_t enabled)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3 (R, B, G, W)."
+        },
+        {
+          "name": "enabled",
+          "description": "1 = autonomous, 0 = manual."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Put a channel into (or out of) autonomous animation mode.",
+      "description": "In autonomous mode the on-chip engine runs the channel's AEU program\nwith no MCU intervention; in manual mode the channel follows the PWM\nregisters (set / set_color). Call update() after configuring.",
+      "name": "tile_display_rgbw_set_autonomous"
+    },
+    {
+      "signature": "void tile_display_rgbw_set_aeu(tile_t *tile, uint8_t channel, uint8_t aeu, const display_rgbw_aeu_t *prog)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3."
+        },
+        {
+          "name": "aeu",
+          "description": "Sub-engine index 1-3."
+        },
+        {
+          "name": "prog",
+          "description": "5-keyframe ramp + slope times + repeat."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Program one AEU sub-engine of a channel.",
+      "description": "",
+      "name": "tile_display_rgbw_set_aeu"
+    },
+    {
+      "signature": "void tile_display_rgbw_set_animation(tile_t *tile, uint8_t channel, uint8_t num_aeu, uint8_t pause_start, uint8_t pause_end, uint8_t repeats)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3."
+        },
+        {
+          "name": "num_aeu",
+          "description": "How many AEUs to chain, 1-3."
+        },
+        {
+          "name": "pause_start",
+          "description": "Start-of-pattern pause code (0-15, see ms_to_slope)."
+        },
+        {
+          "name": "pause_end",
+          "description": "End-of-pattern pause code (0-15)."
+        },
+        {
+          "name": "repeats",
+          "description": "Whole-pattern repeat: 0-14, 15 = infinite."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set a channel's overall autonomous playback.",
+      "description": "",
+      "name": "tile_display_rgbw_set_animation"
+    },
+    {
+      "signature": "void tile_display_rgbw_set_exp_dimming(tile_t *tile, uint8_t channel, uint8_t enabled)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3."
+        },
+        {
+          "name": "enabled",
+          "description": "1 = exponential curve, 0 = linear."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Enable/disable exponential PWM dimming for a channel (Dev_Config_5).",
+      "description": "",
+      "name": "tile_display_rgbw_set_exp_dimming"
+    },
+    {
+      "signature": "void tile_display_rgbw_set_phase_align(tile_t *tile, uint8_t channel, uint8_t mode)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3."
+        },
+        {
+          "name": "mode",
+          "description": "0/1 = forward, 2 = middle, 3 = backward align."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set a channel's PWM phase-align method (Dev_Config_7).",
+      "description": "",
+      "name": "tile_display_rgbw_set_phase_align"
+    },
+    {
+      "signature": "void tile_display_rgbw_update(tile_t *tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Latch pending config/animation register writes (CMD_Update = 0x55).",
+      "description": "The LP5811 only acts on Dev_Config / animation writes once this is\nissued. Call after set_aeu / set_animation / set_autonomous and\nbefore animate_start.",
+      "name": "tile_display_rgbw_update"
+    },
+    {
+      "signature": "void tile_display_rgbw_animate_start(tile_t *tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Start (or restart) autonomous animation on all enabled channels.",
+      "description": "",
+      "name": "tile_display_rgbw_animate_start"
+    },
+    {
+      "signature": "void tile_display_rgbw_animate_stop(tile_t *tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Stop autonomous animation and return to the INITIAL state.",
+      "description": "",
+      "name": "tile_display_rgbw_animate_stop"
+    },
+    {
+      "signature": "void tile_display_rgbw_animate_pause(tile_t *tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Pause autonomous animation, holding the current output.",
+      "description": "",
+      "name": "tile_display_rgbw_animate_pause"
+    },
+    {
+      "signature": "void tile_display_rgbw_animate_continue(tile_t *tile)",
+      "params": [],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Resume autonomous animation after a pause.",
+      "description": "",
+      "name": "tile_display_rgbw_animate_continue"
+    },
+    {
+      "signature": "void tile_display_rgbw_breathe_auto(tile_t *tile, uint8_t channel, uint8_t peak, uint16_t period_ms, uint8_t repeats)",
+      "params": [
+        {
+          "name": "channel",
+          "description": "0-3."
+        },
+        {
+          "name": "peak",
+          "description": "Peak brightness 0-255."
+        },
+        {
+          "name": "period_ms",
+          "description": "Full breathe period (up+down) in ms."
+        },
+        {
+          "name": "repeats",
+          "description": "Whole-pattern repeat: 0-14, 15 = infinite."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Configure + start an autonomous breathe on one channel.",
+      "description": "Builds a single-AEU symmetric ramp (0 → peak → 0) on the channel,\nenables autonomous mode, latches, and starts. Convenience wrapper\nover the AEU API for the common case.",
+      "name": "tile_display_rgbw_breathe_auto"
     }
   ],
   "source_file": "tile_display_rgbw.h",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "tile_family": "Display",
   "tile_name": "RGBW",
   "display_name": "Display.RGBW"
