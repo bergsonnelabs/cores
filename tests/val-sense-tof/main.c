@@ -177,6 +177,18 @@ int main(void)
                                        /*timeout_ms=*/5, hist_flat);
     (void)hist_flat[0];
 
+    /* ---- v1.3 runtime setters + signal-quality ---- */
+    tile_sense_tof_set_kilo_iters(&tof, 1800);
+    tile_sense_tof_set_threshold(&tof, 12);
+
+    sense_tof_signal_t sig = {0};
+    tile_sense_tof_get_signal_quality(&tof, &sig);
+    (void)sig.reference_hits; (void)sig.object_hits; (void)sig.crosstalk;
+
+    int32_t ref_hits = 0, obj_hits = 0, xtalk = 0;
+    tile_sense_tof_get_signal_quality_flat(&tof, &ref_hits, &obj_hits, &xtalk);
+    (void)ref_hits; (void)obj_hits; (void)xtalk;
+
     /* ---- State checks ---- */
 
     uint8_t is_ready = tile_is_ready(&tof);

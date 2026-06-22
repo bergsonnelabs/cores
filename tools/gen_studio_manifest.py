@@ -1107,7 +1107,7 @@ def main():
             "definition": ROOT / "definitions/Sense-MIC-a.json",
             "prefix": "tile_sense_mic",
             "init": "tile_sense_mic_init",
-            "version": "2.1.0",
+            "version": "2.2.0",
         },
         {
             "path": ROOT / "drivers/tile_sense_i_9.h",
@@ -1121,7 +1121,7 @@ def main():
             "definition": ROOT / "definitions/Sense-T-C-a.json",
             "prefix": "tile_sense_t_c",
             "init": "tile_sense_t_c_init",
-            "version": "1.2.0",
+            "version": "1.3.0",
         },
         {
             "path": ROOT / "drivers/tile_drive_a_2.h",
@@ -1142,7 +1142,7 @@ def main():
             "definition": ROOT / "definitions/Power-L-1T-b.json",
             "prefix": "tile_power_l_1t",
             "init": "tile_power_l_1t_init",
-            "version": "3.1.0",
+            "version": "3.2.0",
         },
         {
             "path": ROOT / "drivers/tile_sense_bp.h",
@@ -1156,7 +1156,7 @@ def main():
             "definition": ROOT / "definitions/Sense-TOF-a.json",
             "prefix": "tile_sense_tof",
             "init": "tile_sense_tof_init",
-            "version": "1.2.0",
+            "version": "1.3.0",
         },
         {
             "path": ROOT / "drivers/tile_drive_dc_h.h",

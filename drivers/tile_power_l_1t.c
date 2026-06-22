@@ -524,3 +524,96 @@ uint8_t tile_power_l_1t_wait_for_charge_done(tile_t* tile, uint32_t timeout_ms)
         elapsed += step;
     }
 }
+
+/* ============================================================== */
+/* v3.2 capability additions                                       */
+/* ============================================================== */
+
+void tile_power_l_1t_charger_enable(tile_t* tile, uint8_t on)
+{
+    /* ICCTRL2.CHARGER_DISABLE (bit 0): 1 = charging disabled. */
+    uint8_t v = bq_read(tile, BQ25150_REG_ICCTRL2);
+    if (on) v &= (uint8_t)~0x01;
+    else    v |= 0x01;
+    bq_write(tile, BQ25150_REG_ICCTRL2, v);
+}
+
+void tile_power_l_1t_set_battery_uvlo_mv(tile_t* tile, uint16_t mv)
+{
+    /* BUVLO[2:0]: 3.0V=000, 2.8V=011, 2.6V=100, 2.4V=101, 2.2V=110.
+     * Pick the highest code whose voltage is <= the request (so the
+     * cutoff never sits above what the caller asked for). */
+    uint8_t code;
+    if (mv >= 3000)      code = 0x0;  /* 3.0 V */
+    else if (mv >= 2800) code = 0x3;  /* 2.8 V */
+    else if (mv >= 2600) code = 0x4;  /* 2.6 V */
+    else if (mv >= 2400) code = 0x5;  /* 2.4 V */
+    else                 code = 0x6;  /* 2.2 V */
+
+    uint8_t v = bq_read(tile, BQ25150_REG_BUVLO);
+    v = (uint8_t)((v & ~0x07) | code);  /* preserve VLOWV_SEL + IBAT_OCP */
+    bq_write(tile, BQ25150_REG_BUVLO, v);
+}
+
+void tile_power_l_1t_set_safety_timer(tile_t* tile, power_l_1t_safety_timer_t mode)
+{
+    /* CHARGERCTRL0.SAFETY_TIMER_LIMIT[2:1]. Preserve TS_EN and the rest. */
+    uint8_t v = bq_read(tile, BQ25150_REG_CHARGERCTRL0);
+    v = (uint8_t)((v & ~0x06) | (((uint8_t)mode & 0x03) << 1));
+    bq_write(tile, BQ25150_REG_CHARGERCTRL0, v);
+}
+
+void tile_power_l_1t_set_pmid_mode(tile_t* tile, power_l_1t_pmid_mode_t mode)
+{
+    /* ICCTRL1.PMID_MODE[1:0]. Preserve PG_MODE / ADCIN_MODE / MR_LPRESS. */
+    uint8_t v = bq_read(tile, BQ25150_REG_ICCTRL1);
+    v = (uint8_t)((v & ~0x03) | ((uint8_t)mode & 0x03));
+    bq_write(tile, BQ25150_REG_ICCTRL1, v);
+}
+
+void tile_power_l_1t_set_adc_comparator(tile_t* tile, uint8_t comp,
+                                        power_l_1t_adc_channel_t channel,
+                                        uint16_t threshold)
+{
+    uint8_t ch = (uint8_t)channel & 0x07;
+    switch (comp) {
+    case 1: {
+        /* Channel in ADCCTRL0[2:0]; threshold at 0x52/0x53. */
+        uint8_t v = bq_read(tile, BQ25150_REG_ADCCTRL0);
+        v = (uint8_t)((v & ~0x07) | ch);
+        bq_write(tile, BQ25150_REG_ADCCTRL0, v);
+        bq_write(tile, BQ25150_REG_ADCALARM_C1_M, (uint8_t)(threshold >> 8));
+        bq_write(tile, BQ25150_REG_ADCALARM_C1_L, (uint8_t)(threshold & 0xFF));
+        break;
+    }
+    case 2: {
+        /* Channel in ADCCTRL1[7:5]; threshold at 0x54/0x55. */
+        uint8_t v = bq_read(tile, BQ25150_REG_ADCCTRL1);
+        v = (uint8_t)((v & ~0xE0) | (ch << 5));
+        bq_write(tile, BQ25150_REG_ADCCTRL1, v);
+        bq_write(tile, BQ25150_REG_ADCALARM_C2_M, (uint8_t)(threshold >> 8));
+        bq_write(tile, BQ25150_REG_ADCALARM_C2_L, (uint8_t)(threshold & 0xFF));
+        break;
+    }
+    case 3: {
+        /* Channel in ADCCTRL1[4:2]; threshold at 0x56/0x57. */
+        uint8_t v = bq_read(tile, BQ25150_REG_ADCCTRL1);
+        v = (uint8_t)((v & ~0x1C) | (ch << 2));
+        bq_write(tile, BQ25150_REG_ADCCTRL1, v);
+        bq_write(tile, BQ25150_REG_ADCALARM_C3_M, (uint8_t)(threshold >> 8));
+        bq_write(tile, BQ25150_REG_ADCALARM_C3_L, (uint8_t)(threshold & 0xFF));
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+uint8_t tile_power_l_1t_get_adc_comparators(tile_t* tile)
+{
+    /* FLAG2[6:4] = COMP1/2/3 alarm (clear on read). */
+    return (uint8_t)(bq_read(tile, BQ25150_REG_FLAG2) &
+                     (BQ25150_FLAG2_COMP1_ALARM |
+                      BQ25150_FLAG2_COMP2_ALARM |
+                      BQ25150_FLAG2_COMP3_ALARM));
+}

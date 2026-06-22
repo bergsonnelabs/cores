@@ -15,9 +15,19 @@
  *   LED1 = YELLOW → driven in CHARGING mode (auto, on while charging)
  *   LED2 = RED    → driven in ERROR mode    (auto, on for charger faults)
  *
+ * Quick start:
+ * @code
  *   #include "core_tiles.h"
+ *
  *   tile_t pmic;
  *   tile_power_l_1n_init(core_tiles_pal(&core_i2c1), 0, &pmic, NULL);
+ *   if (tile_is_ready(&pmic)) {
+ *       tile_power_l_1n_set_charge_current_ma(&pmic, 200);
+ *       tile_power_l_1n_charger_enable(&pmic, 1);
+ *       uint16_t vbat = tile_power_l_1n_get_vbat_mv(&pmic);
+ *       (void)vbat;
+ *   }
+ * @endcode
  *
  * Datasheet: Nordic nPM1300 Product Specification v1.1 (4490_483).
  *

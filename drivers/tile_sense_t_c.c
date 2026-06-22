@@ -395,11 +395,16 @@ void tile_sense_t_c_set_thresholds(tile_t *tile, uint8_t channel,
 {
     if (channel >= SENSE_T_C_NUM_CHANNELS) return;
     if (prox_thresh) {
-        uint16_t val = (1U << 12) | (1U << 8) | prox_thresh;
+        /* Prox Settings (A.16): [15:12] debounce-exit, [11:8] debounce-enter,
+         * [7:0] threshold. Use Azoteq's reference 4/4 debounce (the old 1/1
+         * was too low and flickered). */
+        uint16_t val = (4U << 12) | (4U << 8) | prox_thresh;
         iqs_write_verified(tile, IQS323_REG_PROX_SETTINGS(channel), val);
     }
     if (touch_thresh) {
-        uint16_t val = (2U << 8) | touch_thresh;
+        /* Touch Settings (A.17): [15:12] hysteresis, [11:8] reserved,
+         * [7:0] threshold. Hysteresis 0; the old (2<<8) hit reserved bits. */
+        uint16_t val = touch_thresh;
         iqs_write_verified(tile, IQS323_REG_TOUCH_SETTINGS(channel), val);
     }
 }
@@ -595,4 +600,52 @@ void tile_sense_t_c_write_reg(tile_t *tile, uint8_t reg, uint16_t value)
 {
     iqs_force_comms(tile);
     iqs_write(tile, reg, value);
+}
+
+/* ================================================================
+ * v1.3 capability additions
+ * ================================================================ */
+
+void tile_sense_t_c_reseed(tile_t *tile)
+{
+    /* RESEED is a self-clearing trigger bit in SYSTEM_CONTROL. */
+    iqs_modify(tile, IQS323_REG_SYSTEM_CONTROL,
+               IQS323_CTRL_RESEED, IQS323_CTRL_RESEED);
+}
+
+void tile_sense_t_c_set_report_rate(tile_t *tile, sense_t_c_power_mode_t mode,
+                                    uint16_t ms)
+{
+    uint8_t reg;
+    switch (mode) {
+    case SENSE_T_C_POWER_NORMAL:    reg = IQS323_REG_NP_REPORT_RATE;   break;
+    case SENSE_T_C_POWER_LOW:       reg = IQS323_REG_LP_REPORT_RATE;   break;
+    case SENSE_T_C_POWER_ULTRA_LOW: reg = IQS323_REG_ULP_REPORT_RATE;  break;
+    case SENSE_T_C_POWER_HALT:      reg = IQS323_REG_HALT_REPORT_RATE; break;
+    default: return;  /* AUTO / AUTO_NO_ULP have no rate register */
+    }
+    if (ms > 3000) ms = 3000;
+    iqs_write_verified(tile, reg, ms);
+}
+
+void tile_sense_t_c_set_power_timeout(tile_t *tile, uint16_t ms)
+{
+    iqs_write_verified(tile, IQS323_REG_POWER_TIMEOUT, ms);
+}
+
+uint16_t tile_sense_t_c_get_compensation(tile_t *tile, uint8_t channel)
+{
+    if (channel >= SENSE_T_C_NUM_CHANNELS) return 0;
+    uint16_t r = iqs_read_window(tile, IQS323_REG_COMPENSATION(channel));
+    return (r == IQS323_INVALID_RESPONSE) ? 0 : r;
+}
+
+void tile_sense_t_c_set_compensation(tile_t *tile, uint8_t channel,
+                                     uint16_t value, uint8_t divider)
+{
+    if (channel >= SENSE_T_C_NUM_CHANNELS) return;
+    /* Compensation (A.14): [15:11] divider, [9:0] value, bit 10 reserved. */
+    uint16_t reg = (uint16_t)(((uint16_t)(divider & 0x1F) << 11)
+                            | (value & 0x03FF));
+    iqs_write_verified(tile, IQS323_REG_COMPENSATION(channel), reg);
 }

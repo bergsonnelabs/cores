@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@53e6a59",
   "tile": "Sense.T.C",
   "palette": {
     "label": "Sense.T.C",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_sense_t_c",
     "header": "tile_sense_t_c.h",
-    "version": "1.2.0"
+    "version": "1.3.0"
   },
   "handle": {
     "type": "tile_t",
@@ -516,6 +516,111 @@
         {
           "name": "value",
           "type": "int"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "reseed"
+      ],
+      "symbol": "tile_sense_t_c_reseed",
+      "header": "tile_sense_t_c.h",
+      "category": "tile",
+      "description": "Force the long-term-average baseline to re-snap to current counts.",
+      "params": [],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_report_rate"
+      ],
+      "symbol": "tile_sense_t_c_set_report_rate",
+      "header": "tile_sense_t_c.h",
+      "category": "tile",
+      "description": "Set the report rate (conversion interval) for a power mode.",
+      "params": [
+        {
+          "name": "mode",
+          "type": "?sense_t_c_power_mode_t",
+          "description": "Which power mode's rate to set (NORMAL/LOW/ULTRA_LOW/HALT)."
+        },
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Report interval in milliseconds (0-3000)."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_power_timeout"
+      ],
+      "symbol": "tile_sense_t_c_set_power_timeout",
+      "header": "tile_sense_t_c.h",
+      "category": "tile",
+      "description": "Set the auto power-mode step-down timeout.",
+      "params": [
+        {
+          "name": "ms",
+          "type": "int",
+          "description": "Inactivity timeout in milliseconds (0-65000, 0 = off)."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_compensation"
+      ],
+      "symbol": "tile_sense_t_c_get_compensation",
+      "header": "tile_sense_t_c.h",
+      "category": "tile",
+      "description": "Read a channel's compensation (CAPDAC-equivalent offset).",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-2."
+        }
+      ],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_compensation"
+      ],
+      "symbol": "tile_sense_t_c_set_compensation",
+      "header": "tile_sense_t_c.h",
+      "category": "tile",
+      "description": "Override a channel's compensation value + divider.",
+      "params": [
+        {
+          "name": "channel",
+          "type": "int",
+          "description": "0-2."
+        },
+        {
+          "name": "value",
+          "type": "int",
+          "description": "Compensation value (0-1023)."
+        },
+        {
+          "name": "divider",
+          "type": "int",
+          "description": "Compensation divider (0-31)."
         }
       ],
       "returns": "void",

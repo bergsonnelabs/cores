@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@53e6a59",
   "file": "tile_sense_t_c.h",
   "brief": "Capacitive touch/proximity driver for the Sense.T.C tile (IQS323).",
   "description": "@version 1.2.0\n\nAzoteq IQS323 ProxFusion controller with self-capacitive touch sensing.\nThe tile's entire top surface is a touch electrode (CH1/CRx1), and a\nsecond channel (CH0/CRx0) is available via pad 8 for external sensors.\n\nTwo communication modes:\n  - **Polled mode** (default): call process() from your main loop.\n    No RDY pin wiring required.\n  - **RDY mode**: provide a rdy_pin in config. EXTI falling-edge ISR\n    sets a flag; process() only does I2C when the flag is set.\n    Lower latency, less wasted I2C traffic.\n\nEvent callback: register an on_event callback to be notified of\ntouch, proximity, slider, and gesture changes without polling\nindividual status functions.\n\n\n\n\nSlider note: slider functionality requires multiple channels enabled\n(e.g. two Sense.T.C tiles chained, or pad 8 connected to an external\nelectrode). A single tile surface alone cannot produce a slider output.\n\nDatasheet: Azoteq IQS323, Rev v1.11, August 2025\n\n@studio tile label=Sense.T.C icon=◕\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"Per-gesture threshold tuning\" section=config\n  IQS323 gesture timing (tap touch/release time, hold duration,\n  swipe distance, flick velocity) is packed across several\n  GESTURE_* registers with chip-specific encodings. The driver\n  reports gesture events but doesn't surface a typed API for\n  timing / threshold tuning — closing this properly needs a\n  dedicated pass with Azoteq's gesture-config guide. Raw\n  write_reg works for advanced users in the interim.\n\n@studio unsupported severity=niche category=\"Per-channel timeout / OutA event-indicator\" section=advanced\n  Channel-timeout disable bits (auto-reseed on timeout) and the\n  OutA pin's event-indicator output mode aren't exposed. Most\n  applications don't need them; raw write_reg covers the niche\n  cases that do.",
@@ -42,7 +42,7 @@
     },
     {
       "name": "TILE_SENSE_T_C_VERSION_MINOR",
-      "value": "2",
+      "value": "3",
       "description": "",
       "section": ""
     },
@@ -436,7 +436,7 @@
       "studio_exposed": true,
       "studio_section": "config",
       "brief": "Set the per-channel ATI setup register (0x36 + ch*0x10).",
-      "description": "Writes the raw 16-bit ATI Setup register for the channel.\nBit layout (datasheet §A.13):\n  - Bits 14-9: Coarse divider (0–63)\n  - Bits 8-5:  Fine divider (0–15)\n  - Bits 4-0:  Compensation divider / sensitivity factor\n\nAfter changing ATI parameters, call @ref tile_sense_t_c_ati to\nre-run the auto-tuning sequence with the new values. Useful when\nambient capacitance shifts (cover-glass thickness, mounting\nsubstrate) push the working point off the chip's defaults.",
+      "description": "Writes the raw 16-bit ATI Setup register (0x36 + ch·0x10) for the\nchannel. Bit layout (datasheet §A.12):\n  - Bits 15-4: ATI Target / Resolution Factor\n  - Bit  3:    ATI Band (0 = 1/16, 1 = 1/8)\n  - Bits 2-0:  ATI Mode (0 disabled, 1 comp-only, 2 from-comp-divider,\n               3 partial, 4 full)\n(The coarse/fine multipliers and dividers live in the separate ATI\nMultipliers/Dividers register at 0x38 — see IQS323_REG_ATI_MULTI;\nthe compensation divider lives at 0x39 — see set_compensation.)\n\nAfter changing ATI parameters, call @ref tile_sense_t_c_ati to\nre-run the auto-tuning sequence with the new values. Useful when\nambient capacitance shifts (cover-glass thickness, mounting\nsubstrate) push the working point off the chip's defaults.",
       "name": "tile_sense_t_c_set_ati_setup"
     },
     {
@@ -622,10 +622,114 @@
       "brief": "Write a raw 16-bit IQS323 register.",
       "description": "",
       "name": "tile_sense_t_c_write_reg"
+    },
+    {
+      "signature": "void tile_sense_t_c_reseed(tile_t *tile)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "brief": "Force the long-term-average baseline to re-snap to current counts.",
+      "description": "Sets SYSTEM_CONTROL.RESEED (self-clearing). Use after a known\nenvironmental change (object placed/removed, cover added) to discard\nthe slow baseline and re-zero the channels immediately, instead of\nwaiting for the LTA filter to drift there.",
+      "name": "tile_sense_t_c_reseed"
+    },
+    {
+      "signature": "void tile_sense_t_c_set_report_rate(tile_t *tile, sense_t_c_power_mode_t mode, uint16_t ms)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "mode",
+          "description": "Which power mode's rate to set (NORMAL/LOW/ULTRA_LOW/HALT)."
+        },
+        {
+          "name": "ms",
+          "description": "Report interval in milliseconds (0-3000)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the report rate (conversion interval) for a power mode.",
+      "description": "Writes the per-mode report-rate register (NP 0xC1 / LP 0xC2 / ULP 0xC3\n/ HALT 0xC4) in plain milliseconds (clamped 0-3000). This is the tile's\nheadline power/latency knob — faster rate = lower latency, higher\ncurrent. Only the four reporting modes have a rate; AUTO/AUTO_NO_ULP\nare ignored.",
+      "name": "tile_sense_t_c_set_report_rate"
+    },
+    {
+      "signature": "void tile_sense_t_c_set_power_timeout(tile_t *tile, uint16_t ms)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "ms",
+          "description": "Inactivity timeout in milliseconds (0-65000, 0 = off)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the auto power-mode step-down timeout.",
+      "description": "Writes POWER_TIMEOUT (0xC5) in milliseconds. In AUTO / AUTO_NO_ULP the\nchip steps down a power mode after this much inactivity; 0 disables\nauto step-down.",
+      "name": "tile_sense_t_c_set_power_timeout"
+    },
+    {
+      "signature": "uint16_t tile_sense_t_c_get_compensation(tile_t *tile, uint8_t channel)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "channel",
+          "description": "0-2."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "advanced",
+      "return": "Raw 16-bit compensation register, or 0 on a bad channel.",
+      "brief": "Read a channel's compensation (CAPDAC-equivalent offset).",
+      "description": "Returns the raw Compensation register (0x39 + ch·0x10). The low 10\nbits are the compensation value; bits 15-11 are the divider. Normally\nset by ATI — read it to capture a tuned working point.",
+      "name": "tile_sense_t_c_get_compensation"
+    },
+    {
+      "signature": "void tile_sense_t_c_set_compensation(tile_t *tile, uint8_t channel, uint16_t value, uint8_t divider)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        },
+        {
+          "name": "channel",
+          "description": "0-2."
+        },
+        {
+          "name": "value",
+          "description": "Compensation value (0-1023)."
+        },
+        {
+          "name": "divider",
+          "description": "Compensation divider (0-31)."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "advanced",
+      "brief": "Override a channel's compensation value + divider.",
+      "description": "Writes the Compensation register (0x39 + ch·0x10): value (0-1023) in\nbits 9-0, divider (0-31) in bits 15-11. NOTE: a subsequent full ATI\noverwrites this — to hold a fixed offset, set the channel's ATI Mode\n(set_ati_setup) to a non-full mode first.",
+      "name": "tile_sense_t_c_set_compensation"
     }
   ],
   "source_file": "tile_sense_t_c.h",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "tile_family": "Sense",
   "tile_name": "T.C",
   "display_name": "Sense.T.C"

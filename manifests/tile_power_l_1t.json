@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@a5cb41d",
   "tile": "Power.L.1T",
   "palette": {
     "label": "Power.L.1T",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_power_l_1t",
     "header": "tile_power_l_1t.h",
-    "version": "3.1.0"
+    "version": "3.2.0"
   },
   "handle": {
     "type": "tile_t",
@@ -531,6 +531,124 @@
       ],
       "returns": "uint8_t",
       "dsl_returns": "bool",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "charger_enable"
+      ],
+      "symbol": "tile_power_l_1t_charger_enable",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Enable or disable battery charging over I²C.",
+      "params": [
+        {
+          "name": "on",
+          "type": "int",
+          "description": "1 = allow charging, 0 = disable charging."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_battery_uvlo_mv"
+      ],
+      "symbol": "tile_power_l_1t_set_battery_uvlo_mv",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the battery under-voltage lockout (discharge cutoff) threshold.",
+      "params": [
+        {
+          "name": "mv",
+          "type": "int",
+          "description": "Desired UVLO in mV (2200-3000)."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_safety_timer"
+      ],
+      "symbol": "tile_power_l_1t_set_safety_timer",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the charge safety-timer limit.",
+      "params": [
+        {
+          "name": "mode",
+          "type": "?power_l_1t_safety_timer_t",
+          "description": "power_l_1t_safety_timer_t (3h / 6h / 12h / off)."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_pmid_mode"
+      ],
+      "symbol": "tile_power_l_1t_set_pmid_mode",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Set the PMID power-path mode (ICCTRL1[1:0]).",
+      "params": [
+        {
+          "name": "mode",
+          "type": "?power_l_1t_pmid_mode_t",
+          "description": "power_l_1t_pmid_mode_t."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_adc_comparator"
+      ],
+      "symbol": "tile_power_l_1t_set_adc_comparator",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Configure a programmable ADC comparator (threshold alarm).",
+      "params": [
+        {
+          "name": "comp",
+          "type": "int",
+          "description": "Comparator index 1-3."
+        },
+        {
+          "name": "channel",
+          "type": "?power_l_1t_adc_channel_t",
+          "description": "power_l_1t_adc_channel_t to monitor."
+        },
+        {
+          "name": "threshold",
+          "type": "int",
+          "description": "16-bit raw ADC threshold."
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "get_adc_comparators"
+      ],
+      "symbol": "tile_power_l_1t_get_adc_comparators",
+      "header": "tile_power_l_1t.h",
+      "category": "tile",
+      "description": "Read (and clear) the ADC comparator alarm flags.",
+      "params": [],
+      "returns": "uint8_t",
       "receiver": "tile_t*"
     }
   ],

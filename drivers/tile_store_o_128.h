@@ -11,12 +11,17 @@
  * assertion. A platform that doesn't implement spi_transfer yet leaves it NULL;
  * every call here guards against that and reports an error rather than faulting.
  *
+ * Quick start:
+ * @code
  *   #include "core_tiles.h"
+ *
  *   tile_t flash;
+ *   uint8_t buf[256];
  *   tile_store_o_128_init(core_tiles_pal(&core_spi1), 0, &flash, NULL);
  *   if (tile_is_ready(&flash)) {
  *       tile_store_o_128_read(&flash, 0x000000, buf, sizeof buf);
  *   }
+ * @endcode
  *
  * Datasheet: Renesas AT25QL128A.
  *

@@ -37,7 +37,7 @@
  *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
- * @studio unsupported severity=advanced category="MR button + INT pin handling" section=advanced
+ * @studio unsupported severity=advanced category="MR button + INT pin handling"
  *   The chip's MR (push-button) and INT (interrupt) pins aren't
  *   routed to tile pads on the current revision — nothing for a
  *   Core GPIO to attach to. Closing this gap requires a tile
@@ -57,7 +57,7 @@
 /* -------------------------------------------------------------- */
 
 #define TILE_POWER_L_1T_VERSION_MAJOR  3
-#define TILE_POWER_L_1T_VERSION_MINOR  1
+#define TILE_POWER_L_1T_VERSION_MINOR  2
 #define TILE_POWER_L_1T_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
@@ -114,6 +114,51 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 #define BQ25150_REG_TS_WARM         0x64  /**< TS Warm Threshold */
 #define BQ25150_REG_TS_HOT          0x65  /**< TS Hot Threshold */
 #define BQ25150_REG_DEVICE_ID       0x6F  /**< Device identification */
+
+/* ---- Registers added for the v3.2 capability set ---- */
+#define BQ25150_REG_CHARGERCTRL1    0x18  /**< Charger Control 1 (VINDPM, DPPM, THERM_REG) */
+#define BQ25150_REG_ICCTRL1         0x36  /**< IC Control 1 (PG mode, PMID mode) */
+#define BQ25150_REG_ICCTRL2         0x37  /**< IC Control 2 (charger disable) */
+#define BQ25150_REG_ADCCTRL1        0x41  /**< ADC Control 1 (COMP2/COMP3 channel) */
+#define BQ25150_REG_ADCALARM_C1_M   0x52  /**< ADC comparator 1 threshold MSB */
+#define BQ25150_REG_ADCALARM_C1_L   0x53  /**< ADC comparator 1 threshold LSB */
+#define BQ25150_REG_ADCALARM_C2_M   0x54  /**< ADC comparator 2 threshold MSB */
+#define BQ25150_REG_ADCALARM_C2_L   0x55  /**< ADC comparator 2 threshold LSB */
+#define BQ25150_REG_ADCALARM_C3_M   0x56  /**< ADC comparator 3 threshold MSB */
+#define BQ25150_REG_ADCALARM_C3_L   0x57  /**< ADC comparator 3 threshold LSB */
+
+/* FLAG2 (0x05) ADC-comparator alarm bits (clear on read) */
+#define BQ25150_FLAG2_COMP1_ALARM   0x40  /**< Comparator 1 threshold crossed */
+#define BQ25150_FLAG2_COMP2_ALARM   0x20  /**< Comparator 2 threshold crossed */
+#define BQ25150_FLAG2_COMP3_ALARM   0x10  /**< Comparator 3 threshold crossed */
+
+/** Charge safety-timer limit (CHARGERCTRL0[2:1]). */
+typedef enum {
+    POWER_L_1T_SAFETY_3H   = 0,  /**< 3-hour fast-charge timer */
+    POWER_L_1T_SAFETY_6H   = 1,  /**< 6-hour (default)         */
+    POWER_L_1T_SAFETY_12H  = 2,  /**< 12-hour                  */
+    POWER_L_1T_SAFETY_OFF  = 3,  /**< disabled                 */
+} power_l_1t_safety_timer_t;
+
+/** PMID power-path mode (ICCTRL1[1:0]). */
+typedef enum {
+    POWER_L_1T_PMID_AUTO     = 0,  /**< powered from BAT or VIN (default) */
+    POWER_L_1T_PMID_BAT_ONLY = 1,  /**< forced from BAT even when VIN present */
+    POWER_L_1T_PMID_FLOAT    = 2,  /**< disconnected, floating */
+    POWER_L_1T_PMID_PULLDOWN = 3,  /**< disconnected, pulled down */
+} power_l_1t_pmid_mode_t;
+
+/** ADC channel selector for the programmable comparators (ADC_COMPn). */
+typedef enum {
+    POWER_L_1T_ADC_CH_DISABLED = 0,
+    POWER_L_1T_ADC_CH_ADCIN    = 1,
+    POWER_L_1T_ADC_CH_TS       = 2,
+    POWER_L_1T_ADC_CH_VBAT     = 3,
+    POWER_L_1T_ADC_CH_ICHARGE  = 4,
+    POWER_L_1T_ADC_CH_VIN      = 5,
+    POWER_L_1T_ADC_CH_PMID     = 6,
+    POWER_L_1T_ADC_CH_IIN      = 7,
+} power_l_1t_adc_channel_t;
 
 /** @brief  Expected DEVICE_ID register value. */
 #define BQ25150_DEVICE_ID_DEFAULT   0x20
@@ -591,5 +636,75 @@ uint8_t tile_power_l_1t_is_powered(tile_t* tile);
  * @return 1 if charge_done was observed, 0 on timeout
  */
 uint8_t tile_power_l_1t_wait_for_charge_done(tile_t* tile, uint32_t timeout_ms);
+
+/* ============================================================== */
+/* v3.2 capability additions                                       */
+/* ============================================================== */
+
+/**
+ * @brief  Enable or disable battery charging over I²C.
+ *
+ * Sets/clears ICCTRL2.CHARGER_DISABLE. Note the hardware /CE pin still
+ * gates charging: when /CE is high, charging is off regardless of this
+ * bit; this only takes effect when /CE is held low (the tile's default).
+ *
+ * @studio expose category=tile name=charger_enable section=config
+ * @param  on  1 = allow charging, 0 = disable charging.
+ */
+void tile_power_l_1t_charger_enable(tile_t* tile, uint8_t on);
+
+/**
+ * @brief  Set the battery under-voltage lockout (discharge cutoff) threshold.
+ *
+ * BUVLO[2:0]: 3.0 / 2.8 / 2.6 / 2.4 / 2.2 V (nearest below `mv` is chosen);
+ * deeper cutoff trades battery life for runtime. Other BUVLO fields
+ * (precharge threshold, OCP limit) are preserved.
+ *
+ * @studio expose category=tile name=set_battery_uvlo_mv section=config
+ * @param  mv  Desired UVLO in mV (2200-3000).
+ */
+void tile_power_l_1t_set_battery_uvlo_mv(tile_t* tile, uint16_t mv);
+
+/**
+ * @brief  Set the charge safety-timer limit.
+ * @studio expose category=tile name=set_safety_timer section=config
+ * @param  mode  power_l_1t_safety_timer_t (3h / 6h / 12h / off).
+ */
+void tile_power_l_1t_set_safety_timer(tile_t* tile, power_l_1t_safety_timer_t mode);
+
+/**
+ * @brief  Set the PMID power-path mode (ICCTRL1[1:0]).
+ * @studio expose category=tile name=set_pmid_mode section=config
+ * @param  mode  power_l_1t_pmid_mode_t.
+ */
+void tile_power_l_1t_set_pmid_mode(tile_t* tile, power_l_1t_pmid_mode_t mode);
+
+/**
+ * @brief  Configure a programmable ADC comparator (threshold alarm).
+ *
+ * Routes ADC channel `channel` to comparator `comp` (1-3) and sets its
+ * 16-bit threshold (left-justified, same scale as the channel's ADC
+ * result). When the measurement crosses the threshold, the matching
+ * COMPn_ALARM bit latches in FLAG2 (read via get_adc_comparators()).
+ * Pass channel = POWER_L_1T_ADC_CH_DISABLED to turn a comparator off.
+ *
+ * Note: the chip's above/below polarity bit (ADCALARM_ABOVE) is not
+ * exposed by this driver yet — the comparator uses its default sense.
+ *
+ * @studio expose category=tile name=set_adc_comparator section=config
+ * @param  comp       Comparator index 1-3.
+ * @param  channel    power_l_1t_adc_channel_t to monitor.
+ * @param  threshold  16-bit raw ADC threshold.
+ */
+void tile_power_l_1t_set_adc_comparator(tile_t* tile, uint8_t comp,
+                                        power_l_1t_adc_channel_t channel,
+                                        uint16_t threshold);
+
+/**
+ * @brief  Read (and clear) the ADC comparator alarm flags.
+ * @studio expose category=tile name=get_adc_comparators section=runtime
+ * @return BQ25150_FLAG2_COMPn_ALARM bits that have tripped since last read.
+ */
+uint8_t tile_power_l_1t_get_adc_comparators(tile_t* tile);
 
 #endif /* INC_TILE_POWER_L_1T_H_ */

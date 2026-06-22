@@ -30,10 +30,15 @@
  *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
- * (none — this driver covers every register-controllable feature of
- * the DRV2605L. OTP burning is implemented in firmware but
- * intentionally not exposed to Studio because it permanently
- * modifies the chip; access it from C via tile_drive_h_program_otp().)
+ * This driver covers every register-controllable feature of the
+ * DRV2605L; the only deliberate omission is OTP waveform burning.
+ *
+ * @studio unsupported severity=niche category="OTP waveform burning"
+ *   The DRV2605L can burn custom waveforms into one-time-programmable
+ *   memory. This is implemented in firmware (tile_drive_h_program_otp())
+ *   but intentionally NOT exposed to Studio: it permanently and
+ *   irreversibly modifies the chip. Driver-deferred by policy, not a
+ *   hardware gap — call it from C if you really need it.
  */
 
 #ifndef INC_TILE_DRIVE_H_H_

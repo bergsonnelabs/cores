@@ -47,11 +47,16 @@
  *   RAMREMAP_RESET protocol — non-trivial firmware-loading flow not
  *   in scope for this driver-coverage pass.
  *
- * @studio unsupported severity=niche category="GPIO0 / GPIO1 external trigger"
- *   Hardware-gated. Chip's GPIO0/1 (external trigger / status
- *   output) aren't routed to tile pads (verified in
- *   Sense-TOF-a.json — pads 6/7/8 carry no function). Future tile
- *   revisions could expose them for hardware-synchronized ranging.
+ * @studio unsupported severity=niche category="GPIO0 / GPIO1 runtime control"
+ *   GPIO0 is routed to tile pad 3 but is consumed as a hardware
+ *   strap: a 100 k on-board pull-up to V+ holds GPIO0 high at
+ *   startup, selecting the 1.8-3.3 V digital-I/O level required by
+ *   this tile's 2.7-3.6 V rail (TMF8806 datasheet §6.7). It is NOT
+ *   an I2C-address strap (the address is fixed at 0x41, changed only
+ *   via command 0x49). Because the strap fixes GPIO0 high, runtime
+ *   GPIO0 output modes (object-detect / VCSEL-sync, command 0x0F)
+ *   are not exposed — driving the pad would fight the pull-up and
+ *   risk changing the I/O level. GPIO1 is not routed to a pad.
  *
  * @note All bus I/O is routed through tiles_pal_t function pointers.
  *       This driver contains no platform-specific code.
@@ -65,7 +70,7 @@
 /* ---- Driver version ---- */
 
 #define TILE_SENSE_TOF_VERSION_MAJOR  1
-#define TILE_SENSE_TOF_VERSION_MINOR  2
+#define TILE_SENSE_TOF_VERSION_MINOR  3
 #define TILE_SENSE_TOF_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -147,6 +152,9 @@ TILES_CHECK_VERSION(1, 0);
 #define TMF8806_CMD_STOP            0xFF  /**< Stop measurement */
 #define TMF8806_CMD_SERIAL          0x47  /**< Read serial number */
 
+/** kIters for factory calibration: 40960 -> ~40.96M iterations (datasheet §6.9). */
+#define TMF8806_FACTORY_CAL_KITERS  0xA000
+
 /* ---- INT_STATUS bit masks ---- */
 
 #define TMF8806_INT_RESULT          0x01  /**< Result interrupt flag */
@@ -226,6 +234,21 @@ typedef struct {
     uint8_t minor;  /**< Minor version number. */
     uint8_t patch;  /**< Patch version number. */
 } sense_tof_version_t;
+
+/* ---- Signal-quality struct ---- */
+
+/**
+ * @brief  Per-measurement signal-quality diagnostics from the TMF8806.
+ *
+ * Populated from the result block (registers 0x34-0x3D). Higher hit
+ * counts mean a stronger return; crosstalk is the internal optical
+ * leakage the factory calibration measures and subtracts.
+ */
+typedef struct {
+    uint32_t reference_hits;  /**< Reference-channel photon hits (regs 0x34-0x37). */
+    uint32_t object_hits;     /**< Object-channel photon hits (regs 0x38-0x3B). */
+    uint16_t crosstalk;       /**< Cross-talk count (regs 0x3C-0x3D). */
+} sense_tof_signal_t;
 
 /* ---- Lifecycle ---- */
 
@@ -563,6 +586,61 @@ void tile_sense_tof_set_distance_mode(tile_t *tile, sense_tof_distance_mode_t mo
  * @param  period_ms  New period code (0x00=single, 0x1E=30ms, 0xFE=1s, 0xFF=2s).
  */
 void tile_sense_tof_set_period(tile_t *tile, uint8_t period_ms);
+
+/**
+ * @brief  Change the per-measurement iteration count on the fly.
+ * @studio expose category=tile name=set_kilo_iters section=runtime
+ *
+ * Iterations (in thousands) trade power for SNR/range: more iterations
+ * give a stronger return and longer reach at higher current draw.
+ * Typical range 10-4000 (10k-4M); the ranging default is 900. Stops any
+ * active measurement, updates the cached value, and restarts.
+ *
+ * @param  tile         Initialised tile handle.
+ * @param  kilo_iters   Iterations in thousands (e.g. 900 = 900k).
+ */
+void tile_sense_tof_set_kilo_iters(tile_t *tile, uint16_t kilo_iters);
+
+/**
+ * @brief  Change the detection threshold on the fly.
+ * @studio expose category=tile name=set_threshold section=runtime
+ *
+ * Sets cmd_data3[5:0] — the minimum confidence for a reported target.
+ * Higher values reject weak/spurious returns; 0 reports everything.
+ * Stops any active measurement, updates the cached value, and restarts.
+ *
+ * @param  tile       Initialised tile handle.
+ * @param  threshold  Detection threshold, 0-63.
+ */
+void tile_sense_tof_set_threshold(tile_t *tile, uint8_t threshold);
+
+/* ---- Signal-quality diagnostics ---- */
+
+/**
+ * @brief  Read per-measurement signal-quality diagnostics.
+ *
+ * Reads the reference/object hit counts and crosstalk from the most
+ * recent result block. Useful for assessing return strength and
+ * reflectance beyond the reliability byte. Call after a result is ready.
+ *
+ * @param  tile  Initialised tile handle.
+ * @param  sig   Caller-allocated struct, populated on return.
+ */
+void tile_sense_tof_get_signal_quality(tile_t *tile, sense_tof_signal_t *sig);
+
+/**
+ * @brief  Read signal-quality diagnostics into flat out-params (Studio).
+ * @studio expose category=tile name=get_signal_quality returns=int section=runtime
+ *
+ * @param  tile            Initialised tile handle.
+ * @param  reference_hits  Reference-channel hit count (or NULL).
+ * @param  object_hits     Object-channel hit count (or NULL).
+ * @param  crosstalk       Cross-talk count (or NULL).
+ */
+void tile_sense_tof_get_signal_quality_flat(tile_t *tile,
+                                            int32_t *reference_hits,
+                                            int32_t *object_hits,
+                                            int32_t *crosstalk);
 
 /* ---- Algorithm state (ultra-low-power) ---- */
 
