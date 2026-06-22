@@ -9,7 +9,7 @@
  *            core_dac_write_mv, core_dac_read,
  *            core_adc_t, core_adc_init, core_adc_read
  *
- * Note: core_dac.h has #error if not STM32H523xx -- this is Core.H, so OK.
+ * Note: core_dac.h has #error if not STM32H523xx -- this is Core.ST.H5, so OK.
  *       core_usb.h has #error if not STM32L422xx or STM32H523xx -- also OK.
  */
 

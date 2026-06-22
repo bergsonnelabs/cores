@@ -98,7 +98,7 @@ static inline void core_pwm_duty(uint8_t pad, uint16_t duty_permil) { ... }
 - `name=`: DSL-facing name. Convention: lowercase snake_case, short. The generated qname is `Core.PWM.duty`, not `Core.PWM.core_pwm_duty`.
 - `returns=`: DSL-level return type. Required for non-void hosts so Studio can use the call as an expression. Values: `int`, `bool`, `float`, `string`, `int[N]` / `bool[N]` / `float[N]` (fixed-length array). Omit for void hosts (statement-only).
 - `icon=`: per-host glyph in the palette (rare; usually inherited from the category).
-- `availability=`: comma-separated list of Cores this host runs on (e.g. `availability=Core.H,Core.W`). Omit when the host runs on every Core in the SDK.
+- `availability=`: comma-separated list of Cores this host runs on (e.g. `availability=Core.ST.H5,Core.ST.W5`). Omit when the host runs on every Core in the SDK.
 
 ### `@studio param <cname> enum {KEY=label, ...}`
 

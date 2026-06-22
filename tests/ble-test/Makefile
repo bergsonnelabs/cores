@@ -3,7 +3,7 @@
 # If your project lives elsewhere, set SDK_ROOT to the path of your cores clone:
 #   SDK_ROOT := /path/to/cores
 
-TILE         := Core.ST.W5.1
+TILE         := Core.ST.W5
 TILES_ENABLED := 0
 BLE_ENABLED  := 1
 BOOTLOADER   := 0

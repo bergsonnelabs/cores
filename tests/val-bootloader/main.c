@@ -1,5 +1,5 @@
 /**
- * val-bootloader -- Validation: BOOTLOADER=1 on Core.H
+ * val-bootloader -- Validation: BOOTLOADER=1 on Core.ST.H5
  *
  * Core.ST.H5.1, clock=default, USB enabled, BOOTLOADER=1
  *

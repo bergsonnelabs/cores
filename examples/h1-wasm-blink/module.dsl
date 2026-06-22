@@ -5,7 +5,7 @@
 #   npm run dsl-to-wasm -- \
 #     ~/Documents/local/source/tiles/examples/h1-wasm-blink/module.dsl \
 #     --header=~/Documents/local/source/tiles/examples/h1-wasm-blink/module_wasm.h \
-#     --core=Core.H
+#     --core=Core.ST.H5
 #
 # Then rebuild the firmware with: make.
 

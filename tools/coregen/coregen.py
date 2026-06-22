@@ -32,7 +32,7 @@ CORE_NAME_ALIASES = {
     "Core.ST.L0.1": "Core-L-1-a",
     "Core.ST.L4.1": "Core-U-1-a",
     "Core.ST.L4.2": "Core-U-2-a",
-    "Core.ST.W5.1": "Core-W-b",
+    "Core.ST.W5": "Core-W-b",
     "Core.ST.H5.1": "Core-H-1-a",
 }
 CORE_STEM_TO_PUBLIC = {stem: name for name, stem in CORE_NAME_ALIASES.items()}
@@ -907,8 +907,8 @@ def build_pwm_config(config, mcu):
 
 # Pattern matches ADC function names in tile JSON / config.json:
 #   "ADC"        (bare peripheral name, channel inferred from pad)
-#   "ADC7"       (channel number, Core.L/U-style)
-#   "ADC7+"      (single-ended positive input, Core.H-style)
+#   "ADC7"       (channel number, Core.ST.L0/L4-style)
+#   "ADC7+"      (single-ended positive input, Core.ST.H5-style)
 #   "ADC_IN3"    (legacy alias)
 #   "ADCIN3"     (another legacy alias)
 # Intentionally rejects the negative-input variant ("ADC3-") since single-ended
@@ -925,8 +925,8 @@ def build_adc_config(config):
     `core_init.{h,c}.j2` templates, or None when no ADC pad is configured.
 
     Today emits exactly one handle (`core_adc1`) regardless of which ADC
-    peripheral a given pad is actually wired to. Correct for Core.L / Core.U /
-    Core.W (single ADC). For Core.H the two ADC peripherals share channel-
+    peripheral a given pad is actually wired to. Correct for Core.ST.L0 / Core.ST.L4 /
+    Core.ST.W5 (single ADC). For Core.ST.H5 the two ADC peripherals share channel-
     number namespaces and the tile JSON doesn't yet tag which peripheral
     each pad belongs to; when a multi-ADC project lands we'll extend this
     to emit `core_adc1` + `core_adc2` and dispatch per-pad. Until then this
@@ -1005,7 +1005,7 @@ def build_i2c_config(config, mcu, clock_config):
         if timing is None:
             print(f"  ERROR: I2C{bus_num} {speed_label} is not supported with a {i2c_clk_mhz}MHz I2C kernel clock.")
             if family_define == "STM32WBA55xx" and speed == 1000000:
-                print(f"         Core.W routes I2C to HSI16 (16MHz); maximum supported speed is 400kHz.")
+                print(f"         Core.ST.W5 routes I2C to HSI16 (16MHz); maximum supported speed is 400kHz.")
             else:
                 print(f"         No pre-computed TIMINGR for {speed_label} @ {i2c_clk_mhz}MHz — add it to I2C_TIMING_MAP or use a lower speed.")
             sys.exit(1)
@@ -1373,7 +1373,11 @@ def generate(tile_path, output_dir, config_path=None):
     interfaces = build_interface_map(tile, pad_map)
     power = tile.get("power", [{}])[0] if tile.get("power") else {}
 
-    tile_name = f"{tile['family']}.{tile['name']}"
+    # Prefer the vendor-segmented public name (Core.ST.<family>.<n>) for
+    # user-visible output; fall back to the DB short name (family.name) for
+    # cores without a public alias yet.
+    _stem = os.path.basename(tile_path).replace(".json", "")
+    tile_name = CORE_STEM_TO_PUBLIC.get(_stem, f"{tile['family']}.{tile['name']}")
 
     ctx = {
         "tile": tile,

@@ -1,5 +1,5 @@
 /**
- * val-backup-rng-alarm-u -- Hardware RNG, RTC, backup registers on Core.U.2
+ * val-backup-rng-alarm-u -- Hardware RNG, RTC, backup registers on Core.ST.L4.2
  *
  * Core.ST.L4.2, clock=max (80 MHz PLL)
  * No external wiring needed — all on-chip peripherals.
@@ -129,7 +129,7 @@ int main(void)
     LED_OFF();
     core_delay_ms(500);
 
-    dbg("\r\n=== val-backup-rng-alarm-u (Core.U.2) ===\r\n");
+    dbg("\r\n=== val-backup-rng-alarm-u (Core.ST.L4.2) ===\r\n");
 
     test_rng();
     test_rtc();

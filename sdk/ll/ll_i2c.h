@@ -135,18 +135,18 @@ typedef struct {
  * Values generated with STM32CubeMX I2C Timing Configuration tool
  * (250ns rise, 100ns fall for standard mode). */
 #define LL_I2C_TIMING_100K_1MHZ     0x00000305UL
-#define LL_I2C_TIMING_100K_2MHZ     0x00000509UL  /* CubeMX: Core.L default (MSI 2MHz) */
+#define LL_I2C_TIMING_100K_2MHZ     0x00000509UL  /* CubeMX: Core.ST.L0 default (MSI 2MHz) */
 #define LL_I2C_TIMING_100K_4MHZ     0x00100F16UL
 #define LL_I2C_TIMING_100K_8MHZ     0x00201F2CUL
 #define LL_I2C_TIMING_100K_16MHZ    0x00503D5AUL
 #define LL_I2C_TIMING_100K_32MHZ    0x10707DBFUL
 #define LL_I2C_TIMING_100K_48MHZ    0x20602938UL
-#define LL_I2C_TIMING_100K_64MHZ    0x10707DBCUL  /* CubeMX: Core.H default (HSI 64MHz) */
+#define LL_I2C_TIMING_100K_64MHZ    0x10707DBCUL  /* CubeMX: Core.ST.H5 default (HSI 64MHz) */
 #define LL_I2C_TIMING_100K_80MHZ    0x30A0A7FBUL
-#define LL_I2C_TIMING_100K_128MHZ   0x20A0C4DFUL  /* CubeMX: Core.H high (PLL 128MHz) */
+#define LL_I2C_TIMING_100K_128MHZ   0x20A0C4DFUL  /* CubeMX: Core.ST.H5 high (PLL 128MHz) */
 #define LL_I2C_TIMING_100K_144MHZ   0x80602938UL
 #define LL_I2C_TIMING_100K_240MHZ   0xE0602938UL
-#define LL_I2C_TIMING_100K_248MHZ   0x40C0E9FFUL  /* CubeMX: Core.H max (PLL 248MHz) */
+#define LL_I2C_TIMING_100K_248MHZ   0x40C0E9FFUL  /* CubeMX: Core.ST.H5 max (PLL 248MHz) */
 
 /* Fast mode (400kHz) from various peripheral clocks.
  * Minimum kernel clock: 4 MHz. Values from CubeMX (100ns rise, 10ns fall). */
@@ -155,24 +155,24 @@ typedef struct {
 #define LL_I2C_TIMING_400K_16MHZ    0x00300617UL
 #define LL_I2C_TIMING_400K_32MHZ    0x00701737UL  /* Verified: Ring Demo @ HSE 32MHz */
 #define LL_I2C_TIMING_400K_48MHZ    0x00B01A4BUL
-#define LL_I2C_TIMING_400K_64MHZ    0x00602173UL  /* CubeMX: Core.H default (HSI 64MHz) */
+#define LL_I2C_TIMING_400K_64MHZ    0x00602173UL  /* CubeMX: Core.ST.H5 default (HSI 64MHz) */
 #define LL_I2C_TIMING_400K_80MHZ    0x00B01B59UL
-#define LL_I2C_TIMING_400K_128MHZ   0x2040184BUL  /* CubeMX: Core.H high (PLL 128MHz) */
+#define LL_I2C_TIMING_400K_128MHZ   0x2040184BUL  /* CubeMX: Core.ST.H5 high (PLL 128MHz) */
 #define LL_I2C_TIMING_400K_144MHZ   0x20B01A4BUL
 #define LL_I2C_TIMING_400K_240MHZ   0x40B01A4BUL
-#define LL_I2C_TIMING_400K_248MHZ   0x20802C97UL  /* CubeMX: Core.H max (PLL 248MHz) */
+#define LL_I2C_TIMING_400K_248MHZ   0x20802C97UL  /* CubeMX: Core.ST.H5 max (PLL 248MHz) */
 
 /* Fast mode plus (1MHz) from various peripheral clocks.
  * Minimum kernel clock: 16 MHz. Values from CubeMX (120ns rise, 120ns fall). */
 #define LL_I2C_TIMING_1M_16MHZ      0x00100306UL  /* tight margins, short bus only */
 #define LL_I2C_TIMING_1M_32MHZ      0x00200B0EUL
 #define LL_I2C_TIMING_1M_48MHZ      0x00300B29UL
-#define LL_I2C_TIMING_1M_64MHZ      0x00300829UL  /* CubeMX: Core.H default (HSI 64MHz) */
+#define LL_I2C_TIMING_1M_64MHZ      0x00300829UL  /* CubeMX: Core.ST.H5 default (HSI 64MHz) */
 #define LL_I2C_TIMING_1M_80MHZ      0x00300F33UL
-#define LL_I2C_TIMING_1M_128MHZ     0x00601C51UL  /* CubeMX: Core.H high (PLL 128MHz) */
+#define LL_I2C_TIMING_1M_128MHZ     0x00601C51UL  /* CubeMX: Core.ST.H5 high (PLL 128MHz) */
 #define LL_I2C_TIMING_1M_144MHZ     0x20300B29UL
 #define LL_I2C_TIMING_1M_240MHZ     0x40300B29UL
-#define LL_I2C_TIMING_1M_248MHZ     0x00C032A7UL  /* CubeMX: Core.H max (PLL 248MHz) */
+#define LL_I2C_TIMING_1M_248MHZ     0x00C032A7UL  /* CubeMX: Core.ST.H5 max (PLL 248MHz) */
 
 /**
  * Select appropriate timing constant based on kernel clock MHz.

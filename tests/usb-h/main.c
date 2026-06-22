@@ -1,5 +1,5 @@
 /**
- * USB CDC — Core.H (STM32H523)
+ * USB CDC — Core.ST.H5 (STM32H523)
  *
  * Prints a heartbeat every second and echoes received data.
  */
@@ -24,7 +24,7 @@ int main(void)
             core_pad_toggle(9);
 
             if (core_usb_connected()) {
-                core_usb_printf("Core.H USB CDC — tick %lu\r\n", ++count);
+                core_usb_printf("Core.ST.H5 USB CDC — tick %lu\r\n", ++count);
             }
         }
 

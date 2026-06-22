@@ -1,5 +1,5 @@
 {
-  "id": "Core.H",
+  "id": "Core.ST.H5",
   "mcu": "STM32H523",
   "freq": "250 MHz",
   "arch": "M33",
@@ -67,11 +67,11 @@
     "power.wkup_wake": "",
     "power.rtc_alarm": {
       "status": "compile",
-      "note": "LL+Core Alarm A implemented. Tested in tests/val-backup-rng-alarm (Core.H)"
+      "note": "LL+Core Alarm A implemented. Tested in tests/val-backup-rng-alarm (Core.ST.H5)"
     },
     "power.backup": {
       "status": "compile",
-      "note": "32 backup registers (BKP0-31) at TAMP+0x100. Tested in tests/val-backup-rng-alarm (Core.H)"
+      "note": "32 backup registers (BKP0-31) at TAMP+0x100. Tested in tests/val-backup-rng-alarm (Core.ST.H5)"
     },
     "security.rng": "none",
     "security.aes": "none",

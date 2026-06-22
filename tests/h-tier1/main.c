@@ -1,5 +1,5 @@
 /**
- * h-tier1 — Tier 1 feature verification on Core.H (SWD readback)
+ * h-tier1 — Tier 1 feature verification on Core.ST.H5 (SWD readback)
  *
  * Tests: backup registers, hardware RNG, RTC alarms.
  * Results written to SRAM at 0x20000000 for SWD readback.

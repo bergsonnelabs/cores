@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@2a1a847",
   "category": "rng",
   "label": "Core.RNG",
   "icon": "🎲",
@@ -14,7 +14,7 @@
       "name": "core_rng_init",
       "signature": "core_rng_init(void)",
       "returns": "void",
-      "brief": "Initialize the hardware RNG. Enables the peripheral clock, configures the RNG, and waits for the first random number to be ready. On Core.U: requires HSI48 to be running (auto-enabled if USB is used, otherwise call ll_rcc_hsi48_enable() first).",
+      "brief": "Initialize the hardware RNG. Enables the peripheral clock, configures the RNG, and waits for the first random number to be ready. On Core.ST.L4: requires HSI48 to be running (auto-enabled if USB is used, otherwise call ll_rcc_hsi48_enable() first).",
       "params": [],
       "studio_exposed": false,
       "layer": "core"

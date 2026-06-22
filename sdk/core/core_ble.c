@@ -1,5 +1,5 @@
 /**
- * core_ble.c — BLE API for Core.W
+ * core_ble.c — BLE API for Core.ST.W5
  *
  * Wraps the low-level ble_app.c and ble_svc.c with a clean core_ API.
  */

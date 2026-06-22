@@ -49,10 +49,10 @@
  * ============================================================ */
 
 #if defined(STM32WBA55xx)
-  /** Core.W — WBA55 has a single ADC (ADC4, on AHB4) */
+  /** Core.ST.W5 — WBA55 has a single ADC (ADC4, on AHB4) */
   #define CORE_ADC_INSTANCE   ADC4
 #else
-  /** Core.L / Core.U / Core.H — all use ADC1 */
+  /** Core.ST.L0 / Core.ST.L4 / Core.ST.H5 — all use ADC1 */
   #define CORE_ADC_INSTANCE   ADC1
 #endif
 

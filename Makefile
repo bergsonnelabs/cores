@@ -11,7 +11,7 @@
 #   cd my-firmware && make        # Uses per-project Makefile which calls back here
 #
 # Usage (external project, explicit):
-#   make TILE=Core.ST.W5.1 PROJECT=my-firmware PROJECT_DIR=/path/to/my-firmware
+#   make TILE=Core.ST.W5 PROJECT=my-firmware PROJECT_DIR=/path/to/my-firmware
 
 # ---- SDK root (absolute path to this file's directory) ----
 
@@ -49,7 +49,7 @@ else ifeq ($(TILE),Core.ST.H5.1)
   override TILE := Core-H-1-a
 else ifeq ($(TILE),Core.ST.L0.1)
   override TILE := Core-L-1-a
-else ifeq ($(TILE),Core.ST.W5.1)
+else ifeq ($(TILE),Core.ST.W5)
   override TILE := Core-W-b
 endif
 
@@ -111,7 +111,7 @@ else ifeq ($(TILE),Core-H-1-a)
   STARTUP     = $(SDK_DIR)sdk/device/stm32h5xx/startup_stm32h523xx.s
   OPENOCD_CFG = $(SDK_DIR)sdk/debug/stm32h5.cfg
 else
-  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a — or public names Core.ST.L0.1 / Core.ST.L4.1 / Core.ST.L4.2 / Core.ST.W5.1 / Core.ST.H5.1)
+  $(error Unknown TILE: $(TILE). Supported: Core-L-1-a, Core-U-1-a, Core-U-2-a, Core-W-b, Core-H-1-a — or public names Core.ST.L0.1 / Core.ST.L4.1 / Core.ST.L4.2 / Core.ST.W5 / Core.ST.H5.1)
 endif
 
 # ---- Bootloader support ----
@@ -155,7 +155,7 @@ ifeq ($(ROM_DFU),1)
   ifeq ($(TILE),$(filter $(TILE),Core-U-1-a Core-U-2-a))
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32l422tb_romdfu.ld
   endif
-  # Core.H: standard linker script already has noinit reservation and
+  # Core.ST.H5: standard linker script already has noinit reservation and
   # app at 0x08000000 — no separate ROM DFU linker script needed.
 endif
 
@@ -164,11 +164,11 @@ endif
 BUILD_DIR = $(PROJECT_DIR)/build
 TARGET    = $(BUILD_DIR)/$(PROJECT)
 
-# STM32CubeProgrammer CLI — used for tiles where OpenOCD lacks support (Core.W / WBA55).
+# STM32CubeProgrammer CLI — used for tiles where OpenOCD lacks support (Core.ST.W5 / WBA55).
 # Override on the command line if installed elsewhere.
 STM32_PROG_CLI ?= /Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI
 
-# Default flash tool is openocd; Core.W overrides to cubeprog above.
+# Default flash tool is openocd; Core.ST.W5 overrides to cubeprog above.
 FLASH_TOOL ?= openocd
 
 # ---- Extract SYSCLK for SWO baud rate calc ----
@@ -226,17 +226,17 @@ endif
 # Opt-in via `WAMR_ENABLED=1`. When enabled, links the WAMR
 # interpreter into the firmware so a user's DSL-compiled `.wasm`
 # blob can execute on-device. Gated only to Cortex-M33 targets
-# (Core.H, Core.W) — Core.U's M4 footprint is over budget per the
+# (Core.ST.H5, Core.ST.W5) — Core.ST.L4's M4 footprint is over budget per the
 # A4b spike and routes through a separate interpreter path.
 WAMR_ENABLED ?= 0
 ifeq ($(WAMR_ENABLED),1)
   ifneq ($(CPU),cortex-m33)
-    $(error WAMR_ENABLED=1 is only supported on Cortex-M33 Cores (Core.ST.H5.1, Core.ST.W5.1))
+    $(error WAMR_ENABLED=1 is only supported on Cortex-M33 Cores (Core.ST.H5.1, Core.ST.W5))
   endif
   include $(SDK_DIR)sdk/wamr/wamr.mk
 endif
 
-# ---- BLE support (Core.W only) ----
+# ---- BLE support (Core.ST.W5 only) ----
 BLE_ENABLED ?= 0
 ifeq ($(BLE_ENABLED),1)
   ifeq ($(MCU_PART),STM32WBA55xx)
@@ -254,7 +254,7 @@ ifeq ($(BLE_ENABLED),1)
     BLE_OBJS = $(addprefix $(BUILD_DIR)/sdk/ble/, $(notdir $(BLE_SOURCES:.c=.o)))
     BLE_OBJS += $(BUILD_DIR)/sdk/core/core_ble.o
   else
-    $(error BLE_ENABLED=1 is only supported for Core.ST.W5.1 (STM32WBA55xx))
+    $(error BLE_ENABLED=1 is only supported for Core.ST.W5 (STM32WBA55xx))
   endif
 endif
 

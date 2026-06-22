@@ -16,7 +16,7 @@
  *   core_spi_deselect(&spi);
  * @endcode
  *
- * Available on: Core.U, Core.W, Core.H (not Core.L — no SPI peripheral).
+ * Available on: Core.ST.L4, Core.ST.W5, Core.ST.H5 (not Core.ST.L0 — no SPI peripheral).
  *
  * @studio category spi label=Core.SPI icon=⇆
  *
@@ -25,8 +25,8 @@
  *   name:  SPI — bus communication
  *   page:  /docs/sdk/spi
  *   blurb: Master-mode SPI: polled byte / buffer transfer, software CS
- *          via tile pads, and DMA non-blocking transfers (Core.U
- *          verified; Core.W/H DMA is HAL-side WIP). Tier 2 exposes a
+ *          via tile pads, and DMA non-blocking transfers (Core.ST.L4
+ *          verified; Core.ST.W5/H5 DMA is HAL-side WIP). Tier 2 exposes a
  *          single-byte full-duplex transfer against a bus id + CS pad —
  *          coregen resolves the handle via core_spi_handle_for_bus().
  *          Tier 1 keeps the explicit-handle forms for buffer transfers,
@@ -36,9 +36,9 @@
 #ifndef CORE_SPI_H
 #define CORE_SPI_H
 
-/* SPI is not available on Core.L (STM32L011) */
+/* SPI is not available on Core.ST.L0 (STM32L011) */
 #if defined(STM32L011xx)
-#error "core_spi.h: SPI is not available on Core.L. Only Core.U, Core.W, and Core.H have SPI."
+#error "core_spi.h: SPI is not available on Core.ST.L0. Only Core.ST.L4, Core.ST.W5, and Core.ST.H5 have SPI."
 #endif
 
 #include "hal_spi.h"
@@ -214,14 +214,14 @@ static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx
 //   the array-IN / array-OUT host-call ABI prototyped on the tile-
 //   driver side — track with the DSL Capability Coverage close.
 //
-// @studio unsupported tier=1 value=H title="SPI master broken on Core.W; compile-only on Core.H"
-//   SDK roadmap Tier 1 item: Core.W has an SPI v2 CSTART bug; Core.H
-//   builds but isn't hardware-verified. Only Core.U is end-to-end
+// @studio unsupported tier=1 value=H title="SPI master broken on Core.ST.W5; compile-only on Core.ST.H5"
+//   SDK roadmap Tier 1 item: Core.ST.W5 has an SPI v2 CSTART bug; Core.ST.H5
+//   builds but isn't hardware-verified. Only Core.ST.L4 is end-to-end
 //   verified for polled + FIFO + tile-driver use. Tile drivers that
 //   need SPI on W/H should expect rough edges.
 //
-// @studio unsupported tier=2 value=M title="DMA verified only on Core.U"
-//   SDK roadmap Tier 2: Core.W / Core.H GPDMA is deferred (SPI v2
+// @studio unsupported tier=2 value=M title="DMA verified only on Core.ST.L4"
+//   SDK roadmap Tier 2: Core.ST.W5 / Core.ST.H5 GPDMA is deferred (SPI v2
 //   TSIZE constraints). Calls fall back to polled or hit
 //   HAL_ERROR. Long buffer transfers (display refresh, audio) are
 //   significantly slower on W/H than on U.
@@ -232,7 +232,7 @@ static inline int core_spi_xfer_byte_bus(uint8_t bus, uint8_t cs_pad, uint8_t tx
 //
 // @studio unsupported tier=1 value=L title="Quad / Octo SPI / OctoSPI"
 //   SDK roadmap Tier 2: QUADSPI / OctoSPI (memory-mapped external
-//   flash for NOR / PSRAM tiles) is wired only on Core.U + Core.H
+//   flash for NOR / PSRAM tiles) is wired only on Core.ST.L4 + Core.ST.H5
 //   silicon and isn't wrapped here.
 
 #endif /* CORE_SPI_H */

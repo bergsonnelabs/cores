@@ -1,4 +1,4 @@
-# DFU Bootloader for Core.H (STM32H523HE)
+# DFU Bootloader for Core.ST.H5 (STM32H523HE)
 #
 # Standalone build — no coregen, no config.json.
 # Produces a minimal bootloader binary (<8KB) that checks noinit SRAM

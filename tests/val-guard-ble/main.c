@@ -7,9 +7,9 @@
  * This test MUST FAIL to compile. It verifies that core_ble.h correctly
  * produces a #error when included on a Core that lacks BLE hardware.
  *
- * Core.U is STM32L422 -- no BLE radio. core_ble.h contains:
+ * Core.ST.L4 is STM32L422 -- no BLE radio. core_ble.h contains:
  *   #if !defined(STM32WBA55xx)
- *   #error "core_ble.h: BLE is only available on Core.W (STM32WBA55)."
+ *   #error "core_ble.h: BLE is only available on Core.ST.W5 (STM32WBA55)."
  *   #endif
  *
  * Expected result: compilation fails with the #error message above.
@@ -18,7 +18,7 @@
 
 #include "core.h"
 
-/* This include MUST trigger a compile-time #error on Core.U */
+/* This include MUST trigger a compile-time #error on Core.ST.L4 */
 #include "core_ble.h"
 
 int main(void)

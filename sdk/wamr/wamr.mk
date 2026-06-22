@@ -20,8 +20,8 @@
 #   - Mini-loader (broader compat rejects some valid modules; not
 #     worth 1-2 KB when flash is in the hundreds of KB).
 #
-# Targets: Core.H (STM32H523, Cortex-M33 +FPU) and Core.W (STM32WBA55,
-# Cortex-M33 +FPU). Core.U (Cortex-M4) is not supported here — its
+# Targets: Core.ST.H5 (STM32H523, Cortex-M33 +FPU) and Core.ST.W5 (STM32WBA55,
+# Cortex-M33 +FPU). Core.ST.L4 (Cortex-M4) is not supported here — its
 # footprint was measured over-budget during the A4b spike; its path
 # is a separate Wasm-subset interpreter (future work).
 

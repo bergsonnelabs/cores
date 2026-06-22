@@ -1,7 +1,7 @@
 # Cores SDK End-to-End Audit Report
 
 > 2026-04-06 — RM → Tile JSON → Coregen → LL → HAL → Core → Configurator → Docs
-> Covers STM32L011E4 (Core.L), STM32L422TB (Core.U), STM32WBA55HGF6 (Core.W), STM32H523HE (Core.H)
+> Covers STM32L011E4 (Core.ST.L0), STM32L422TB (Core.ST.L4), STM32WBA55HGF6 (Core.ST.W5), STM32H523HE (Core.ST.H5)
 
 ---
 
@@ -31,7 +31,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] Core.H clock source mislabeled**: Tile JSON `Core-H-1-a.json` labels the 64 MHz internal RC as `"type": "hsi16"`. The H5 has HSI at 64 MHz, not 16 MHz. The description acknowledges this ("64MHz internal RC (HSI on H5)") but `type: "hsi16"` is wrong. Coregen and the Configurator both key on this string.
+- **[BUG] Core.ST.H5 clock source mislabeled**: Tile JSON `Core-H-1-a.json` labels the 64 MHz internal RC as `"type": "hsi16"`. The H5 has HSI at 64 MHz, not 16 MHz. The description acknowledges this ("64MHz internal RC (HSI on H5)") but `type: "hsi16"` is wrong. Coregen and the Configurator both key on this string.
 
 - **[BUG] L0 PLL modeled as M/N/R**: `MCU_DB` for L011 uses the L4-style PLL topology (M, N, R dividers) but the L0 has a simpler MUL/DIV PLL. `solve_pll()` iterates N continuously, which could pick values (e.g., N=9) that don't correspond to valid `PLLMUL` settings ({3,4,6,8,12,16,24,32,48}). Works by accident for 32 MHz (16×4/2) but is architecturally wrong.
 
@@ -43,7 +43,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[GAP] APB2 prescaler set on L0**: `core_init.c.j2` emits `ll_rcc_set_apb2_div()` unconditionally, but L011 has no APB2 bus.
 
-- **[GAP] Max frequency 248 vs 250**: Core.H `max` config achieves 248 MHz. The IC supports 250 MHz. PLL R values 8+ would allow reaching 250.
+- **[GAP] Max frequency 248 vs 250**: Core.ST.H5 `max` config achieves 248 MHz. The IC supports 250 MHz. PLL R values 8+ would allow reaching 250.
 
 ---
 
@@ -64,11 +64,11 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] TIM171.N malformed**: Core-W-b.json pad 11 has `"TIM171.N"` instead of `"TIM17.1N"`. References a non-existent timer.
 
-- **[INCONSISTENCY] ADC naming**: Core.H uses differential-style `ADC7+`, `ADC3-`. All others use `ADC3`, `ADC12`. Coregen's `extract_adc_channel()` handles both but the inconsistency could confuse users.
+- **[INCONSISTENCY] ADC naming**: Core.ST.H5 uses differential-style `ADC7+`, `ADC3-`. All others use `ADC3`, `ADC12`. Coregen's `extract_adc_channel()` handles both but the inconsistency could confuse users.
 
-- **[INCONSISTENCY] SPI1.SCK vs SPI1.CLK**: Core.H pad 9 uses `SPI1.SCK`; all other tiles use `SPI1.CLK`. The interface pad_assignment references `SPI1.CLK`, so the names don't match.
+- **[INCONSISTENCY] SPI1.SCK vs SPI1.CLK**: Core.ST.H5 pad 9 uses `SPI1.SCK`; all other tiles use `SPI1.CLK`. The interface pad_assignment references `SPI1.CLK`, so the names don't match.
 
-- **[INCONSISTENCY] Comparator naming**: Core.L uses `COMP1.IN+`; Core.U uses `COMP1.+`. Inconsistent across tiles.
+- **[INCONSISTENCY] Comparator naming**: Core.ST.L0 uses `COMP1.IN+`; Core.ST.L4 uses `COMP1.+`. Inconsistent across tiles.
 
 - **[INCONSISTENCY] USART prefix missing**: Core-U-1-a.json USART1 pad_assignments use short names (`TX`, `RX`) without the `USART1.` prefix. Core-U-2-a.json uses the full form.
 
@@ -76,7 +76,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[GAP] Missing `is_default`**: Core-L-1-a.json pad 9 digital function B0 lacks `"is_default": true`.
 
-- **[GAP] Missing `is_required` flags**: Core.L has no `is_required` on any interface pad_assignment. Core.W missing on SPI and USART. Others have them.
+- **[GAP] Missing `is_required` flags**: Core.ST.L0 has no `is_required` on any interface pad_assignment. Core.ST.W5 missing on SPI and USART. Others have them.
 
 ---
 
@@ -97,9 +97,9 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] ADC_14BIT phantom macro**: `core_adc.h` defines `ADC_14BIT = HAL_ADC_RES_14BIT` but this enum value doesn't exist in `hal_adc.h` (which only goes to 12-bit). Will cause compile error if used. H523 is 12-bit only.
 
-- **[BUG] Core.L COMP2 referenced but doesn't exist**: Core-L-1-a.json references COMP2 on multiple pads, but the STM32L011E4 (Cat 1) does not have COMP2. These pad functions are wrong.
+- **[BUG] Core.ST.L0 COMP2 referenced but doesn't exist**: Core-L-1-a.json references COMP2 on multiple pads, but the STM32L011E4 (Cat 1) does not have COMP2. These pad functions are wrong.
 
-- **[INCONSISTENCY] `hal_adc_init_simple()` hardcodes 80 MHz**: Deprecated shim uses 80000000UL as SYSCLK, which is only correct for Core.U.
+- **[INCONSISTENCY] `hal_adc_init_simple()` hardcodes 80 MHz**: Deprecated shim uses 80000000UL as SYSCLK, which is only correct for Core.ST.L4.
 
 - **[INCONSISTENCY] `hal_adc_read_pad()`/`hal_adc_read_pad_mv()` deprecated but present**: Marked `@deprecated` in comments but no compiler deprecation attributes. Users may still discover and use them.
 
@@ -119,13 +119,13 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 | Layer | Status |
 |-------|--------|
-| Tile JSON | DAC1.OUT on Core.H pad 9 only |
+| Tile JSON | DAC1.OUT on Core.ST.H5 pad 9 only |
 | Coregen | `dac_enabled` flag from pad scan |
 | LL | `ll_dac.h` — H5 only |
 | HAL | `hal_dac.h` — H5 only |
 | Core | `core_dac.h` — H5 only |
-| Configurator | DAC toggle shown only for Core.H |
-| Status | Verified on Core.H |
+| Configurator | DAC toggle shown only for Core.ST.H5 |
+| Status | Verified on Core.ST.H5 |
 
 **Findings:**
 
@@ -133,7 +133,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] hal_dac.h ignores channel field**: `hal_dac_t` has a `channel` member but all functions ignore it and hardcode channel 2. Multi-channel aspirational design is non-functional.
 
-- **[GAP] Silent absence on non-H cores**: Including `core_dac.h` on Core.L/U/W produces an empty header. No `#error` or `#warning`. User gets unhelpful "undefined reference" linker error.
+- **[GAP] Silent absence on non-H cores**: Including `core_dac.h` on Core.ST.L0/L4/W5 produces an empty header. No `#error` or `#warning`. User gets unhelpful "undefined reference" linker error.
 
 - **[GAP] DAC noise/triangle generation**: H5 DAC supports hardware noise and triangle waveform generation. Not implemented.
 
@@ -150,12 +150,12 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 | LL | `ll_spi.h` — two completely different IPs |
 | HAL | `hal_spi.h/.c` |
 | Core | `core_spi.h` |
-| Configurator | SPI section (hidden for Core.L) |
+| Configurator | SPI section (hidden for Core.ST.L0) |
 | Status | Compile on U/H, partial on W (CSTART bug) |
 
 **Findings:**
 
-- **[BUG] SPI v2 CSTART transfer broken on W**: Status says "SPI v2 transfer sequence (CSTART/TSIZE) needs RM study — loopback times out on RXP." This blocks ALL SPI tiles on Core.W.
+- **[BUG] SPI v2 CSTART transfer broken on W**: Status says "SPI v2 transfer sequence (CSTART/TSIZE) needs RM study — loopback times out on RXP." This blocks ALL SPI tiles on Core.ST.W5.
 
 - **[BUG] SPI_CLK_MAP incomplete**: Missing SPI3 for L422 and SPI2 for H523. If any tile exposes these instances, coregen will error during generation (not validation).
 
@@ -219,7 +219,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] LPUART type not recognized by Configurator**: `deriveCoreConfig()` filters `type === 'USART' || type === 'UART'` but LPUART1 has `type: 'LPUART'`. Core.L's LPUART1 is silently dropped from the UI.
+- **[BUG] LPUART type not recognized by Configurator**: `deriveCoreConfig()` filters `type === 'USART' || type === 'UART'` but LPUART1 has `type: 'LPUART'`. Core.ST.L0's LPUART1 is silently dropped from the UI.
 
 - **[BUG] Core-U-2-a.json USART2.CK missing from pad 19**: Interface references pad 19 for USART2.CK but pad 19's function list doesn't include it. Per L422 datasheet, PA4 is USART2_CK at AF7 — the pad function is missing.
 
@@ -239,7 +239,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 | Layer | Status |
 |-------|--------|
-| Tile JSON | USB interface on Core.U and Core.H |
+| Tile JSON | USB interface on Core.ST.L4 and Core.ST.H5 |
 | Coregen | `usb_enabled` flag, HSI48/CRS init |
 | LL | `ll_usb.h` (L4) + `ll_usb_drd.h` (H5) |
 | HAL | `hal_usb_cdc.h/.c` |
@@ -251,9 +251,9 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 - **[BUG] Core-H-1-a.json USB.SOF wrong pad**: Interface says pad 3 = USB.SOF, but pad 2 has USB.SOF (AF10). Pad 3 has no USB.SOF function.
 
-- **[GAP] No USB availability validation in coregen**: `usb_enabled` is blindly read from config.json. A project targeting Core.L with `"usb": {"enabled": true}` would generate HSI48/CRS init code that won't compile.
+- **[GAP] No USB availability validation in coregen**: `usb_enabled` is blindly read from config.json. A project targeting Core.ST.L0 with `"usb": {"enabled": true}` would generate HSI48/CRS init code that won't compile.
 
-- **[GAP] Silent absence on L/W**: Including `core_usb.h` on Core.L or Core.W produces an empty header. No `#error` or `#warning`.
+- **[GAP] Silent absence on L/W**: Including `core_usb.h` on Core.ST.L0 or Core.ST.W5 produces an empty header. No `#error` or `#warning`.
 
 - **[GAP] Fault dump H5 missing**: `hal_fault.c` USB register dump is L422-only. H5 (which also has USB) only gets LED SOS, no USB output.
 
@@ -279,7 +279,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **Findings:**
 
-- **[BUG] No compile-time guard on core_ble.h**: Header has no `#if defined(STM32WBA55xx)`. Including it on Core.L/U/H compiles the declarations, then linking fails with missing BLE middleware symbols. Should be a clear `#error`.
+- **[BUG] No compile-time guard on core_ble.h**: Header has no `#if defined(STM32WBA55xx)`. Including it on Core.ST.L0/L4/H5 compiles the declarations, then linking fails with missing BLE middleware symbols. Should be a clear `#error`.
 
 - **[GAP] BLE detection in Configurator uses SDK status, not tile JSON**: `coreDef.ble` is derived from `features['ble.adv'] !== 'na'` in the SDK status file. If status data diverges, BLE detection breaks.
 
@@ -427,7 +427,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **[SYNC] features.json completely diverged**: tiletown and cores repo have different feature group organization, different feature IDs (`usb.cdc` vs `conn.usb_cdc`, `ble.adv` vs `conn.ble_adv`, `i3c.ctrl` vs `adv.i3c_ctrl`), and different feature counts. **Tiletown is the authoritative version.**
 
-**[SYNC] Core.W SDK status diverged**: tiletown has ~50 additional feature entries plus different status values (e.g., `i2c.fmp: compile` vs `na`, `adc.temp: verified` vs `partial`).
+**[SYNC] Core.ST.W5 SDK status diverged**: tiletown has ~50 additional feature entries plus different status values (e.g., `i2c.fmp: compile` vs `na`, `adc.temp: verified` vs `partial`).
 
 **[SYNC] Tile JSONs partially out of sync**: tiletown copies have `bootloaders` arrays and JTAG annotations not present in cores repo. Cores repo is behind.
 
@@ -443,7 +443,7 @@ Each subsystem is traced across every layer where it appears. Findings are tagge
 
 **[GAP] No conflicting pad assignment detection**: Same pad can be assigned to multiple functions.
 
-**[GAP] No peripheral instance validation**: I2C2 on Core.L would fail at generation, not validation.
+**[GAP] No peripheral instance validation**: I2C2 on Core.ST.L0 would fail at generation, not validation.
 
 **[GAP] No required-signals check**: I2C with CLK but no DAT passes validation.
 

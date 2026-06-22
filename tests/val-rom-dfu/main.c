@@ -1,5 +1,5 @@
 /**
- * val-rom-dfu -- Validation: ROM DFU bootloader on Core.U
+ * val-rom-dfu -- Validation: ROM DFU bootloader on Core.ST.L4
  *
  * Core.ST.L4.2, clock=default, USB enabled, ROM_DFU=1
  *

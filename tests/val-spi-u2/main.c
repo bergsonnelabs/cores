@@ -1,7 +1,7 @@
 /**
  * val-spi-u2 -- Sense.I.6P6 tile driver over SPI — full validation
  *
- * Core.U.2 SPI1 → Sense.I.6P6 (ICM-42686P)
+ * Core.ST.L4.2 SPI1 → Sense.I.6P6 (ICM-42686P)
  * Pads: MOSI=2 CLK=10 MISO=18 CS=19
  * SPI Mode 0, 5 MHz. Debug via USB CDC.
  *

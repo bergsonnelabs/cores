@@ -6,7 +6,7 @@
  *
  * Usage:
  *   hal_debug_init(SYSCLK_HZ);
- *   hal_debug_printf("Hello from Core.U.2!\r\n");
+ *   hal_debug_printf("Hello from Core.ST.L4.2!\r\n");
  *   hal_debug_printf("ADC = %d mV\r\n", voltage);
  *
  * Capture with:
@@ -26,7 +26,7 @@ void hal_debug_init(uint32_t sysclk_hz);
 
 /**
  * Printf via SWO/ITM. Same format as standard printf.
- * On Cortex-M0+ (Core.L), this is a no-op.
+ * On Cortex-M0+ (Core.ST.L0), this is a no-op.
  */
 int hal_debug_printf(const char *fmt, ...)
     __attribute__((format(printf, 1, 2)));

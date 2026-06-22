@@ -161,7 +161,7 @@ static inline void core_standby_for(uint32_t seconds)
  * Does not return — MCU resets on wake. Not all pads support WKUP;
  * returns without entering Standby if the pad has no WKUP capability.
  *
- * On Core.U.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).
+ * On Core.ST.L4.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).
  *
  * @param pad   Tile pad number
  * @param edge  EDGE_FALLING or EDGE_RISING
@@ -273,15 +273,15 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 //   the host-call boundary. Tracked alongside the broader DSL event-
 //   model story.
 //
-// @studio unsupported tier=1 value=H title="Stop mode broken on Core.L / Core.W"
-//   Per the SDK roadmap: Core.L's RTC wakeup hangs, Core.W's stop mode
-//   is compile-only. Only Core.U and Core.H are verified end-to-end
+// @studio unsupported tier=1 value=H title="Stop mode broken on Core.ST.L0 / Core.ST.W5"
+//   Per the SDK roadmap: Core.ST.L0's RTC wakeup hangs, Core.ST.W5's stop mode
+//   is compile-only. Only Core.ST.L4 and Core.ST.H5 are verified end-to-end
 //   for stop_for / standby_for. Programs targeting battery operation
 //   on the WBA / L011 should not rely on this header yet.
 //
 // @studio unsupported tier=1 value=M title="WKUP-pin Standby is L4-only"
 //   core_standby_until_on_change is implemented for STM32L422 only —
-//   Core.U.2's PA0/PA2 WKUP pins. Other Cores hit the (void) fallback
+//   Core.ST.L4.2's PA0/PA2 WKUP pins. Other Cores hit the (void) fallback
 //   and return without entering Standby.
 //
 // @studio unsupported tier=1 value=M title="No LPTIM (low-power timer) wakeup"
@@ -289,7 +289,7 @@ static inline void core_watchdog_start_seconds(uint32_t seconds)
 //   without the RTC and gives finer wakeup granularity than seconds.
 //   Not wrapped here yet.
 //
-// @studio unsupported tier=1 value=L title="No autonomous-mode peripherals (Core.W)"
+// @studio unsupported tier=1 value=L title="No autonomous-mode peripherals (Core.ST.W5)"
 //   The WBA's Stop2 autonomous mode (ADC / SPI / I2C / UART operating
 //   while the CPU sleeps) is on the roadmap as Tier 3 — none of it is
 //   surfaced through core_power yet.

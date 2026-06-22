@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@2a1a847",
   "category": "power",
   "label": "Core.Power",
   "icon": "☾",
@@ -74,7 +74,7 @@
       "name": "core_standby_until_on_change",
       "signature": "core_standby_until_on_change(uint8_t pad, uint32_t edge)",
       "returns": "void",
-      "brief": "Enter Standby mode until a GPIO edge on the given pad (via WKUP pin). Does not return — MCU resets on wake. Not all pads support WKUP; returns without entering Standby if the pad has no WKUP capability. On Core.U.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).",
+      "brief": "Enter Standby mode until a GPIO edge on the given pad (via WKUP pin). Does not return — MCU resets on wake. Not all pads support WKUP; returns without entering Standby if the pad has no WKUP capability. On Core.ST.L4.2: pad 8 (PA0 = WKUP1) and pad 7 (PA2 = WKUP4).",
       "params": [
         {
           "name": "pad",

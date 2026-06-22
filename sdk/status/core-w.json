@@ -1,5 +1,5 @@
 {
-  "id": "Core.W",
+  "id": "Core.ST.W5",
   "mcu": "STM32WBA55",
   "freq": "100 MHz",
   "arch": "M33",
@@ -61,11 +61,11 @@
     "power.wkup_wake": "",
     "power.rtc_alarm": {
       "status": "compile",
-      "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.W"
+      "note": "LL+Core Alarm A implemented. Not yet hw-tested on Core.ST.W5"
     },
     "power.backup": {
       "status": "compile",
-      "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.W"
+      "note": "32 backup registers (BKP0-31) at TAMP+0x100. Not yet hw-tested on Core.ST.W5"
     },
     "security.rng": "verified",
     "security.aes": "verified",

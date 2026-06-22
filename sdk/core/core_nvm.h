@@ -3,10 +3,10 @@
  *
  * Provides a simple byte-level read/write API that works across
  * all Core tiles:
- *   - Core.L (STM32L011): True EEPROM, 512 bytes at 0x08080000
- *   - Core.U (STM32L422): Flash emulation (TODO)
- *   - Core.W (STM32WBA55): Flash emulation (TODO)
- *   - Core.H (STM32H523): Flash emulation (TODO)
+ *   - Core.ST.L0 (STM32L011): True EEPROM, 512 bytes at 0x08080000
+ *   - Core.ST.L4 (STM32L422): Flash emulation (TODO)
+ *   - Core.ST.W5 (STM32WBA55): Flash emulation (TODO)
+ *   - Core.ST.H5 (STM32H523): Flash emulation (TODO)
  *
  * Usage:
  *   core_nvm_write(0, &data, sizeof(data));  // write at offset 0
@@ -22,9 +22,9 @@
  * @studio coverage
  *   id:    nvm
  *   name:  NVM — non-volatile memory
- *   blurb: Byte-level read / write across all four Cores. Core.L hits
- *          true EEPROM (512 B, no erase needed); Core.U / Core.W /
- *          Core.H are flash-emulated and currently stubbed out — writes
+ *   blurb: Byte-level read / write across all four Cores. Core.ST.L0 hits
+ *          true EEPROM (512 B, no erase needed); Core.ST.L4 / Core.ST.W5 /
+ *          Core.ST.H5 are flash-emulated and currently stubbed out — writes
  *          return -1 until flash-emu lands. Tier 2 only exposes
  *          `nvm.size`; the read / write surface is escape-to-C until
  *          the DSL grows a way to bind the (offset, ptr, len) ABI.
@@ -199,7 +199,7 @@ static inline int core_nvm_write_byte(uint32_t offset, uint8_t value)
 //   per-slot state across worker resets.
 //
 // @studio unsupported tier=1 value=H title="Flash emulation missing on U / W / H"
-//   core_nvm_write returns -1 on Core.U / Core.W / Core.H. Tracked in
+//   core_nvm_write returns -1 on Core.ST.L4 / Core.ST.W5 / Core.ST.H5. Tracked in
 //   the SDK roadmap and called out in the Studio A4cd PR notes —
 //   blocked on a flash-emu layer in core_nvm with wear-leveling. Until
 //   it lands, on-Core programs that need persistent state are limited

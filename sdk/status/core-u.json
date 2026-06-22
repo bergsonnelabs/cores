@@ -1,5 +1,5 @@
 {
-  "id": "Core.U",
+  "id": "Core.ST.L4",
   "mcu": "STM32L422",
   "freq": "80 MHz",
   "arch": "M4",
@@ -10,7 +10,7 @@
     "system.tick": "verified",
     "system.fault": {
       "status": "verified",
-      "note": "Register dump over polled USB CDC + SOS blink. HardFault verified on Core.U.2 (projects/fault-test)"
+      "note": "Register dump over polled USB CDC + SOS blink. HardFault verified on Core.ST.L4.2 (projects/fault-test)"
     },
     "clocks.hsi": "verified",
     "clocks.hse": "na",
@@ -35,11 +35,11 @@
     "spi.octo": "na",
     "timer.tick": {
       "status": "verified",
-      "note": "Verified on Core.U.2 — LED blink via ISR (projects/timer-ticker)"
+      "note": "Verified on Core.ST.L4.2 — LED blink via ISR (projects/timer-ticker)"
     },
     "timer.pwm": {
       "status": "verified",
-      "note": "TIM15 PWM → EXTI loopback verified on Core.U.2 (projects/timers-pwmg_u2)"
+      "note": "TIM15 PWM → EXTI loopback verified on Core.ST.L4.2 (projects/timers-pwmg_u2)"
     },
     "timer.capture": {
       "status": "verified",
@@ -91,7 +91,7 @@
     },
     "power.wkup_wake": {
       "status": "verified",
-      "note": "core_standby_until_on_change(8, EDGE_FALLING) verified on Core.U.2 (projects/power-test)"
+      "note": "core_standby_until_on_change(8, EDGE_FALLING) verified on Core.ST.L4.2 (projects/power-test)"
     },
     "power.rtc_alarm": {
       "status": "partial",
@@ -120,7 +120,7 @@
     "adv.i3c_target": "na",
     "adv.comp": {
       "status": "compile",
-      "note": "L422 has COMP1/COMP2; pins available on Core.U.2"
+      "note": "L422 has COMP1/COMP2; pins available on Core.ST.L4.2"
     },
     "adv.dac": "na"
   }

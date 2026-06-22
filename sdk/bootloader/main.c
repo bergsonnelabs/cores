@@ -1,5 +1,5 @@
 /**
- * DFU Bootloader for Core.U (STM32L422TB)
+ * DFU Bootloader for Core.ST.L4 (STM32L422TB)
  *
  * Boot flow:
  *   1. Check RTC backup register 0 for magic value (0xDEADBEEF)

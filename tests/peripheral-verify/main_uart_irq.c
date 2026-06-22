@@ -1,5 +1,5 @@
 /**
- * Minimal UART IRQ loopback test — Core.W
+ * Minimal UART IRQ loopback test — Core.ST.W5
  *
  * Wiring: Pad 8 (PA12, TX) → Pad 9 (PB4, RX)
  *

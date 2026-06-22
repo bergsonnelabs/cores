@@ -202,7 +202,7 @@ These are IC capabilities discovered in the reference manuals that don't appear 
 | 21 | **FDCAN** | H | 4 | Industrial bus. Niche but H has two instances. |
 | 22 | **I3C controller** | H | 4 | Next-gen sensor bus. Forward-looking but few I3C sensors exist today. |
 | 23 | **USB MSC** | U,H | 4 | USB mass storage. Needs FAT/SCSI layer. |
-| 24 | **USB Host** | H | 4 | USB host mode. Connect peripherals to Core.H. |
+| 24 | **USB Host** | H | 4 | USB host mode. Connect peripherals to Core.ST.H5. |
 | 25 | **SDMMC** | H | 4 | SD card. Needs FAT filesystem. Good for datalogging. |
 | 26 | **SAI / I2S** | W,U,H | 3 | Audio interface. Microphone/speaker tiles. |
 | 27 | **PKA/ECC** | W,H | 4 | Secure BLE pairing, certificate validation. |

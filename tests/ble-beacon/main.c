@@ -1,5 +1,5 @@
 /**
- * BLE LED + Counter Demo — Core.W
+ * BLE LED + Counter Demo — Core.ST.W5
  *
  * Two services:
  * 1. LED Control: write 0x01/0x00 to toggle LED
@@ -46,7 +46,7 @@ int main(void)
     core_ble_set_services(app_ble_services);
     core_ble_enable_pairing();
     core_ble_init();
-    core_ble_advertise("Core.W");
+    core_ble_advertise("Core.ST.W5");
 
     uint8_t counter = 0;
     uint32_t last_notify = 0;
