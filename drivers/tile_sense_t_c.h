@@ -99,7 +99,7 @@
  * ================================================================ */
 
 #define TILE_SENSE_T_C_VERSION_MAJOR  1
-#define TILE_SENSE_T_C_VERSION_MINOR  2
+#define TILE_SENSE_T_C_VERSION_MINOR  3
 #define TILE_SENSE_T_C_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -168,6 +168,8 @@ TILES_CHECK_VERSION(1, 0);
 #define IQS323_REG_PATTERN_SEL(ch)  (0x35 + (ch) * 0x10)
 #define IQS323_REG_ATI_SETUP(ch)    (0x36 + (ch) * 0x10)
 #define IQS323_REG_ATI_BASE(ch)     (0x37 + (ch) * 0x10)
+#define IQS323_REG_ATI_MULTI(ch)    (0x38 + (ch) * 0x10)  /* ATI multipliers/dividers (A.13) */
+#define IQS323_REG_COMPENSATION(ch) (0x39 + (ch) * 0x10)  /* per-channel offset (A.14) */
 
 /* Channel UI setup (CH0=0x6x, CH1=0x7x, CH2=0x8x) */
 #define IQS323_REG_CH_SETUP(ch)          (0x60 + (ch) * 0x10)
@@ -463,11 +465,15 @@ void tile_sense_t_c_ati(tile_t *tile);
 /**
  * @brief  Set the per-channel ATI setup register (0x36 + ch*0x10).
  *
- * Writes the raw 16-bit ATI Setup register for the channel.
- * Bit layout (datasheet §A.13):
- *   - Bits 14-9: Coarse divider (0–63)
- *   - Bits 8-5:  Fine divider (0–15)
- *   - Bits 4-0:  Compensation divider / sensitivity factor
+ * Writes the raw 16-bit ATI Setup register (0x36 + ch·0x10) for the
+ * channel. Bit layout (datasheet §A.12):
+ *   - Bits 15-4: ATI Target / Resolution Factor
+ *   - Bit  3:    ATI Band (0 = 1/16, 1 = 1/8)
+ *   - Bits 2-0:  ATI Mode (0 disabled, 1 comp-only, 2 from-comp-divider,
+ *                3 partial, 4 full)
+ * (The coarse/fine multipliers and dividers live in the separate ATI
+ * Multipliers/Dividers register at 0x38 — see IQS323_REG_ATI_MULTI;
+ * the compensation divider lives at 0x39 — see set_compensation.)
  *
  * After changing ATI parameters, call @ref tile_sense_t_c_ati to
  * re-run the auto-tuning sequence with the new values. Useful when
@@ -669,5 +675,83 @@ uint16_t tile_sense_t_c_read_reg(tile_t *tile, uint8_t reg);
  * @studio expose category=tile name=write_reg section=advanced
  */
 void tile_sense_t_c_write_reg(tile_t *tile, uint8_t reg, uint16_t value);
+
+/* ================================================================
+ * v1.3 capability additions
+ * ================================================================ */
+
+/**
+ * @brief  Force the long-term-average baseline to re-snap to current counts.
+ *
+ * Sets SYSTEM_CONTROL.RESEED (self-clearing). Use after a known
+ * environmental change (object placed/removed, cover added) to discard
+ * the slow baseline and re-zero the channels immediately, instead of
+ * waiting for the LTA filter to drift there.
+ *
+ * @studio expose category=tile name=reseed section=runtime
+ * @param  tile  Initialised tile handle.
+ */
+void tile_sense_t_c_reseed(tile_t *tile);
+
+/**
+ * @brief  Set the report rate (conversion interval) for a power mode.
+ *
+ * Writes the per-mode report-rate register (NP 0xC1 / LP 0xC2 / ULP 0xC3
+ * / HALT 0xC4) in plain milliseconds (clamped 0-3000). This is the tile's
+ * headline power/latency knob — faster rate = lower latency, higher
+ * current. Only the four reporting modes have a rate; AUTO/AUTO_NO_ULP
+ * are ignored.
+ *
+ * @studio expose category=tile name=set_report_rate section=config
+ * @param  tile  Initialised tile handle.
+ * @param  mode  Which power mode's rate to set (NORMAL/LOW/ULTRA_LOW/HALT).
+ * @param  ms    Report interval in milliseconds (0-3000).
+ */
+void tile_sense_t_c_set_report_rate(tile_t *tile, sense_t_c_power_mode_t mode,
+                                    uint16_t ms);
+
+/**
+ * @brief  Set the auto power-mode step-down timeout.
+ *
+ * Writes POWER_TIMEOUT (0xC5) in milliseconds. In AUTO / AUTO_NO_ULP the
+ * chip steps down a power mode after this much inactivity; 0 disables
+ * auto step-down.
+ *
+ * @studio expose category=tile name=set_power_timeout section=config
+ * @param  tile  Initialised tile handle.
+ * @param  ms    Inactivity timeout in milliseconds (0-65000, 0 = off).
+ */
+void tile_sense_t_c_set_power_timeout(tile_t *tile, uint16_t ms);
+
+/**
+ * @brief  Read a channel's compensation (CAPDAC-equivalent offset).
+ *
+ * Returns the raw Compensation register (0x39 + ch·0x10). The low 10
+ * bits are the compensation value; bits 15-11 are the divider. Normally
+ * set by ATI — read it to capture a tuned working point.
+ *
+ * @studio expose category=tile name=get_compensation returns=int section=advanced
+ * @param  tile     Initialised tile handle.
+ * @param  channel  0-2.
+ * @return Raw 16-bit compensation register, or 0 on a bad channel.
+ */
+uint16_t tile_sense_t_c_get_compensation(tile_t *tile, uint8_t channel);
+
+/**
+ * @brief  Override a channel's compensation value + divider.
+ *
+ * Writes the Compensation register (0x39 + ch·0x10): value (0-1023) in
+ * bits 9-0, divider (0-31) in bits 15-11. NOTE: a subsequent full ATI
+ * overwrites this — to hold a fixed offset, set the channel's ATI Mode
+ * (set_ati_setup) to a non-full mode first.
+ *
+ * @studio expose category=tile name=set_compensation section=advanced
+ * @param  tile     Initialised tile handle.
+ * @param  channel  0-2.
+ * @param  value    Compensation value (0-1023).
+ * @param  divider  Compensation divider (0-31).
+ */
+void tile_sense_t_c_set_compensation(tile_t *tile, uint8_t channel,
+                                     uint16_t value, uint8_t divider);
 
 #endif /* INC_TILE_SENSE_T_C_H_ */

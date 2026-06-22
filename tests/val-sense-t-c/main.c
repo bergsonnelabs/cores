@@ -82,6 +82,15 @@ int main(void)
     uint8_t slider_ok = tile_sense_t_c_read_slider_pct(&touch, &pct);
     (void)slider_ok; (void)pct;
 
+    /* ---- v1.3 capability additions ---- */
+    tile_sense_t_c_reseed(&touch);
+    tile_sense_t_c_set_report_rate(&touch, SENSE_T_C_POWER_NORMAL, 16);
+    tile_sense_t_c_set_report_rate(&touch, SENSE_T_C_POWER_ULTRA_LOW, 160);
+    tile_sense_t_c_set_power_timeout(&touch, 2000);
+    uint16_t comp = tile_sense_t_c_get_compensation(&touch, 1);
+    (void)comp;
+    tile_sense_t_c_set_compensation(&touch, 1, 512, 31);
+
     while (1) {
         core_delay_ms(1000);
     }

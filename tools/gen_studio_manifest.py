@@ -1121,7 +1121,7 @@ def main():
             "definition": ROOT / "definitions/Sense-T-C-a.json",
             "prefix": "tile_sense_t_c",
             "init": "tile_sense_t_c_init",
-            "version": "1.2.0",
+            "version": "1.3.0",
         },
         {
             "path": ROOT / "drivers/tile_drive_a_2.h",
