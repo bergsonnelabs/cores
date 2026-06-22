@@ -150,6 +150,31 @@ typedef struct {
     int (*spi_write)(void* handle, uint8_t cs, uint8_t reg,
                      const uint8_t* data, uint16_t len);
 
+    /**
+     * @brief  Raw SPI transaction under a single CS assertion: clock out
+     *         `tx_len` bytes, then clock in `rx_len` bytes (half-duplex), then
+     *         release CS.
+     *
+     * Required for command + address + data protocols that the register-style
+     * spi_read / spi_write can't express in one transaction — e.g. SPI-NOR
+     * flash, where a read is command (1B) + address (3B) followed by the data
+     * burst. The whole sequence must share one CS assertion.
+     *
+     * @param  handle   Opaque platform handle
+     * @param  cs       Chip-select identifier
+     * @param  tx       Bytes to send first (command [+ address [+ write data]]);
+     *                  may be NULL when tx_len == 0
+     * @param  tx_len   Number of bytes to send
+     * @param  rx       Buffer to receive into after the send phase; may be NULL
+     *                  when rx_len == 0
+     * @param  rx_len   Number of bytes to read
+     * @return 0 on success, non-zero on error.  NULL if the platform doesn't
+     *         implement it yet — callers must check before use.
+     */
+    int (*spi_transfer)(void* handle, uint8_t cs,
+                        const uint8_t* tx, uint16_t tx_len,
+                        uint8_t* rx, uint16_t rx_len);
+
     /* --- GPIO interrupt --- */
 
     /**

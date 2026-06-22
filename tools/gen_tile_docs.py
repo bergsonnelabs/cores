@@ -47,6 +47,7 @@ ACTIVE_TILES = [
     "tile_sense_mic",
     "tile_sense_t_c",
     "tile_sense_tof",
+    "tile_store_o_128",
 ]
 
 

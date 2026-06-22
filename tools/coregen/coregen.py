@@ -1158,6 +1158,7 @@ TILE_DRIVER_MAP = {
     "Power.L.1T":  {"header": "tile_power_l_1t.h",   "source": "tile_power_l_1t",   "prefix": "tile_power_l_1t"},
     "Power.P.N":   {"header": "tile_power_p_n.h",    "source": "tile_power_p_n",    "prefix": "tile_power_p_n"},
     "Display.RGBW": {"header": "tile_display_rgbw.h",   "source": "tile_display_rgbw",   "prefix": "tile_display_rgbw"},
+    "Store.O.128": {"header": "tile_store_o_128.h",   "source": "tile_store_o_128",   "prefix": "tile_store_o_128"},
     "Sense.T.C":   {"header": "tile_sense_t_c.h",  "source": "tile_sense_t_c",  "prefix": "tile_sense_t_c"},
     "Sense.MIC":   {"header": "tile_sense_mic.h",  "source": "tile_sense_mic",  "prefix": "tile_sense_mic"},
     "Sense.BP":    {"header": "tile_sense_bp.h",  "source": "tile_sense_bp",  "prefix": "tile_sense_bp"},
