@@ -12,10 +12,55 @@
 #
 # Usage (external project, explicit):
 #   make TILE=Core.ST.W5 PROJECT=my-firmware PROJECT_DIR=/path/to/my-firmware
+#
+# Cross-platform: works on macOS / Linux, on Windows under MSYS2 / Git-Bash,
+# and on native Windows GNU make driving cmd.exe (e.g. scoop/choco make with
+# no Unix shell). See the host-detection block below.
 
 # ---- SDK root (absolute path to this file's directory) ----
 
 SDK_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# ---- Host detection (cross-platform recipes) ----
+# Recipes and a few $(shell ...) probes differ between a POSIX shell (Linux,
+# macOS, MSYS2 / Git-Bash) and Windows cmd.exe (native make, no Unix shell).
+# MSYS2 / Git-Bash export MSYSTEM; native cmd does not — that cleanly tells the
+# two apart with no subprocess. On native Windows we also pin SHELL to cmd so
+# the cmd-syntax recipes below run under the shell they're written for even if
+# sh.exe happens to be on PATH.
+ifeq ($(OS),Windows_NT)
+  ifeq ($(MSYSTEM),)
+    HOST  := windows
+    SHELL := cmd.exe
+  else
+    HOST  := posix
+  endif
+else
+  HOST  := posix
+endif
+
+# Per-host command shims. Override PY on the command line if your Python is
+# named differently (e.g. `make PY=python`).
+ifeq ($(HOST),windows)
+  PY          ?= py
+  NULDEV      := NUL
+  win_path     = $(subst /,\,$1)
+  mkdir_p      = if not exist "$(call win_path,$1)" mkdir "$(call win_path,$1)"
+  touch_f      = type NUL > "$(call win_path,$1)"
+  rm_rf        = if exist "$(call win_path,$1)" rmdir /s /q "$(call win_path,$1)"
+  rm_f         = if exist "$(call win_path,$1)" del /q "$(call win_path,$1)"
+  file_exists  = $(shell if exist "$(call win_path,$1)" echo 1)
+  NOOP        := @rem
+else
+  PY          ?= python3
+  NULDEV      := /dev/null
+  mkdir_p      = mkdir -p "$1"
+  touch_f      = touch "$1"
+  rm_rf        = rm -rf "$1"
+  rm_f         = rm -f "$1"
+  file_exists  = $(shell [ -f "$1" ] && echo 1)
+  NOOP        := @:
+endif
 
 # ---- Verbosity ----
 # Default: quiet (shows GEN, LD, BIN/HEX, size). Use V=1 for full output.
@@ -23,8 +68,8 @@ SDK_DIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 V     ?= 0
 ifeq ($(V),0)
   Q              := @
-  LOG            := @:
-  COREGEN_QUIET  := > /dev/null
+  LOG            := $(NOOP)
+  COREGEN_QUIET  := > $(NULDEV)
 else
   Q              :=
   LOG            := @echo
@@ -66,10 +111,17 @@ SIZE    = $(PREFIX)size
 GDB     = $(PREFIX)gdb
 
 # Coregen
-COREGEN      = python3 $(SDK_DIR)tools/coregen/coregen.py
+COREGEN      = $(PY) "$(SDK_DIR)tools/coregen/coregen.py"
 TILE_JSON    = $(SDK_DIR)definitions/$(TILE).json
 CONFIG_JSON = $(PROJECT_DIR)/config.json
 GEN_DIR      = $(PROJECT_DIR)/coregen
+
+# Existence test for config.json. $(wildcard) treats its argument as a
+# space-separated pattern list and mishandles backslashes, so a project under
+# e.g. "C:/Users/First Last/proj" silently misses config.json and coregen runs
+# config-less (no core.h / core_config.h / core_init.*). The per-host
+# file_exists shim (test -f / `if exist`) is robust to both.
+CONFIG_FOUND := $(call file_exists,$(CONFIG_JSON))
 
 # ---- Tile → MCU mapping ----
 # coregen generates the headers; the Makefile still needs to know
@@ -124,7 +176,7 @@ endif
 # The mode maps to BOOTLOADER/ROM_DFU flags below. Command-line overrides
 # still work (e.g. make BOOTLOADER=1) because ?= defers to explicit values.
 
-_BOOT_MODE := $(shell python3 -c "import json; print(json.load(open('$(CONFIG_JSON)')).get('bootloader','none'))" 2>/dev/null || echo none)
+_BOOT_MODE := $(shell $(PY) -c "import json; print(json.load(open('$(CONFIG_JSON)')).get('bootloader','none'))" 2>$(NULDEV) || echo none)
 
 ifeq ($(_BOOT_MODE),custom)
   BOOTLOADER ?= 1
@@ -166,18 +218,22 @@ TARGET    = $(BUILD_DIR)/$(PROJECT)
 
 # STM32CubeProgrammer CLI — used for tiles where OpenOCD lacks support (Core.ST.W5 / WBA55).
 # Override on the command line if installed elsewhere.
+ifeq ($(HOST),windows)
+STM32_PROG_CLI ?= C:/Program Files/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin/STM32_Programmer_CLI.exe
+else
 STM32_PROG_CLI ?= /Applications/STMicroelectronics/STM32Cube/STM32CubeProgrammer/STM32CubeProgrammer.app/Contents/MacOs/bin/STM32_Programmer_CLI
+endif
 
 # Default flash tool is openocd; Core.ST.W5 overrides to cubeprog above.
 FLASH_TOOL ?= openocd
 
 # ---- Extract SYSCLK for SWO baud rate calc ----
-SYSCLK_MHZ = $(shell python3 -c "\
+SYSCLK_MHZ = $(shell $(PY) -c "\
 import json; \
 level = json.load(open('$(CONFIG_JSON)'))['clock']; \
 configs = json.load(open('$(TILE_JSON)')).get('clock',{}).get('configurations',[]); \
-print(next((c['sysclk_mhz'] for c in configs if c['name']==level), 80))" 2>/dev/null || echo 80)
-SYSCLK_HZ  = $(shell echo $$(($(SYSCLK_MHZ) * 1000000)))
+print(next((c['sysclk_mhz'] for c in configs if c['name']==level), 80))" 2>$(NULDEV) || echo 80)
+SYSCLK_HZ  = $(shell $(PY) -c "print($(SYSCLK_MHZ) * 1000000)")
 
 # ---- Sources ----
 
@@ -300,10 +356,10 @@ endif
 
 GEN_HEADERS = $(GEN_DIR)/core_pads.h $(GEN_DIR)/core_board.h $(GEN_DIR)/core_interfaces.h
 
-ifneq ($(wildcard $(CONFIG_JSON)),)
+ifeq ($(CONFIG_FOUND),1)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
-  COREGEN_FLAGS = --config $(CONFIG_JSON)
+  COREGEN_FLAGS = --config "$(CONFIG_JSON)"
   # Per-project WAMR natives ride alongside core_init.c so the adapters
   # for pad/pwm/adc/dac (which reach into PAD_*_PORT macros, core_dac,
   # core_adc1, etc.) compile in the same translation-unit scope. Only
@@ -316,19 +372,27 @@ ifneq ($(wildcard $(CONFIG_JSON)),)
 else
   GEN_SOURCES   =
   COREGEN_FLAGS =
+  # Config-less codegen produces no core.h / core_config.h / core_init.* -- which
+  # every modern project needs (main.c does `#include "core.h"`). This is almost
+  # always a misconfiguration, so say so loudly instead of failing cryptically
+  # later at the C preprocessor. (ASCII only -- cmd's cp1252 console garbles
+  # non-ASCII in $(warning) output.)
+  $(warning coregen: no config.json found at "$(CONFIG_JSON)" -- building config-less)
+  $(warning coregen: core.h / core_config.h / core_init.* will NOT be generated)
+  $(warning coregen: if you have a config.json, check PROJECT_DIR and the path (spaces/backslashes break detection))
 endif
 
 # core_drivers.mk is an included makefile — it must have its own recipe so
 # GNU Make detects it was remade and restarts (picking up TILES_DRIVERS).
-$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
-	@mkdir -p $(GEN_DIR)
+$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(if $(CONFIG_FOUND),$(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
+	@$(call mkdir_p,$(GEN_DIR))
 	@echo "  GEN   $(TILE)"
-	$(Q)$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS) $(COREGEN_QUIET)
+	$(Q)$(COREGEN) "$(TILE_JSON)" "$(GEN_DIR)" $(COREGEN_FLAGS) $(COREGEN_QUIET)
 
 # Stamp prevents re-running coregen for each header file target.
 GEN_STAMP = $(GEN_DIR)/.coregen.stamp
 $(GEN_STAMP): $(GEN_DIR)/core_drivers.mk
-	$(Q)touch $(GEN_STAMP)
+	$(Q)$(call touch_f,$(GEN_STAMP))
 
 $(GEN_HEADERS): $(GEN_STAMP)
 
@@ -359,7 +423,7 @@ $(TARGET).hex: $(TARGET).elf
 
 # C sources depend on generated headers
 $(BUILD_DIR)/%.o: $(PROJECT_DIR)/%.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
@@ -374,24 +438,24 @@ $(GEN_OBJS): $(GEN_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_HEADERS)
 
 # HAL sources
 $(BUILD_DIR)/sdk/hal/%.o: $(SDK_DIR)sdk/hal/%.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/sdk/device/%.o: $(SDK_DIR)sdk/device/%.s
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  AS    $(notdir $<)"
 	$(Q)$(AS) $(ASFLAGS) -c $< -o $@
 
 # Tile driver sources
 ifeq ($(TILES_ENABLED),1)
 $(BUILD_DIR)/tiles/%.o: $(SDK_DIR)hal/%.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
 
 $(BUILD_DIR)/tiles/%.o: $(SDK_DIR)drivers/%.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c "$<" -o $@
 endif
@@ -399,13 +463,13 @@ endif
 # BLE sources (relaxed warnings — vendor headers are noisy)
 ifeq ($(BLE_ENABLED),1)
 $(BUILD_DIR)/sdk/ble/%.o: $(SDK_DIR)sdk/ble/%.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -Wno-unused-parameter -Wno-sign-compare -Wno-missing-field-initializers -c $< -o $@
 
 # core_ble.c — in sdk/core/ but only compiled for BLE builds
 $(BUILD_DIR)/sdk/core/core_ble.o: $(SDK_DIR)sdk/core/core_ble.c $(GEN_HEADERS)
-	$(Q)mkdir -p $(dir $@)
+	$(Q)$(call mkdir_p,$(dir $@))
 	$(LOG) "  CC    $(notdir $<)"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 endif
@@ -416,18 +480,18 @@ size: $(TARGET).elf
 	@echo ""
 
 clean:
-	rm -rf $(BUILD_DIR)
+	$(call rm_rf,$(BUILD_DIR))
 
 distclean: clean
-	rm -rf $(GEN_DIR)
-	rm -f $(PROJECT_DIR)/core.h
-	rm -f $(PROJECT_DIR)/tiles.h
+	$(call rm_rf,$(GEN_DIR))
+	$(call rm_f,$(PROJECT_DIR)/core.h)
+	$(call rm_f,$(PROJECT_DIR)/tiles.h)
 
 # ---- Flash via OpenOCD (ST-Link) ----
 
 flash: $(TARGET).elf
 ifeq ($(FLASH_TOOL),cubeprog)
-	$(STM32_PROG_CLI) -c port=SWD mode=UR -w $< -v -rst
+	"$(STM32_PROG_CLI)" -c port=SWD mode=UR -w $< -v -rst
 else
 	openocd -f $(OPENOCD_CFG) \
 		-c "init" \
@@ -452,6 +516,28 @@ endif
 #
 # flash-rom:  Always flashes at 0x08000000 via ROM DFU (for fresh boards
 #             or when BOOT0 is held high). Works regardless of boot mode.
+#
+# The automatic 1200-baud touch reboot is POSIX-only (it walks
+# /dev/tty.usbmodem*). On native Windows cmd, put the board in DFU mode
+# manually (1200-baud touch from your IDE, or hold BOOT0) then run flash-dfu.
+
+ifeq ($(HOST),windows)
+
+flash-dfu: $(TARGET).bin
+ifeq ($(BOOTLOADER),1)
+	@echo DFU: Put the board into DFU mode manually (1200-baud touch not supported on Windows cmd).
+	@echo DFU: Then press a key to continue.
+	@pause > $(NULDEV)
+	dfu-util -a 0 -R -D $< || dfu-util -a 0 -s $(APP_ADDR):leave -D $<
+else ifeq ($(ROM_DFU),1)
+	@echo DFU: Put the board into ROM DFU mode manually, then press a key.
+	@pause > $(NULDEV)
+	dfu-util -a 0 -s 0x08000000:leave -D $<
+else
+	dfu-util -a 0 -s 0x08000000:leave -D $<
+endif
+
+else
 
 flash-dfu: $(TARGET).bin
 ifeq ($(BOOTLOADER),1)
@@ -511,6 +597,8 @@ else
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 endif
 
+endif
+
 flash-rom: $(TARGET).bin
 	dfu-util -a 0 -s 0x08000000:leave -D $<
 
@@ -552,7 +640,7 @@ swo: $(TARGET).elf
 # ---- End-to-end validation ----
 .PHONY: validate validate-generate
 validate:
-	@python3 $(SDK_DIR)tools/validate.py
+	@$(PY) "$(SDK_DIR)tools/validate.py"
 
 validate-generate:
-	@python3 $(SDK_DIR)tools/validate.py --generate-only
+	@$(PY) "$(SDK_DIR)tools/validate.py" --generate-only
