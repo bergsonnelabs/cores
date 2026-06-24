@@ -36,7 +36,10 @@ jobs:
         run: python3 tools/sync_definitions.py --apply
 
       - name: Regenerate derived manifests
+        env:
+          TILES_DB_PASSWORD: ${{ secrets.TILES_DB_PASSWORD }}
         run: |
+          python3 tools/gen_active_tiles.py --apply
           python3 tools/gen_studio_manifest.py
           python3 tools/gen_tile_docs.py
           python3 tools/gen_reference_data.py
