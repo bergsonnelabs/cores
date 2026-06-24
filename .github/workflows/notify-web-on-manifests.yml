@@ -1,0 +1,41 @@
+name: notify-web-on-manifests
+
+# When the generated manifests change on main (a definitions sync, a driver PR,
+# anything), tell the web repo to re-vendor them: this fires a repository_dispatch
+# that its vendor-tile-manifests workflow listens for. Watching manifests/** (not
+# definitions/**) is sufficient — everything the web side vendors is derived into
+# manifests/, so a definitions change only matters here once it lands as a manifest.
+#
+# Auth: the tiles-sync GitHub App, installed on bergsonnelabs/web with
+# Contents: write. Add its secrets to this repo (or as org secrets):
+#   TILES_SYNC_APP_ID / TILES_SYNC_APP_PRIVATE_KEY
+# A repository_dispatch needs a non-GITHUB_TOKEN credential to cross repos.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manifests/**'
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mint a GitHub App token (scoped to web)
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.TILES_SYNC_APP_ID }}
+          private-key: ${{ secrets.TILES_SYNC_APP_PRIVATE_KEY }}
+          owner: bergsonnelabs
+          repositories: web
+
+      - name: Dispatch web vendor-tile-manifests
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          gh api repos/bergsonnelabs/web/dispatches \
+            -f event_type=tiles-manifests-updated \
+            -f 'client_payload[sha]=${{ github.sha }}'
