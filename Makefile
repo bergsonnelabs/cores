@@ -66,10 +66,18 @@ SIZE    = $(PREFIX)size
 GDB     = $(PREFIX)gdb
 
 # Coregen
-COREGEN      = python3 $(SDK_DIR)tools/coregen/coregen.py
+COREGEN      = python3 "$(SDK_DIR)tools/coregen/coregen.py"
 TILE_JSON    = $(SDK_DIR)definitions/$(TILE).json
 CONFIG_JSON = $(PROJECT_DIR)/config.json
 GEN_DIR      = $(PROJECT_DIR)/coregen
+
+# Space/backslash-safe existence test for config.json. $(wildcard) treats its
+# argument as a space-separated pattern list and mishandles backslashes, so a
+# project under e.g. "C:/Users/First Last/proj" silently misses config.json and
+# coregen runs config-less (no core.h / core_config.h / core_init.*). A shell
+# `test -f` with the path quoted is robust to both. (Windows note: GNU make
+# under MSYS2/Git-Bash uses sh, so this works there too.)
+CONFIG_FOUND := $(shell [ -f "$(CONFIG_JSON)" ] && echo 1)
 
 # ---- Tile → MCU mapping ----
 # coregen generates the headers; the Makefile still needs to know
@@ -300,10 +308,10 @@ endif
 
 GEN_HEADERS = $(GEN_DIR)/core_pads.h $(GEN_DIR)/core_board.h $(GEN_DIR)/core_interfaces.h
 
-ifneq ($(wildcard $(CONFIG_JSON)),)
+ifeq ($(CONFIG_FOUND),1)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
-  COREGEN_FLAGS = --config $(CONFIG_JSON)
+  COREGEN_FLAGS = --config "$(CONFIG_JSON)"
   # Per-project WAMR natives ride alongside core_init.c so the adapters
   # for pad/pwm/adc/dac (which reach into PAD_*_PORT macros, core_dac,
   # core_adc1, etc.) compile in the same translation-unit scope. Only
@@ -316,14 +324,21 @@ ifneq ($(wildcard $(CONFIG_JSON)),)
 else
   GEN_SOURCES   =
   COREGEN_FLAGS =
+  # Config-less codegen produces no core.h / core_config.h / core_init.* — which
+  # every modern project needs (main.c does `#include "core.h"`). This is almost
+  # always a misconfiguration, so say so loudly instead of failing cryptically
+  # later at the C preprocessor.
+  $(warning coregen: no config.json found at "$(CONFIG_JSON)" — building config-less)
+  $(warning coregen: core.h / core_config.h / core_init.* will NOT be generated)
+  $(warning coregen: if you have a config.json, check PROJECT_DIR and the path (spaces/backslashes break detection))
 endif
 
 # core_drivers.mk is an included makefile — it must have its own recipe so
 # GNU Make detects it was remade and restarts (picking up TILES_DRIVERS).
-$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(wildcard $(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
-	@mkdir -p $(GEN_DIR)
+$(GEN_DIR)/core_drivers.mk: $(TILE_JSON) $(if $(CONFIG_FOUND),$(CONFIG_JSON)) $(SDK_DIR)tools/coregen/coregen.py $(SDK_DIR)tools/coregen/templates/*.j2
+	@mkdir -p "$(GEN_DIR)"
 	@echo "  GEN   $(TILE)"
-	$(Q)$(COREGEN) $(TILE_JSON) $(GEN_DIR) $(COREGEN_FLAGS) $(COREGEN_QUIET)
+	$(Q)$(COREGEN) "$(TILE_JSON)" "$(GEN_DIR)" $(COREGEN_FLAGS) $(COREGEN_QUIET)
 
 # Stamp prevents re-running coregen for each header file target.
 GEN_STAMP = $(GEN_DIR)/.coregen.stamp

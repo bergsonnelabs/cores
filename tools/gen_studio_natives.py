@@ -176,7 +176,7 @@ def c_param_type(ctype: str) -> str:
 def load_manifests(sdk_docs: Path) -> list[HostFn]:
     out: list[HostFn] = []
     for path in sorted(sdk_docs.glob("*.json")):
-        data = json.loads(path.read_text())
+        data = json.loads(path.read_text(encoding="utf-8"))
         cat = data.get("category", path.stem)
         for fn in data.get("functions", []):
             if not fn.get("studio_exposed"):
@@ -455,8 +455,8 @@ def main() -> int:
         return 0
 
     args.out_c.parent.mkdir(parents=True, exist_ok=True)
-    args.out_c.write_text(c_text)
-    args.out_h.write_text(h_text)
+    args.out_c.write_text(c_text, encoding="utf-8")
+    args.out_h.write_text(h_text, encoding="utf-8")
     print(f"[gen_studio_natives] wrote {args.out_c.relative_to(REPO_ROOT)} + "
           f"{args.out_h.relative_to(REPO_ROOT)}", file=sys.stderr)
     return 0

@@ -25,7 +25,12 @@
 #define CORE_TILES_H
 
 #include "core_i2c.h"
+/* SPI is unavailable on Core.ST.L0 (STM32L011) — core_spi.h #errors there.
+ * Guard all SPI bridging below so I2C-only tile projects still build on L0. */
+#if !defined(STM32L011xx)
+#define _CORE_TILES_HAS_SPI 1
 #include "core_spi.h"
+#endif
 #include "core_pad.h"
 #include "tiles_pal.h"
 #include "ll_systick.h"
@@ -62,6 +67,7 @@ static inline int _ct_i2c_read_raw(void *h, uint8_t addr,
 }
 
 /* ---- Internal: SPI adapters ---- */
+#ifdef _CORE_TILES_HAS_SPI
 
 static inline int _ct_spi_read(void *h, uint8_t cs, uint8_t reg,
                                uint8_t *data, uint16_t len)
@@ -86,6 +92,8 @@ static inline int _ct_spi_write(void *h, uint8_t cs, uint8_t reg,
     core_spi_deselect(spi);
     return 0;
 }
+
+#endif /* _CORE_TILES_HAS_SPI */
 
 /* ---- Internal: shared adapters ---- */
 
@@ -129,6 +137,7 @@ static inline tiles_pal_t *_core_tiles_pal_i2c(core_i2c_t *bus)
     return &hals[i];
 }
 
+#ifdef _CORE_TILES_HAS_SPI
 static inline tiles_pal_t *_core_tiles_pal_spi(core_spi_t *bus)
 {
     enum { CT_MAX = 4 };
@@ -153,6 +162,7 @@ static inline tiles_pal_t *_core_tiles_pal_spi(core_spi_t *bus)
     hals[i].handle          = bus;
     return &hals[i];
 }
+#endif /* _CORE_TILES_HAS_SPI */
 
 /* ---- Public API ---- */
 
@@ -168,10 +178,17 @@ static inline tiles_pal_t *_core_tiles_pal_spi(core_spi_t *bus)
  *   tiles_pal_t *hal = core_tiles_pal(&core_spi1);   // SPI
  * @endcode
  */
+#ifdef _CORE_TILES_HAS_SPI
 #define core_tiles_pal(bus) _Generic((bus), \
     core_i2c_t*: _core_tiles_pal_i2c,      \
     core_spi_t*: _core_tiles_pal_spi       \
 )(bus)
+#else
+/* L0 (no SPI): only the I2C bridge exists. */
+#define core_tiles_pal(bus) _Generic((bus), \
+    core_i2c_t*: _core_tiles_pal_i2c       \
+)(bus)
+#endif
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
