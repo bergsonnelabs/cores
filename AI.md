@@ -148,121 +148,40 @@ The `build_*_config()` functions in `coregen.py` each parse one section of `conf
 
 Every project in `projects/<name>/` has a `config.json`. It is the single source of truth for hardware configuration. coregen derives all generated code from it. The filename is literal — coregen looks for `config.json` in the project directory; the project's human name comes from the directory name itself.
 
+**→ Full authoring reference: [`config-json.md`](config-json.md).** It documents every key coregen actually reads (verified against `tools/coregen/coregen.py`), the per-MCU constraints, the validation/error behaviour, a cookbook, and — importantly — the keys that are **silently ignored**. Read it before hand-editing a config.
+
+Minimal shape:
+
 ```jsonc
 {
   "core": "Core.ST.W5",        // Public name (or a definitions/<name>.json stem)
-  "clock": "default",            // "low" | "default" | "max"  (see tile JSON for MHz values)
-  "pads": {
-    // Pad number (string) → function
+  "clock": "max",               // a clock-level NAME from the tile JSON, not a frequency
+  "pads": {                     // pad number (string) → function the tile JSON allows
     "9":  "I2C1.CLK",
     "11": "I2C1.DAT",
-    "8":  "SPI1.CS",             // SPI CS pads → GPIO output (software CS)
-    "10": "SPI1.CLK",
-    "6":  "SPI1.MOSI",
-    "7":  "SPI1.MISO",
-    "4":  "GPIO.OUT",
-    "5":  "GPIO.IN"
+    "8":  "SPI1.CS",            // SPI CS pads → GPIO output (software CS)
+    "4":  "GPIO.OUT"
   },
-  "interfaces": {
-    "I2C1": {
-      "speed": 400000,           // 100000 | 400000 | 1000000
-      "pullups": true
-    },
-    "SPI1": {
-      "mode": 0,                 // 0–3 (CPOL/CPHA)
-      "prescaler": 8,            // 2 | 4 | 8 | 16 | 32 | 64 | 128 | 256
-      "cs_polarity": "active-low" // omit for active-low (default); "active-high" if needed
-    }
+  "interfaces": {               // TUNING ONLY — never creates a bus; a pad function does
+    "I2C1": { "speed": 400000, "pullups": true },
+    "SPI1": { "mode": 0, "prescaler": 8, "cs_polarity": "active-low" }
+  },
+  "gpio": {                     // per-pin pull / output_type / exti / default
+    "5": { "pull": "up", "exti": "falling" }
   },
   "tiles": [
-    {
-      "tile": "Sense.I.9",       // Must match a definitions tile name
-      "bus": "I2C1",             // Must be an enabled interface
-      "instance": 0,             // I2C: selects address slot; SPI: per-CS-line instance
-      "cs_pad": "8"              // SPI tiles only: which pad is this tile's CS
-    }
+    { "tile": "Sense.I.9", "bus": "I2C1", "instance": 0 }   // SPI tiles also need "cs_pad"
   ],
-  "bootloader": "custom",          // "custom" | "rom" | "none" (default: "none")
-  "usb": {
-    "enabled": false,
-    "vid": "0x1209",                 // optional descriptor overrides; each unset
-    "pid": "0xDA01",                 // field falls back to the SDK default
-    "product": "CoreProbe CMSIS-DAP",// (0x1209/0x0001, "Bergsonne"/"Core Tile"/
-    "manufacturer": "Bergsonne",     // "000001"). CMSIS-DAP hosts auto-detect by
-    "serial": "CP-0001"              // matching "CMSIS-DAP" in the product string.
-  },
-  "ble": {
-    "enabled": true              // Core.ST.W5 only; forces HSE clock (radio requires HSE)
-  },
-  "debug": {
-    "interface": "swd",          // "swd" (default) | "jtag"
-    "dedicated": true            // true = debug pads not reused for GPIO
-  },
-  "isp": {
-    "method": "usb-dfu",         // "usb-dfu" | "uart" | "i2c" | "spi"
-    "boot0_pad": "21"            // pad number to hold high at reset to enter ISP
-  }
+  "bootloader": "custom",       // "custom" | "rom" | "none" (default)
+  "usb": { "enabled": false, "vid": "0x1209", "pid": "0xDA01", "product": "…" }
 }
 ```
 
-**Rules:**
-- `pads` values must match pad function names defined in the tile's JSON (`definitions/`)
-- `SPI*.CS` pads are configured as GPIO outputs (software CS via `hal_spi_set_cs()`)
-- All pads used by an interface must appear in `pads` before that interface is usable
-- A tile's `bus` must match a key in `interfaces`
-- SPI tiles require a `cs_pad`; I2C tiles do not
-- `ble.enabled` on Core.ST.W5 auto-overrides any HSI16 clock level to the lowest HSE level
-- `bootloader`: `"custom"` (8KB DFU at 0x08000000, app at 0x08002000, Core.ST.L4/H5), `"rom"` (ST ROM DfuSe, app at 0x08000000, Core.ST.L4 fully/Core.ST.H5 needs power cycle), `"none"` (default, SWD only). `BOOTLOADER`/`ROM_DFU` Make vars auto-set from this key.
-- `debug` and `isp` emit comments/defines only — no init code. `isp.boot0_pad` emits `#define CORE_BOOT0_PAD`.
-
-**Timer / PWM / Capture:**
-```jsonc
-"pads": {
-  "7": "TIM15.1",              // Timer channel function → coregen sets AF
-  "10": "TIM2.1"               // Can be PWM output or capture input
-},
-"timers": {
-  "TIM15": { "freq": 1000, "tick": true },   // 1 kHz, also fire periodic ISR
-  "TIM2":  { "freq": 1000000 }               // 1 MHz tick for capture
-},
-"pwm": {
-  "channels": {
-    "7": { "function": "TIM15.1", "freq": 1000, "duty": 50 }
-  }
-},
-"capture": {
-  "10": { "function": "TIM2.1" }
-},
-"iwdg": { "enabled": true, "timeout": "2s" }
-```
-- Timer functions in `pads` follow `TIMx.y` format (x = peripheral, y = channel 1-4)
-- `timers` section sets per-instance frequency and optional tick
-- `pwm.channels` sets per-pad duty (0-100%)
-- `capture` maps pads to capture channels
-- `iwdg.timeout`: `"1s"` | `"2s"` | `"5s"` | `"10s"`
-
-**UART interfaces** (`USART1`, `USART2`, `LPUART1`, etc.):
-```jsonc
-"interfaces": {
-  "USART2": {
-    "baud": 115200,            // baud rate (default 115200)
-    "rx_interrupt": false      // true = interrupt-driven RX with ring buffer
-  }
-}
-```
-Coregen generates `hal_uart_init(&core_usart2, USART2, SYSCLK_HZ, &cfg)` — no separate
-clock enable call needed (handled inside `hal_uart_init`).
-
-**I3C interfaces** (`I3C1`, `I3C2`):
-```jsonc
-"interfaces": {
-  "I3C1": {
-    "speed": 1000000           // speed in Hz — accepted but init not yet implemented
-  }
-}
-```
-Coregen emits a `/* I3C1: TODO */` comment in `core_init.c`. No build error.
-See `sdk/hal/hal_i3c.h` for the stub API.
+**Key things that bite (see config-json.md for the rest):**
+- Buses/PWM/ADC are **derived from `pads`**, not declared. `interfaces.X` only tunes a bus some pad already created; a freq for a timer goes under `interfaces.TIM<n>.freq`.
+- Most mistakes (bad pad/function, unknown clock level, illegal I2C speed, bad SPI mode/prescaler, unknown tile, missing SPI `cs_pad`, bad bootloader) make coregen **exit** — it's fail-fast.
+- coregen reads a **fixed allowlist** of keys; unknown/typo'd keys are silently ignored. In particular `ble`, `debug`, `isp`, `programming`, and any `timers`/`pwm`/`capture`/`iwdg` sections are **NOT read by coregen** and do nothing. (For the WBA radio, get HSE by picking an HSE-sourced `clock` level — there is no `ble` switch.)
+- I3C interfaces are accepted but unimplemented — coregen emits a `/* I3C1: TODO */` comment, no build error. See `sdk/hal/hal_i3c.h`.
 
 ---
 
