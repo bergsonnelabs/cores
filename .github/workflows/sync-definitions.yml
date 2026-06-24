@@ -1,8 +1,10 @@
 name: sync-definitions
 
-# Mirror the canonical product DB into definitions/. Runs nightly (and on
-# demand) and opens a PR whenever the checked-in definitions have drifted
-# from the DB — so a DB rename/edit can never silently go stale in git again.
+# Mirror the canonical product DB into definitions/, regenerate the derived
+# manifests, and open a PR whenever either has drifted — so a DB rename/edit can
+# never silently go stale in git, and the manifests the Studio palette / docs
+# site vendor land in the SAME change as the definitions that drove them (the
+# studio-manifest CI gate then passes on the PR instead of going red).
 #
 # Requires repo secret TILES_DB_PASSWORD (the product DB's read password).
 # Host/user/db default to the library instance; override via TILES_DB_* if needed.
@@ -33,21 +35,35 @@ jobs:
           TILES_DB_PASSWORD: ${{ secrets.TILES_DB_PASSWORD }}
         run: python3 tools/sync_definitions.py --apply
 
-      - name: Open a PR if definitions drifted
+      - name: Regenerate derived manifests
+        run: |
+          python3 tools/gen_studio_manifest.py
+          python3 tools/gen_tile_docs.py
+          python3 tools/gen_reference_data.py
+
+      - name: Open a PR if definitions or manifests drifted
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- definitions/; then
-            echo "definitions/ already match the DB — nothing to sync."
+          # The generators restamp `source: tiles@<sha>` into every manifest;
+          # drop files whose ONLY change is that stamp so the PR shows just the
+          # real definition + manifest drift (the studio-manifest gate ignores
+          # the stamp, so reverting it here keeps the gate green either way).
+          for f in $(git diff --name-only -- manifests/); do
+            body="$(git diff -- "$f" | grep -E '^[+-]' | grep -vE '^[+-]{3} ' | grep -vE '"source": "tiles@')"
+            [ -z "$body" ] && git checkout -- "$f"
+          done
+          if git diff --quiet -- definitions/ manifests/; then
+            echo "definitions/ and manifests/ already match the DB — nothing to sync."
             exit 0
           fi
           branch="auto/sync-definitions-${{ github.run_id }}"
           git config user.name  "tiles-sync[bot]"
           git config user.email "tiles-sync@users.noreply.github.com"
           git checkout -b "$branch"
-          git add definitions/
-          git commit -m "chore(definitions): sync from canonical product DB"
+          git add definitions/ manifests/
+          git commit -m "chore(definitions): sync from canonical product DB + regen manifests"
           git push -u origin "$branch"
           gh pr create --fill \
             --title "chore(definitions): sync from canonical product DB" \
-            --body "Automated drift sync from the product DB via \`tools/sync_definitions.py\`. Review the definition changes before merging — renames/deletes here ripple into coregen aliases, the Makefile, manifests, and the web mirrors."
+            --body "Automated drift sync from the product DB via \`tools/sync_definitions.py\`, with the derived manifests regenerated in the same change. Review the definition changes before merging — renames/deletes here ripple into coregen aliases, the Makefile, manifests, and the web mirrors. Pure \`source:\` stamp churn is dropped; once merged, notify-web-on-manifests re-vendors the manifests into the web repo."
