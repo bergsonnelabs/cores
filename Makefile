@@ -222,7 +222,14 @@ endif
 # ---- Tile driver support (optional) ----
 TILES_ENABLED ?= 0
 ifeq ($(TILES_ENABLED),1)
-  -include $(GEN_DIR)/core_drivers.mk
+  # Plain (error-surfacing) include for build goals; skipped for clean/distclean
+  # so those never trigger coregen. With `-include`, a coregen failure is
+  # silently swallowed and resurfaces as a cryptic "No rule to make target
+  # core_drivers.mk" — plain `include` stops the build with coregen's real error
+  # (which now goes to stderr, so V=0's `>/dev/null` can't hide it either).
+  ifeq (,$(filter clean distclean,$(MAKECMDGOALS)))
+    include $(GEN_DIR)/core_drivers.mk
+  endif
   CFLAGS += -I"$(SDK_DIR)" -I"$(SDK_DIR)drivers" -I"$(SDK_DIR)hal"
   TILES_SOURCES =
   ifdef TILES_DRIVERS
@@ -285,7 +292,11 @@ ASM_OBJS = $(patsubst $(SDK_DIR)%.s, $(BUILD_DIR)/%.o, $(ASM_SOURCES))
 HAL_SOURCES = $(wildcard $(SDK_DIR)sdk/hal/*.c)
 HAL_OBJS = $(addprefix $(BUILD_DIR)/sdk/hal/, $(notdir $(HAL_SOURCES:.c=.o)))
 GEN_OBJS = $(GEN_SOURCES:.c=.o)
-OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(GEN_OBJS)
+# core_led.c — the one Core-layer source compiled into every build (the
+# rest of core_* is header-only). Owns the free-running heartbeat state
+# the SysTick handler drives. (core_ble.o stays BLE-gated, below.)
+CORE_OBJS = $(BUILD_DIR)/sdk/core/core_led.o
+OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(CORE_OBJS) $(GEN_OBJS)
 
 ifeq ($(TILES_ENABLED),1)
   TILES_OBJS = $(addprefix $(BUILD_DIR)/tiles/, $(notdir $(TILES_SOURCES:.c=.o)))
@@ -389,6 +400,13 @@ $(GEN_OBJS): $(GEN_DIR)/%.o: $(GEN_DIR)/%.c $(GEN_HEADERS)
 
 # HAL sources
 $(BUILD_DIR)/sdk/hal/%.o: $(SDK_DIR)sdk/hal/%.c $(GEN_HEADERS)
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+
+# Core-layer sources compiled into every build (core_led.c). core_ble.c is
+# in the same dir but BLE-gated, with its own explicit rule below.
+$(BUILD_DIR)/sdk/core/core_led.o: $(SDK_DIR)sdk/core/core_led.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@

@@ -2,10 +2,12 @@
  * core_led.h — Onboard LED pattern helpers
  *
  * Every Core tile has an onboard LED connected to a dedicated GPIO pin.
- * This module provides a lightweight, header-only API for common patterns
- * like blinking, heartbeat, and SOS error signaling. The LED pin is
- * auto-detected from the tile definition and configured by core_led_init()
- * — it's not part of the configurable pad map.
+ * This module provides a lightweight API for common patterns like blinking,
+ * heartbeat, and SOS error signaling. The on/off/toggle/blink helpers are
+ * header-only static inlines; the free-running heartbeat lives in core_led.c
+ * because it owns persistent state serviced from the SysTick interrupt. The
+ * LED pin is auto-detected from the tile definition and configured by
+ * core_led_init() — it's not part of the configurable pad map.
  *
  * Uses LED_ON/OFF/TOGGLE from core_board.h and ll_delay_ms from ll_systick.h.
  *
@@ -115,19 +117,37 @@ static inline void core_led_sos(void)
 }
 
 /**
- * Toggle the LED and delay for period_ms. Call this in your main loop
- * for a continuous alive indicator. Vary the period to signal different
- * states (e.g., 50ms = fast/active, 500ms = idle).
+ * Start a free-running, asymmetric heartbeat on the onboard LED. Set it
+ * up once (e.g. at startup) and it runs on its own — the LED turns on for
+ * on_ms, off for the rest of period_ms, repeating forever. Serviced from
+ * the 1 ms SysTick interrupt, so it does NOT block your main loop the way
+ * a toggle-and-delay would: the loop stays free for tile reads and logic.
+ *
+ * Call again at any time to change the rhythm; pass period_ms = 0 to stop
+ * the heartbeat (the LED is left off). on_ms is clamped to period_ms.
+ *
+ * Examples:
+ *   heartbeat(1000, 100)  — a 1 Hz "blip": 100 ms on, 900 ms off.
+ *   heartbeat(500, 250)   — a steady 1 Hz, 50%-duty pulse.
+ *
+ * Defined in core_led.c (not header-only) because it owns persistent
+ * state shared with the SysTick handler.
  *
  * @studio expose category=led name=heartbeat
  * @studio twin full
- * @param period_ms [0..60000] ms Delay after the toggle. 0 toggles without waiting.
+ * @param period_ms [0..60000] ms Full cycle length. 0 stops the heartbeat.
+ * @param on_ms [0..60000] ms LED-on portion of each cycle (clamped to period_ms).
  */
-static inline void core_led_heartbeat(int period_ms)
-{
-    LED_TOGGLE();
-    ll_delay_ms(period_ms);
-}
+void core_led_heartbeat(int period_ms, int on_ms);
+
+/*
+ * Service the heartbeat state machine. Called once per millisecond from
+ * SysTick_Handler (via a weak hook) — application code never calls this
+ * directly. Intentionally a plain comment, not a Doxygen block, so the
+ * manifest scraper skips it and it stays out of the SDK API reference.
+ * A no-op until core_led_heartbeat() has been started.
+ */
+void core_led_systick_tick(void);
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 

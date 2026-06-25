@@ -93,11 +93,11 @@ static void core_led_blink_native(wasm_exec_env_t env, int n, int on_ms, int off
     core_led_blink(n, on_ms, off_ms);
 }
 
-/* core_led_heartbeat  (i)  (category: led) */
-static void core_led_heartbeat_native(wasm_exec_env_t env, int period_ms)
+/* core_led_heartbeat  (ii)  (category: led) */
+static void core_led_heartbeat_native(wasm_exec_env_t env, int period_ms, int on_ms)
 {
     (void)env;
-    core_led_heartbeat(period_ms);
+    core_led_heartbeat(period_ms, on_ms);
 }
 
 /* core_nvm_size  ()i  (category: nvm) */
@@ -292,7 +292,7 @@ NativeSymbol g_studio_natives[] = {
     { "core_led_off", (void *)core_led_off_native, "()", NULL },
     { "core_led_toggle", (void *)core_led_toggle_native, "()", NULL },
     { "core_led_blink", (void *)core_led_blink_native, "(iii)", NULL },
-    { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(i)", NULL },
+    { "core_led_heartbeat", (void *)core_led_heartbeat_native, "(ii)", NULL },
     { "core_nvm_size", (void *)core_nvm_size_native, "()i", NULL },
     { "core_nvm_read_byte", (void *)core_nvm_read_byte_native, "(i)i", NULL },
     { "core_nvm_write_byte", (void *)core_nvm_write_byte_native, "(ii)i", NULL },

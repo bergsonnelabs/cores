@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@cf97a14",
   "category": "led",
   "label": "Core.LED",
   "icon": "☀",
@@ -99,9 +99,9 @@
     },
     {
       "name": "core_led_heartbeat",
-      "signature": "core_led_heartbeat(int period_ms)",
+      "signature": "core_led_heartbeat(int period_ms, int on_ms)",
       "returns": "void",
-      "brief": "Toggle the LED and delay for period_ms. Call this in your main loop for a continuous alive indicator. Vary the period to signal different states (e.g., 50ms = fast/active, 500ms = idle).",
+      "brief": "Start a free-running, asymmetric heartbeat on the onboard LED. Set it up once (e.g. at startup) and it runs on its own — the LED turns on for on_ms, off for the rest of period_ms, repeating forever. Serviced from the 1 ms SysTick interrupt, so it does NOT block your main loop the way a toggle-and-delay would: the loop stays free for tile reads and logic. Call again at any time to change the rhythm; pass period_ms = 0 to stop the heartbeat (the LED is left off). on_ms is clamped to period_ms. Examples: heartbeat(1000, 100)  — a 1 Hz \"blip\": 100 ms on, 900 ms off. heartbeat(500, 250)   — a steady 1 Hz, 50%-duty pulse. Defined in core_led.c (not header-only) because it owns persistent state shared with the SysTick handler.",
       "params": [
         {
           "name": "period_ms",
@@ -111,7 +111,17 @@
             60000
           ],
           "unit": "ms",
-          "description": "Delay after the toggle. 0 toggles without waiting."
+          "description": "Full cycle length. 0 stops the heartbeat."
+        },
+        {
+          "name": "on_ms",
+          "ctype": "int",
+          "range": [
+            0,
+            60000
+          ],
+          "unit": "ms",
+          "description": "LED-on portion of each cycle (clamped to period_ms)."
         }
       ],
       "studio_exposed": true,

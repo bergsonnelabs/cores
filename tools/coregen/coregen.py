@@ -24,6 +24,15 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader
 
+
+def eprint(*args, **kwargs):
+    """Print to stderr. coregen's stdout is redirected to /dev/null in quiet
+    (V=0) builds — the path the Studio build service uses — so fatal errors MUST
+    go to stderr or they vanish, leaving only a cryptic 'No rule to make target
+    core_drivers.mk' from the swallowed failure. All ERROR diagnostics use this."""
+    print(*args, file=sys.stderr, **kwargs)
+
+
 # ---- Core naming ----
 # Vendor-segmented public names (Core.ST.<family>.<n>) are the standard; they
 # map onto the DB-synced definition file stems. The Makefile carries the same
@@ -596,7 +605,7 @@ def build_clock_config(config, tile, mcu):
     configs = {c["name"]: c for c in configurations}
     if level not in configs:
         available = ", ".join(sorted(configs.keys())) if configs else "(none defined)"
-        print(f"  ERROR: Clock level '{level}' not available. Options: {available}")
+        eprint(f"  ERROR: Clock level '{level}' not available. Options: {available}")
         sys.exit(1)
 
     resolved = configs[level]
@@ -619,17 +628,17 @@ def build_clock_config(config, tile, mcu):
     if target_mhz != source_mhz and pll_config is None:
         max_mhz = mcu.get("max_sysclk_mhz", 80)
         if target_mhz > max_mhz:
-            print(f"  ERROR: sysclk_mhz={target_mhz} exceeds max {max_mhz}MHz for {tile['components'][0]['part']}")
+            eprint(f"  ERROR: sysclk_mhz={target_mhz} exceeds max {max_mhz}MHz for {tile['components'][0]['part']}")
             sys.exit(1)
 
         pll_spec = mcu.get("pll")
         if pll_spec is None:
-            print(f"  ERROR: PLL not available on {tile['components'][0]['part']}, cannot reach {target_mhz}MHz from {source}={source_mhz}MHz")
+            eprint(f"  ERROR: PLL not available on {tile['components'][0]['part']}, cannot reach {target_mhz}MHz from {source}={source_mhz}MHz")
             sys.exit(1)
 
         result = solve_pll(source_mhz, target_mhz, pll_spec)
         if result is None:
-            print(f"  ERROR: No valid PLL configuration found for {source_mhz}MHz → {target_mhz}MHz")
+            eprint(f"  ERROR: No valid PLL configuration found for {source_mhz}MHz → {target_mhz}MHz")
             sys.exit(1)
 
         m, n, r = result
@@ -666,7 +675,7 @@ def build_clock_config(config, tile, mcu):
     }
     msi_range = _msi_range_map.get(target_mhz) if source == "msi" else None
     if source == "msi" and msi_range is None:
-        print(f"  ERROR: No MSI range constant for {target_mhz}MHz")
+        eprint(f"  ERROR: No MSI range constant for {target_mhz}MHz")
         sys.exit(1)
 
     return {
@@ -805,7 +814,7 @@ def build_usart_config(config, mcu):
         key = (family_define, num)
         clk_info = USART_CLK_MAP.get(key)
         if clk_info is None:
-            print(f"  ERROR: {name} clock mapping not defined for {family_define}")
+            eprint(f"  ERROR: {name} clock mapping not defined for {family_define}")
             sys.exit(1)
         clk_func, clk_mask, pclk_symbol = clk_info
 
@@ -885,7 +894,7 @@ def build_pwm_config(config, mcu):
         key = (family_define, num)
         clk_info = TIMER_CLK_MAP.get(key)
         if clk_info is None:
-            print(f"  ERROR: {name} clock mapping not defined for {family_define}")
+            eprint(f"  ERROR: {name} clock mapping not defined for {family_define}")
             sys.exit(1)
         clk_func, clk_mask = clk_info
 
@@ -989,21 +998,21 @@ def build_i2c_config(config, mcu, clock_config):
 
         # Validate speed
         if speed not in (100000, 400000, 1000000):
-            print(f"  ERROR: I2C{bus_num} speed {speed} not supported (use 100000, 400000, or 1000000)")
+            eprint(f"  ERROR: I2C{bus_num} speed {speed} not supported (use 100000, 400000, or 1000000)")
             sys.exit(1)
 
         # Check minimum clock for requested speed
         speed_label = {100000: "100kHz", 400000: "400kHz", 1000000: "1MHz"}[speed]
         min_clk = I2C_MIN_CLOCK.get(speed, 1)
         if i2c_clk_mhz < min_clk:
-            print(f"  ERROR: I2C{bus_num} {speed_label} requires at least {min_clk}MHz kernel clock, but this config has {i2c_clk_mhz}MHz.")
+            eprint(f"  ERROR: I2C{bus_num} {speed_label} requires at least {min_clk}MHz kernel clock, but this config has {i2c_clk_mhz}MHz.")
             print(f"         Use a higher clock level or a lower I2C speed.")
             sys.exit(1)
 
         # Look up timing constant for this speed + I2C kernel clock combo
         timing = I2C_TIMING_MAP.get((speed, i2c_clk_mhz))
         if timing is None:
-            print(f"  ERROR: I2C{bus_num} {speed_label} is not supported with a {i2c_clk_mhz}MHz I2C kernel clock.")
+            eprint(f"  ERROR: I2C{bus_num} {speed_label} is not supported with a {i2c_clk_mhz}MHz I2C kernel clock.")
             if family_define == "STM32WBA55xx" and speed == 1000000:
                 print(f"         Core.ST.W5 routes I2C to HSI16 (16MHz); maximum supported speed is 400kHz.")
             else:
@@ -1013,7 +1022,7 @@ def build_i2c_config(config, mcu, clock_config):
         key = (family_define, bus_num)
         clk_info = I2C_CLK_MAP.get(key)
         if clk_info is None:
-            print(f"  ERROR: I2C{bus_num} clock enable not defined for {family_define}")
+            eprint(f"  ERROR: I2C{bus_num} clock enable not defined for {family_define}")
             sys.exit(1)
 
         clk_func, clk_mask = clk_info
@@ -1092,19 +1101,19 @@ def build_spi_config(config, mcu, pad_map):
         prescaler = bus_cfg.get("prescaler", 8)
 
         if mode not in (0, 1, 2, 3):
-            print(f"  ERROR: SPI{bus_num} mode {mode} not valid (use 0-3)")
+            eprint(f"  ERROR: SPI{bus_num} mode {mode} not valid (use 0-3)")
             sys.exit(1)
 
         prescaler_define = SPI_PRESCALER_MAP.get(prescaler)
         if prescaler_define is None:
-            print(f"  ERROR: SPI{bus_num} prescaler {prescaler} not valid "
+            eprint(f"  ERROR: SPI{bus_num} prescaler {prescaler} not valid "
                   f"(use 2, 4, 8, 16, 32, 64, 128, or 256)")
             sys.exit(1)
 
         key = (family_define, bus_num)
         clk_info = SPI_CLK_MAP.get(key)
         if clk_info is None:
-            print(f"  ERROR: SPI{bus_num} clock enable not defined for {family_define}")
+            eprint(f"  ERROR: SPI{bus_num} clock enable not defined for {family_define}")
             sys.exit(1)
 
         clk_func, clk_mask = clk_info
@@ -1202,14 +1211,14 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
         # Look up driver info
         driver = TILE_DRIVER_MAP.get(tile_type)
         if driver is None:
-            print(f"  ERROR: Unknown tile '{tile_type}'. "
+            eprint(f"  ERROR: Unknown tile '{tile_type}'. "
                   f"Known tiles: {', '.join(sorted(TILE_DRIVER_MAP.keys()))}")
             sys.exit(1)
 
         # Validate bus exists in project config
         if bus_name not in all_bus_names:
             configured = ", ".join(sorted(all_bus_names)) if all_bus_names else "(none)"
-            print(f"  ERROR: Tile '{tile_type}' references bus '{bus_name}' "
+            eprint(f"  ERROR: Tile '{tile_type}' references bus '{bus_name}' "
                   f"which is not configured. Configured buses: {configured}")
             sys.exit(1)
 
@@ -1250,7 +1259,7 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
                 cs_port = pad_info.get("port")
                 cs_pin = pad_info.get("pin")
                 if cs_port is None or cs_pin is None:
-                    print(f"  ERROR: Tile '{tile_type}' instance {instance}: "
+                    eprint(f"  ERROR: Tile '{tile_type}' instance {instance}: "
                           f"CS pad {cs_pad_num} could not be resolved to a GPIO port/pin")
                     sys.exit(1)
             spi_cs_entries[bus_name].append({
@@ -1363,7 +1372,7 @@ def generate(tile_path, output_dir, config_path=None):
     part = tile["components"][0]["part"]
     mcu = MCU_DB.get(part)
     if mcu is None:
-        print(f"ERROR: Unknown MCU part '{part}'. Add it to MCU_DB in coregen.py.")
+        eprint(f"ERROR: Unknown MCU part '{part}'. Add it to MCU_DB in coregen.py.")
         sys.exit(1)
 
     # Build template context
@@ -1421,7 +1430,7 @@ def generate(tile_path, output_dir, config_path=None):
             print(f"  WARNING: {w}")
         if errors:
             for e in errors:
-                print(f"  ERROR: {e}")
+                eprint(f"  ERROR: {e}")
             sys.exit(1)
 
         # Build resolved configs.
@@ -1607,11 +1616,11 @@ def main():
     args = parser.parse_args()
 
     if not os.path.exists(args.tile_json):
-        print(f"ERROR: File not found: {args.tile_json}")
+        eprint(f"ERROR: File not found: {args.tile_json}")
         sys.exit(1)
 
     if args.config and not os.path.exists(args.config):
-        print(f"ERROR: Config file not found: {args.config}")
+        eprint(f"ERROR: Config file not found: {args.config}")
         sys.exit(1)
 
     tile_name = os.path.basename(args.tile_json).replace(".json", "")
