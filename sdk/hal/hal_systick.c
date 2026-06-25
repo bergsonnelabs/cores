@@ -13,7 +13,14 @@ volatile uint32_t _systick_ticks;
 /* Ticks per microsecond — set by ll_systick_init(), declared extern in ll_systick.h */
 uint32_t _systick_us_ticks;
 
+/* Per-millisecond hook. core_led.c provides the strong definition that
+ * services the free-running LED heartbeat; this weak no-op stands in when
+ * core_led isn't linked, keeping the HAL independent of the Core layer. */
+__attribute__((weak)) void core_led_systick_tick(void);
+__attribute__((weak)) void core_led_systick_tick(void) {}
+
 void SysTick_Handler(void)
 {
     _systick_ticks++;
+    core_led_systick_tick();
 }
