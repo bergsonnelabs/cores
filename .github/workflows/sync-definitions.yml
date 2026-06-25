@@ -50,7 +50,7 @@ jobs:
           # real definition + manifest drift (the studio-manifest gate ignores
           # the stamp, so reverting it here keeps the gate green either way).
           for f in $(git diff --name-only -- manifests/); do
-            body="$(git diff -- "$f" | grep -E '^[+-]' | grep -vE '^[+-]{3} ' | grep -vE '"source": "tiles@')"
+            body="$(git diff -- "$f" | grep -E '^[+-]' | grep -vE '^[+-]{3} ' | grep -vE '"source": "tiles@' || true)"
             [ -z "$body" ] && git checkout -- "$f"
           done
           if git diff --quiet -- definitions/ manifests/; then
