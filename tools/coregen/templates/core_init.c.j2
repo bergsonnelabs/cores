@@ -418,6 +418,14 @@ void core_pads_init(void)
 {% else %}
     /* No pads configured in config.json */
 {% endif %}
+{% if sai_kernel_clk == "hsi16" %}
+
+    /* ---- SAI1 kernel clock: HSI16 (independent of SYSCLK) ---- */
+    ll_rcc_hsi16_enable();
+    while (!ll_rcc_hsi16_ready())
+        ;
+    ll_rcc_set_sai_clk_source(LL_RCC_SAI_CLK_HSI16);
+{% endif %}
 {% if i2c_buses %}
 {% if i2c_kernel_clk == "hsi16" %}
 

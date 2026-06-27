@@ -1457,6 +1457,12 @@ def generate(tile_path, output_dir, config_path=None):
         _hsi16_i2c_parts = {"STM32WBA55xx"}
         ctx["i2c_kernel_clk"] = "hsi16" if mcu["define"] in _hsi16_i2c_parts else None
         ctx["i2c_kernel_clk_mhz"] = 16 if mcu["define"] in _hsi16_i2c_parts else None
+        # SAI kernel clock: if any pad carries a SAI1 function (PDM mic capture),
+        # route the SAI1 kernel clock to HSI16 (16 MHz) — the simplest always-on
+        # source, and what hal_sai's PDM clock math assumes. WBA55 only.
+        _sai_pads = project.get("pads", project.get("pins", {}))
+        _sai_used = any(str(f).startswith("SAI1.") for f in _sai_pads.values())
+        ctx["sai_kernel_clk"] = "hsi16" if (_sai_used and mcu["define"] == "STM32WBA55xx") else None
         _usb_cfg = project.get("usb", {})
         ctx["usb_enabled"] = _usb_cfg.get("enabled", False)
         # Per-project USB identity → descriptor overrides in hal_usb_cdc.c
