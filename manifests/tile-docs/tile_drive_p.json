@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@faf9db5",
+  "source": "tiles@0d6589b",
   "file": "tile_drive_p.h",
   "brief": "Piezoelectric haptic driver for the Drive.P tile (rev a).",
   "description": "Embeds the Boréas Technologies BOS1921, a piezoelectric driver\nwith integrated high-voltage boost (190 Vpp differential),\nwaveform synthesizer, 1024-sample FIFO, and piezo sensing.\n\nKey specifications:\n  - Output:      190 Vpp differential, up to 820 nF capacitive load\n  - Sensing:     7.6 mV resolution (fine), 54.5 mV (coarse)\n  - Play modes:  Direct, FIFO, RAM, RAM Synth\n  - Sample rate:  8 ksps – 1024 ksps (configurable)\n\nDatasheet: https://www.bergsonne.io/tiles/drive/p\nIC datasheet: https://mosaic-component-datasheets.s3.eu-north-1.amazonaws.com/5/Bor_as_Technologies-BOS1921.pdf\n\n@studio tile label=Drive.P icon=♪\n\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"Multi-device SYNC pin\" section=advanced\n  SYNC pin coordinates phase between cascaded BOS1921s\n  (< 2 µs delay). The Drive.P tile has 10 pads (I2C/I3C, OUT±,\n  GPIO, V+, V_DRIVE, GND); the SYNC pin on the IC is not routed\n  to a pad, so multi-tile cascading is hardware-gated to a\n  future tile rev.\n\n@studio unsupported severity=advanced category=\"I3C alternate bus mode\"\n  Pads 4/5 are bus-shared between I²C (default) and I3C SDR\n  (≤12.5 Mbps with in-band interrupts). The cores tile-driver\n  framework only ships an I²C PAL; I3C support is an\n  ecosystem-wide gap, not BOS1921-specific.",
@@ -33,7 +33,7 @@
     },
     {
       "name": "TILE_DRIVE_P_VERSION_MINOR",
-      "value": "1",
+      "value": "2",
       "description": "",
       "section": ""
     },
@@ -47,6 +47,18 @@
       "name": "BOS1921_I2C_ADDR_DEFAULT",
       "value": "0x44",
       "description": "",
+      "section": ""
+    },
+    {
+      "name": "BOS1921_I2C_ADDR_SECOND",
+      "value": "0x45",
+      "description": "Instance 1 — first of a pair",
+      "section": ""
+    },
+    {
+      "name": "BOS1921_I2C_ADDR_THIRD",
+      "value": "0x46",
+      "description": "Instance 2 — second of a pair",
       "section": ""
     },
     {
@@ -89,6 +101,18 @@
       "name": "BOS_STATUS_FAULT_MASK",
       "value": "0x00FC",
       "description": "Fault bits in IC_STATUS (bits 7:2, excluding FULL and PLAYST).",
+      "section": "* @brief  STATE field in IC_STATUS (bits 9:8)."
+    },
+    {
+      "name": "BOS_SUP_RISE_I2C_ADDR_POS",
+      "value": "12",
+      "description": "",
+      "section": "* @brief  STATE field in IC_STATUS (bits 9:8)."
+    },
+    {
+      "name": "BOS_SUP_RISE_TIMING_DEFAULT",
+      "value": "0x0967",
+      "description": "default with I2C_ADDR nibble cleared",
       "section": "* @brief  STATE field in IC_STATUS (bits 9:8)."
     }
   ],
@@ -169,7 +193,7 @@
     {
       "name": "drive_p_cfg_t",
       "brief": "",
-      "description": "Optional init config. Pass NULL for defaults.\nReserved for future use.",
+      "description": "Optional init config. Pass NULL for defaults.",
       "fields": [
         {
           "type": "uint8_t",
@@ -207,7 +231,7 @@
         },
         {
           "name": "instance",
-          "description": "Instance index (0 = default, see mapping table)"
+          "description": "Instance index (0=0x44, 1=0x45, 2=0x46; see mapping table)"
         },
         {
           "name": "tile",
@@ -220,8 +244,32 @@
       ],
       "notes": [],
       "brief": "Initialize the BOS1921 piezoelectric driver.",
-      "description": "Wakes the device, performs a software reset, verifies the chip ID,\nand configures parasitic capacitance and supply parameters for a\n260nF piezo on a 3.7V LiPo supply. Pass cfg=NULL for defaults.",
+      "description": "Wakes the device, performs a software reset, verifies the chip ID, and\nconfigures parasitic capacitance and supply parameters for a 260nF piezo\non a 3.7V LiPo supply. The SUP_RISE I2C_ADDR nibble is derived from the\ninstance's address, so a reassigned chip (0x45/0x46) keeps its address —\na soft reset doesn't revert it, so init may reset such a chip normally.\nPass cfg=NULL for defaults.",
       "name": "tile_drive_p_init"
+    },
+    {
+      "signature": "uint8_t tile_drive_p_reassign_address(tiles_pal_t* hal, uint8_t cur_addr, uint8_t new_addr)",
+      "params": [
+        {
+          "name": "hal",
+          "description": "Platform HAL handle"
+        },
+        {
+          "name": "cur_addr",
+          "description": "the chip's current 7-bit address (0x44 at power-up)"
+        },
+        {
+          "name": "new_addr",
+          "description": "desired 7-bit address; only the low nibble is settable,"
+        }
+      ],
+      "notes": [
+        "The new address persists until power-on reset; a soft reset will not revert it. Re-running this from 0x44 after a reflash (no power cycle) is a no-op — the chips already left 0x44."
+      ],
+      "return": "1 if the chip answers at new_addr with the correct CHIP_ID, else 0",
+      "brief": "Reassign one BOS1921's I2C address (GPIO-gated, datasheet §6.3.3).",
+      "description": "For two BOS1921 sharing a bus (both at 0x44), move each to a unique\naddress. The call wakes the chip(s) still at cur_addr, sets COMM.GPIODIR=1\n(GPIO becomes a write-gate), writes the new address into SUP_RISE.I2C_ADDR,\nand verifies CHIP_ID at new_addr. Only the chip whose GPIO the caller holds\nlow latches the change; the others are untouched.\n\nThe driver performs the I2C register sequence only; the **caller owns the\nGPIO** (a board-specific Core pad, not reachable through the tile PAL).\nMove BOTH chips of a pair off 0x44 (→ 0x45 and 0x46); each call gates a\ndifferent chip:\n\n  // chip A → 0x45 : hold A's GPIO low, B's high\n  core_pad_write(GPIO_A, 0); core_pad_write(GPIO_B, 1);\n  tile_drive_p_reassign_address(hal, 0x44, 0x45);\n  // chip B → 0x46 : hold B's GPIO low, A's high (A has left 0x44)\n  core_pad_write(GPIO_A, 1); core_pad_write(GPIO_B, 0);\n  tile_drive_p_reassign_address(hal, 0x44, 0x46);\n  core_pad_input(GPIO_A); core_pad_input(GPIO_B);   // release\n  // then init instance 1 (0x45) and 2 (0x46)\n                  so it must be in 0x40..0x4F (BOS1921_I2C_ADDR_SECOND/THIRD)",
+      "name": "tile_drive_p_reassign_address"
     },
     {
       "signature": "void tile_drive_p_reset(tile_t* tile)",
@@ -692,7 +740,7 @@
     }
   ],
   "source_file": "tile_drive_p.h",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "tile_family": "Drive",
   "tile_name": "P",
   "display_name": "Drive.P"
