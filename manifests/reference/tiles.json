@@ -1,6 +1,6 @@
 {
   "schema": "reference/v1",
-  "source": "tiles@1743afe",
+  "source": "tiles@535c786",
   "tiles": [
     {
       "family": "Sense",
@@ -1428,7 +1428,7 @@
       "i2c": [
         {
           "name": "I2C",
-          "default": "0x5A",
+          "default": "0x44",
           "alt": []
         }
       ],
