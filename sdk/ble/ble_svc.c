@@ -93,50 +93,53 @@ void ble_svc_init(void)
     SVCCTL_RegisterSvcHandler(BLE_SVC_EventHandler);
 }
 
-uint16_t ble_svc_add_service(const char *name, uint8_t num_chars)
+/* Core service add with an explicit 16-bit ID, placed in the shared base
+ * UUID → 0000<uuid16>-8E22-4541-9D4C-21EDAE82ED19. */
+static uint16_t svc_add_uuid16(uint8_t num_chars, uint16_t uuid16)
 {
-    (void)name;  /* name reserved for future use (coregen, debug) */
-
     uint8_t uuid[16];
     uint16_t svc_handle = 0;
 
-    /* UUID: 0000B0xx-8E22-... where xx = svc_count */
-    make_uuid(uuid, 0xB0 + svc_count, 0x00);
-    svc_count++;
+    make_uuid(uuid, (uint8_t)(uuid16 >> 8), (uint8_t)(uuid16 & 0xFFu));
 
-    /* max_attr_record = 1 (service) + 2 per char + 1 per notify char */
-    uint8_t max_attrs = 1 + num_chars * 3;  /* generous: 3 per char covers descriptors */
+    /* max_attr_record = 1 (service) + 3 per char (value + CCCD/descriptors) */
+    uint8_t max_attrs = 1 + num_chars * 3;
 
     aci_gatt_add_service(UUID_TYPE_128,
                          (Service_UUID_t *)uuid,
                          PRIMARY_SERVICE,
                          max_attrs,
                          &svc_handle);
-
     return svc_handle;
 }
 
-uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
-                           uint8_t access, uint8_t value_len,
-                           void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
-                           void *ctx)
+uint16_t ble_svc_add_service(const char *name, uint8_t num_chars)
 {
     (void)name;
+    /* Auto ID, sequential by registration order: 0xB000, 0xB100, … */
+    uint16_t h = svc_add_uuid16(num_chars, (uint16_t)((0xB0 + svc_count) << 8));
+    svc_count++;
+    return h;
+}
 
+uint16_t ble_svc_add_service_id(const char *name, uint8_t num_chars, uint16_t uuid16)
+{
+    (void)name;  /* explicit ID → order-independent (the stable-contract path) */
+    return svc_add_uuid16(num_chars, uuid16);
+}
+
+/* Core characteristic add with an explicit 16-bit ID (shared base UUID). */
+static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
+                                uint8_t access, uint8_t value_len,
+                                void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                                void *ctx)
+{
     if (char_count >= MAX_CHARS) return 0;
 
     uint8_t uuid[16];
     uint16_t char_handle = 0;
 
-    /* UUID: based on service UUID but with char index in low byte */
-    /* Find which service index this belongs to by scanning chars */
-    uint8_t char_idx = 0;
-    for (uint8_t i = 0; i < char_count; i++) {
-        if (chars[i].svc_handle == svc_handle) char_idx++;
-    }
-
-    /* UUID: 0000B0xx-(svc_count-1) with char_idx+1 in low byte */
-    make_uuid(uuid, 0xB0 + svc_count - 1, char_idx + 1);
+    make_uuid(uuid, (uint8_t)(uuid16 >> 8), (uint8_t)(uuid16 & 0xFFu));
 
     /* Map access flags */
     uint8_t props = 0;
@@ -149,8 +152,7 @@ uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
     if (props & CHAR_PROP_WRITE)
         props |= CHAR_PROP_WRITE_WITHOUT_RESP;
 
-    uint8_t evt_mask = 0;
-    if (on_write) evt_mask = GATT_NOTIFY_ATTRIBUTE_WRITE;
+    uint8_t evt_mask = on_write ? GATT_NOTIFY_ATTRIBUTE_WRITE : 0;
 
     aci_gatt_add_char(svc_handle,
                       UUID_TYPE_128,
@@ -173,6 +175,29 @@ uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
     char_count++;
 
     return char_handle;
+}
+
+uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
+                           uint8_t access, uint8_t value_len,
+                           void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                           void *ctx)
+{
+    (void)name;
+    /* Auto ID: last-added service hi byte + per-service characteristic index. */
+    uint8_t char_idx = 0;
+    for (uint8_t i = 0; i < char_count; i++)
+        if (chars[i].svc_handle == svc_handle) char_idx++;
+    uint16_t uuid16 = (uint16_t)(((0xB0 + svc_count - 1) << 8) | (char_idx + 1));
+    return char_add_uuid16(svc_handle, uuid16, access, value_len, on_write, ctx);
+}
+
+uint16_t ble_svc_add_char_id(uint16_t svc_handle, const char *name, uint16_t uuid16,
+                              uint8_t access, uint8_t value_len,
+                              void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                              void *ctx)
+{
+    (void)name;
+    return char_add_uuid16(svc_handle, uuid16, access, value_len, on_write, ctx);
 }
 
 int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)
