@@ -27,9 +27,9 @@ static inline void sai1_clk_enable(void)
 hal_status_t hal_sai_pdm_init(hal_sai_t *s, SAI_Block_TypeDef *block,
                               const hal_sai_pdm_config_t *cfg)
 {
-    /* PDM is SAI1 block A only; mono or one stereo pair; CK1 or CK2. */
+    /* PDM is SAI1 block A only; mic on data line 1 or 2; clock on CK1 or CK2. */
     if (block != SAI1_Block_A || cfg == NULL) return HAL_ERROR;
-    if (cfg->mics < 1 || cfg->mics > 2) return HAL_ERROR;
+    if (cfg->data_line != 1 && cfg->data_line != 2) return HAL_ERROR;
     if (cfg->clock_line != 1 && cfg->clock_line != 2) return HAL_ERROR;
     if (cfg->kernel_clk_hz == 0 || cfg->pcm_rate_hz == 0) return HAL_ERROR;
 
@@ -40,10 +40,22 @@ hal_status_t hal_sai_pdm_init(hal_sai_t *s, SAI_Block_TypeDef *block,
 
     sai1_clk_enable();
 
-    /* Master clock divider: MCKDIV = Fsai / (Fs * 256) with NODIV=0, OSR=0.
-     * Rounds to nearest; 1..63. (12.288 MHz / (16 kHz * 256) = 3 exactly.) */
-    uint32_t mckdiv = (cfg->kernel_clk_hz + (cfg->pcm_rate_hz * 256u) / 2u) /
-                      (cfg->pcm_rate_hz * 256u);
+    /* A mic on SAI_D[m] is de-interleaver pair m, which needs MICNBR = m-1
+     * (RM0493 Table 408): D1 → MICNBR=0 (2 mics), D2 → MICNBR=1 (4 mics, pair 2
+     * = our mic, pair 1 unconnected). One slot per frame carries one byte from
+     * each mic: 16-bit slot for MICNBR=0, 32-bit for MICNBR=1 (Fig 479). */
+    uint32_t micnbr   = (uint32_t)cfg->data_line - 1u;
+    uint32_t ds_field = (micnbr == 1u) ? SAI_CR1_DS_32 : SAI_CR1_DS_16;
+    uint32_t frl      = (16u * (micnbr + 1u)) - 1u;     /* RM0493 Table 408 */
+
+    /* PDM bitstream clock (RM0493 Table 407 "Adjusting the bitstream clock"):
+     *   F_PDM_CK = pcm_rate * 128 (fixed decimation),
+     *   F_SCK_A  = F_PDM_CK * (MICNBR+1) * 2.
+     * With NODIV=1 the bit clock is generated directly as F_ker / MCKDIV, so
+     *   MCKDIV = round(F_ker / F_SCK_A), clamped 1..63. */
+    uint32_t pdm_ck = cfg->pcm_rate_hz * HAL_SAI_PDM_DECIMATION;
+    uint32_t f_sck  = pdm_ck * (micnbr + 1u) * 2u;
+    uint32_t mckdiv = (cfg->kernel_clk_hz + f_sck / 2u) / f_sck;
     if (mckdiv < 1) mckdiv = 1;
     if (mckdiv > 63) mckdiv = 63;
 
@@ -51,37 +63,34 @@ hal_status_t hal_sai_pdm_init(hal_sai_t *s, SAI_Block_TypeDef *block,
     ll_sai_block_disable(block);
     SAI1->GCR = 0;
 
-    /* CR1: master RX, free protocol, 32-bit data, MSB-first, RX clock strobe
-     * on rising edge (CKSTR=1), async, mono if 1 mic, /256 divider (NODIV=0),
-     * OSR off, no MCLK output. */
-    uint32_t cr1 = SAI_CR1_MODE_MASTER_RX
-                 | SAI_CR1_PRTCFG_FREE
-                 | SAI_CR1_DS_32
-                 | SAI_CR1_CKSTR
-                 | ((mckdiv & 0x3FUL) << SAI_CR1_MCKDIV_Pos);
-    if (cfg->mics == 1) cr1 |= SAI_CR1_MONO;
-    block->CR1 = cr1;
+    /* CR1 per RM0493 Table 407: master RX, free protocol (TDM), MSB-first,
+     * CKSTR=0 (data stable on the falling edge), MONO=0 (always stereo for PDM),
+     * NODIV=1 (no MCLK — drive the PDM bitstream clock on CKx, not MCLK_A; this
+     * is the bit that was wrong, leaving PA6/AF3 acting as MCLK_A not CK2). */
+    block->CR1 = SAI_CR1_MODE_MASTER_RX
+               | SAI_CR1_PRTCFG_FREE
+               | ds_field
+               | SAI_CR1_NODIV
+               | ((mckdiv & 0x3FUL) << SAI_CR1_MCKDIV_Pos);
 
-    /* CR2: FIFO threshold half-full for DMA; no companding, no flush at init. */
+    /* CR2: FIFO threshold half-full for DMA. */
     block->CR2 = SAI_CR2_FTH_HF;
 
-    /* FRCR: one 32-bit slot → frame length 32, so FRL field = 31. FS fields are
-     * don't-cares for PDM but must keep FrameLength = NbSlot * SlotSize. */
-    block->FRCR = (32u - 1u) & SAI_FRCR_FRL;
+    /* FRCR per Table 407: FRL = 16*(MICNBR+1)-1; FS active high, start-of-frame,
+     * one-bit pulse, no offset (FSALL=FSDEF=FSOFF=0, FSPOL=1). */
+    block->FRCR = (frl & SAI_FRCR_FRL) | SAI_FRCR_FSPOL;
 
-    /* SLOTR: 32-bit slots, FBOFF=0, NBSLOT = mics (field = mics-1), enable the
-     * active slot(s). 1 mic → slot 0; 2 mics → slots 0+1. */
-    uint32_t sloten = (cfg->mics == 2) ? 0x3u : 0x1u;   /* enable slot bitmap */
-    block->SLOTR = SAI_SLOTR_SLOTSZ_32
-                 | (((uint32_t)cfg->mics - 1u) << SAI_SLOTR_NBSLOT_Pos)
-                 | (sloten << SAI_SLOTR_SLOTEN_Pos);
+    /* SLOTR: one slot per frame (NBSLOT=0), SLOTSZ=0 (slot size = data size),
+     * enable slot 0. The single slot holds one de-interleaved byte per mic. */
+    block->SLOTR = (0u << SAI_SLOTR_NBSLOT_Pos)
+                 | (0x1u << SAI_SLOTR_SLOTEN_Pos);
 
-    /* PDMCR: select the clock line, MICNBR = pairs-1 = 0 (one L/R pair covers
-     * 1 or 2 mics), write config first, then enable PDMEN last. */
+    /* PDMCR (RM0493 enable sequence): MICNBR + bitstream-clock pin, PDMEN last,
+     * and PDMEN must be set before SAIEN (done by the caller / capture start). */
     uint32_t cken = (cfg->clock_line == 2) ? SAI_PDMCR_CKEN2 : SAI_PDMCR_CKEN1;
     SAI1->PDMCR &= ~SAI_PDMCR_PDMEN;
-    SAI1->PDMCR  = cken;                 /* MICNBR = 0 */
-    SAI1->PDMDLY = 0;                    /* no per-mic deskew for a single pair */
+    SAI1->PDMCR  = cken | (micnbr << SAI_PDMCR_MICNBR_Pos);
+    SAI1->PDMDLY = 0;
     SAI1->PDMCR |= SAI_PDMCR_PDMEN;
 
     return HAL_OK;

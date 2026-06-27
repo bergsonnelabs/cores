@@ -102,6 +102,11 @@ typedef struct {
 
 #define SAI_FRCR_FRL_Pos      0
 #define SAI_FRCR_FRL          (0xFFUL << 0)  /**< Frame length - 1 */
+#define SAI_FRCR_FSALL_Pos    8
+#define SAI_FRCR_FSALL        (0x7FUL << 8)  /**< FS active level length - 1 */
+#define SAI_FRCR_FSDEF        (0x1UL << 16)  /**< 1=FS is start-of-frame + channel ID */
+#define SAI_FRCR_FSPOL        (0x1UL << 17)  /**< FS polarity: 1 = active high */
+#define SAI_FRCR_FSOFF        (0x1UL << 18)  /**< FS offset */
 
 /* -------------------------------------------------------------- */
 /* SLOTR — slot configuration                                      */

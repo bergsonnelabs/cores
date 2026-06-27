@@ -61,19 +61,19 @@ static inline void core_audio__on_half(void *ctx)
  * @brief  Configure the mic: SAI PDM block + decimator (capture not started).
  * @param  kernel_clk_hz  SAI1 kernel clock (PLLSAI1), already routed.
  * @param  pcm_rate_hz    output audio rate (e.g. 16000).
- * @param  mics           1 = mono, 2 = stereo pair.
+ * @param  data_line      SAI_Dn the mic sits on: 1 or 2 (sets MICNBR).
  * @param  clock_line     PDM clock pin: 2 = CK2/D2 (the Ring MIC tile).
  * @param  cic_order      decimator order (4 = good voice default).
  * @param  gain_shift     extra digital gain (left shift on PCM; 0 = unity).
  */
 static inline hal_status_t core_audio_init(core_audio_t *a, uint32_t kernel_clk_hz,
-                                           uint32_t pcm_rate_hz, uint8_t mics,
+                                           uint32_t pcm_rate_hz, uint8_t data_line,
                                            uint8_t clock_line, uint8_t cic_order,
                                            uint8_t gain_shift)
 {
     hal_sai_pdm_config_t cfg = {
         .kernel_clk_hz = kernel_clk_hz, .pcm_rate_hz = pcm_rate_hz,
-        .mics = mics, .clock_line = clock_line,
+        .data_line = data_line, .clock_line = clock_line,
     };
     hal_status_t st = hal_sai_pdm_init(&a->sai, SAI1_Block_A, &cfg);
     if (st != HAL_OK) return st;

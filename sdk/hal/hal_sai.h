@@ -29,11 +29,13 @@
 #define HAL_SAI_PDM_DECIMATION 128
 
 typedef struct {
-    uint32_t kernel_clk_hz;  /**< SAI1 kernel clock (PLLSAI1), already routed. */
-    uint32_t pcm_rate_hz;    /**< Target audio rate; sets MCKDIV. 16000 typical. */
-    uint8_t  mics;           /**< 1 = mono (MONO), 2 = stereo pair (L/R slots). */
-    uint8_t  clock_line;     /**< PDM clock output: 1 = CK1/D1, 2 = CK2/D2.
-                                  The Ring MIC tile is on CK2/D2 → use 2. */
+    uint32_t kernel_clk_hz;  /**< SAI1 kernel clock source, already routed (e.g. HSI16). */
+    uint32_t pcm_rate_hz;    /**< Target audio rate (16000 typical). PDM_CK = rate*128. */
+    uint8_t  data_line;      /**< SAI_Dn the mic sits on: 1 (pair 1) or 2 (pair 2).
+                                  Sets MICNBR = data_line-1 (RM0493 Table 408): a mic on
+                                  D2 needs MICNBR=1 so de-interleaver pair 2 is active. */
+    uint8_t  clock_line;     /**< PDM clock output pin: 1 = CK1, 2 = CK2.
+                                  The Ring MIC tile is on CK2/D2 → data_line=2, clock_line=2. */
 } hal_sai_pdm_config_t;
 
 /**
