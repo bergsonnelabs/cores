@@ -1480,12 +1480,12 @@
       ]
     }
   ],
-  "updated_at": "2026-06-02T12:36:00.552Z",
+  "updated_at": "2026-06-24T07:57:35.222Z",
   "description": "The USB-programmable Core.ST.L4.1 (formerly Core.U.1) is based on the 80-MHz 32-bit Cortex-M4 STM32L422 with 128KB flash, 40KB SRAM, and a CoreMark score of 273.55.  The exposed pads provide a user-configurable combination of two fast-mode-plus I2C ports, one SPI port, three 12-bit ADCs, multiple timers, USART, an onboard comparator, and capacitive-touch input.  A programmable onboard LED provides a convenient status indicator.  If more I/O is needed, consider the larger Core.ST.L4.2 in a T48-22 package.",
-  "json_version": "0.34",
+  "json_version": "0.35",
   "application_notes": [
     {
-      "details": "When the chip is blank, it will default into the bootloader when connected over USB.  Once there is code in the program space, you need to hold the BOOT0 pin low during reset (either power-on or via the NRST pin) to enter the bootloader.",
+      "details": "When the chip is blank, it will default into the bootloader when connected over USB.  Once there is code in the program space, you need to hold the BOOT0 pin HIGH during reset (either power-on or via the NRST pin) to enter the bootloader.",
       "heading": "Bootloading"
     },
     {

@@ -1832,9 +1832,9 @@
       ]
     }
   ],
-  "updated_at": "2026-06-03T14:57:06.970Z",
+  "updated_at": "2026-06-24T07:58:04.623Z",
   "description": "The Core.ST.H5.1 is built around the high-performance STM32H523 250-MHz 32-bit Cortex-M33 processor into a single T44 tile, providing a user-configurable combination of multiple communication interfaces (USB 2.0 full-speed, I2C/I3C, SPI, FDCAN, and UART), along with two 12-bit 5-Msps ADC inputs, one DAC output, and multiple timers.",
-  "json_version": "0.40",
+  "json_version": "0.41",
   "application_notes": [
     {
       "sort": 0,
@@ -1844,7 +1844,7 @@
     },
     {
       "sort": 1,
-      "details": "Similar to the Core.U tiles, when the chip is blank, it will default into the bootloader when connected over USB. Once there is code in the program space, you need to hold the BOOT0 pin low during reset (either power-on or via the NRST pin) to enter the bootloader.",
+      "details": "Similar to the Core.U tiles, when the chip is blank, it will default into the bootloader when connected over USB. Once there is code in the program space, you need to hold the BOOT0 pin HIGH during reset (either power-on or via the NRST pin) to enter the bootloader.",
       "heading": "USB Bootloading",
       "image_url": ""
     },
