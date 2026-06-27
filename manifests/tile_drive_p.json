@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@0d6589b",
+  "source": "tiles@535c786",
   "tile": "Drive.P",
   "palette": {
     "label": "Drive.P",
@@ -451,7 +451,7 @@
   "bus_addresses": {
     "I2C": [
       {
-        "address": "0x5A",
+        "address": "0x44",
         "is_default": true
       }
     ]
