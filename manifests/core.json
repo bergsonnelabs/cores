@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@cf97a14",
+  "source": "tiles@1f69849",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -33,6 +33,10 @@
     "pad": {
       "label": "Core.Pad",
       "icon": "◼"
+    },
+    "audio": {
+      "label": "Core.Audio",
+      "icon": "🎤"
     },
     "power": {
       "label": "Core.Power",
