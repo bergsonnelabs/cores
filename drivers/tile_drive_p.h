@@ -56,7 +56,7 @@
 /* -------------------------------------------------------------- */
 
 #define TILE_DRIVE_P_VERSION_MAJOR  3
-#define TILE_DRIVE_P_VERSION_MINOR  1
+#define TILE_DRIVE_P_VERSION_MINOR  2
 #define TILE_DRIVE_P_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
@@ -68,14 +68,31 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 /**
  * @brief  Instance-to-address mapping for Drive.P.
  *
- * | Instance | ID   | Bus  | Hardware config      |
- * |----------|------|------|----------------------|
- * | 0        | 0x44 | I2C  | Fixed address        |
+ * | Instance | ID   | Bus  | Hardware config                    |
+ * |----------|------|------|------------------------------------|
+ * | 0        | 0x44 | I2C  | Power-on default (single tile)     |
+ * | 1        | 0x45 | I2C  | First of a pair, after reassign    |
+ * | 2        | 0x46 | I2C  | Second of a pair, after reassign   |
  *
- * @note  The BOS1921 has a single fixed I2C address. Multiple
- *        Drive.P tiles require separate I2C buses.
+ * @note  Every BOS1921 powers up at the same static address 0x44, so two
+ *        on one bus collide. They are re-addressed via the GPIO write-gate
+ *        (datasheet §6.3.3): hold the target chip's GPIO low and only that
+ *        chip accepts a new address. See @ref tile_drive_p_reassign_address.
+ *        Only the low nibble is programmable (I2C_ADDR[3:0]), so addresses
+ *        lie in 0x40..0x4F.
+ *
+ *        For a PAIR sharing one bus, move BOTH off 0x44 — instance 1→0x45,
+ *        instance 2→0x46 — each gated by its own GPIO. (Keeping one chip at
+ *        0x44 is unreliable in practice; move both. Verified on Ring_Av2.)
+ *
+ * @note  The reassigned address is held until power-on reset. A *software*
+ *        reset does NOT revert it (the operating address only changes via a
+ *        GPIO-gated SUP_RISE write), so a reassigned chip can be soft-reset
+ *        and re-init'd normally — only a power cycle returns it to 0x44.
  */
 #define BOS1921_I2C_ADDR_DEFAULT    0x44
+#define BOS1921_I2C_ADDR_SECOND     0x45  /**< Instance 1 — first of a pair */
+#define BOS1921_I2C_ADDR_THIRD      0x46  /**< Instance 2 — second of a pair */
 
 /* -------------------------------------------------------------- */
 /* BOS1921 register map                                            */
@@ -114,6 +131,13 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 
 /** @brief  COMM register bit fields (see datasheet §6.10.12). */
 #define BOS_COMM_TOUT_BIT           (1u << 5)   /**< 1=auto-sleep after 4 ms idle in Direct/FIFO */
+#define BOS_COMM_GPIODIR_BIT        (1u << 6)   /**< 1=GPIO is input (write-gate for I2C readdress), 0=output */
+
+/** @brief  SUP_RISE register fields (see datasheet §6.10.8, default 0x4967).
+ *  I2C_ADDR[3:0] occupies bits [15:12] and sets the low nibble of the
+ *  7-bit address (0b100_XXXX); the remaining bits are supply-rise timing. */
+#define BOS_SUP_RISE_I2C_ADDR_POS   12
+#define BOS_SUP_RISE_TIMING_DEFAULT 0x0967  /**< default with I2C_ADDR nibble cleared */
 
 /** @brief  PARCAP register bit fields (see datasheet §6.10.7). */
 #define BOS_PARCAP_UPI_BIT          (1u << 9)   /**< 1=Unidirectional Power Input (sink-only) */
@@ -174,7 +198,6 @@ uint8_t tile_drive_p_find(tiles_pal_t* hal, uint8_t instance);
 
 /**
  * Optional init config. Pass NULL for defaults.
- * Reserved for future use.
  */
 typedef struct {
     uint8_t reserved;   /**< Placeholder — no options yet. */
@@ -183,17 +206,58 @@ typedef struct {
 /**
  * @brief  Initialize the BOS1921 piezoelectric driver.
  *
- * Wakes the device, performs a software reset, verifies the chip ID,
- * and configures parasitic capacitance and supply parameters for a
- * 260nF piezo on a 3.7V LiPo supply. Pass cfg=NULL for defaults.
+ * Wakes the device, performs a software reset, verifies the chip ID, and
+ * configures parasitic capacitance and supply parameters for a 260nF piezo
+ * on a 3.7V LiPo supply. The SUP_RISE I2C_ADDR nibble is derived from the
+ * instance's address, so a reassigned chip (0x45/0x46) keeps its address —
+ * a soft reset doesn't revert it, so init may reset such a chip normally.
+ * Pass cfg=NULL for defaults.
  *
  * @param  hal       Platform HAL handle
- * @param  instance  Instance index (0 = default, see mapping table)
+ * @param  instance  Instance index (0=0x44, 1=0x45, 2=0x46; see mapping table)
  * @param  tile      Pointer to tile handle (populated by this function)
  * @param  cfg       Optional config, or NULL for defaults
  */
 void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
                        const drive_p_cfg_t *cfg);
+
+/**
+ * @brief  Reassign one BOS1921's I2C address (GPIO-gated, datasheet §6.3.3).
+ *
+ * For two BOS1921 sharing a bus (both at 0x44), move each to a unique
+ * address. The call wakes the chip(s) still at cur_addr, sets COMM.GPIODIR=1
+ * (GPIO becomes a write-gate), writes the new address into SUP_RISE.I2C_ADDR,
+ * and verifies CHIP_ID at new_addr. Only the chip whose GPIO the caller holds
+ * low latches the change; the others are untouched.
+ *
+ * The driver performs the I2C register sequence only; the **caller owns the
+ * GPIO** (a board-specific Core pad, not reachable through the tile PAL).
+ * Move BOTH chips of a pair off 0x44 (→ 0x45 and 0x46); each call gates a
+ * different chip:
+ *
+ * @code
+ *   // chip A → 0x45 : hold A's GPIO low, B's high
+ *   core_pad_write(GPIO_A, 0); core_pad_write(GPIO_B, 1);
+ *   tile_drive_p_reassign_address(hal, 0x44, 0x45);
+ *   // chip B → 0x46 : hold B's GPIO low, A's high (A has left 0x44)
+ *   core_pad_write(GPIO_A, 1); core_pad_write(GPIO_B, 0);
+ *   tile_drive_p_reassign_address(hal, 0x44, 0x46);
+ *   core_pad_input(GPIO_A); core_pad_input(GPIO_B);   // release
+ *   // then init instance 1 (0x45) and 2 (0x46)
+ * @endcode
+ *
+ * @note  The new address persists until power-on reset; a soft reset will
+ *        not revert it. Re-running this from 0x44 after a reflash (no power
+ *        cycle) is a no-op — the chips already left 0x44.
+ *
+ * @param  hal       Platform HAL handle
+ * @param  cur_addr  the chip's current 7-bit address (0x44 at power-up)
+ * @param  new_addr  desired 7-bit address; only the low nibble is settable,
+ *                   so it must be in 0x40..0x4F (BOS1921_I2C_ADDR_SECOND/THIRD)
+ * @return 1 if the chip answers at new_addr with the correct CHIP_ID, else 0
+ */
+uint8_t tile_drive_p_reassign_address(tiles_pal_t* hal, uint8_t cur_addr,
+                                      uint8_t new_addr);
 
 /**
  * @brief  Perform a software reset.

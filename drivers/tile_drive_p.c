@@ -11,7 +11,9 @@
 /* -------------------------------------------------------------- */
 
 static const uint8_t id_table[] = {
-    BOS1921_I2C_ADDR_DEFAULT,   /* instance 0 — fixed address (0x44) */
+    BOS1921_I2C_ADDR_DEFAULT,   /* instance 0 — power-on address (0x44) */
+    BOS1921_I2C_ADDR_SECOND,    /* instance 1 — first of a pair, reassigned (0x45) */
+    BOS1921_I2C_ADDR_THIRD,     /* instance 2 — second of a pair, reassigned (0x46) */
 };
 
 #define ID_TABLE_LEN  (sizeof(id_table) / sizeof(id_table[0]))
@@ -111,7 +113,7 @@ uint8_t tile_drive_p_find(tiles_pal_t* hal, uint8_t instance)
 void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
                        const drive_p_cfg_t *cfg)
 {
-    (void)cfg;  /* Reserved for future use */
+    (void)cfg;  /* reserved */
     tile->hal      = NULL;
     tile->id       = 0;
     tile->state    = TILE_STATE_NONE;
@@ -139,11 +141,14 @@ void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     /* Wake the chip by writing to REFERENCE register */
     bos_write(tile, BOS1921_REG_REFERENCE, 0x0000);
 
-    /* Software reset */
+    /* Software reset. Safe even for a reassigned instance (0x45/0x46): a
+     * soft reset clears registers but does NOT revert the operating I2C
+     * address — that only changes via a GPIO-gated SUP_RISE write, or a
+     * power cycle. After reset the return register defaults to CHIP_ID. */
     bos_write(tile, BOS1921_REG_CONFIG, 0x0040);
     hal->delay_ms(1);
 
-    /* Read chip ID (default return register after reset) */
+    /* Verify chip ID */
     uint16_t chip_id = bos_read(tile);
     if ((chip_id & 0x0FFF) != BOS1921_CHIP_ID_DEFAULT) {
         TILE_ON_ERROR(tile, "init: unexpected chip ID");
@@ -159,11 +164,61 @@ void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     st->comm_persistent_bits = 0;
     st->parcap               = 0x043A;
 
-    /* Configure for 260nF piezo, L1=10µH, Rsense=0.2Ω, VDD=3.7V LiPo */
+    /* Configure for 260nF piezo, L1=10µH, Rsense=0.2Ω, VDD=3.7V LiPo.
+     * The tuned supply-rise timing is 0x09E2; the I2C_ADDR nibble
+     * (bits [15:12]) is derived from this instance's address so a
+     * re-addressed chip keeps its address instead of being staged back
+     * to 0x44. For instance 0 this evaluates to the original 0x49E2. */
     bos_write(tile, BOS1921_REG_PARCAP,   st->parcap);
-    bos_write(tile, BOS1921_REG_SUP_RISE, 0x49E2);
+    bos_write(tile, BOS1921_REG_SUP_RISE,
+              (uint16_t)(((uint16_t)(id & 0x0Fu) << BOS_SUP_RISE_I2C_ADDR_POS) | 0x09E2u));
 
     tile->state = TILE_STATE_READY;
+}
+
+uint8_t tile_drive_p_reassign_address(tiles_pal_t* hal, uint8_t cur_addr,
+                                      uint8_t new_addr)
+{
+    /* Only the low nibble is programmable: address is 0b100_XXXX. */
+    if ((new_addr & 0x70u) != 0x40u) return 0;
+
+    uint8_t buf[2];
+
+    /* 1. Wake any chip still at cur_addr (a dummy REFERENCE write) so the
+     *    readdress takes effect reliably. */
+    buf[0] = 0x00; buf[1] = 0x00;
+    hal->i2c_write(hal->handle, cur_addr, BOS1921_REG_REFERENCE, buf, 2);
+
+    /* 2. COMM.GPIODIR = 1 (GPIO becomes the per-chip write gate). Also point
+     *    RDADDR at CHIP_ID so the verify read below works without another
+     *    COMM write. Written to cur_addr; every chip there sees it, but only
+     *    the one whose GPIO the caller holds low will latch step 3. */
+    uint16_t comm_gate = (uint16_t)BOS1921_REG_CHIP_ID | BOS_COMM_GPIODIR_BIT;
+    buf[0] = (uint8_t)(comm_gate >> 8);
+    buf[1] = (uint8_t)(comm_gate & 0xFF);
+    hal->i2c_write(hal->handle, cur_addr, BOS1921_REG_COMM, buf, 2);
+
+    /* 3. Write the new address into SUP_RISE.I2C_ADDR[3:0] (bits [15:12]),
+     *    preserving the default supply-rise timing. Takes effect immediately
+     *    on the GPIO-low chip. GPIODIR is left set (input); init's reset, or
+     *    a later access, restores it — leaving it avoids the BOS GPIO fighting
+     *    the Core pad during a multi-chip sequence. */
+    uint16_t sup = (uint16_t)(((uint16_t)(new_addr & 0x0Fu) << BOS_SUP_RISE_I2C_ADDR_POS)
+                              | BOS_SUP_RISE_TIMING_DEFAULT);
+    buf[0] = (uint8_t)(sup >> 8);
+    buf[1] = (uint8_t)(sup & 0xFF);
+    hal->i2c_write(hal->handle, cur_addr, BOS1921_REG_SUP_RISE, buf, 2);
+
+    /* 4. Settle (datasheet wants >= 1 µs; delay_ms(1) is the coarsest PAL
+     *    primitive and is amply long). */
+    hal->delay_ms(1);
+
+    /* 5. Confirm the chip now answers at new_addr with the expected CHIP_ID
+     *    (RDADDR already points there from step 2). */
+    uint8_t rd[2] = {0, 0};
+    if (hal->i2c_read(hal->handle, new_addr, 0x00, rd, 2) != 0) return 0;
+    uint16_t id = ((uint16_t)rd[0] << 8) | rd[1];
+    return ((id & 0x0FFFu) == BOS1921_CHIP_ID_DEFAULT) ? 1 : 0;
 }
 
 void tile_drive_p_reset(tile_t* tile)
