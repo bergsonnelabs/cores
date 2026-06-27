@@ -13,7 +13,7 @@
  *   static uint8_t  pdm[2048];          // raw PDM (4-byte aligned)
  *   static int16_t  pcm[2048/32];       // per-half PCM: pdm_len/32 samples
  *
- *   core_audio_init(&mic, 12288000, 16000, 1, 2, 4, 0);   // 16 kHz mono, CK2
+ *   core_audio_init(&mic, 12288000, 16000, 2, 2, 4, 0);   // 16 kHz, mic on D2/CK2
  *   core_audio_start(&mic, GPDMA1_CH0, pdm, sizeof pdm, pcm, on_pcm, NULL);
  *   // route GPDMA1_Channel0_IRQHandler → core_audio_irq(&mic)
  * @endcode
