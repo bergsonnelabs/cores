@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@a5cb41d",
+  "source": "tiles@5f180cb",
   "file": "tile_power_l_1t.h",
   "brief": "Li-Ion charge controller driver for the Power.L.1T tile (rev a).",
   "description": "Embeds the Texas Instruments BQ25150, a single-cell Li-Ion charge\ncontroller with programmable 1.8 V LDO output and 12-bit ADC for\nbattery and system monitoring.\n\nKey specifications:\n  - Charge input:     3.4–5.5 V (up to 500 mA)\n  - Battery voltage:  3.6–4.6 V (programmable in 10 mV steps)\n  - LDO output:       1.8 V on this tile (chip is programmable)\n  - ADC:              12-bit, 6 input channels\n  - Charge current:   1.25–500 mA programmable\n  - JEITA-style NTC:  cold / cool / warm / hot thresholds\n\nDatasheet: https://www.bergsonne.io/tiles/power/l1t\nIC datasheet: https://www.ti.com/lit/ds/symlink/bq25150.pdf\n\n@studio tile label=Power.L.1T icon=☷\n\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"MR button + INT pin handling\"\n  The chip's MR (push-button) and INT (interrupt) pins aren't\n  routed to tile pads on the current revision — nothing for a\n  Core GPIO to attach to. Closing this gap requires a tile\n  hardware revision that routes at least INT to a connector\n  pad. Until then, MASK0–3 / MRCTRL register writes have no\n  external effect.",
@@ -33,7 +33,7 @@
     },
     {
       "name": "TILE_POWER_L_1T_VERSION_PATCH",
-      "value": "0",
+      "value": "1",
       "description": "",
       "section": ""
     },
@@ -41,6 +41,36 @@
       "name": "BQ25150_I2C_ADDR_DEFAULT",
       "value": "0x6B",
       "description": "",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_FLAG2_ADC_READY",
+      "value": "0x80",
+      "description": "FLAG2 bit7: ADC conversion completed (clear-on-read)",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_ADCCTRL0_RATE_1S",
+      "value": "0x80",
+      "description": "ADC_READ_RATE = every 1 s (battery mode)",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_ADCCTRL0_RATE_MANUAL",
+      "value": "0x00",
+      "description": "ADC_READ_RATE = manual (convert on CONV_START)",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_ADCCTRL0_CONV_START",
+      "value": "0x20",
+      "description": "bit5: trigger one ADC conversion",
+      "section": ""
+    },
+    {
+      "name": "BQ25150_ADCCTRL0_COMP1_DEFAULT",
+      "value": "0x02",
+      "description": "ADC_COMP1[2:0] reset value",
       "section": ""
     },
     {
@@ -888,7 +918,7 @@
     }
   ],
   "source_file": "tile_power_l_1t.h",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "tile_family": "Power",
   "tile_name": "L.1T",
   "display_name": "Power.L.1T"
