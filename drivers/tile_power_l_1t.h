@@ -58,7 +58,7 @@
 
 #define TILE_POWER_L_1T_VERSION_MAJOR  3
 #define TILE_POWER_L_1T_VERSION_MINOR  2
-#define TILE_POWER_L_1T_VERSION_PATCH  0
+#define TILE_POWER_L_1T_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 
@@ -88,6 +88,7 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 #define BQ25150_REG_FLAG0           0x03  /**< Charger Flags 0 */
 #define BQ25150_REG_FLAG1           0x04  /**< Charger Flags 1 */
 #define BQ25150_REG_FLAG2           0x05  /**< ADC Flags */
+#define BQ25150_FLAG2_ADC_READY     0x80  /**< FLAG2 bit7: ADC conversion completed (clear-on-read) */
 #define BQ25150_REG_FLAG3           0x06  /**< Timer Flags */
 #define BQ25150_REG_VBAT_CTRL       0x12  /**< Battery Voltage Control */
 #define BQ25150_REG_ICHG_CTRL       0x13  /**< Fast Charge Current Control */
@@ -99,6 +100,10 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 #define BQ25150_REG_LDOCTRL         0x1D  /**< LDO Control (enable, voltage, mode) */
 #define BQ25150_REG_ICCTRL0         0x35  /**< IC Control 0 (ship mode) */
 #define BQ25150_REG_ADCCTRL0        0x40  /**< ADC Control 0 */
+#define BQ25150_ADCCTRL0_RATE_1S    0x80  /**< ADC_READ_RATE = every 1 s (battery mode) */
+#define BQ25150_ADCCTRL0_RATE_MANUAL 0x00 /**< ADC_READ_RATE = manual (convert on CONV_START) */
+#define BQ25150_ADCCTRL0_CONV_START 0x20  /**< bit5: trigger one ADC conversion */
+#define BQ25150_ADCCTRL0_COMP1_DEFAULT 0x02 /**< ADC_COMP1[2:0] reset value */
 #define BQ25150_REG_ADC_DATA_VBAT_M 0x42  /**< ADC VBAT MSB */
 #define BQ25150_REG_ADC_DATA_VBAT_L 0x43  /**< ADC VBAT LSB */
 #define BQ25150_REG_ADC_DATA_TS_M   0x44  /**< ADC TS MSB */

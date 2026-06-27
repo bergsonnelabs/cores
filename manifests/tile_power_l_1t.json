@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@a5cb41d",
+  "source": "tiles@5f180cb",
   "tile": "Power.L.1T",
   "palette": {
     "label": "Power.L.1T",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_power_l_1t",
     "header": "tile_power_l_1t.h",
-    "version": "3.2.0"
+    "version": "3.2.1"
   },
   "handle": {
     "type": "tile_t",

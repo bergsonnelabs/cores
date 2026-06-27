@@ -130,8 +130,27 @@ void tile_power_l_1t_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
      * Bit 0 is RESERVED, leave 0. */
     bq_write(tile, BQ25150_REG_ADC_READ_EN, 0xFE);
 
+    /* Prime the ADC: on battery the auto rate is only 1 Hz, so the first
+     * VBAT/VIN read after init would otherwise return a stale register until
+     * the first auto tick (up to ~1 s later). Force conversions in Manual mode
+     * and wait for ADC_READY (FLAG2 bit7, clear-on-read) each time, then resume
+     * the low-power 1 s rate. Two conversions (~50 ms) so the data registers
+     * hold a settled post-init sample, not the first mid-startup one. (With VIN
+     * present the ADC runs continuously anyway; the manual trigger is harmless
+     * there.) */
+    for (int conv = 0; conv < 2; conv++) {
+        (void)bq_read(tile, BQ25150_REG_FLAG2);  /* clear any stale ADC_READY */
+        bq_write(tile, BQ25150_REG_ADCCTRL0,
+                 BQ25150_ADCCTRL0_RATE_MANUAL | BQ25150_ADCCTRL0_CONV_START |
+                 BQ25150_ADCCTRL0_COMP1_DEFAULT);
+        for (int i = 0; i < 50; i++) {  /* ~24 ms conversion */
+            if (bq_read(tile, BQ25150_REG_FLAG2) & BQ25150_FLAG2_ADC_READY) break;
+            hal->delay_ms(1);
+        }
+    }
     /* ADC: 1-second update rate in battery mode, 24 ms conv speed. */
-    bq_write(tile, BQ25150_REG_ADCCTRL0, 0x82);
+    bq_write(tile, BQ25150_REG_ADCCTRL0,
+             BQ25150_ADCCTRL0_RATE_1S | BQ25150_ADCCTRL0_COMP1_DEFAULT);
 
     /* Disable ship mode (clear bit 7 of ICCTRL0). Reset value is
      * 0x10 (AUTOWAKE = 1.2 s); preserving that. */
