@@ -96,11 +96,26 @@ void core_ble_process(void);
 
 /**
  * Add a GATT service. Returns a handle for adding characteristics.
- * UUID is auto-generated from the service name.
+ *
+ * The UUID is auto-assigned SEQUENTIALLY by registration order
+ * (0000B000-…, 0000B100-…, …). Convenient, but the UUIDs shift if you
+ * reorder or insert services — so for a contract shared with client apps,
+ * prefer core_ble_add_service_id() to pin a stable, order-independent UUID.
  *
  * @param name  Human-readable service name (for documentation/debugging).
  */
 core_ble_svc_t core_ble_add_service(const char *name);
+
+/**
+ * Add a GATT service with an EXPLICIT 16-bit ID. The full UUID is
+ * 0000<id>-8E22-4541-9D4C-21EDAE82ED19. Pinning the ID makes the GATT
+ * contract independent of registration order — the recommended path when the
+ * service map is a source of truth shared with phone / desktop client apps.
+ *
+ * @param name  Human-readable service name (for documentation/debugging).
+ * @param id    16-bit identifier placed in the shared base UUID.
+ */
+core_ble_svc_t core_ble_add_service_id(const char *name, uint16_t id);
 
 /**
  * Add a characteristic to a service.
@@ -121,6 +136,27 @@ core_ble_char_t core_ble_add_char(core_ble_svc_t svc,
                                    uint8_t type,
                                    core_ble_write_cb on_write,
                                    void *ctx);
+
+/**
+ * Add a characteristic with an EXPLICIT 16-bit ID (0000<id>-8E22-…), the
+ * order-independent counterpart to core_ble_add_char(). Use for the stable
+ * contract shared with client apps.
+ *
+ * @param svc       Service handle.
+ * @param name      Human-readable name (for documentation/debugging).
+ * @param id        16-bit identifier placed in the shared base UUID.
+ * @param access    CORE_BLE_READ / _WRITE / _NOTIFY (or combinations).
+ * @param type      CORE_BLE_BOOL / _UINT8/16/32 / CORE_BLE_BYTES(n).
+ * @param on_write  Write callback (NULL if not writable).
+ * @param ctx       User context for on_write; may be NULL.
+ */
+core_ble_char_t core_ble_add_char_id(core_ble_svc_t svc,
+                                     const char *name,
+                                     uint16_t id,
+                                     uint8_t access,
+                                     uint8_t type,
+                                     core_ble_write_cb on_write,
+                                     void *ctx);
 
 /* ============================================================
  * Runtime — read/write/notify
