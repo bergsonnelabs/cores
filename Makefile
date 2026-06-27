@@ -295,7 +295,7 @@ GEN_OBJS = $(GEN_SOURCES:.c=.o)
 # core_led.c — the one Core-layer source compiled into every build (the
 # rest of core_* is header-only). Owns the free-running heartbeat state
 # the SysTick handler drives. (core_ble.o stays BLE-gated, below.)
-CORE_OBJS = $(BUILD_DIR)/sdk/core/core_led.o
+CORE_OBJS = $(BUILD_DIR)/sdk/core/core_led.o $(BUILD_DIR)/sdk/core/core_pdm.o
 OBJECTS  = $(C_OBJS) $(ASM_OBJS) $(HAL_OBJS) $(CORE_OBJS) $(GEN_OBJS)
 
 ifeq ($(TILES_ENABLED),1)
@@ -407,6 +407,11 @@ $(BUILD_DIR)/sdk/hal/%.o: $(SDK_DIR)sdk/hal/%.c $(GEN_HEADERS)
 # Core-layer sources compiled into every build (core_led.c). core_ble.c is
 # in the same dir but BLE-gated, with its own explicit rule below.
 $(BUILD_DIR)/sdk/core/core_led.o: $(SDK_DIR)sdk/core/core_led.c $(GEN_HEADERS)
+	$(Q)mkdir -p $(dir $@)
+	$(LOG) "  CC    $<"
+	$(Q)$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/sdk/core/core_pdm.o: $(SDK_DIR)sdk/core/core_pdm.c $(GEN_HEADERS)
 	$(Q)mkdir -p $(dir $@)
 	$(LOG) "  CC    $<"
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
