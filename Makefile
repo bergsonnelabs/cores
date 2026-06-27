@@ -189,7 +189,10 @@ SYSCLK_HZ  = $(shell echo $$(($(SYSCLK_MHZ) * 1000000)))
 
 # ---- Sources ----
 
-C_SOURCES   = $(PROJECT_DIR)/main.c
+# Every .c in the project directory — lets a project split into modules
+# (e.g. ring_ble.c, ring_hw.c), not just main.c. Generated sources live in
+# coregen/ (a subdirectory, not matched here) and are added via GEN_SOURCES.
+C_SOURCES   = $(wildcard $(PROJECT_DIR)/*.c)
 ASM_SOURCES = $(STARTUP)
 
 # ---- Compiler flags ----
