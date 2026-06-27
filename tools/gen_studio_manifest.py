@@ -105,6 +105,16 @@ LAYER_HEADERS = {
         "hal": ("hal_adc.h", None),
         "ll": ("ll_adc.h", None),
     },
+    "audio": {
+        # PDM microphone capture: SAI1 PDM master-RX + GPDMA (hal_sai), with the
+        # CIC decimator surfaced from core_pdm.h (the category's core header).
+        "hal": ("hal_sai.h", None),
+        "ll": (
+            "ll_sai.h",
+            ["ll_sai_block_enable", "ll_sai_block_disable", "ll_sai_block_enable_dma",
+             "ll_sai_flush", "ll_sai_read", "ll_sai_overrun", "ll_sai_clear_overrun"],
+        ),
+    },
     "dac": {
         "hal": ("hal_dac.h", None),
         "ll": ("ll_dac.h", None),

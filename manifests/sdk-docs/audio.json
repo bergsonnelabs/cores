@@ -1,0 +1,264 @@
+{
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@1f69849",
+  "category": "audio",
+  "label": "Core.Audio",
+  "icon": "🎤",
+  "header": "core_pdm.h",
+  "headers": {
+    "core": "core_pdm.h",
+    "hal": "hal_sai.h",
+    "ll": "ll_sai.h"
+  },
+  "functions": [
+    {
+      "name": "core_pdm_init",
+      "signature": "core_pdm_init(core_pdm_cic_t * st, uint8_t order, uint16_t decimation, uint8_t gain_shift, uint8_t lsb_first)",
+      "returns": "void",
+      "brief": "Initialise a CIC decimator.",
+      "params": [
+        {
+          "name": "st",
+          "ctype": "core_pdm_cic_t *",
+          "description": "State to initialise (cleared)."
+        },
+        {
+          "name": "order",
+          "ctype": "uint8_t",
+          "description": "CIC order N (1..CORE_PDM_MAX_ORDER; 4 = good voice default)."
+        },
+        {
+          "name": "decimation",
+          "ctype": "uint16_t",
+          "description": "R = pdm_clock / output_rate (e.g. 128 for 2.048 MHz→16 kHz)."
+        },
+        {
+          "name": "gain_shift",
+          "ctype": "uint8_t",
+          "description": "Extra digital gain as a LEFT shift on the output (0 = unity"
+        },
+        {
+          "name": "lsb_first",
+          "ctype": "uint8_t",
+          "description": "1 if the SAI packs PDM bits LSB-first within each byte,"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_pdm_process",
+      "signature": "core_pdm_process(core_pdm_cic_t * st, const uint8_t * pdm, uint32_t nbytes, int16_t * out)",
+      "returns": "uint32_t",
+      "brief": "Decimate a block of packed PDM bits into PCM samples.",
+      "params": [
+        {
+          "name": "st",
+          "ctype": "core_pdm_cic_t *",
+          "description": "Decimator state."
+        },
+        {
+          "name": "pdm",
+          "ctype": "const uint8_t *",
+          "description": "Packed PDM bytes from the SAI DMA buffer."
+        },
+        {
+          "name": "nbytes",
+          "ctype": "uint32_t",
+          "description": "Number of PDM bytes to process."
+        },
+        {
+          "name": "out",
+          "ctype": "int16_t *",
+          "description": "Output PCM buffer; must hold at least"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "hal_sai_pdm_init",
+      "signature": "hal_sai_pdm_init(hal_sai_t * s, SAI_Block_TypeDef * block, const hal_sai_pdm_config_t * cfg)",
+      "returns": "hal_status_t",
+      "brief": "Configure SAI1 block A as a PDM master receiver (block left disabled).",
+      "params": [
+        {
+          "name": "s",
+          "ctype": "hal_sai_t *"
+        },
+        {
+          "name": "block",
+          "ctype": "SAI_Block_TypeDef *"
+        },
+        {
+          "name": "cfg",
+          "ctype": "const hal_sai_pdm_config_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_sai_capture_start",
+      "signature": "hal_sai_capture_start(hal_sai_t * s, GPDMA_Channel_TypeDef * ch, uint8_t * buf, uint32_t len, hal_callback_t callback, void * ctx)",
+      "returns": "hal_status_t",
+      "brief": "Start continuous DMA capture into `buf` (circular).",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "hal_sai_t *",
+          "description": "raw PDM byte buffer in SRAM; len even. 4-byte aligned preferred"
+        },
+        {
+          "name": "ch",
+          "ctype": "GPDMA_Channel_TypeDef *"
+        },
+        {
+          "name": "buf",
+          "ctype": "uint8_t *",
+          "description": "raw PDM byte buffer in SRAM; len even. 4-byte aligned preferred"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "callback",
+          "ctype": "hal_callback_t"
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_sai_capture_stop",
+      "signature": "hal_sai_capture_stop(hal_sai_t * s)",
+      "returns": "void",
+      "brief": "Stop capture (SAIEN off, DMA channel disabled).",
+      "params": [
+        {
+          "name": "s",
+          "ctype": "hal_sai_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "hal_sai_irq_handler",
+      "signature": "hal_sai_irq_handler(hal_sai_t * s)",
+      "returns": "void",
+      "brief": "GPDMA channel ISR body — call from the channel's IRQ handler.",
+      "params": [
+        {
+          "name": "s",
+          "ctype": "hal_sai_t *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "hal"
+    },
+    {
+      "name": "ll_sai_block_enable",
+      "signature": "ll_sai_block_enable(SAI_Block_TypeDef * b)",
+      "returns": "void",
+      "brief": "Enable a block — for master RX this immediately starts the bit clock.",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_block_disable",
+      "signature": "ll_sai_block_disable(SAI_Block_TypeDef * b)",
+      "returns": "void",
+      "brief": "Disable a block (clear SAIEN) and wait for it to read back 0.",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_block_enable_dma",
+      "signature": "ll_sai_block_enable_dma(SAI_Block_TypeDef * b)",
+      "returns": "void",
+      "brief": "Enable peripheral DMA requests (must precede SAIEN).",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_flush",
+      "signature": "ll_sai_flush(SAI_Block_TypeDef * b)",
+      "returns": "void",
+      "brief": "Flush the FIFO (one-shot, self-clearing).",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_read",
+      "signature": "ll_sai_read(SAI_Block_TypeDef * b)",
+      "returns": "uint32_t",
+      "brief": "Read one data word from the FIFO.",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_overrun",
+      "signature": "ll_sai_overrun(SAI_Block_TypeDef * b)",
+      "returns": "int",
+      "brief": "True if an overrun has been latched.",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    },
+    {
+      "name": "ll_sai_clear_overrun",
+      "signature": "ll_sai_clear_overrun(SAI_Block_TypeDef * b)",
+      "returns": "void",
+      "brief": "Clear the overrun flag.",
+      "params": [
+        {
+          "name": "b",
+          "ctype": "SAI_Block_TypeDef *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "ll"
+    }
+  ]
+}

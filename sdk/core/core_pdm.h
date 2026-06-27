@@ -18,6 +18,8 @@
  * calls so block boundaries are seamless. Not interrupt-reentrant — run one
  * instance from one context (typically the SAI DMA half/complete callback).
  *
+ * @studio category audio label=Core.Audio icon=🎤
+ *
  * @studio coverage
  *   id:    pdm
  *   name:  PDM — microphone decimation
