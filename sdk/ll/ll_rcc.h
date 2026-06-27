@@ -1075,6 +1075,28 @@ static inline void ll_rcc_set_i2c_clk_source(uint32_t i2c_num, uint32_t source)
     }
 }
 
+/**
+ * SAI1 kernel clock source (RCC_CCIPR2, offset 0xE4, bits [7:5] = SAI1SEL).
+ * Encoding per RM0493: 000 pll1pclk · 001 pll1qclk · 010 SYSCLK ·
+ * 011 AUDIOCLK input pin · 100 HSI16.
+ */
+#define LL_RCC_SAI_CLK_PLL1P     0x0UL
+#define LL_RCC_SAI_CLK_PLL1Q     0x1UL
+#define LL_RCC_SAI_CLK_SYSCLK    0x2UL
+#define LL_RCC_SAI_CLK_AUDIOCLK  0x3UL
+#define LL_RCC_SAI_CLK_HSI16     0x4UL
+
+/**
+ * Set the SAI1 kernel clock source. HSI16 (16 MHz) is the simplest robust
+ * choice for PDM capture — always available and independent of SYSCLK.
+ *
+ *   source: LL_RCC_SAI_CLK_HSI16 / _SYSCLK / _PLL1P / _PLL1Q / _AUDIOCLK
+ */
+static inline void ll_rcc_set_sai_clk_source(uint32_t source)
+{
+    MOD_BITS(REG32(RCC_BASE + 0xE4UL), 0x7UL << 5, (source & 0x7UL) << 5);
+}
+
 #endif /* STM32WBA55xx I2C clock source */
 
 #endif /* LL_RCC_H */
