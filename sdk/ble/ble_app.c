@@ -40,8 +40,12 @@ extern void ll_sys_ble_cntrl_init(void *hostCallback);
  * ============================================================ */
 
 #define CFG_BLE_NUM_LINK             2
-#define CFG_BLE_NUM_GATT_SERVICES    8
-#define CFG_BLE_NUM_GATT_ATTRIBUTES  68
+#define CFG_BLE_NUM_GATT_SERVICES    12
+/* Each service reserves up to 25 attribute records (the 8-char-per-service cap
+ * in ble_svc). Sized for ~6 services + the built-in GAP/GATT — bump alongside
+ * NUM_GATT_SERVICES if a multi-service app overflows (services silently fail to
+ * register past the limit). */
+#define CFG_BLE_NUM_GATT_ATTRIBUTES  160
 #define CFG_BLE_ATT_VALUE_ARRAY_SIZE 1344
 #define CFG_BLE_ATT_MTU_MAX          251
 #define CFG_BLE_MBLOCK_COUNT_MARGIN  0x15
@@ -418,6 +422,15 @@ void ble_app_init(void)
 int ble_app_advertise(const char *name)
 {
     tBleStatus ret;
+
+    /* Set the GAP Device Name characteristic to match the advertised name —
+     * the stack defaults it to "STM32WB!", which is what phones display. */
+    if (name) {
+        uint8_t n = 0;
+        while (name[n] && n < 248) n++;
+        aci_gatt_update_char_value(gap_service_handle, gap_dev_name_handle, 0,
+                                   n, (const uint8_t *)name);
+    }
 
     /* Match the working CubeWBA project exactly:
      * 1. aci_gap_set_discoverable with NO name (all zeros)
