@@ -237,10 +237,17 @@ void core_ble_set_tx_power(uint8_t level);
 void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms);
 
 /**
- * Enable OS-level pairing (Just Works).
- * When enabled, the phone/computer will show a "Pair?" dialog.
- * Once paired, the device auto-reconnects and appears in OS
- * Bluetooth settings. Call before core_ble_init(). Default: disabled.
+ * Enable OS-level pairing + bonding (Just Works).
+ *
+ * When enabled, every characteristic is registered behind an encrypted link,
+ * so on first access the host runs its pairing flow (a "Pair?" prompt on most
+ * OSes; silent for Just Works on macOS). Keys are persisted in flash NVM, so
+ * the bond survives resets — the host doesn't re-pair on the next connection
+ * and the device stays listed in OS Bluetooth settings. (Reconnect itself is
+ * the central's choice; the peripheral simply re-advertises after a drop.)
+ *
+ * Call before core_ble_init(). Default: disabled (characteristics open, no
+ * pairing). Note that once enabled, *all* clients must pair to read/write.
  */
 void core_ble_enable_pairing(void);
 
@@ -258,10 +265,13 @@ void core_ble_enable_pairing(void);
 //   Bergsonne use-cases are peripheral-role (sensor advertising to a
 //   phone). Apps that need central-role drop into the WBA BLE stack.
 //
-// @studio unsupported tier=1 value=M title="Bonding / persistent pairing"
-//   core_ble_enable_pairing() runs Just Works each session — no
-//   long-term key storage, so the host re-prompts on every connect.
-//   Bonded reconnect needs IRK/LTK persistence in NVM.
+// @studio unsupported tier=1 value=L title="Pairing refinements (LE Secure Connections, directed reconnect)"
+//   core_ble_enable_pairing() does Just Works *legacy* pairing with
+//   bonding: characteristics require an encrypted link and the keys
+//   persist in flash NVM, so a bonded host reconnects without re-prompting.
+//   Not yet exposed: LE Secure Connections (numeric-comparison / passkey
+//   MITM protection) and directed advertising for fast reconnect to a
+//   known bonded central.
 //
 // @studio unsupported tier=1 value=M title="Custom UUIDs"
 //   Service + characteristic UUIDs are auto-generated from the name

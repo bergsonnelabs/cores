@@ -39,6 +39,11 @@ static ble_char_record_t chars[MAX_CHARS];
 static uint8_t char_count;
 static uint8_t svc_count;
 
+/* When set, characteristics are registered with encryption-required
+ * permissions so the central must pair/bond before access. Driven by
+ * core_ble_enable_pairing() (see ble_svc_set_secure). */
+static uint8_t secure_mode;
+
 /* ---- UUID generation ---- */
 /* Base: 0000xx00-8E22-4541-9D4C-21EDAE82ED19 */
 static void make_uuid(uint8_t *uuid, uint8_t id_hi, uint8_t id_lo)
@@ -90,7 +95,16 @@ void ble_svc_init(void)
 {
     char_count = 0;
     svc_count = 0;
+    secure_mode = 0;
     SVCCTL_RegisterSvcHandler(BLE_SVC_EventHandler);
+}
+
+/* Require encryption (pairing/bonding) on subsequently-added characteristics.
+ * Called by core_ble after ble_svc_init() and before the service builder when
+ * core_ble_enable_pairing() was requested. */
+void ble_svc_set_secure(uint8_t on)
+{
+    secure_mode = on ? 1 : 0;
 }
 
 /* Core service add with an explicit 16-bit ID, placed in the shared base
@@ -165,12 +179,24 @@ static uint16_t char_register(uint16_t svc_handle, uint8_t uuid_type, const void
 
     uint8_t evt_mask = on_write ? GATT_NOTIFY_ATTRIBUTE_WRITE : 0;
 
+    /* In secure mode, require an encrypted (paired/bonded) link to access the
+     * characteristic. Reads/notifications gate on ENCRY_READ; writes on
+     * ENCRY_WRITE. This is what triggers the host's pairing flow — without it,
+     * a "bonding" configuration never prompts and the device never bonds. */
+    uint8_t permissions = ATTR_PERMISSION_NONE;
+    if (secure_mode) {
+        if (props & (CHAR_PROP_READ | CHAR_PROP_NOTIFY | CHAR_PROP_INDICATE))
+            permissions |= ATTR_PERMISSION_ENCRY_READ;
+        if (props & (CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP))
+            permissions |= ATTR_PERMISSION_ENCRY_WRITE;
+    }
+
     aci_gatt_add_char(svc_handle,
                       uuid_type,
                       (Char_UUID_t *)uuid_ptr,
                       value_len,
                       props,
-                      ATTR_PERMISSION_NONE,
+                      permissions,
                       evt_mask,
                       10,     /* encryption key size */
                       0,      /* not fixed length */
