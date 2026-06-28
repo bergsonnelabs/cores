@@ -40,6 +40,10 @@ void *ble_on_disconnect_ctx;
 /* Re-advertise flag — set on disconnect, polled by core_ble_process */
 volatile uint8_t ble_need_readvertise;
 
+/* Connection-parameter request flag — set on connect, polled by
+ * core_ble_process to send the preferred params once the link is up */
+volatile uint8_t ble_conn_param_req_pending;
+
 /* ---- GAP command response release ---- */
 
 static void gap_cmd_resp_release(void)
@@ -66,6 +70,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
         ble_connected = 0;
         ble_conn_handle = 0xFFFF;
         ble_need_readvertise = 1;
+        ble_conn_param_req_pending = 0;
         gap_cmd_resp_release();
         if (ble_on_disconnect_cb) ble_on_disconnect_cb(ble_on_disconnect_ctx);
         break;
@@ -84,6 +89,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
             if (p_conn->Status == 0) {
                 ble_connected = 1;
                 ble_conn_handle = p_conn->Connection_Handle;
+                ble_conn_param_req_pending = 1;
                 if (ble_on_connect_cb) ble_on_connect_cb(ble_on_connect_ctx);
             }
             break;
@@ -96,6 +102,7 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
             if (p_conn->Status == 0) {
                 ble_connected = 1;
                 ble_conn_handle = p_conn->Connection_Handle;
+                ble_conn_param_req_pending = 1;
                 if (ble_on_connect_cb) ble_on_connect_cb(ble_on_connect_ctx);
             }
             break;

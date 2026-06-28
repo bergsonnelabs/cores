@@ -237,6 +237,30 @@ void core_ble_set_tx_power(uint8_t level);
 void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms);
 
 /**
+ * Request a preferred connection parameter set from the central.
+ *
+ * The central ultimately owns the connection timing, but a peripheral can ask
+ * for parameters that suit its traffic. After each connection the SDK sends an
+ * L2CAP update request (retrying until the stack accepts it, since the link is
+ * busy with pairing/discovery right after connecting). May also be called while
+ * connected to re-request — e.g. tighten the interval while streaming, relax it
+ * when idle.
+ *
+ * For Apple hosts, keep within their guidelines: interval_min >= 15 ms,
+ * interval_max >= interval_min + 15 ms, interval_max * (latency + 1) <= 2 s, and
+ * timeout in 2000..6000 ms. A short interval lowers latency for high-rate
+ * notifications at the cost of power; latency > 0 saves power when the
+ * peripheral often has nothing to send.
+ *
+ * @param min_ms      Minimum connection interval, ms (7.5-4000).
+ * @param max_ms      Maximum connection interval, ms (>= min_ms).
+ * @param latency     Peripheral latency — connection events it may skip (0-499).
+ * @param timeout_ms  Supervision (link-loss) timeout, ms (100-32000).
+ */
+void core_ble_set_conn_params(uint16_t min_ms, uint16_t max_ms,
+                              uint16_t latency, uint16_t timeout_ms);
+
+/**
  * Enable OS-level pairing + bonding (Just Works).
  *
  * When enabled, every characteristic is registered behind an encrypted link,
