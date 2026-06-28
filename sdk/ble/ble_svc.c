@@ -128,18 +128,29 @@ uint16_t ble_svc_add_service_id(const char *name, uint8_t num_chars, uint16_t uu
     return svc_add_uuid16(num_chars, uuid16);
 }
 
-/* Core characteristic add with an explicit 16-bit ID (shared base UUID). */
-static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
-                                uint8_t access, uint8_t value_len,
-                                void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
-                                void *ctx)
+uint16_t ble_svc_add_service_sig(const char *name, uint8_t num_chars, uint16_t uuid16)
+{
+    (void)name;  /* SIG-adopted 16-bit service UUID (e.g. 0x180F Battery) */
+    uint16_t svc_handle = 0;
+    uint8_t max_attrs = 1 + num_chars * 3;
+    aci_gatt_add_service(UUID_TYPE_16,
+                         (Service_UUID_t *)&uuid16,
+                         PRIMARY_SERVICE,
+                         max_attrs,
+                         &svc_handle);
+    return svc_handle;
+}
+
+/* Register a characteristic from a prepared UUID (type + pointer). Shared by
+ * the custom-128 and SIG-16 paths — props mapping + bookkeeping in one place. */
+static uint16_t char_register(uint16_t svc_handle, uint8_t uuid_type, const void *uuid_ptr,
+                              uint8_t access, uint8_t value_len,
+                              void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                              void *ctx)
 {
     if (char_count >= MAX_CHARS) return 0;
 
-    uint8_t uuid[16];
     uint16_t char_handle = 0;
-
-    make_uuid(uuid, (uint8_t)(uuid16 >> 8), (uint8_t)(uuid16 & 0xFFu));
 
     /* Map access flags */
     uint8_t props = 0;
@@ -155,8 +166,8 @@ static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
     uint8_t evt_mask = on_write ? GATT_NOTIFY_ATTRIBUTE_WRITE : 0;
 
     aci_gatt_add_char(svc_handle,
-                      UUID_TYPE_128,
-                      (Char_UUID_t *)uuid,
+                      uuid_type,
+                      (Char_UUID_t *)uuid_ptr,
                       value_len,
                       props,
                       ATTR_PERMISSION_NONE,
@@ -175,6 +186,26 @@ static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
     char_count++;
 
     return char_handle;
+}
+
+/* Characteristic with an explicit 16-bit ID in the shared custom base UUID. */
+static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
+                                uint8_t access, uint8_t value_len,
+                                void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                                void *ctx)
+{
+    uint8_t uuid[16];
+    make_uuid(uuid, (uint8_t)(uuid16 >> 8), (uint8_t)(uuid16 & 0xFFu));
+    return char_register(svc_handle, UUID_TYPE_128, uuid, access, value_len, on_write, ctx);
+}
+
+/* Characteristic with a 16-bit SIG-adopted UUID (e.g. 0x2A19 Battery Level). */
+static uint16_t char_add_sig(uint16_t svc_handle, uint16_t uuid16,
+                             uint8_t access, uint8_t value_len,
+                             void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                             void *ctx)
+{
+    return char_register(svc_handle, UUID_TYPE_16, &uuid16, access, value_len, on_write, ctx);
 }
 
 uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
@@ -198,6 +229,15 @@ uint16_t ble_svc_add_char_id(uint16_t svc_handle, const char *name, uint16_t uui
 {
     (void)name;
     return char_add_uuid16(svc_handle, uuid16, access, value_len, on_write, ctx);
+}
+
+uint16_t ble_svc_add_char_sig(uint16_t svc_handle, const char *name, uint16_t uuid16,
+                               uint8_t access, uint8_t value_len,
+                               void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                               void *ctx)
+{
+    (void)name;
+    return char_add_sig(svc_handle, uuid16, access, value_len, on_write, ctx);
 }
 
 int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)

@@ -158,6 +158,24 @@ core_ble_char_t core_ble_add_char_id(core_ble_svc_t svc,
                                      core_ble_write_cb on_write,
                                      void *ctx);
 
+/**
+ * Add a SIG-adopted service / characteristic by its 16-bit Bluetooth UUID
+ * (e.g. 0x180F Battery Service, 0x2A19 Battery Level, 0x180A Device
+ * Information). Use these for standardised profiles so generic clients and the
+ * host OS recognise them; use the _id variants for custom Ring-specific data.
+ *
+ * @param uuid16  The assigned 16-bit Bluetooth SIG UUID.
+ */
+core_ble_svc_t core_ble_add_service_sig(const char *name, uint16_t uuid16);
+
+core_ble_char_t core_ble_add_char_sig(core_ble_svc_t svc,
+                                      const char *name,
+                                      uint16_t uuid16,
+                                      uint8_t access,
+                                      uint8_t type,
+                                      core_ble_write_cb on_write,
+                                      void *ctx);
+
 /* ============================================================
  * Runtime — read/write/notify
  * ============================================================ */
