@@ -44,10 +44,26 @@ extern void UTIL_SEQ_Run(uint32_t mask);
 
 /* Connection state (ble_app_glue.c) */
 extern volatile uint8_t ble_connected;
+extern volatile uint16_t ble_conn_handle;
+extern volatile uint8_t ble_conn_param_req_pending;
 extern void (*ble_on_connect_cb)(void *ctx);
 extern void *ble_on_connect_ctx;
 extern void (*ble_on_disconnect_cb)(void *ctx);
 extern void *ble_on_disconnect_ctx;
+
+/* L2CAP connection-parameter update request (ble_wrap.c). Declared here to keep
+ * core_ble.c free of the stack's internal headers. */
+extern uint8_t aci_l2cap_connection_parameter_update_req(
+    uint16_t conn_handle, uint16_t interval_min, uint16_t interval_max,
+    uint16_t latency, uint16_t timeout);
+
+/* Preferred connection parameters, in stack units (interval = 1.25 ms,
+ * timeout = 10 ms), set via core_ble_set_conn_params(). */
+static uint8_t  _conn_params_set;
+static uint16_t _conn_interval_min;
+static uint16_t _conn_interval_max;
+static uint16_t _conn_latency;
+static uint16_t _conn_timeout;
 
 /* ---- State ---- */
 
@@ -125,6 +141,17 @@ void core_ble_process(void)
     if (ble_need_readvertise && _adv_name) {
         ble_need_readvertise = 0;
         ble_app_advertise(_adv_name);
+    }
+
+    /* Send the preferred connection parameters once connected, retrying until
+     * the stack accepts the request — the link is busy with pairing/discovery
+     * for the first moments after connecting, so an early attempt can bounce. */
+    if (_conn_params_set && ble_conn_param_req_pending && ble_connected) {
+        if (aci_l2cap_connection_parameter_update_req(
+                ble_conn_handle, _conn_interval_min, _conn_interval_max,
+                _conn_latency, _conn_timeout) == 0) {
+            ble_conn_param_req_pending = 0;
+        }
     }
 }
 
@@ -226,4 +253,30 @@ void core_ble_set_adv_interval(uint16_t min_ms, uint16_t max_ms)
     if (max_ms > 10240) max_ms = 10240;
     ble_app_adv_interval_min = (uint16_t)((uint32_t)min_ms * 8 / 5);
     ble_app_adv_interval_max = (uint16_t)((uint32_t)max_ms * 8 / 5);
+}
+
+void core_ble_set_conn_params(uint16_t min_ms, uint16_t max_ms,
+                              uint16_t latency, uint16_t timeout_ms)
+{
+    /* Convert to stack units: connection interval = 1.25 ms, timeout = 10 ms,
+     * clamped to the spec ranges (7.5-4000 ms interval, 100 ms-32 s timeout). */
+    if (max_ms < min_ms) max_ms = min_ms;
+    uint16_t imin = (uint16_t)((uint32_t)min_ms * 4 / 5);
+    uint16_t imax = (uint16_t)((uint32_t)max_ms * 4 / 5);
+    if (imin < 6)    imin = 6;
+    if (imax < imin) imax = imin;
+    if (imax > 3200) imax = 3200;
+    uint16_t tmo = (uint16_t)(timeout_ms / 10);
+    if (tmo < 10)   tmo = 10;
+    if (tmo > 3200) tmo = 3200;
+    if (latency > 499) latency = 499;
+
+    _conn_interval_min = imin;
+    _conn_interval_max = imax;
+    _conn_latency      = latency;
+    _conn_timeout      = tmo;
+    _conn_params_set   = 1;
+
+    /* If already connected, re-request on the next process tick. */
+    if (ble_connected) ble_conn_param_req_pending = 1;
 }
