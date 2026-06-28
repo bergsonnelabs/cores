@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@fd223eb",
   "tile": "Sense.I.9",
   "palette": {
     "label": "Sense.I.9",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_sense_i_9",
     "header": "tile_sense_i_9.h",
-    "version": "3.1.0"
+    "version": "3.1.1"
   },
   "handle": {
     "type": "tile_t",

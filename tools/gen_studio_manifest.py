@@ -1125,7 +1125,7 @@ def main():
             "definition": ROOT / "definitions/Sense-I-9-c.json",
             "prefix": "tile_sense_i_9",
             "init": "tile_sense_i_9_init",
-            "version": "3.1.0",
+            "version": "3.1.1",
         },
         {
             "path": ROOT / "drivers/tile_sense_t_c.h",

@@ -1,7 +1,7 @@
 /**
  * @file   tile_sense_i_9.h
  * @brief  9-DOF IMU driver for the Sense.I.9 tile (rev c).
- * @version 3.1.0
+ * @version 3.1.1
  *
  * Embeds the TDK InvenSense ICM-20948: 6-DOF IMU (accel + gyro)
  * with co-packaged AK09916 3-DOF magnetometer (accessed via the
@@ -103,7 +103,7 @@
 
 #define TILE_SENSE_I_9_VERSION_MAJOR  3
 #define TILE_SENSE_I_9_VERSION_MINOR  1
-#define TILE_SENSE_I_9_VERSION_PATCH  0
+#define TILE_SENSE_I_9_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 
@@ -164,10 +164,12 @@ TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 #define ICM20948_REG_FIFO_COUNTL    0x71
 #define ICM20948_REG_FIFO_R_W       0x72
 
-/* DMP RAM access (bank 0). DMP firmware lives in a 16-bank RAM
- * accessed indirectly: write the bank number to MEM_BANK_SEL,
- * the low-byte address to MEM_START_ADDR (auto-increments on burst
- * access), then read or write through MEM_R_W. */
+/* DMP RAM access (bank 0). The DMP firmware (~14 KB) lives in an
+ * indirectly-addressed RAM split into 256-byte banks: write the 8-bit
+ * bank number to MEM_BANK_SEL (the firmware spans banks 0..0x38, well
+ * past 16 — do NOT mask the bank to 4 bits), the low-byte address to
+ * MEM_START_ADDR (auto-increments on burst access), then read or write
+ * through MEM_R_W. */
 #define ICM20948_REG_MEM_START_ADDR 0x7C
 #define ICM20948_REG_MEM_R_W        0x7D
 #define ICM20948_REG_MEM_BANK_SEL   0x7E
