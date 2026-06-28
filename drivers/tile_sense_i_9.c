@@ -879,7 +879,7 @@ static void dmp_write_mems(tile_t *tile, uint16_t addr, uint16_t len,
     uint16_t written = 0;
 
     while (written < len) {
-        uint8_t bank      = (uint8_t)((addr >> 8) & 0x0F);
+        uint8_t bank      = (uint8_t)(addr >> 8);   /* 8-bit DMP-RAM bank (was &0x0F: wrapped >4KB) */
         uint8_t page_off  = (uint8_t)(addr & 0xFF);
         uint16_t remain   = len - written;
         uint16_t to_page  = DMP_PAGE_SIZE - page_off;
@@ -909,7 +909,7 @@ static void dmp_read_mems(tile_t *tile, uint16_t addr, uint16_t len,
     uint16_t read = 0;
 
     while (read < len) {
-        uint8_t bank      = (uint8_t)((addr >> 8) & 0x0F);
+        uint8_t bank      = (uint8_t)(addr >> 8);   /* 8-bit DMP-RAM bank (was &0x0F: wrapped >4KB) */
         uint8_t page_off  = (uint8_t)(addr & 0xFF);
         uint16_t remain   = len - read;
         uint16_t to_page  = DMP_PAGE_SIZE - page_off;
