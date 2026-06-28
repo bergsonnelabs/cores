@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@97d4ab0",
+  "source": "tiles@5655abb",
   "category": "ble",
   "label": "Core.BLE",
   "icon": "ᛒ",
@@ -355,7 +355,7 @@
       "name": "core_ble_enable_pairing",
       "signature": "core_ble_enable_pairing(void)",
       "returns": "void",
-      "brief": "Enable OS-level pairing (Just Works). When enabled, the phone/computer will show a \"Pair?\" dialog. Once paired, the device auto-reconnects and appears in OS Bluetooth settings. Call before core_ble_init(). Default: disabled.",
+      "brief": "Enable OS-level pairing + bonding (Just Works). When enabled, every characteristic is registered behind an encrypted link, so on first access the host runs its pairing flow (a \"Pair?\" prompt on most OSes; silent for Just Works on macOS). Keys are persisted in flash NVM, so the bond survives resets — the host doesn't re-pair on the next connection and the device stays listed in OS Bluetooth settings. (Reconnect itself is the central's choice; the peripheral simply re-advertises after a drop.) Call before core_ble_init(). Default: disabled (characteristics open, no pairing). Note that once enabled, *all* clients must pair to read/write.",
       "params": [],
       "studio_exposed": false,
       "layer": "core"

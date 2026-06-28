@@ -31,11 +31,13 @@ extern uint16_t ble_svc_add_char_sig(uint16_t svc_handle, const char *name, uint
                                      void *ctx);
 extern int      ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len);
 extern int      ble_svc_notify(uint16_t char_handle);
+extern void     ble_svc_set_secure(uint8_t on);
 
 /* Configurable parameters in ble_app.c */
 extern uint8_t  ble_app_tx_power_code;
 extern uint16_t ble_app_adv_interval_min;
 extern uint16_t ble_app_adv_interval_max;
+extern uint8_t  ble_app_pairing_enabled;
 
 /* Sequencer */
 extern void UTIL_SEQ_Run(uint32_t mask);
@@ -63,6 +65,9 @@ static const uint8_t _tx_power_codes[] = { 0x00, 0x19, 0x1F };
 static void _register_services(void)
 {
     ble_svc_init();
+    /* If the app requested pairing, register characteristics behind an
+     * encrypted link so the host actually bonds (see ble_svc_set_secure). */
+    ble_svc_set_secure(ble_app_pairing_enabled);
     if (_services_builder) _services_builder();
 }
 
@@ -208,8 +213,6 @@ void core_ble_set_tx_power(uint8_t level)
     if (level > 2) level = 2;
     ble_app_tx_power_code = _tx_power_codes[level];
 }
-
-extern uint8_t ble_app_pairing_enabled;
 
 void core_ble_enable_pairing(void)
 {
