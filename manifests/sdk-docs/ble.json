@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@ba1d19b",
+  "source": "tiles@97d4ab0",
   "category": "ble",
   "label": "Core.BLE",
   "icon": "ᛒ",
@@ -154,6 +154,71 @@
           "name": "id",
           "ctype": "uint16_t",
           "description": "16-bit identifier placed in the shared base UUID."
+        },
+        {
+          "name": "access",
+          "ctype": "uint8_t",
+          "description": "CORE_BLE_READ / _WRITE / _NOTIFY (or combinations)."
+        },
+        {
+          "name": "type",
+          "ctype": "uint8_t",
+          "description": "CORE_BLE_BOOL / _UINT8/16/32 / CORE_BLE_BYTES(n)."
+        },
+        {
+          "name": "on_write",
+          "ctype": "core_ble_write_cb",
+          "description": "Write callback (NULL if not writable)."
+        },
+        {
+          "name": "ctx",
+          "ctype": "void *",
+          "description": "User context for on_write; may be NULL."
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_add_service_sig",
+      "signature": "core_ble_add_service_sig(const char * name, uint16_t uuid16)",
+      "returns": "core_ble_svc_t",
+      "brief": "Add a SIG-adopted service by its 16-bit Bluetooth UUID (e.g. 0x180F Battery Service, 0x180A Device Information). Use adopted services for standardised profiles so generic clients and the host OS recognise them; use the _id variants for custom application-specific data.",
+      "params": [
+        {
+          "name": "name",
+          "ctype": "const char *",
+          "description": "Human-readable service name (for documentation/debugging)."
+        },
+        {
+          "name": "uuid16",
+          "ctype": "uint16_t",
+          "description": "The assigned 16-bit Bluetooth SIG service UUID."
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_add_char_sig",
+      "signature": "core_ble_add_char_sig(core_ble_svc_t svc, const char * name, uint16_t uuid16, uint8_t access, uint8_t type, core_ble_write_cb on_write, void * ctx)",
+      "returns": "core_ble_char_t",
+      "brief": "Add a SIG-adopted characteristic by its 16-bit Bluetooth UUID (e.g. 0x2A19 Battery Level, 0x2A29 Manufacturer Name) to a service.",
+      "params": [
+        {
+          "name": "svc",
+          "ctype": "core_ble_svc_t",
+          "description": "Service handle from core_ble_add_service_sig."
+        },
+        {
+          "name": "name",
+          "ctype": "const char *",
+          "description": "Human-readable name (for documentation/debugging)."
+        },
+        {
+          "name": "uuid16",
+          "ctype": "uint16_t",
+          "description": "The assigned 16-bit Bluetooth SIG characteristic UUID."
         },
         {
           "name": "access",

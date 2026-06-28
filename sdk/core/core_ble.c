@@ -24,6 +24,11 @@ extern uint16_t ble_svc_add_char_id(uint16_t svc_handle, const char *name, uint1
                                     uint8_t access, uint8_t value_len,
                                     void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                                     void *ctx);
+extern uint16_t ble_svc_add_service_sig(const char *name, uint8_t num_chars, uint16_t uuid16);
+extern uint16_t ble_svc_add_char_sig(uint16_t svc_handle, const char *name, uint16_t uuid16,
+                                     uint8_t access, uint8_t value_len,
+                                     void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
+                                     void *ctx);
 extern int      ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len);
 extern int      ble_svc_notify(uint16_t char_handle);
 
@@ -154,6 +159,22 @@ core_ble_char_t core_ble_add_char_id(core_ble_svc_t svc,
                                      void *ctx)
 {
     return ble_svc_add_char_id(svc, name, uuid16, access, type, on_write, ctx);
+}
+
+core_ble_svc_t core_ble_add_service_sig(const char *name, uint16_t uuid16)
+{
+    return ble_svc_add_service_sig(name, 8, uuid16);
+}
+
+core_ble_char_t core_ble_add_char_sig(core_ble_svc_t svc,
+                                      const char *name,
+                                      uint16_t uuid16,
+                                      uint8_t access,
+                                      uint8_t type,
+                                      core_ble_write_cb on_write,
+                                      void *ctx)
+{
+    return ble_svc_add_char_sig(svc, name, uuid16, access, type, on_write, ctx);
 }
 
 /* ============================================================

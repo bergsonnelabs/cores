@@ -158,6 +158,37 @@ core_ble_char_t core_ble_add_char_id(core_ble_svc_t svc,
                                      core_ble_write_cb on_write,
                                      void *ctx);
 
+/**
+ * Add a SIG-adopted service by its 16-bit Bluetooth UUID (e.g. 0x180F Battery
+ * Service, 0x180A Device Information). Use adopted services for standardised
+ * profiles so generic clients and the host OS recognise them; use the _id
+ * variants for custom application-specific data.
+ *
+ * @param name    Human-readable service name (for documentation/debugging).
+ * @param uuid16  The assigned 16-bit Bluetooth SIG service UUID.
+ */
+core_ble_svc_t core_ble_add_service_sig(const char *name, uint16_t uuid16);
+
+/**
+ * Add a SIG-adopted characteristic by its 16-bit Bluetooth UUID (e.g. 0x2A19
+ * Battery Level, 0x2A29 Manufacturer Name) to a service.
+ *
+ * @param svc       Service handle from core_ble_add_service_sig.
+ * @param name      Human-readable name (for documentation/debugging).
+ * @param uuid16    The assigned 16-bit Bluetooth SIG characteristic UUID.
+ * @param access    CORE_BLE_READ / _WRITE / _NOTIFY (or combinations).
+ * @param type      CORE_BLE_BOOL / _UINT8/16/32 / CORE_BLE_BYTES(n).
+ * @param on_write  Write callback (NULL if not writable).
+ * @param ctx       User context for on_write; may be NULL.
+ */
+core_ble_char_t core_ble_add_char_sig(core_ble_svc_t svc,
+                                      const char *name,
+                                      uint16_t uuid16,
+                                      uint8_t access,
+                                      uint8_t type,
+                                      core_ble_write_cb on_write,
+                                      void *ctx);
+
 /* ============================================================
  * Runtime — read/write/notify
  * ============================================================ */
