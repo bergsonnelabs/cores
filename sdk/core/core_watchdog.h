@@ -63,7 +63,10 @@ static inline void core_watchdog_start(uint32_t timeout_ms)
     };
 
     for (int i = 0; i < 7; i++) {
-        uint32_t reload = (timeout_ms * 32UL) / (psc_vals[i] * 1000UL);
+        /* tick_ms = psc/32 (LSI 32 kHz) → reload = timeout_ms / tick_ms
+         *         = timeout_ms * 32 / psc. (The earlier form divided by an
+         *         extra 1000, making every timeout ~1000x too short.) */
+        uint32_t reload = (timeout_ms * 32UL) / psc_vals[i];
         if (reload == 0) reload = 1;
         if (reload <= 4096) {
             ll_iwdg_init(psc_regs[i], reload - 1);
