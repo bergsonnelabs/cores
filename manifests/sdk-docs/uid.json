@@ -1,0 +1,51 @@
+{
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@b90fe22",
+  "category": "uid",
+  "label": "Core.UID",
+  "icon": "🔖",
+  "header": "core_uid.h",
+  "headers": {
+    "core": "core_uid.h"
+  },
+  "functions": [
+    {
+      "name": "core_uid_read",
+      "signature": "core_uid_read(void)",
+      "returns": "void",
+      "brief": "Read the 96-bit unique device ID as three 32-bit words.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_uid_hash",
+      "signature": "core_uid_hash(void)",
+      "returns": "uint32_t",
+      "brief": "Fold the full 96-bit ID into a single stable 32-bit value (the three words XORed together). Better mixed than any single word — use it to derive short tokens (e.g. a 4-hex-digit name suffix) where the raw low bytes might be correlated across a manufacturing batch.",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_uid_hex",
+      "signature": "core_uid_hex(char * buf, uint16_t buflen)",
+      "returns": "int",
+      "brief": "Format the full 96-bit ID as an uppercase hex string (24 hex characters, word 0 first, most-significant nibble first within each word) plus a NUL terminator. The canonical form for a device serial number.",
+      "params": [
+        {
+          "name": "buf",
+          "ctype": "char *",
+          "description": "Destination buffer."
+        },
+        {
+          "name": "buflen",
+          "ctype": "uint16_t",
+          "description": "Size of buf; must be at least 25."
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    }
+  ]
+}

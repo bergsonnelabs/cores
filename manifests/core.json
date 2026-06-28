@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@1f69849",
+  "source": "tiles@b90fe22",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -69,6 +69,10 @@
     "timing": {
       "label": "Core.Timing",
       "icon": "⏱"
+    },
+    "uid": {
+      "label": "Core.UID",
+      "icon": "🔖"
     },
     "usb": {
       "label": "Core.USB",
