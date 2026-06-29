@@ -119,6 +119,20 @@ SECTIONS
         __bss_end__ = _ebss;
     } >SRAM
 
+    /* Persistent RAM — NOT zero-filled by startup (it lives past _ebss), so its
+     * contents survive a warm system reset (lost only on power loss). Use for crash
+     * logs / breadcrumbs that must outlive the reset. Place vars with
+     * __attribute__((section(".noinit"))). */
+    .noinit (NOLOAD) :
+    {
+        . = ALIGN(4);
+        _snoinit = .;
+        *(.noinit)
+        *(.noinit*)
+        . = ALIGN(4);
+        _enoinit = .;
+    } >SRAM
+
     /* Heap grows up, stack grows down — check they don't collide */
     ._user_heap_stack :
     {
