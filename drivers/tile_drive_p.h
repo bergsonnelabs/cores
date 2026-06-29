@@ -29,6 +29,39 @@
  *   }
  * @endcode
  *
+ * Operating notes / gotchas (learned bringing up Drive.P haptics on Ring):
+ *
+ *   - UPI IS MANDATORY ON BATTERY / NON-SINKING SUPPLIES. The BOS1921 recovers
+ *     piezo-discharge energy back toward VDD (bidirectional power). If the PDN
+ *     can't sink that current, recovered charge piles onto CVDD and VDDP climbs
+ *     (must stay < 5.5 V), skewing the Rsense current sense → MXPWR/IDAC faults.
+ *     Call tile_drive_p_set_upi(tile, 1) right after init on such boards
+ *     (datasheet §6.2.13). Leave UPI = 0 only when the supply can sink current.
+ *
+ *   - DISCHARGE TO 0 V BEFORE PLAYING into possible residual charge. Output-bridge
+ *     protection (§6.2.18) blocks a polarity change when > 4.4 V of the OPPOSITE
+ *     sign sits on the piezo, and can play the waveform in the wrong polarity —
+ *     with or WITHOUT setting an IDAC error (so it just feels like "nothing
+ *     happened"). Residual builds from a prior effect AND from sensing (the
+ *     ceramic self-generates voltage when deformed). Prepend a few 0 V samples
+ *     (or a small ramp to 0) to each waveform.
+ *
+ *   - IDAC FAULT DOES NOT SELF-CLEAR. Current-detection / over-current (MXPWR→IDAC)
+ *     latches the chip in ERROR until a software reset. Call
+ *     tile_drive_p_check_and_recover(tile, mode) after effects (or on any ERROR)
+ *     to reset + restore; otherwise the driver stays dead until a power cycle.
+ *
+ *   - THE CURRENT LIMIT IS COMPONENT-DEPENDENT. The parcap / SUP_RISE values set
+ *     in init are tuned for a 260 nF piezo, L1 = 10 µH, Rsense = 0.2 Ω. A board
+ *     with different components hits MXPWR/IDAC far below the rated ±95 V (Ring
+ *     faulted ~33 V). If you see early MXPWR/IDAC at low voltage, suspect sizing:
+ *     retune parcap / SUP_RISE and the Rsense current limit (§7.5.3) to the actual
+ *     BOM, or cap the drive amplitude.
+ *
+ *   - play_samples() RETURNS WHEN THE FIFO IS FILLED, NOT DRAINED — the waveform
+ *     keeps playing after it returns. Account for that in teardown / discharge
+ *     timing (don't switch to SENSE or read status assuming playback is done).
+ *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
  * @studio unsupported severity=advanced category="Multi-device SYNC pin" section=advanced
