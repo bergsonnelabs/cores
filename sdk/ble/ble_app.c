@@ -42,10 +42,11 @@ extern void ll_sys_ble_cntrl_init(void *hostCallback);
 #define CFG_BLE_NUM_LINK             2
 #define CFG_BLE_NUM_GATT_SERVICES    12
 /* Each service reserves up to 25 attribute records (the 8-char-per-service cap
- * in ble_svc). Sized for ~6 services + the built-in GAP/GATT — bump alongside
+ * in ble_svc). Sized for ~8 user services + the built-in GAP/GATT — bump alongside
  * NUM_GATT_SERVICES if a multi-service app overflows (services silently fail to
- * register past the limit). */
-#define CFG_BLE_NUM_GATT_ATTRIBUTES  160
+ * register past the limit). 224 = 8*25 + headroom; the Ring uses 7 (DIS, Battery,
+ * System, Motion, Haptics, Audio, Info). */
+#define CFG_BLE_NUM_GATT_ATTRIBUTES  224
 #define CFG_BLE_ATT_VALUE_ARRAY_SIZE 1344
 #define CFG_BLE_ATT_MTU_MAX          251
 #define CFG_BLE_MBLOCK_COUNT_MARGIN  0x15
