@@ -221,4 +221,43 @@ static inline int ll_flash_program_dword(uint32_t addr, uint32_t word0, uint32_t
     return 0;
 }
 
+#if defined(STM32WBA55xx) || defined(STM32H523xx)
+/**
+ * Program a quad-word (128-bit / 16 bytes) at a 16-byte aligned address.
+ *
+ * WBA55 and H5 program in 128-bit lines: the flash controller only completes
+ * (and clears BSY) once all four 32-bit words have been written, so all four
+ * must be issued before the busy wait — a partial write never completes. This
+ * is also the native granularity of the OTP region, so it serves both main
+ * flash and OTP (same PG bit + NSKEYR unlock; only the target address differs).
+ *
+ * Returns 0 on success, -1 on error.
+ */
+static inline int ll_flash_program_qword(uint32_t addr, const uint32_t w[4])
+{
+    ll_flash_wait_bsy();
+    ll_flash_clear_errors();
+
+    /* Enable programming */
+    SET_BITS(FLASH_CR, FLASH_CR_PG);
+
+    /* Write the full 128-bit line, low word first; the program completes on
+     * the fourth write. */
+    *(volatile uint32_t *)(addr + 0)  = w[0];
+    *(volatile uint32_t *)(addr + 4)  = w[1];
+    *(volatile uint32_t *)(addr + 8)  = w[2];
+    *(volatile uint32_t *)(addr + 12) = w[3];
+
+    ll_flash_wait_bsy();
+
+    /* Clear PG */
+    CLR_BITS(FLASH_CR, FLASH_CR_PG);
+
+    if (FLASH_SR & FLASH_SR_ERR_MASK)
+        return -1;
+
+    return 0;
+}
+#endif
+
 #endif /* LL_FLASH_H */
