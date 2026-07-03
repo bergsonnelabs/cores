@@ -1,0 +1,99 @@
+{
+  "schema": "studio-sdk-docs/v2",
+  "source": "tiles@daabfda",
+  "category": "otp",
+  "label": "Core.OTP",
+  "icon": "▦",
+  "header": "core_otp.h",
+  "headers": {
+    "core": "core_otp.h"
+  },
+  "functions": [
+    {
+      "name": "core_otp_size",
+      "signature": "core_otp_size(void)",
+      "returns": "uint32_t",
+      "brief": "Total OTP size in bytes for this Core (0 where unavailable).",
+      "params": [],
+      "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "core_otp_slot_count",
+      "signature": "core_otp_slot_count(void)",
+      "returns": "uint32_t",
+      "brief": "Number of write-once quad-word slots (CORE_OTP_SIZE / 16).",
+      "params": [],
+      "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "core_otp_slot_addr",
+      "signature": "core_otp_slot_addr(uint32_t slot)",
+      "returns": "uint32_t",
+      "brief": "Absolute address of a slot (no bounds check).",
+      "params": [
+        {
+          "name": "slot",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_otp_read",
+      "signature": "core_otp_read(uint32_t offset, void * buf, uint32_t len)",
+      "returns": "int",
+      "brief": "Read bytes from OTP into `buf`. Memory-mapped load; no unlock needed. Returns 0 on success, -1 if the range is out of bounds or OTP is unavailable on this Core.",
+      "params": [
+        {
+          "name": "offset",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "buf",
+          "ctype": "void *"
+        },
+        {
+          "name": "len",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_otp_slot_is_blank",
+      "signature": "core_otp_slot_is_blank(uint32_t slot)",
+      "returns": "int",
+      "brief": "Return 1 if `slot` is entirely erased (all 0xFF), 0 if any bit is programmed, or -1 if the slot index is out of range / OTP unavailable. A blank slot is programmable; a non-blank slot is not (write-once).",
+      "params": [
+        {
+          "name": "slot",
+          "ctype": "uint32_t"
+        }
+      ],
+      "studio_exposed": true,
+      "layer": "core"
+    },
+    {
+      "name": "core_otp_program_slot",
+      "signature": "core_otp_program_slot(uint32_t slot, const void * rec)",
+      "returns": "int",
+      "brief": "Program one 16-byte quad-word slot (write-once) and verify the read-back. IRREVERSIBLE. Refuses a slot that is not blank (returns -2) so a second write can't corrupt an existing record. On WBA55 this unlocks flash, issues a single 128-bit quad-word program, re-locks, and confirms the stored bytes match `rec`. There is no retry and no undo — callers should treat a failure as \"advance to the next slot\", not \"try again here\". slot: 0 .. CORE_OTP_SLOT_COUNT-1 rec:  pointer to exactly CORE_OTP_SLOT_SIZE (16) bytes. Returns 0 on success, -1 on range/program/verify error, -2 if the slot is not blank, -3 if OTP programming is unavailable on this Core. Deliberately NOT `@studio expose`d: a destructive, irreversible burn does not belong in the DSL palette. It is escape-to-C only (see @studio unsupported below).",
+      "params": [
+        {
+          "name": "slot",
+          "ctype": "uint32_t"
+        },
+        {
+          "name": "rec",
+          "ctype": "const void *"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    }
+  ]
+}

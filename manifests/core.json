@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@b90fe22",
+  "source": "tiles@daabfda",
   "categories": {
     "adc": {
       "label": "Core.ADC",
@@ -29,6 +29,10 @@
     "nvm": {
       "label": "Core.NVM",
       "icon": "▤"
+    },
+    "otp": {
+      "label": "Core.OTP",
+      "icon": "▦"
     },
     "pad": {
       "label": "Core.Pad",
@@ -547,6 +551,50 @@
             255
           ],
           "description": "Byte to store."
+        }
+      ],
+      "returns": "int",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "otp",
+        "size"
+      ],
+      "symbol": "core_otp_size",
+      "header": "core_otp.h",
+      "category": "otp",
+      "description": "Total OTP size in bytes for this Core (0 where unavailable).",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "otp",
+        "slot_count"
+      ],
+      "symbol": "core_otp_slot_count",
+      "header": "core_otp.h",
+      "category": "otp",
+      "description": "Number of write-once quad-word slots (CORE_OTP_SIZE / 16).",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int"
+    },
+    {
+      "qname": [
+        "otp",
+        "slot_is_blank"
+      ],
+      "symbol": "core_otp_slot_is_blank",
+      "header": "core_otp.h",
+      "category": "otp",
+      "description": "Return 1 if `slot` is entirely erased (all 0xFF), 0 if any bit is programmed, or -1 if the slot index is out of range / OTP unavailable. A blank slot is programmable; a non-blank slot is not (write-once).",
+      "params": [
+        {
+          "name": "slot",
+          "type": "int"
         }
       ],
       "returns": "int",
