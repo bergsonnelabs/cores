@@ -68,8 +68,8 @@ GDB     = $(PREFIX)gdb
 # Coregen
 COREGEN      = python3 "$(SDK_DIR)tools/coregen/coregen.py"
 TILE_JSON    = $(SDK_DIR)definitions/$(TILE).json
-CONFIG_JSON = $(PROJECT_DIR)/config.json
-GEN_DIR      = $(PROJECT_DIR)/coregen
+CONFIG_JSON ?= $(PROJECT_DIR)/config.json
+GEN_DIR      ?= $(PROJECT_DIR)/coregen
 
 # Space/backslash-safe existence test for config.json. $(wildcard) treats its
 # argument as a space-separated pattern list and mishandles backslashes, so a
@@ -169,7 +169,7 @@ endif
 
 # ---- Paths ----
 
-BUILD_DIR = $(PROJECT_DIR)/build
+BUILD_DIR ?= $(PROJECT_DIR)/build
 TARGET    = $(BUILD_DIR)/$(PROJECT)
 
 # STM32CubeProgrammer CLI — used for tiles where OpenOCD lacks support (Core.ST.W5 / WBA55).
@@ -214,6 +214,7 @@ CFLAGS += -I$(SDK_DIR)sdk/hal
 CFLAGS += -I$(SDK_DIR)sdk/tal
 CFLAGS += -I$(SDK_DIR)sdk/core
 CFLAGS += -Og -g3
+CFLAGS += $(EXTRA_CFLAGS)   # per-project variant flags (e.g. -DRING_VARIANT_V1)
 
 ifdef APP_OFFSET
   CFLAGS += -DAPP_OFFSET=$(APP_OFFSET)
