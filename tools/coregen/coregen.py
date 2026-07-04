@@ -438,6 +438,22 @@ def validate_project_config(config, tile, pad_map, mcu=None):
             f"Interface '{iface}' configured but no pins assigned to it"
         )
 
+    # Validate tile readdress_gpio straps reference a declared GPIO.OUT pad.
+    # Without this, a typo'd or undeclared strap pad has no build-time signal —
+    # the readdress dance just silently fails to mux the pin at runtime.
+    for tile_entry in config.get("tiles", []):
+        rg = tile_entry.get("readdress_gpio")
+        if rg is None:
+            continue
+        rg_key = str(rg)
+        if pins.get(rg_key) != "GPIO.OUT":
+            tname = tile_entry.get("tile", tile_entry.get("type", "?"))
+            found = pins.get(rg_key, "not declared")
+            errors.append(
+                f"Tile '{tname}': readdress_gpio pad {rg} must be declared as "
+                f"GPIO.OUT in 'pads' (pad {rg} is: {found})"
+            )
+
     # Validate clock performance level
     _sources, _configurations, _knob_default = resolve_clock_block(tile)
     clock = config.get("clock", _knob_default)
@@ -1286,6 +1302,13 @@ def build_tiles_config(config, i2c_buses, spi_buses=None, pad_map=None):
             "source": driver["source"],
             "prefix": driver["prefix"],
             "pal_handle": seen_buses[bus_name]["pal_handle"],
+            # For the iterable tile table: the bus HANDLE (so the consumer can
+            # core_tiles_pal(bus) at runtime and group by pointer), plus optional
+            # per-tile aux the table carries verbatim (e.g. Drive.P readdress strap).
+            "bus_handle": (seen_buses[bus_name].get("i2c_handle")
+                           or seen_buses[bus_name].get("spi_handle")),
+            "bus_is_spi": 1 if seen_buses[bus_name]["bus_type"] == "spi" else 0,
+            "readdress_gpio": tile_entry.get("readdress_gpio", -1),
         })
 
     tile_pal_buses = list(seen_buses.values())

@@ -51,12 +51,20 @@ typedef struct {
 
 static drive_p_state_t drv_state[ID_TABLE_LEN];
 
+/* Shadow state is keyed by the tile INSTANCE (pointer), NOT its I2C address.
+ * Two Drive.P on separate buses can legitimately share address 0x44 (the v1
+ * Ring's split-bus layout does exactly this), so an address key would alias
+ * their shadow state onto one slot. Each tile claims a free slot on its first
+ * lookup (during init) and keeps it. */
+static tile_t *state_owner[ID_TABLE_LEN];
+
 static drive_p_state_t *state_for(tile_t *tile)
 {
-    for (uint8_t i = 0; i < ID_TABLE_LEN; i++) {
-        if (id_table[i] == tile->id) return &drv_state[i];
-    }
-    return &drv_state[0];
+    for (uint8_t i = 0; i < ID_TABLE_LEN; i++)
+        if (state_owner[i] == tile) return &drv_state[i];
+    for (uint8_t i = 0; i < ID_TABLE_LEN; i++)
+        if (state_owner[i] == NULL) { state_owner[i] = tile; return &drv_state[i]; }
+    return &drv_state[0];   /* more Drive.P than slots — bump ID_TABLE_LEN */
 }
 
 /* -------------------------------------------------------------- */
@@ -110,8 +118,8 @@ uint8_t tile_drive_p_find(tiles_pal_t* hal, uint8_t instance)
     return (hal->i2c_is_ready(hal->handle, id) == 0) ? 1 : 0;
 }
 
-void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
-                       const drive_p_cfg_t *cfg)
+void tile_drive_p_init_at(tiles_pal_t* hal, uint8_t addr, tile_t* tile,
+                          const drive_p_cfg_t *cfg)
 {
     (void)cfg;  /* reserved */
     tile->hal      = NULL;
@@ -121,18 +129,17 @@ void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     tile->callback = NULL;
     tile->cb_ctx   = NULL;
 
-    uint8_t id = resolve_id(instance);
-    if (id == 0x00) {
-        TILE_ON_ERROR(tile, "init: invalid instance");
+    if (addr == 0x00) {
+        TILE_ON_ERROR(tile, "init: invalid address");
         tile->state = TILE_STATE_ERROR;
         return;
     }
 
     tile->hal = hal;
-    tile->id  = id;
+    tile->id  = addr;
 
     /* Verify device is on bus */
-    if (hal->i2c_is_ready(hal->handle, id) != 0) {
+    if (hal->i2c_is_ready(hal->handle, addr) != 0) {
         TILE_ON_ERROR(tile, "init: device not found on bus");
         tile->state = TILE_STATE_ERROR;
         return;
@@ -166,14 +173,22 @@ void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
 
     /* Configure for 260nF piezo, L1=10µH, Rsense=0.2Ω, VDD=3.7V LiPo.
      * The tuned supply-rise timing is 0x09E2; the I2C_ADDR nibble
-     * (bits [15:12]) is derived from this instance's address so a
-     * re-addressed chip keeps its address instead of being staged back
-     * to 0x44. For instance 0 this evaluates to the original 0x49E2. */
+     * (bits [15:12]) is derived from this chip's address so a re-addressed
+     * chip keeps its address instead of being staged back to 0x44. For an
+     * address of 0x44 this evaluates to the original 0x49E2. */
     bos_write(tile, BOS1921_REG_PARCAP,   st->parcap);
     bos_write(tile, BOS1921_REG_SUP_RISE,
-              (uint16_t)(((uint16_t)(id & 0x0Fu) << BOS_SUP_RISE_I2C_ADDR_POS) | 0x09E2u));
+              (uint16_t)(((uint16_t)(addr & 0x0Fu) << BOS_SUP_RISE_I2C_ADDR_POS) | 0x09E2u));
 
     tile->state = TILE_STATE_READY;
+}
+
+/* Instance-indexed init: resolve the instance to its mapped address
+ * (0→0x44, 1→0x45, 2→0x46) and defer to the address-explicit path. */
+void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
+                       const drive_p_cfg_t *cfg)
+{
+    tile_drive_p_init_at(hal, resolve_id(instance), tile, cfg);
 }
 
 uint8_t tile_drive_p_reassign_address(tiles_pal_t* hal, uint8_t cur_addr,
