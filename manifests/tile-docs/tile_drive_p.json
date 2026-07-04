@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@d294432",
+  "source": "tiles@9897b3e",
   "file": "tile_drive_p.h",
   "brief": "Piezoelectric haptic driver for the Drive.P tile (rev a).",
   "description": "Embeds the Boréas Technologies BOS1921, a piezoelectric driver\nwith integrated high-voltage boost (190 Vpp differential),\nwaveform synthesizer, 1024-sample FIFO, and piezo sensing.\n\nKey specifications:\n  - Output:      190 Vpp differential, up to 820 nF capacitive load\n  - Sensing:     7.6 mV resolution (fine), 54.5 mV (coarse)\n  - Play modes:  Direct, FIFO, RAM, RAM Synth\n  - Sample rate:  8 ksps – 1024 ksps (configurable)\n\nDatasheet: https://www.bergsonne.io/tiles/drive/p\nIC datasheet: https://mosaic-component-datasheets.s3.eu-north-1.amazonaws.com/5/Bor_as_Technologies-BOS1921.pdf\n\n@studio tile label=Drive.P icon=♪\n\n\nOperating notes / gotchas (learned bringing up Drive.P haptics on Ring):\n\n  - UPI IS MANDATORY ON BATTERY / NON-SINKING SUPPLIES. The BOS1921 recovers\n    piezo-discharge energy back toward VDD (bidirectional power). If the PDN\n    can't sink that current, recovered charge piles onto CVDD and VDDP climbs\n    (must stay < 5.5 V), skewing the Rsense current sense → MXPWR/IDAC faults.\n    Call tile_drive_p_set_upi(tile, 1) right after init on such boards\n    (datasheet §6.2.13). Leave UPI = 0 only when the supply can sink current.\n\n  - DISCHARGE TO 0 V BEFORE PLAYING into possible residual charge. Output-bridge\n    protection (§6.2.18) blocks a polarity change when > 4.4 V of the OPPOSITE\n    sign sits on the piezo, and can play the waveform in the wrong polarity —\n    with or WITHOUT setting an IDAC error (so it just feels like \"nothing\n    happened\"). Residual builds from a prior effect AND from sensing (the\n    ceramic self-generates voltage when deformed). Prepend a few 0 V samples\n    (or a small ramp to 0) to each waveform.\n\n  - IDAC FAULT DOES NOT SELF-CLEAR. Current-detection / over-current (MXPWR→IDAC)\n    latches the chip in ERROR until a software reset. Call\n    tile_drive_p_check_and_recover(tile, mode) after effects (or on any ERROR)\n    to reset + restore; otherwise the driver stays dead until a power cycle.\n\n  - THE CURRENT LIMIT IS COMPONENT-DEPENDENT. The parcap / SUP_RISE values set\n    in init are tuned for a 260 nF piezo, L1 = 10 µH, Rsense = 0.2 Ω. A board\n    with different components hits MXPWR/IDAC far below the rated ±95 V (Ring\n    faulted ~33 V). If you see early MXPWR/IDAC at low voltage, suspect sizing:\n    retune parcap / SUP_RISE and the Rsense current limit (§7.5.3) to the actual\n    BOM, or cap the drive amplitude.\n\n  - play_samples() RETURNS WHEN THE FIFO IS FILLED, NOT DRAINED — the waveform\n    keeps playing after it returns. Account for that in teardown / discharge\n    timing (don't switch to SENSE or read status assuming playback is done).\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=advanced category=\"Multi-device SYNC pin\" section=advanced\n  SYNC pin coordinates phase between cascaded BOS1921s\n  (< 2 µs delay). The Drive.P tile has 10 pads (I2C/I3C, OUT±,\n  GPIO, V+, V_DRIVE, GND); the SYNC pin on the IC is not routed\n  to a pad, so multi-tile cascading is hardware-gated to a\n  future tile rev.\n\n@studio unsupported severity=advanced category=\"I3C alternate bus mode\"\n  Pads 4/5 are bus-shared between I²C (default) and I3C SDR\n  (≤12.5 Mbps with in-band interrupts). The cores tile-driver\n  framework only ships an I²C PAL; I3C support is an\n  ecosystem-wide gap, not BOS1921-specific.",
@@ -33,7 +33,7 @@
     },
     {
       "name": "TILE_DRIVE_P_VERSION_MINOR",
-      "value": "2",
+      "value": "3",
       "description": "",
       "section": ""
     },
@@ -246,6 +246,31 @@
       "brief": "Initialize the BOS1921 piezoelectric driver.",
       "description": "Wakes the device, performs a software reset, verifies the chip ID, and\nconfigures parasitic capacitance and supply parameters for a 260nF piezo\non a 3.7V LiPo supply. The SUP_RISE I2C_ADDR nibble is derived from the\ninstance's address, so a reassigned chip (0x45/0x46) keeps its address —\na soft reset doesn't revert it, so init may reset such a chip normally.\nPass cfg=NULL for defaults.",
       "name": "tile_drive_p_init"
+    },
+    {
+      "signature": "void tile_drive_p_init_at(tiles_pal_t* hal, uint8_t addr, tile_t* tile, const drive_p_cfg_t *cfg)",
+      "params": [
+        {
+          "name": "hal",
+          "description": "Platform HAL handle (the bus this chip lives on)"
+        },
+        {
+          "name": "addr",
+          "description": "Operating I2C address (e.g. 0x44 / 0x45 / 0x46)"
+        },
+        {
+          "name": "tile",
+          "description": "Pointer to tile handle (populated by this function)"
+        },
+        {
+          "name": "cfg",
+          "description": "Optional config, or NULL for defaults"
+        }
+      ],
+      "notes": [],
+      "brief": "Initialize a BOS1921 at an explicit I2C address.",
+      "description": "The address-explicit sibling of tile_drive_p_init(): identical bring-up, but\nyou name the operating address directly instead of an instance index. This\ndecouples a chip from the fixed instance→address table, which a topology-\ndriven bringup needs — e.g. the v1 Ring runs two Drive.P on separate buses,\nBOTH at 0x44 (no readdress), which the instance map can't express. Shadow\nstate is keyed per-tile, so two chips at the same address on different buses\ndon't collide. Pass cfg=NULL for defaults.",
+      "name": "tile_drive_p_init_at"
     },
     {
       "signature": "uint8_t tile_drive_p_reassign_address(tiles_pal_t* hal, uint8_t cur_addr, uint8_t new_addr)",
@@ -740,7 +765,7 @@
     }
   ],
   "source_file": "tile_drive_p.h",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "tile_family": "Drive",
   "tile_name": "P",
   "display_name": "Drive.P"

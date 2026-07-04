@@ -89,7 +89,7 @@
 /* -------------------------------------------------------------- */
 
 #define TILE_DRIVE_P_VERSION_MAJOR  3
-#define TILE_DRIVE_P_VERSION_MINOR  2
+#define TILE_DRIVE_P_VERSION_MINOR  3
 #define TILE_DRIVE_P_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
@@ -253,6 +253,25 @@ typedef struct {
  */
 void tile_drive_p_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
                        const drive_p_cfg_t *cfg);
+
+/**
+ * @brief  Initialize a BOS1921 at an explicit I2C address.
+ *
+ * The address-explicit sibling of tile_drive_p_init(): identical bring-up, but
+ * you name the operating address directly instead of an instance index. This
+ * decouples a chip from the fixed instance→address table, which a topology-
+ * driven bringup needs — e.g. the v1 Ring runs two Drive.P on separate buses,
+ * BOTH at 0x44 (no readdress), which the instance map can't express. Shadow
+ * state is keyed per-tile, so two chips at the same address on different buses
+ * don't collide. Pass cfg=NULL for defaults.
+ *
+ * @param  hal   Platform HAL handle (the bus this chip lives on)
+ * @param  addr  Operating I2C address (e.g. 0x44 / 0x45 / 0x46)
+ * @param  tile  Pointer to tile handle (populated by this function)
+ * @param  cfg   Optional config, or NULL for defaults
+ */
+void tile_drive_p_init_at(tiles_pal_t* hal, uint8_t addr, tile_t* tile,
+                          const drive_p_cfg_t *cfg);
 
 /**
  * @brief  Reassign one BOS1921's I2C address (GPIO-gated, datasheet §6.3.3).
