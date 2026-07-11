@@ -1,10 +1,10 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@e4836ad",
+  "source": "tiles@d2361b9",
   "tile": "Power.L.1N",
   "palette": {
     "label": "Power.L.1N",
-    "icon": "battery"
+    "icon": "🔋"
   },
   "driver": {
     "prefix": "tile_power_l_1n",
