@@ -1156,6 +1156,13 @@ def main():
             "version": "3.2.1",
         },
         {
+            "path": ROOT / "drivers/tile_power_l_1n.h",
+            "definition": ROOT / "definitions/Power-L-1N-a.json",
+            "prefix": "tile_power_l_1n",
+            "init": "tile_power_l_1n_init",
+            "version": "1.0.0",
+        },
+        {
             "path": ROOT / "drivers/tile_sense_bp.h",
             "definition": ROOT / "definitions/Sense-BP-a.json",
             "prefix": "tile_sense_bp",
