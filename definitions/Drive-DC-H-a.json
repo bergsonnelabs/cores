@@ -458,8 +458,17 @@
         ],
         "addresses": [
           {
-            "address": "variant",
+            "address": "0x34",
             "is_default": true
+          },
+          {
+            "address": "0x30"
+          },
+          {
+            "address": "0x31"
+          },
+          {
+            "address": "0x33"
           }
         ]
       },
@@ -479,9 +488,9 @@
       ]
     }
   ],
-  "updated_at": "2026-06-21T18:27:33.093Z",
+  "updated_at": "2026-07-11T15:29:56.576Z",
   "description": "The Drive.DC.I is a single-channel H-bridge motor driver built around the DRV8214. It can deliver up to 4 A peak (2 A RMS continuous) and operates from a 1.65 V to 11 V supply, making it suitable for a wide range of small brushed DC motors in robotics, haptics, and actuation applications.\n\nThe DRV8214 features sensorless ripple counting, which tracks motor commutation ripples in the current waveform to determine relative position and speed — eliminating the need for external encoders. Integrated speed regulation maintains constant motor speed across varying supply voltages, while voltage regulation allows driving the motor at a programmable lower terminal voltage to save energy.\n\nMotor speed can be controlled via either PWM at frequencies up to 200 kHz or via the I2C interface, which is also used for register-based configuration and diagnostics, including soft-start/stop, stall detection, and various limits.",
-  "json_version": "0.14",
+  "json_version": "0.16",
   "application_notes": [
     {
       "sort": 0,
