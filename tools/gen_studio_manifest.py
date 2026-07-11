@@ -1163,6 +1163,13 @@ def main():
             "version": "1.0.0",
         },
         {
+            "path": ROOT / "drivers/tile_sense_acp.h",
+            "definition": ROOT / "definitions/Sense-ACP-b.json",
+            "prefix": "tile_sense_acp",
+            "init": "tile_sense_acp_init",
+            "version": "1.0.0",
+        },
+        {
             "path": ROOT / "drivers/tile_sense_bp.h",
             "definition": ROOT / "definitions/Sense-BP-a.json",
             "prefix": "tile_sense_bp",
