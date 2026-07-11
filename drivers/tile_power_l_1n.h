@@ -31,7 +31,7 @@
  *
  * Datasheet: Nordic nPM1300 Product Specification v1.1 (4490_483).
  *
- * @studio tile label=Power.L.1N icon=battery
+ * @studio tile label=Power.L.1N icon=🔋
  * @studio event name=charge_complete mask=NPM1300_CHG_COMPLETED
  * @studio event name=charging mask=NPM1300_CHG_CONSTANTCURRENT
  *
