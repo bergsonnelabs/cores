@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@b6a9ec0",
   "tile": "Drive.DC.H",
   "palette": {
     "label": "Drive.DC.H",
@@ -481,8 +481,17 @@
   "bus_addresses": {
     "I2C": [
       {
-        "address": "variant",
+        "address": "0x34",
         "is_default": true
+      },
+      {
+        "address": "0x30"
+      },
+      {
+        "address": "0x31"
+      },
+      {
+        "address": "0x33"
       }
     ]
   }
