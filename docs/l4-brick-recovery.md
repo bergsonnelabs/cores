@@ -146,8 +146,11 @@ Built on branch `studio/l4-brick-recovery` (SDK + codegen only):
 (stash-preserving `caused_reset` + `debug_freeze`), `core_init.c.j2` (recovery
 hook + SOS + watchdog auto-start), `coregen.py` (`iwdg` config, default off).
 
-- **Verified (compile):** all edited headers + the rendered `core_init.c`
-  compile clean for L4 (`-Wall -Wextra`); off/on codegen paths both correct.
+- **Verified (compile + on hardware):** compiles clean for L4 (`-Wall -Wextra`),
+  full link OK. **Bench-validated end-to-end on the CoreProbe (Core.ST.L4.1(b))**
+  via `tests/hw-watchdog-recovery/`: healthy feed → hang → strike cascade
+  (1→2→3, counter survives resets) → one rapid SOS on PA8 → ROM DFU (`0483:df11`)
+  → reflash. `caused_reset()` reports WATCHDOG correctly after the early RMVF clear.
 - **Pre-existing blocker (not this change):** `sdk/hal/hal_sai.c` uses H5-only
   GPDMA registers and is compiled unconditionally, so a *full link* fails for
   every L4 project on `main`. Independent of this work — worth a separate fix.

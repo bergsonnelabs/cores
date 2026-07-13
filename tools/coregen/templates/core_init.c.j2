@@ -504,15 +504,15 @@ static void core_recovery_sos(void)
 {
     ll_rcc_gpio_clk_enable(LED_PORT);
     ll_gpio_set_mode(LED_PORT, LED_PIN, LL_GPIO_MODE_OUTPUT);
+    /* One rapid SOS, then the caller jumps to the bootloader — recovery
+     * shouldn't wait on the blink. ~25k busy-loops ≈ a ~30 ms dot on the
+     * ~4 MHz reset clock, so the whole pattern runs in under ~1 s. */
     static const unsigned char sos[] = { 1, 1, 1, 3, 3, 3, 1, 1, 1 }; /* · · · — — — · · · */
-    for (unsigned rep = 0; rep < 3; rep++) {
-        for (unsigned i = 0; i < sizeof(sos); i++) {
-            LED_ON();
-            for (volatile uint32_t d = 0; d < sos[i] * 120000UL; d++) { __asm volatile(""); }
-            LED_OFF();
-            for (volatile uint32_t d = 0; d < 120000UL; d++) { __asm volatile(""); }
-        }
-        for (volatile uint32_t d = 0; d < 600000UL; d++) { __asm volatile(""); } /* gap */
+    for (unsigned i = 0; i < sizeof(sos); i++) {
+        LED_ON();
+        for (volatile uint32_t d = 0; d < sos[i] * 25000UL; d++) { __asm volatile(""); }
+        LED_OFF();
+        for (volatile uint32_t d = 0; d < 25000UL; d++) { __asm volatile(""); }
     }
 }
 {% endif %}
