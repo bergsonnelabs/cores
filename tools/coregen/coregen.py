@@ -1508,6 +1508,21 @@ def generate(tile_path, output_dir, config_path=None):
         ctx["usb_capable"] = mcu["define"] in _usb_capable_parts
         # Bootloader mode: "none", "custom", or "rom" (from config.json)
         ctx["bootloader_mode"] = project.get("bootloader", "none")
+        # Watchdog-by-default (Part A) + strike→ROM-DFU brick recovery (Part B).
+        # Opt-in: absent iwdg config → OFF, so regenerating an existing project
+        # never surprises it with resets. "On by default" is delivered by the
+        # Studio starter scaffolding, which writes iwdg.enabled=true AND feeds the
+        # dog. The strike→ROM-DFU recovery itself is always compiled into ROM_DFU
+        # builds (dormant until a watchdog is actually running). Best paired with
+        # ROM_DFU mode, where an un-fed reset parks in DFU instead of hard-bricking.
+        _iwdg_cfg = project.get("iwdg", {}) or {}
+        ctx["iwdg_enabled"] = bool(_iwdg_cfg.get("enabled", False))
+        ctx["iwdg_timeout_ms"] = int(_iwdg_cfg.get("timeout_ms", 5000))
+        if ctx["iwdg_enabled"] and ctx["bootloader_mode"] != "rom":
+            print(
+                "  WARNING: iwdg is enabled without ROM_DFU bootloader mode — an "
+                "un-fed watchdog will reset-loop with no auto-DFU recovery escape."
+            )
         ctx["timer_pads"] = build_timer_config(project, pad_map)
 
         # DAC: detect from pad config

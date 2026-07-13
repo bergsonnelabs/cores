@@ -38,6 +38,7 @@
 #define CORE_WATCHDOG_H
 
 #include "ll_iwdg.h"
+#include "hal_dfu.h"  /* recovery stash: lets caused_reset() survive core_init's RMVF clear */
 
 /**
  * Start the independent watchdog with a timeout in milliseconds.
@@ -88,9 +89,15 @@ static inline void core_watchdog_feed(void)
     ll_iwdg_refresh();
 }
 
-/** Check if the last reset was caused by the watchdog. */
+/** Check if the last reset was caused by the watchdog.
+ *  On ROM_DFU builds, core_init() reads and clears the hardware flag early (for
+ *  the strike counter), stashing the cause in reserved SRAM — so prefer that
+ *  when it's valid; otherwise fall back to the raw RCC_CSR flag. */
 static inline int core_watchdog_caused_reset(void)
 {
+#ifdef DFU_STRIKE_TAG_ADDR
+    if (hal_recovery_valid()) return (int)hal_recovery_stashed_cause();
+#endif
     return ll_iwdg_caused_reset();
 }
 
@@ -98,6 +105,20 @@ static inline int core_watchdog_caused_reset(void)
 static inline void core_watchdog_clear_flags(void)
 {
     ll_rcc_clear_reset_flags();
+}
+
+/** Freeze the IWDG while the core is halted under a debugger, so a breakpoint
+ *  doesn't let the watchdog reset the chip out from under an SWD session.
+ *  Firmware-side so it holds for any probe/toolchain (rev b exposes SWD on L4). */
+static inline void core_watchdog_debug_freeze(void)
+{
+#if defined(STM32L422xx)
+    /* DBGMCU_APB1FZR1 (0xE0042008), DBG_IWDG_STOP = bit 12 */
+    SET_BITS(REG32(0xE0042008UL), (1UL << 12));
+#elif defined(STM32H523xx)
+    /* DBGMCU APB1 freeze (0xE004203C), IWDG stop = bit 12 */
+    SET_BITS(REG32(0xE004203CUL), (1UL << 12));
+#endif
 }
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
