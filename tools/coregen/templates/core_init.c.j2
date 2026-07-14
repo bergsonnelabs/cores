@@ -533,6 +533,15 @@ void core_init(void)
      * — blink SOS and drop to the ROM bootloader so it can always be reflashed.
      * Pre-clock, like the magic check above. */
     if (core_recovery_over_limit(core_recovery_note_boot())) {
+        /* The IWDG survives a warm/system reset on this MCU (only a power-on
+         * reset stops it) and the ROM bootloader never feeds it — so a 5 s dog
+         * would reset the bootloader out from under a reflash every timeout,
+         * leaving the DFU "park" too short to catch. Stretch it to ~the max
+         * (~30 s) so each park is a wide, grabbable window; strikes are retained
+         * across the reset, so it re-parks in DFU rather than relaunching the
+         * bad app. The IWDG can't be stopped in software, so max reload is the
+         * best we can do. */
+        core_watchdog_start(30000);
 {% if led %}
         core_recovery_sos();
 {% endif %}
