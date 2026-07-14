@@ -31,14 +31,56 @@
 #define DFU_MAGIC           0xDEADBEEFUL
 
 #if defined(STM32L422xx)
-  /* L422: 40KB SRAM, top = 0x2000A000 */
-  #define DFU_MAGIC_ADDR    (*(volatile uint32_t *)0x20009FF0UL)
+  /* L422: 40KB SRAM, top = 0x2000A000. The linker reserves the last 16 bytes;
+   * word 0 is the DFU magic, words 1-3 hold the brick-recovery strike state. */
+  #define DFU_MAGIC_ADDR      (*(volatile uint32_t *)0x20009FF0UL)
+  #define DFU_STRIKE_ADDR     (*(volatile uint32_t *)0x20009FF4UL)
+  #define DFU_STRIKE_TAG_ADDR (*(volatile uint32_t *)0x20009FF8UL)
+  #define DFU_CAUSE_ADDR      (*(volatile uint32_t *)0x20009FFCUL)
   #define DFU_ROM_ADDR      0x1FFF0000UL
 #elif defined(STM32H523xx)
   /* H523: 272KB SRAM, top = 0x20044000 */
-  #define DFU_MAGIC_ADDR    (*(volatile uint32_t *)0x20043FF0UL)
+  #define DFU_MAGIC_ADDR      (*(volatile uint32_t *)0x20043FF0UL)
+  #define DFU_STRIKE_ADDR     (*(volatile uint32_t *)0x20043FF4UL)
+  #define DFU_STRIKE_TAG_ADDR (*(volatile uint32_t *)0x20043FF8UL)
+  #define DFU_CAUSE_ADDR      (*(volatile uint32_t *)0x20043FFCUL)
   #define DFU_ROM_ADDR      0x0BF97000UL  /* AN2606: H523/H533 bootloader entry */
 #endif
+
+/* Validity tag for the recovery words: distinguishes "carried across a warm
+ * reset" from "random SRAM after a cold power-on" (which reads as 0 strikes). */
+#define DFU_STRIKE_TAG      0xB0BB1E00UL
+
+#ifdef DFU_STRIKE_TAG_ADDR
+/** Consecutive watchdog-reset strikes carried across warm reset (0 if cold). */
+static inline uint32_t hal_recovery_strikes(void)
+{
+    return (DFU_STRIKE_TAG_ADDR == DFU_STRIKE_TAG) ? DFU_STRIKE_ADDR : 0UL;
+}
+/** True if the recovery words survived a warm reset (tag valid). */
+static inline int hal_recovery_valid(void)
+{
+    return DFU_STRIKE_TAG_ADDR == DFU_STRIKE_TAG;
+}
+/** Set the strike count and stamp the validity tag. */
+static inline void hal_recovery_set_strikes(uint32_t n)
+{
+    DFU_STRIKE_ADDR = n;
+    DFU_STRIKE_TAG_ADDR = DFU_STRIKE_TAG;
+}
+/** Stash whether this boot was a watchdog reset (so the app's
+ *  core_watchdog_caused_reset() still works after we clear the HW flag). */
+static inline void hal_recovery_stash_cause(int was_watchdog)
+{
+    DFU_CAUSE_ADDR = was_watchdog ? 1UL : 0UL;
+    DFU_STRIKE_TAG_ADDR = DFU_STRIKE_TAG;
+}
+/** Read back the stashed reset cause (1 = watchdog). */
+static inline uint32_t hal_recovery_stashed_cause(void)
+{
+    return DFU_CAUSE_ADDR;
+}
+#endif /* DFU_STRIKE_TAG_ADDR */
 
 /* SCB AIRCR: Application Interrupt and Reset Control Register */
 #define SCB_AIRCR           REG32(0xE000ED0CUL)

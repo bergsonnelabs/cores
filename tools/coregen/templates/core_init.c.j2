@@ -38,6 +38,13 @@
 {% if usb_capable %}
 #include "hal_usb_cdc.h"
 #include "hal_dfu.h"
+#include "core_recovery.h"  /* self-guarded (DFU_STRIKE_TAG_ADDR); no-op off ROM_DFU */
+{% if led %}
+#include "core_board.h"
+{% endif %}
+{% endif %}
+{% if iwdg_enabled %}
+#include "core_watchdog.h"
 {% endif %}
 {% if dac_enabled %}
 #include "hal_dac.h"
@@ -488,6 +495,28 @@ void core_pads_init(void)
 {% endif %}
 }
 
+{% if usb_capable and led %}
+/* SOS on the onboard LED for the brick-recovery path, then return so the caller
+ * jumps to ROM DFU. Runs pre-clock on the reset MSI clock (~4 MHz), so timing is
+ * a rough busy-loop — exactness doesn't matter for a distress blink. */
+__attribute__((unused))
+static void core_recovery_sos(void)
+{
+    ll_rcc_gpio_clk_enable(LED_PORT);
+    ll_gpio_set_mode(LED_PORT, LED_PIN, LL_GPIO_MODE_OUTPUT);
+    /* One rapid SOS, then the caller jumps to the bootloader — recovery
+     * shouldn't wait on the blink. ~25k busy-loops ≈ a ~30 ms dot on the
+     * ~4 MHz reset clock, so the whole pattern runs in under ~1 s. */
+    static const unsigned char sos[] = { 1, 1, 1, 3, 3, 3, 1, 1, 1 }; /* · · · — — — · · · */
+    for (unsigned i = 0; i < sizeof(sos); i++) {
+        LED_ON();
+        for (volatile uint32_t d = 0; d < sos[i] * 25000UL; d++) { __asm volatile(""); }
+        LED_OFF();
+        for (volatile uint32_t d = 0; d < 25000UL; d++) { __asm volatile(""); }
+    }
+}
+{% endif %}
+
 void core_init(void)
 {
 {% if usb_capable %}
@@ -497,6 +526,16 @@ void core_init(void)
      * The MCU is in near-reset state here — only .data/.bss init has run. */
     if (DFU_MAGIC_ADDR == DFU_MAGIC) {
         DFU_MAGIC_ADDR = 0;
+        hal_dfu_jump_to_rom();  /* does not return */
+    }
+    /* Brick recovery: after CORE_RECOVERY_STRIKE_LIMIT consecutive watchdog
+     * resets that never reached healthy operation, stop launching the (bad) app
+     * — blink SOS and drop to the ROM bootloader so it can always be reflashed.
+     * Pre-clock, like the magic check above. */
+    if (core_recovery_over_limit(core_recovery_note_boot())) {
+{% if led %}
+        core_recovery_sos();
+{% endif %}
         hal_dfu_jump_to_rom();  /* does not return */
     }
 #endif
@@ -514,5 +553,15 @@ void core_init(void)
      * Ensures the 1200-baud touch mechanism works even when main.c
      * doesn't call core_usb_init() — prevents DFU lockout. */
     hal_usb_cdc_init();
+{% endif %}
+{% if iwdg_enabled %}
+
+    /* ---- Watchdog on by default ----
+     * The app (starter template) must call core_watchdog_feed() in its loop.
+     * Un-fed code trips a reset; after CORE_RECOVERY_STRIKE_LIMIT of them the
+     * strike counter escalates to ROM DFU (the ROM_DFU block above). Frozen
+     * while halted under SWD so a breakpoint doesn't false-trip the reset. */
+    core_watchdog_debug_freeze();
+    core_watchdog_start({{ iwdg_timeout_ms }});
 {% endif %}
 }
