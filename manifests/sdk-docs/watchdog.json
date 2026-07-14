@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@0ea79c0",
   "category": "watchdog",
   "label": "Core.Watchdog",
   "icon": "🐕",
@@ -42,7 +42,7 @@
       "name": "core_watchdog_caused_reset",
       "signature": "core_watchdog_caused_reset(void)",
       "returns": "int",
-      "brief": "Check if the last reset was caused by the watchdog.",
+      "brief": "Check if the last reset was caused by the watchdog. On ROM_DFU builds, core_init() reads and clears the hardware flag early (for the strike counter), stashing the cause in reserved SRAM — so prefer that when it's valid; otherwise fall back to the raw RCC_CSR flag.",
       "params": [],
       "studio_exposed": false,
       "layer": "core"
@@ -52,6 +52,15 @@
       "signature": "core_watchdog_clear_flags(void)",
       "returns": "void",
       "brief": "Clear all reset flags (call after checking cause).",
+      "params": [],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_watchdog_debug_freeze",
+      "signature": "core_watchdog_debug_freeze(void)",
+      "returns": "void",
+      "brief": "Freeze the IWDG while the core is halted under a debugger, so a breakpoint doesn't let the watchdog reset the chip out from under an SWD session. Firmware-side so it holds for any probe/toolchain (rev b exposes SWD on L4).",
       "params": [],
       "studio_exposed": false,
       "layer": "core"
