@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@b6a9ec0",
+  "source": "tiles@7738ede",
   "tile": "Drive.DC.H",
   "palette": {
     "label": "Drive.DC.H",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_drive_dc_h",
     "header": "tile_drive_dc_h.h",
-    "version": "4.1.0"
+    "version": "4.2.0"
   },
   "handle": {
     "type": "tile_t",
@@ -344,6 +344,20 @@
     {
       "qname": [
         "$slot",
+        "get_speed_rpm"
+      ],
+      "symbol": "tile_drive_dc_h_get_speed_rpm",
+      "header": "tile_drive_dc_h.h",
+      "category": "tile",
+      "description": "Read the estimated motor speed in RPM.",
+      "params": [],
+      "returns": "uint32_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
         "get_ripple_count"
       ],
       "symbol": "tile_drive_dc_h_get_ripple_count",
@@ -413,6 +427,35 @@
           "name": "direction",
           "type": "?drive_dc_h_direction_t",
           "description": "DRIVE_DC_H_DIR_FORWARD or DRIVE_DC_H_DIR_REVERSE"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_motor_params"
+      ],
+      "symbol": "tile_drive_dc_h_set_motor_params",
+      "header": "tile_drive_dc_h.h",
+      "category": "tile",
+      "description": "Program the motor profile for ripple counting and speed regulation.",
+      "params": [
+        {
+          "name": "motor_mohm",
+          "type": "int",
+          "description": "Winding resistance in milliohms. 0 = leave"
+        },
+        {
+          "name": "ripples_per_rev",
+          "type": "int",
+          "description": "Commutation ripples per shaft revolution"
+        },
+        {
+          "name": "kv_uv_per_rpm",
+          "type": "int",
+          "description": "Back-EMF constant in µV/RPM (typical small"
         }
       ],
       "returns": "void",

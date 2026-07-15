@@ -79,6 +79,12 @@ static void drv_rmw(tile_t* tile, uint8_t reg, uint8_t mask, uint8_t bits)
     drv_write(tile, reg, v);
 }
 
+/* W_SCALE encoding in REG_CTRL0 [1:0]:
+ *   00 → 24, 01 → 40, 10 → 64, 11 → 128.
+ * The chip's speed estimator multiplies the ripple-counter output by
+ * this scaling factor; WSET_VSET is interpreted in the same units. */
+static const uint16_t w_scale_lookup[4] = { 24, 40, 64, 128 };
+
 /* CONFIG4 base: STALL_REP=1, CBC_REP=1, PMODE=1 (PWM), I2C_BC=1 */
 #define CONFIG4_BASE  0x3C
 
@@ -116,6 +122,77 @@ uint8_t tile_drive_dc_h_find(tiles_pal_t* hal, uint8_t instance)
     uint8_t id = resolve_id(instance);
     if (id == 0x00) return 0;
     return (hal->i2c_is_ready(hal->handle, id) == 0) ? 1 : 0;
+}
+
+/* Program the ripple-counter calibration (INV_R, KMC) from motor
+ * parameters. Shared by init and set_motor_params(). No-op when
+ * motor_mohm == 0 — the chip keeps its power-on defaults. */
+static void drv_apply_motor_tuning(tile_t* tile, uint16_t motor_mohm,
+                                   uint8_t ripples_per_rev,
+                                   uint16_t kv_uv_per_rpm)
+{
+    if (motor_mohm == 0) return;
+
+    /* INV_R = INV_R_SCALE / R_motor (ohms)
+     *       = INV_R_SCALE * 1000 / motor_mohm
+     * Try scales from largest to smallest for best precision. */
+    static const uint32_t inv_r_scales[]    = { 8192, 1024, 64, 2 };
+    static const uint8_t  inv_r_scale_bits[] = { 3, 2, 1, 0 };
+    uint8_t inv_r = 0;
+    uint8_t inv_r_sb = 0;
+
+    for (uint8_t i = 0; i < 4; i++) {
+        uint32_t v = inv_r_scales[i] * 1000 / motor_mohm;
+        if (v >= 1 && v <= 255) {
+            inv_r = (uint8_t)v;
+            inv_r_sb = inv_r_scale_bits[i];
+            break;
+        }
+    }
+
+    /* KMC = (Kv / N_R) * KMC_SCALE
+     * Kv in V/(rad/s) = kv_uv_per_rpm / 104720 (approx)
+     * Pre-computed multipliers: KMC_SCALE * 60 / (2*pi*1e6)
+     *   scale 3 (196608): ×1878/1000
+     *   scale 2 (98304):  ×939/1000
+     *   scale 1 (12288):  ×117/1000
+     *   scale 0 (6144):   ×59/1000                              */
+    uint8_t kmc = 0;
+    uint8_t kmc_sb = 0;
+
+    if (kv_uv_per_rpm > 0) {
+        static const uint16_t kmc_mults[]      = { 1878, 939, 117, 59 };
+        static const uint8_t  kmc_scale_bits[] = { 3, 2, 1, 0 };
+
+        for (uint8_t i = 0; i < 4; i++) {
+            uint32_t num = (uint32_t)kv_uv_per_rpm * kmc_mults[i];
+            uint32_t den = (uint32_t)1000 * ripples_per_rev;
+            uint32_t v   = (num + den / 2) / den;  /* round */
+            if (v >= 1 && v <= 255) {
+                kmc = (uint8_t)v;
+                kmc_sb = kmc_scale_bits[i];
+                break;
+            }
+        }
+    }
+
+    /* RC_CTRL2: scaling factors
+     * [7:6] INV_R_SCALE
+     * [5:4] KMC_SCALE
+     * [3:2] RC_THR_SCALE = 11 (×64, default)
+     * [1:0] RC_THR[9:8]  = 11 (default)                        */
+    drv_write(tile, DRV8214_REG_RC_CTRL2,
+              (inv_r_sb << 6) | (kmc_sb << 4) | 0x0F);
+
+    /* RC_CTRL3: INV_R */
+    if (inv_r > 0) {
+        drv_write(tile, DRV8214_REG_RC_CTRL3, inv_r);
+    }
+
+    /* RC_CTRL4: KMC */
+    if (kmc > 0) {
+        drv_write(tile, DRV8214_REG_RC_CTRL4, kmc);
+    }
 }
 
 void tile_drive_dc_h_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
@@ -264,71 +341,10 @@ void tile_drive_dc_h_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     drv_write(tile, DRV8214_REG_CTRL2, 0xC0);
 
     /* ---- Ripple counting tuning (motor-specific parameters) ----
-     * Computes INV_R and KMC register values from motor parameters.
-     * Skipped if motor_mohm == 0.                                   */
-    if (motor_mohm > 0) {
-
-        /* INV_R = INV_R_SCALE / R_motor (ohms)
-         *       = INV_R_SCALE * 1000 / motor_mohm
-         * Try scales from largest to smallest for best precision. */
-        static const uint32_t inv_r_scales[]    = { 8192, 1024, 64, 2 };
-        static const uint8_t  inv_r_scale_bits[] = { 3, 2, 1, 0 };
-        uint8_t inv_r = 0;
-        uint8_t inv_r_sb = 0;
-
-        for (uint8_t i = 0; i < 4; i++) {
-            uint32_t v = inv_r_scales[i] * 1000 / motor_mohm;
-            if (v >= 1 && v <= 255) {
-                inv_r = (uint8_t)v;
-                inv_r_sb = inv_r_scale_bits[i];
-                break;
-            }
-        }
-
-        /* KMC = (Kv / N_R) * KMC_SCALE
-         * Kv in V/(rad/s) = kv_uv_per_rpm / 104720 (approx)
-         * Pre-computed multipliers: KMC_SCALE * 60 / (2*pi*1e6)
-         *   scale 3 (196608): ×1878/1000
-         *   scale 2 (98304):  ×939/1000
-         *   scale 1 (12288):  ×117/1000
-         *   scale 0 (6144):   ×59/1000                              */
-        uint8_t kmc = 0;
-        uint8_t kmc_sb = 0;
-
-        if (kv_uv_per_rpm > 0) {
-            static const uint16_t kmc_mults[]      = { 1878, 939, 117, 59 };
-            static const uint8_t  kmc_scale_bits[] = { 3, 2, 1, 0 };
-
-            for (uint8_t i = 0; i < 4; i++) {
-                uint32_t num = (uint32_t)kv_uv_per_rpm * kmc_mults[i];
-                uint32_t den = (uint32_t)1000 * ripples_per_rev;
-                uint32_t v   = (num + den / 2) / den;  /* round */
-                if (v >= 1 && v <= 255) {
-                    kmc = (uint8_t)v;
-                    kmc_sb = kmc_scale_bits[i];
-                    break;
-                }
-            }
-        }
-
-        /* RC_CTRL2: scaling factors
-         * [7:6] INV_R_SCALE
-         * [5:4] KMC_SCALE
-         * [3:2] RC_THR_SCALE = 11 (×64, default)
-         * [1:0] RC_THR[9:8]  = 11 (default)                        */
-        drv_write(tile, DRV8214_REG_RC_CTRL2,
-                  (inv_r_sb << 6) | (kmc_sb << 4) | 0x0F);
-
-        /* RC_CTRL3: INV_R */
-        if (inv_r > 0) {
-            drv_write(tile, DRV8214_REG_RC_CTRL3, inv_r);
-        }
-
-        /* RC_CTRL4: KMC */
-        if (kmc > 0) {
-            drv_write(tile, DRV8214_REG_RC_CTRL4, kmc);
-        }
-    }
+     * Skipped if motor_mohm == 0. Can also be (re)programmed at
+     * runtime via tile_drive_dc_h_set_motor_params().               */
+    drv_apply_motor_tuning(tile, motor_mohm, ripples_per_rev,
+                           kv_uv_per_rpm);
 
     tile->state = TILE_STATE_READY;
 }
@@ -619,6 +635,20 @@ uint8_t tile_drive_dc_h_get_speed(tile_t* tile)
     return drv_read(tile, DRV8214_REG_RC_STATUS1);
 }
 
+uint32_t tile_drive_dc_h_get_speed_rpm(tile_t* tile)
+{
+    uint8_t raw   = drv_read(tile, DRV8214_REG_RC_STATUS1);
+    uint8_t ctrl0 = drv_read(tile, DRV8214_REG_CTRL0);
+
+    drive_dc_h_state_t *st = state_for(tile);
+    uint8_t rpr = st->ripples_per_rev ? st->ripples_per_rev : 12;
+
+    /* Inverse of the set_speed_rpm() conversion, using the live
+     * W_SCALE from CTRL0 so the pair always agrees. */
+    return ((uint32_t)raw * 60u * (uint32_t)w_scale_lookup[ctrl0 & 0x03])
+           / rpr;
+}
+
 uint16_t tile_drive_dc_h_get_ripple_count(tile_t* tile)
 {
     uint8_t lo = drv_read(tile, DRV8214_REG_RC_STATUS2);
@@ -657,12 +687,6 @@ void tile_drive_dc_h_wake(tile_t* tile)
 /* Runtime — tier-2 idiomatic helpers                              */
 /* ============================================================== */
 
-/* W_SCALE encoding in REG_CTRL0 [1:0]:
- *   00 → 24, 01 → 40, 10 → 64, 11 → 128.
- * The chip's speed estimator multiplies the ripple-counter output by
- * this scaling factor; WSET_VSET is interpreted in the same units. */
-static const uint16_t w_scale_lookup[4] = { 24, 40, 64, 128 };
-
 /* Drive in `direction` by writing the appropriate IN1/IN2 bridge
  * bits. Caller must already be in I²C bridge-control mode and the
  * tile must be READY. Returns 0 on success, 1 if the bridge is in
@@ -687,19 +711,29 @@ void tile_drive_dc_h_set_speed_rpm(tile_t *tile, uint32_t rpm,
      * forces EN_RC=1 so the ripple-speed estimator is live. */
     tile_drive_dc_h_set_regulation_mode(tile, DRIVE_DC_H_REG_SPEED);
 
-    /* Read W_SCALE back from CTRL0 so we honour any user-side override
-     * (default from init is 0b11 = 128). */
-    uint8_t ctrl0 = drv_read(tile, DRV8214_REG_CTRL0);
-    uint16_t w_scale = w_scale_lookup[ctrl0 & 0x03];
-
     drive_dc_h_state_t *st = state_for(tile);
     uint8_t rpr = st->ripples_per_rev ? st->ripples_per_rev : 12;
 
-    /* WSET_VSET = (rpm × ripples_per_rev) / (60 × W_SCALE).
-     * Integer math; clamp to 8-bit register range. */
-    uint32_t wset = (rpm * (uint32_t)rpr) / (60u * (uint32_t)w_scale);
-    if (wset > 0xFFu) wset = 0xFFu;
+    /* Pick the finest W_SCALE (24/40/64/128) whose 8-bit WSET range
+     * still reaches the requested speed — a finer scale means finer
+     * RPM granularity at the low end (LSB = 60 × W_SCALE / rpr RPM,
+     * e.g. 120 RPM at W_SCALE=24 / rpr=12 vs 640 RPM at the old
+     * fixed W_SCALE=128). The driver owns CTRL0[1:0]; get_speed_rpm()
+     * reads it back so conversions stay consistent. */
+    uint8_t  scale_bits = 3;
+    uint32_t wset = 0xFFu;
+    for (uint8_t i = 0; i < 4; i++) {
+        uint32_t den = 60u * (uint32_t)w_scale_lookup[i];
+        uint32_t v   = (rpm * (uint32_t)rpr + den / 2) / den;  /* round */
+        if (v <= 0xFFu) {
+            scale_bits = i;
+            wset = v;
+            break;
+        }
+    }
+    if (rpm > 0 && wset == 0) wset = 1;  /* don't round a spin request to stop */
 
+    drv_rmw(tile, DRV8214_REG_CTRL0, 0x03, scale_bits);
     drv_write(tile, DRV8214_REG_CTRL1, (uint8_t)wset);
 
     /* Engage the bridge in the requested direction. The chip's PI loop
@@ -707,6 +741,25 @@ void tile_drive_dc_h_set_speed_rpm(tile_t *tile, uint32_t rpm,
     if (drv_drive(tile, direction) != 0) {
         TILE_ON_ERROR(tile, "set_speed_rpm: bridge in pad-control mode");
     }
+}
+
+void tile_drive_dc_h_set_motor_params(tile_t* tile, uint16_t motor_mohm,
+                                      uint16_t ripples_per_rev,
+                                      uint16_t kv_uv_per_rpm)
+{
+    if (tile->state != TILE_STATE_READY) {
+        TILE_ON_ERROR(tile, "set_motor_params: not ready");
+        return;
+    }
+
+    uint8_t rpr = (ripples_per_rev == 0)    ? 12
+                : (ripples_per_rev > 255u)  ? 255u
+                : (uint8_t)ripples_per_rev;
+
+    /* Cache for the set_speed_rpm()/get_speed_rpm() conversions. */
+    state_for(tile)->ripples_per_rev = rpr;
+
+    drv_apply_motor_tuning(tile, motor_mohm, rpr, kv_uv_per_rpm);
 }
 
 void tile_drive_dc_h_move_distance(tile_t *tile, uint16_t ripples,

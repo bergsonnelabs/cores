@@ -173,6 +173,11 @@ int main(void)
     uint8_t stopped = tile_drive_dc_h_wait_for_stop(&motor, 500);
     (void)stopped;
 
+    /* ---- v4.2 motor profile + RPM readback ---- */
+    tile_drive_dc_h_set_motor_params(&motor, 6000, 12, 187);
+    uint32_t rpm = tile_drive_dc_h_get_speed_rpm(&motor);
+    (void)rpm;
+
     while (1) {
         core_delay_ms(1000);
     }
