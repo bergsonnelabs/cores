@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@e1430b1",
   "tile": "Sense.BP",
   "palette": {
     "label": "Sense.BP",
@@ -67,7 +67,7 @@
       "params": [
         {
           "name": "odr",
-          "type": "?sense_bp_odr_t",
+          "type": "int",
           "description": "Desired output data rate."
         }
       ],
@@ -86,7 +86,7 @@
       "params": [
         {
           "name": "avg",
-          "type": "?sense_bp_avg_t",
+          "type": "int",
           "description": "Desired averaging."
         }
       ],
@@ -105,7 +105,7 @@
       "params": [
         {
           "name": "fs",
-          "type": "?sense_bp_fs_t",
+          "type": "int",
           "description": "Full-scale selection."
         }
       ],
@@ -129,7 +129,7 @@
         },
         {
           "name": "bw",
-          "type": "?sense_bp_lpf_bw_t",
+          "type": "int",
           "description": "Bandwidth selection (only used if enable = 1)."
         }
       ],
@@ -259,7 +259,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_bp_fifo_mode_t",
+          "type": "int",
           "description": "FIFO mode selection."
         }
       ],

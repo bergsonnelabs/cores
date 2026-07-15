@@ -349,6 +349,22 @@ def extract_signature(source, after_offset):
     return {"returns": ret, "name": name, "params": params}
 
 
+ENUM_TYPES = set()
+
+
+def collect_enum_types(source):
+    """Record header-declared `typedef enum {...} name_t;` type names.
+
+    Enum-typed params pass as plain ints at the C ABI, and their member
+    values are documented in the Doxygen briefs — so the DSL sees them
+    as `int`. Without this every enum-typed param vendors as an
+    unmappable `?<ctype>` and hard-errors in the Studio editor (first
+    hit: drive_dc_h.set_current_regulation_mode's drive_dc_h_imode_t)."""
+    ENUM_TYPES.update(
+        re.findall(r"typedef\s+enum\s*\{[^}]*\}\s*(\w+)\s*;", source)
+    )
+
+
 def dsl_type_of(ctype, override):
     if override:
         return override
@@ -359,6 +375,8 @@ def dsl_type_of(ctype, override):
         return C_TO_DSL[ctype.strip()]
     if norm in C_TO_DSL:
         return C_TO_DSL[norm]
+    if ctype.strip() in ENUM_TYPES:
+        return "int"
     return f"?{ctype}"
 
 
@@ -737,6 +755,7 @@ def parse_header(path, scope):
     entry keyed by the tile palette label.
     """
     source = path.read_text()
+    collect_enum_types(source)
     hosts = []
     sections = {}
     docs = []

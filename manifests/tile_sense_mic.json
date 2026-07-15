@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@76608af",
+  "source": "tiles@e1430b1",
   "tile": "Sense.MIC",
   "palette": {
     "label": "Sense.MIC",
@@ -67,7 +67,7 @@
       "params": [
         {
           "name": "ref",
-          "type": "?sense_mic_ref_t",
+          "type": "int",
           "description": "One of the sense_mic_ref_t values (VDD, INTERNAL, etc.)"
         }
       ],
@@ -86,7 +86,7 @@
       "params": [
         {
           "name": "ch",
-          "type": "?sense_mic_channel_t",
+          "type": "int",
           "description": "SENSE_MIC_CH_AIN0 (mic) or SENSE_MIC_CH_AIN1"
         }
       ],
@@ -105,7 +105,7 @@
       "params": [
         {
           "name": "scan",
-          "type": "?sense_mic_scan_t",
+          "type": "int",
           "description": "SENSE_MIC_SCAN_SINGLE, SENSE_MIC_SCAN_UP, or SENSE_MIC_SCAN_8X"
         }
       ],
@@ -124,7 +124,7 @@
       "params": [
         {
           "name": "clk",
-          "type": "?sense_mic_clock_t",
+          "type": "int",
           "description": "SENSE_MIC_CLOCK_INTERNAL or SENSE_MIC_CLOCK_EXTERNAL"
         }
       ],
@@ -143,7 +143,7 @@
       "params": [
         {
           "name": "pol",
-          "type": "?sense_mic_polarity_t",
+          "type": "int",
           "description": "SENSE_MIC_POLARITY_UNIPOLAR or SENSE_MIC_POLARITY_BIPOLAR"
         }
       ],

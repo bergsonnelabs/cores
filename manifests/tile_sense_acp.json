@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@18abd82",
+  "source": "tiles@e1430b1",
   "tile": "Sense.ACP",
   "palette": {
     "label": "Sense.ACP",
@@ -54,7 +54,7 @@
       "params": [
         {
           "name": "gain",
-          "type": "?sense_acp_als_gain_t",
+          "type": "int",
           "description": "ALS gain selection (sense_acp_als_gain_t)."
         }
       ],
@@ -92,7 +92,7 @@
       "params": [
         {
           "name": "gain",
-          "type": "?sense_acp_prox_gain_t",
+          "type": "int",
           "description": "Proximity gain selection (sense_acp_prox_gain_t)."
         }
       ],

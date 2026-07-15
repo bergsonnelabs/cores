@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@e1430b1",
   "tile": "Sense.I.6P6",
   "palette": {
     "label": "Sense.I.6P6",
@@ -104,7 +104,7 @@
       "params": [
         {
           "name": "range",
-          "type": "?sense_i_6p6_accel_range_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -122,7 +122,7 @@
       "params": [
         {
           "name": "range",
-          "type": "?sense_i_6p6_gyro_range_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -140,7 +140,7 @@
       "params": [
         {
           "name": "odr",
-          "type": "?sense_i_6p6_odr_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -158,7 +158,7 @@
       "params": [
         {
           "name": "odr",
-          "type": "?sense_i_6p6_odr_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -176,11 +176,11 @@
       "params": [
         {
           "name": "accel",
-          "type": "?sense_i_6p6_power_mode_t"
+          "type": "int"
         },
         {
           "name": "gyro",
-          "type": "?sense_i_6p6_power_mode_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -198,11 +198,11 @@
       "params": [
         {
           "name": "accel_bw",
-          "type": "?sense_i_6p6_filter_bw_t"
+          "type": "int"
         },
         {
           "name": "gyro_bw",
-          "type": "?sense_i_6p6_filter_bw_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -220,11 +220,11 @@
       "params": [
         {
           "name": "accel_order",
-          "type": "?sense_i_6p6_filter_order_t"
+          "type": "int"
         },
         {
           "name": "gyro_order",
-          "type": "?sense_i_6p6_filter_order_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -242,7 +242,7 @@
       "params": [
         {
           "name": "bw",
-          "type": "?sense_i_6p6_temp_filter_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -491,7 +491,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_i_6p6_fifo_mode_t",
+          "type": "int",
           "description": "FIFO operating mode (bypass/stream/stop-on-full)"
         },
         {
@@ -784,7 +784,7 @@
       "params": [
         {
           "name": "pulse",
-          "type": "?sense_i_6p6_int_pulse_t",
+          "type": "int",
           "description": "Pulse-width selector"
         }
       ],
@@ -803,7 +803,7 @@
       "params": [
         {
           "name": "which",
-          "type": "?sense_i_6p6_subsystem_t",
+          "type": "int",
           "description": "Subsystem to reset"
         }
       ],
@@ -879,7 +879,7 @@
         },
         {
           "name": "mode",
-          "type": "?sense_i_6p6_wom_mode_t",
+          "type": "int",
           "description": "Compare against initial or previous sample"
         }
       ],
@@ -924,7 +924,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_i_6p6_smd_mode_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -942,7 +942,7 @@
       "params": [
         {
           "name": "dmp_odr",
-          "type": "?sense_i_6p6_dmp_odr_t",
+          "type": "int",
           "description": "DMP processing rate (25 or 50 Hz)"
         }
       ],
