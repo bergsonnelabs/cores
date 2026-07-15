@@ -83,7 +83,7 @@
 /* -------------------------------------------------------------- */
 
 #define TILE_DRIVE_DC_H_VERSION_MAJOR  4
-#define TILE_DRIVE_DC_H_VERSION_MINOR  1
+#define TILE_DRIVE_DC_H_VERSION_MINOR  2
 #define TILE_DRIVE_DC_H_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
@@ -586,6 +586,21 @@ uint16_t tile_drive_dc_h_get_current_ma(tile_t* tile);
 uint8_t tile_drive_dc_h_get_speed(tile_t* tile);
 
 /**
+ * @brief  Read the estimated motor speed in RPM.
+ * @studio expose category=tile name=get_speed_rpm returns=int section=runtime
+ *
+ * Converts the chip's ripple-speed estimate to shaft RPM using the
+ * live W_SCALE setting and the configured ripples-per-rev, making it
+ * the exact inverse of the set_speed_rpm() target conversion.
+ * Accuracy depends on the motor profile (see set_motor_params());
+ * without INV_R/KMC calibration the estimate is approximate.
+ *
+ * @param  tile  Pointer to tile handle
+ * @return Estimated shaft speed in revolutions per minute
+ */
+uint32_t tile_drive_dc_h_get_speed_rpm(tile_t* tile);
+
+/**
  * @brief  Read the 16-bit ripple count.
  * @studio expose category=tile name=get_ripple_count returns=int section=runtime
  *
@@ -667,18 +682,21 @@ typedef enum {
  * immediately — the chip ramps the motor to the target speed
  * autonomously and is_running() / get_speed() report progress.
  *
- * @note  The conversion `WSET = (rpm × ripples_per_rev) / (60 × W_SCALE)`
- *        depends on the ripples-per-rev value supplied at init via the
- *        `drive_dc_h_cfg_t.ripples_per_rev` field, and on the chip's
- *        ripple-counter calibration (INV_R, KMC) also computed at init
- *        from `motor_mohm` and `kv_uv_per_rpm`. If those aren't set,
- *        speed regulation falls back to chip defaults and the RPM
- *        target is approximate. Provide a full motor profile in the
- *        init config for accurate closed-loop speed control.
+ * @note  The driver picks the finest W_SCALE (24/40/64/128) whose
+ *        8-bit WSET range still reaches the requested speed, so low
+ *        targets get the best granularity the chip offers: the RPM
+ *        step is `60 × W_SCALE / ripples_per_rev`, e.g. 120 RPM at
+ *        ripples_per_rev=12 for targets below ~30 600 RPM. WSET is
+ *        clamped at 0xFF for targets beyond the coarsest scale, and
+ *        a nonzero request never rounds down to a stop.
  *
- * @note  WSET_VSET is 8-bit, so the largest representable RPM at
- *        ripples_per_rev=12 / W_SCALE=128 is ~163 200. The driver
- *        clamps WSET at 0xFF for higher targets.
+ * @note  The conversion depends on the ripples-per-rev value from the
+ *        init config (or set_motor_params()), and closed-loop accuracy
+ *        depends on the ripple-counter calibration (INV_R, KMC) from
+ *        `motor_mohm` / `kv_uv_per_rpm`. If those aren't set, speed
+ *        regulation falls back to chip defaults and the RPM target is
+ *        approximate. Provide a full motor profile — at init or via
+ *        set_motor_params() — for accurate low-RPM control.
  *
  * @param  tile       Initialised tile handle
  * @param  rpm        Target shaft speed in revolutions per minute
@@ -686,6 +704,35 @@ typedef enum {
  */
 void tile_drive_dc_h_set_speed_rpm(tile_t* tile, uint32_t rpm,
                                    drive_dc_h_direction_t direction);
+
+/**
+ * @brief  Program the motor profile for ripple counting and speed regulation.
+ *
+ * @studio expose category=tile name=set_motor_params section=config
+ *
+ * Writes the DRV8214's ripple-counter calibration registers (INV_R,
+ * KMC and their scale fields) from physical motor parameters, and
+ * caches ripples-per-rev for the set_speed_rpm()/get_speed_rpm()
+ * conversions. Equivalent to supplying `motor_mohm`,
+ * `ripples_per_rev` and `kv_uv_per_rpm` in the init config — use this
+ * when the driver was initialised with defaults (e.g. from Studio)
+ * and you want accurate closed-loop speed control.
+ *
+ * Example (RS PRO 834-7644, direct drive): motor_mohm=6000,
+ * ripples_per_rev=12, kv_uv_per_rpm=187.
+ *
+ * @param  tile             Initialised tile handle
+ * @param  motor_mohm       Winding resistance in milliohms. 0 = leave
+ *                          chip defaults (no-op for INV_R/KMC).
+ * @param  ripples_per_rev  Commutation ripples per shaft revolution
+ *                          (poles × brush pairs; common: 3, 5, 6, 7,
+ *                          12). 0 = default (12); clamped to 255.
+ * @param  kv_uv_per_rpm    Back-EMF constant in µV/RPM (typical small
+ *                          motor: 100-2000). 0 = skip KMC tuning.
+ */
+void tile_drive_dc_h_set_motor_params(tile_t* tile, uint16_t motor_mohm,
+                                      uint16_t ripples_per_rev,
+                                      uint16_t kv_uv_per_rpm);
 
 /**
  * @brief  Drive `ripples` commutation ripples in `direction`, then brake.
