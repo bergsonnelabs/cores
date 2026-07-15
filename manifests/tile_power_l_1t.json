@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@5f180cb",
+  "source": "tiles@e1430b1",
   "tile": "Power.L.1T",
   "palette": {
     "label": "Power.L.1T",
@@ -349,7 +349,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?power_l_1t_ldo_mode_t",
+          "type": "int",
           "description": "LDO mode (POWER_L_1T_LDO_MODE_LDO or _LOAD_SWITCH)"
         }
       ],
@@ -583,7 +583,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?power_l_1t_safety_timer_t",
+          "type": "int",
           "description": "power_l_1t_safety_timer_t (3h / 6h / 12h / off)."
         }
       ],
@@ -602,7 +602,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?power_l_1t_pmid_mode_t",
+          "type": "int",
           "description": "power_l_1t_pmid_mode_t."
         }
       ],
@@ -626,7 +626,7 @@
         },
         {
           "name": "channel",
-          "type": "?power_l_1t_adc_channel_t",
+          "type": "int",
           "description": "power_l_1t_adc_channel_t to monitor."
         },
         {

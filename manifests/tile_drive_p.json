@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@9897b3e",
+  "source": "tiles@e1430b1",
   "tile": "Drive.P",
   "palette": {
     "label": "Drive.P",
@@ -28,7 +28,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?drive_p_mode_t",
+          "type": "int",
           "description": "One of the drive_p_mode_t values"
         }
       ],
@@ -145,7 +145,7 @@
       "params": [
         {
           "name": "restore_mode",
-          "type": "?drive_p_mode_t",
+          "type": "int",
           "description": "Mode to re-enter after recovery"
         }
       ],
@@ -165,7 +165,7 @@
       "params": [
         {
           "name": "range",
-          "type": "?drive_p_output_range_t",
+          "type": "int",
           "description": "DRIVE_P_OUTPUT_HIGH_V or DRIVE_P_OUTPUT_LOW_V"
         }
       ],
@@ -184,7 +184,7 @@
       "params": [
         {
           "name": "gain",
-          "type": "?drive_p_sense_gain_t",
+          "type": "int",
           "description": "DRIVE_P_SENSE_FINE_GAIN or DRIVE_P_SENSE_COARSE_GAIN"
         }
       ],

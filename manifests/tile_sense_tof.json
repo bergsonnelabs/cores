@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@293d8d2",
+  "source": "tiles@e1430b1",
   "tile": "Sense.TOF",
   "palette": {
     "label": "Sense.TOF",
@@ -337,7 +337,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_tof_distance_mode_t",
+          "type": "int",
           "description": "New distance mode."
         }
       ],

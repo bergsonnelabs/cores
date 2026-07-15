@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@7738ede",
+  "source": "tiles@e1430b1",
   "tile": "Drive.DC.H",
   "palette": {
     "label": "Drive.DC.H",
@@ -80,7 +80,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?drive_dc_h_control_mode_t",
+          "type": "int",
           "description": "Bridge control source (DRIVE_DC_H_CTRL_*)"
         }
       ],
@@ -118,7 +118,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?drive_dc_h_reg_mode_t",
+          "type": "int",
           "description": "Regulation mode (DRIVE_DC_H_REG_*)"
         }
       ],
@@ -137,7 +137,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?drive_dc_h_imode_t",
+          "type": "int",
           "description": "Current regulation mode (DRIVE_DC_H_IMODE_*)"
         }
       ],
@@ -213,7 +213,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?drive_dc_h_stall_recovery_t",
+          "type": "int",
           "description": "DRIVE_DC_H_STALL_LATCH or DRIVE_DC_H_STALL_REPORT"
         }
       ],
@@ -425,7 +425,7 @@
         },
         {
           "name": "direction",
-          "type": "?drive_dc_h_direction_t",
+          "type": "int",
           "description": "DRIVE_DC_H_DIR_FORWARD or DRIVE_DC_H_DIR_REVERSE"
         }
       ],
@@ -478,7 +478,7 @@
         },
         {
           "name": "direction",
-          "type": "?drive_dc_h_direction_t",
+          "type": "int",
           "description": "DRIVE_DC_H_DIR_FORWARD or DRIVE_DC_H_DIR_REVERSE"
         }
       ],

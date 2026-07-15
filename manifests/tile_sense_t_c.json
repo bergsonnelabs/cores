@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@53e6a59",
+  "source": "tiles@e1430b1",
   "tile": "Sense.T.C",
   "palette": {
     "label": "Sense.T.C",
@@ -254,7 +254,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_t_c_power_mode_t"
+          "type": "int"
         }
       ],
       "returns": "void",
@@ -375,7 +375,7 @@
         },
         {
           "name": "mode",
-          "type": "?sense_t_c_channel_mode_t",
+          "type": "int",
           "description": "Channel role"
         },
         {
@@ -399,7 +399,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_t_c_comm_mode_t",
+          "type": "int",
           "description": "Event or streaming"
         }
       ],
@@ -546,7 +546,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?sense_t_c_power_mode_t",
+          "type": "int",
           "description": "Which power mode's rate to set (NORMAL/LOW/ULTRA_LOW/HALT)."
         },
         {

@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@abe7695",
+  "source": "tiles@e1430b1",
   "tile": "Display.RGBW",
   "palette": {
     "label": "Display.RGBW",
@@ -144,7 +144,7 @@
       "params": [
         {
           "name": "mode",
-          "type": "?disp_rgbw_max_current_t",
+          "type": "int",
           "description": "25.5 mA (0) or 51 mA (1)"
         }
       ],
@@ -198,7 +198,7 @@
       "params": [
         {
           "name": "threshold",
-          "type": "?disp_rgbw_lsd_threshold_t",
+          "type": "int",
           "description": "One of DISP_RGBW_LSD_TH_*"
         }
       ],

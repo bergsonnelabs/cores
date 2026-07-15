@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@6bbf0d8",
+  "source": "tiles@e1430b1",
   "tile": "Drive.A.2",
   "palette": {
     "label": "Drive.A.2",
@@ -127,7 +127,7 @@
         },
         {
           "name": "gain",
-          "type": "?drive_a_2_gain_t",
+          "type": "int",
           "description": "One of the drive_a_2_gain_t values"
         }
       ],
@@ -151,7 +151,7 @@
         },
         {
           "name": "wave",
-          "type": "?drive_a_2_wave_t",
+          "type": "int",
           "description": "Waveform shape"
         }
       ],
@@ -213,7 +213,7 @@
         },
         {
           "name": "slew",
-          "type": "?drive_a_2_slew_t",
+          "type": "int",
           "description": "Slew-rate code (drive_a_2_slew_t value 0–15)"
         }
       ],
@@ -237,7 +237,7 @@
         },
         {
           "name": "step",
-          "type": "?drive_a_2_step_t",
+          "type": "int",
           "description": "Code-step code (drive_a_2_step_t value 0–7)"
         }
       ],
@@ -290,7 +290,7 @@
         },
         {
           "name": "phase",
-          "type": "?drive_a_2_phase_t",
+          "type": "int",
           "description": "Phase offset (drive_a_2_phase_t)"
         }
       ],
@@ -314,17 +314,17 @@
         },
         {
           "name": "wave",
-          "type": "?drive_a_2_wave_t",
+          "type": "int",
           "description": "Waveform shape (drive_a_2_wave_t)"
         },
         {
           "name": "step",
-          "type": "?drive_a_2_step_t",
+          "type": "int",
           "description": "Code-step (drive_a_2_step_t)"
         },
         {
           "name": "slew",
-          "type": "?drive_a_2_slew_t",
+          "type": "int",
           "description": "Time per step (drive_a_2_slew_t)"
         }
       ],
@@ -519,7 +519,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
         },
         {
@@ -548,7 +548,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
         },
         {
@@ -572,7 +572,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH"
         },
         {
@@ -606,7 +606,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
         },
         {
@@ -630,7 +630,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
         }
       ],
@@ -649,7 +649,7 @@
       "params": [
         {
           "name": "channel",
-          "type": "?drive_a_2_channel_t",
+          "type": "int",
           "description": "DRIVE_A_2_CH_LEFT, _RIGHT, or _BOTH (advisory)"
         }
       ],
