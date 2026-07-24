@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@e1430b1",
+  "source": "tiles@842d43e",
   "tile": "Display.RGBW",
   "palette": {
     "label": "Display.RGBW",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_display_rgbw",
     "header": "tile_display_rgbw.h",
-    "version": "2.2.0"
+    "version": "2.3.0"
   },
   "handle": {
     "type": "tile_t",

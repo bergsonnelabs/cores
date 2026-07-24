@@ -94,17 +94,34 @@ void tile_display_rgbw_init(tiles_pal_t *hal, uint8_t instance, tile_t *tile,
         return;
     }
 
-    /* Boost voltage 4.5V (boost_vout = 0x0F), max current 51 mA (MC=1) */
-    lp_write(tile, LP5811_REG_CONFIG_0, 0x1F);
-
     /* Dev_Config_12: clamp default (vmid_sel=0, clamp_sel=0, clamp_dis=0),
      * lod_action=1 (open shuts down sink), lsd_action=0 (short reports
      * only — driver-level choice; firmware can opt-in via set_short_shutdown),
-     * lsd_threshold=3 (0.65 × VOUT, most permissive). */
+     * lsd_threshold=3 (0.65 × VOUT, most permissive). Latched by the
+     * first commit of the boost ramp below. */
     lp_write(tile, LP5811_REG_CONFIG_12, 0x0B);
 
-    /* Commit config */
-    lp_commit(tile);
+    /* Boost to 4.5 V, max current 51 mA — RAMPED, not slammed.
+     *
+     * Dev_Config_0 layout (datasheet §Dev_Config_0): bits[5:1] =
+     * boost_vout, 3.0 V + 0.1 V × code; bit[0] = max_current
+     * (1 = 51 mA full-scale). Reset default is code 0 → the boost
+     * idles at 3.0 V once the chip is enabled.
+     *
+     * Committing the 4.5 V target in one step (pre-v2.3.0 behavior)
+     * makes the boost slew 3.0 → 4.5 V at once; the inrush can
+     * collapse a marginal supply (long leads, probe fixtures, loaded
+     * USB rails) and brown-out-reset the host MCU — 100% reproducible
+     * on the 2026-07 Display.RGBW panel bring-up rig, where stepping
+     * 0.1 V per commit was 100% reliable. Ramp cost at the proven
+     * 100 ms/step is ~1.6 s of init time (see the header note on
+     * LP5811_BOOST_RAMP_STEP_MS for tuning). */
+    for (uint8_t code = 0; code <= LP5811_BOOST_VOUT_CODE_4V5; code++) {
+        lp_write(tile, LP5811_REG_CONFIG_0,
+                 (uint8_t)((code << 1) | LP5811_CONFIG_0_MC_51MA));
+        lp_commit(tile);
+        hal->delay_ms(LP5811_BOOST_RAMP_STEP_MS);
+    }
 
     /* Enable all 4 LED channels */
     lp_write(tile, LP5811_REG_LED_EN, 0x0F);

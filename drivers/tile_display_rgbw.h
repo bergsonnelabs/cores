@@ -16,6 +16,10 @@
  * @endcode
  *
  * Version history:
+ *   v2.3.0 — init() ramps the boost 3.0 -> 4.5 V in 0.1 V committed
+ *            steps instead of one slam. The single-step commit's
+ *            inrush can brown-out a marginal supply (long leads,
+ *            loaded USB rail) and reset the host MCU.
  *   v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,
  *            flash, is_faulted) + section= tagging for Coverage Table.
  *   v2.0.0 — Initial tier-1 surface (set, off, current, faults).
@@ -44,7 +48,7 @@
 /* ---- Driver version ---- */
 
 #define TILE_DISP_RGBW_VERSION_MAJOR  2
-#define TILE_DISP_RGBW_VERSION_MINOR  2
+#define TILE_DISP_RGBW_VERSION_MINOR  3
 #define TILE_DISP_RGBW_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -67,7 +71,8 @@ TILES_CHECK_VERSION(1, 0);
 /* ---- LP5811 registers (page-0 offsets unless noted) ---- */
 
 #define LP5811_REG_CHIP_EN      0x00
-#define LP5811_REG_CONFIG_0     0x01
+#define LP5811_REG_CONFIG_0     0x01  /* bits[5:1] boost_vout (3.0V + 0.1V*code),
+                                         bit[0] max_current (1 = 51 mA) */
 #define LP5811_REG_CONFIG_2     0x03
 #define LP5811_REG_CONFIG_12    0x0D
 #define LP5811_REG_CMD_UPDATE   0x10
@@ -89,6 +94,24 @@ TILES_CHECK_VERSION(1, 0);
 #define LP5811_REG_LSD_STATUS_0 0x03  /* page 3, offset 0x03 (=0x303) */
 
 #define LP5811_CONFIG_2_DEFAULT 0xE4  /* Used to verify chip is alive */
+
+/* ---- Boost bring-up (Dev_Config_0) ---- */
+
+#define LP5811_BOOST_VOUT_CODE_4V5  15u   /**< boost_vout code: 3.0 + 15*0.1 = 4.5 V */
+#define LP5811_CONFIG_0_MC_51MA     0x01u /**< max_current bit: 51 mA full-scale */
+
+/**
+ * Boost ramp step delay used by init(). One CMD_Update per 0.1 V code,
+ * 16 commits total (~16 * LP5811_BOOST_RAMP_STEP_MS of init time).
+ * Stepping avoids the single-slam inrush that can collapse a marginal
+ * supply — see the v2.3.0 note in the version history.
+ *
+ * 100 ms/step (~1.6 s init) is the bench-proven conservative value
+ * from the 2026-07 panel bring-up rig (long soldered leads). Faster
+ * steps likely work on solid supplies but are unvalidated — tune down
+ * once socketed-tile testing confirms margin.
+ */
+#define LP5811_BOOST_RAMP_STEP_MS   100u
 
 /* ---- Autonomous-animation config registers ---- */
 #define LP5811_REG_CONFIG_3     0x04  /* auto_en[3:0] — per-LED autonomous enable */
@@ -171,11 +194,13 @@ typedef struct {
 /**
  * @brief  Initialize the LP5811 LED driver.
  *
- * Enables the chip, configures boost voltage to 4.5V, sets max
- * current to 51mA, enables all 4 LED channels, and sets current
- * limits to 50%. LSD action is left at "no shutdown" (driver-level
- * choice) so a transient short doesn't latch the device into OFAF
- * state without firmware seeing it. Pass cfg=NULL for defaults.
+ * Enables the chip, ramps the boost to 4.5 V in 0.1 V committed
+ * steps (~1.6 s — avoids the single-step inrush that can brown-out
+ * a marginal supply; see version history v2.3.0), sets max current
+ * to 51mA, enables all 4 LED channels, and sets current limits to
+ * 50%. LSD action is left at "no shutdown" (driver-level choice) so
+ * a transient short doesn't latch the device into OFAF state without
+ * firmware seeing it. Pass cfg=NULL for defaults.
  *
  * @param  hal       Platform abstraction handle
  * @param  instance  Device instance (0 = default address 0x50)
