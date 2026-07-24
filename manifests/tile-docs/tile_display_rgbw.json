@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@00ef0ed",
+  "source": "tiles@842d43e",
   "file": "tile_display_rgbw.h",
   "brief": "RGBW LED driver for the Display.RGBW tile (LP5811).",
-  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50–0x53)\"\n  Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are\n  selected by Bit4/Bit3 of the chip-address byte, but those bits\n  are fixed by the factory material variant (LP5811A/B/C/D, see\n  datasheet §4 Device Comparison). They are not pin-strapped or\n  register-configurable. The Display.RGBW (rev a) tile ships only\n  the A variant. Adding the other three addresses requires a tile\n  hardware revision that places the alternate part numbers on the\n  PCB — not something the driver can close on its own.",
+  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.3.0 — init() ramps the boost 3.0 -> 4.5 V in 0.1 V committed\n           steps instead of one slam. The single-step commit's\n           inrush can brown-out a marginal supply (long leads,\n           loaded USB rail) and reset the host MCU.\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50–0x53)\"\n  Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are\n  selected by Bit4/Bit3 of the chip-address byte, but those bits\n  are fixed by the factory material variant (LP5811A/B/C/D, see\n  datasheet §4 Device Comparison). They are not pin-strapped or\n  register-configurable. The Display.RGBW (rev a) tile ships only\n  the A variant. Adding the other three addresses requires a tile\n  hardware revision that places the alternate part numbers on the\n  PCB — not something the driver can close on its own.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -27,7 +27,7 @@
     },
     {
       "name": "TILE_DISP_RGBW_VERSION_MINOR",
-      "value": "2",
+      "value": "3",
       "description": "",
       "section": ""
     },
@@ -46,6 +46,24 @@
     {
       "name": "LP5811_CONFIG_2_DEFAULT",
       "value": "0xE4",
+      "description": "",
+      "section": ""
+    },
+    {
+      "name": "LP5811_BOOST_VOUT_CODE_4V5",
+      "value": "15",
+      "description": "",
+      "section": ""
+    },
+    {
+      "name": "LP5811_CONFIG_0_MC_51MA",
+      "value": "0x01",
+      "description": "",
+      "section": ""
+    },
+    {
+      "name": "LP5811_BOOST_RAMP_STEP_MS",
+      "value": "100",
       "description": "",
       "section": ""
     }
@@ -180,7 +198,7 @@
       ],
       "notes": [],
       "brief": "Initialize the LP5811 LED driver.",
-      "description": "Enables the chip, configures boost voltage to 4.5V, sets max\ncurrent to 51mA, enables all 4 LED channels, and sets current\nlimits to 50%. LSD action is left at \"no shutdown\" (driver-level\nchoice) so a transient short doesn't latch the device into OFAF\nstate without firmware seeing it. Pass cfg=NULL for defaults.",
+      "description": "Enables the chip, ramps the boost to 4.5 V in 0.1 V committed\nsteps (~1.6 s — avoids the single-step inrush that can brown-out\na marginal supply; see version history v2.3.0), sets max current\nto 51mA, enables all 4 LED channels, and sets current limits to\n50%. LSD action is left at \"no shutdown\" (driver-level choice) so\na transient short doesn't latch the device into OFAF state without\nfirmware seeing it. Pass cfg=NULL for defaults.",
       "name": "tile_display_rgbw_init"
     },
     {
@@ -734,7 +752,7 @@
     }
   ],
   "source_file": "tile_display_rgbw.h",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "tile_family": "Display",
   "tile_name": "RGBW",
   "display_name": "Display.RGBW"
