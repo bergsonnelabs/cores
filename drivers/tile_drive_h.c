@@ -38,6 +38,24 @@ static uint8_t drv_read(tile_t* tile, uint8_t reg)
     return val;
 }
 
+/** @brief  Integer square root (floor), for the Eq. 3/5 loss factors. */
+static uint32_t isqrt32(uint32_t x)
+{
+    uint32_t res = 0;
+    uint32_t bit = 1uL << 30;
+    while (bit > x) bit >>= 2;
+    while (bit != 0) {
+        if (x >= res + bit) {
+            x -= res + bit;
+            res = (res >> 1) + bit;
+        } else {
+            res >>= 1;
+        }
+        bit >>= 2;
+    }
+    return res;
+}
+
 /**
  * @brief  Poll the GO bit until it self-clears or timeout.
  * @return 1 if GO cleared (process complete), 0 if timeout.
@@ -91,10 +109,13 @@ void tile_drive_h_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
         return;
     }
 
-    /* Verify status register */
+    /* Verify device ID (STATUS bits 7:5). Compare only the ID field:
+     * DIAG_RESULT / OVER_TEMP / OC_DETECT are sticky until read, so a
+     * leftover flag from a previous session must not fail init. */
     uint8_t status = drv_read(tile, DRV2605L_REG_STATUS);
-    if (status != DRV2605L_STATUS_DEFAULT) {
-        TILE_ON_ERROR(tile, "init: unexpected status register");
+    if ((status & DRV2605L_STATUS_DEVICE_ID) !=
+        (DRV2605L_STATUS_DEFAULT & DRV2605L_STATUS_DEVICE_ID)) {
+        TILE_ON_ERROR(tile, "init: unexpected device id");
         tile->state = TILE_STATE_ERROR;
         return;
     }
@@ -103,12 +124,13 @@ void tile_drive_h_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     drv_write(tile, DRV2605L_REG_MODE, DRV2605L_MODE_INTERNAL_TRIG);
     hal->delay_ms(400);
 
-    /* Parse config, apply defaults for the Drive.H onboard LRA
-     * (0.7 Vrms rated, ~260 Hz resonance, coin-type). */
-    uint8_t closed_loop = 0;
+    /* Parse config. Defaults target the typical externally attached
+     * coin LRA (2.0 Vrms-class, ~235 Hz): closed-loop smart-loop with
+     * 1.8 Vrms drive levels. The tile has no onboard actuator. */
+    uint8_t closed_loop = 1;
     uint8_t library = 6;
-    uint8_t rated_v = 0x1A;   /* 0.7 Vrms */
-    uint8_t od_clamp = 0x25;
+    uint8_t rated_v = 0x56;   /* 1.8 Vrms */
+    uint8_t od_clamp = 0x8C;
     if (cfg != NULL) {
         if (cfg->library >= 1 && cfg->library <= 6) {
             library = cfg->library;
@@ -137,11 +159,12 @@ void tile_drive_h_init(tiles_pal_t* hal, uint8_t instance, tile_t* tile,
     drv_write(tile, DRV2605L_REG_FEEDBACK_CTRL, fb_ctrl);
     hal->delay_ms(100);
 
-    /* Set DRIVE_TIME for the onboard LRA (~260 Hz).
-     * Optimal = 0.5 × LRA period = 1.92 ms → DRIVE_TIME = 14 (0x0E).
-     * CONTROL1: preserve STARTUP_BOOST [7], set DRIVE_TIME [4:0]. */
+    /* Set DRIVE_TIME for the typical ~235 Hz coin LRA.
+     * Optimal = 0.5 × LRA period = 2.13 ms → DRIVE_TIME = 16 (0x10).
+     * CONTROL1: preserve STARTUP_BOOST [7], set DRIVE_TIME [4:0].
+     * Retune for other actuators with tile_drive_h_set_resonance_hz(). */
     uint8_t ctrl1 = drv_read(tile, DRV2605L_REG_CONTROL1);
-    ctrl1 = (ctrl1 & 0xE0) | 0x0E;
+    ctrl1 = (ctrl1 & 0xE0) | 0x10;
     drv_write(tile, DRV2605L_REG_CONTROL1, ctrl1);
 
     /* Configure CONTROL3: LRA_OPEN_LOOP [0], ERM_OPEN_LOOP [5] */
@@ -509,6 +532,99 @@ void tile_drive_h_set_actuator_params(tile_t* tile,
         }
         drv_write(tile, DRV2605L_REG_FEEDBACK_CTRL, fb);
     }
+}
+
+void tile_drive_h_set_loop_mode(tile_t* tile, uint8_t closed)
+{
+    if (tile->state != TILE_STATE_READY) {
+        TILE_ON_ERROR(tile, "set_loop_mode: not ready");
+        return;
+    }
+
+    /* Set/clear both ERM_OPEN_LOOP [5] and LRA_OPEN_LOOP [0]; only
+     * the bit for the active actuator type takes effect, and keeping
+     * them in lockstep matches diagnose()/calibrate(). */
+    uint8_t ctrl3 = drv_read(tile, DRV2605L_REG_CONTROL3);
+    if (closed) {
+        ctrl3 &= ~0x21;
+    } else {
+        ctrl3 |= 0x21;
+    }
+    drv_write(tile, DRV2605L_REG_CONTROL3, ctrl3);
+}
+
+void tile_drive_h_set_actuator_voltage(tile_t* tile, uint16_t rated_mv,
+                                       uint16_t overdrive_mv)
+{
+    if (tile->state != TILE_STATE_READY) {
+        TILE_ON_ERROR(tile, "set_actuator_voltage: not ready");
+        return;
+    }
+
+    if (rated_mv < 300)     rated_mv = 300;
+    if (rated_mv > 3600)    rated_mv = 3600;
+    if (overdrive_mv < rated_mv) overdrive_mv = rated_mv;
+    if (overdrive_mv > 5000)     overdrive_mv = 5000;
+
+    uint8_t is_lra = (drv_read(tile, DRV2605L_REG_FEEDBACK_CTRL) & 0x80) != 0;
+    uint32_t rated_reg;
+    uint32_t od_reg;
+
+    if (!is_lra) {
+        /* ERM — Eq 2: V_avg = 21.33 mV × RATED_VOLTAGE;
+         *       Eq 4: V_avg = 21.96 mV × OD_CLAMP. */
+        rated_reg = ((uint32_t)rated_mv * 100u) / 2133u;
+        od_reg    = ((uint32_t)overdrive_mv * 100u) / 2196u;
+    } else {
+        /* LRA — Eq 3/5 depend on the drive frequency and back-EMF
+         * sample window. Derive f from the programmed DRIVE_TIME
+         * (period = 2 × (0.5 ms + N × 0.1 ms)) and t_SAMPLE from
+         * CONTROL2, so set_resonance_hz() feeds into the maths. */
+        uint32_t n = drv_read(tile, DRV2605L_REG_CONTROL1) & 0x1F;
+        uint32_t f_hz = 1000000u / (2u * (500u + 100u * n));
+        static const uint16_t sample_us[4] = { 150, 200, 250, 300 };
+        uint32_t t_s = sample_us[(drv_read(tile, DRV2605L_REG_CONTROL2) >> 4) & 0x03];
+
+        /* Eq 3: V_rms = 20.71 mV × RATED / √(1 − (4·t_s + 300 µs)·f).
+         * Loss factors are carried in per-mille (‰) integer form. */
+        uint32_t loss_pm = ((4u * t_s + 300u) * f_hz) / 1000u;
+        if (loss_pm > 900u) loss_pm = 900u;
+        uint32_t sqrt_pm = isqrt32((1000u - loss_pm) * 1000u);
+        rated_reg = ((uint32_t)rated_mv * sqrt_pm) / 20710u;
+
+        /* Eq 5: V_rms = 21.32 mV × OD_CLAMP × √(1 − f × 800 µs). */
+        uint32_t loss2_pm = (f_hz * 800u) / 1000u;
+        if (loss2_pm > 900u) loss2_pm = 900u;
+        uint32_t sqrt2_pm = isqrt32((1000u - loss2_pm) * 1000u);
+        od_reg = ((uint32_t)overdrive_mv * 100000u) / (2132u * sqrt2_pm);
+    }
+
+    if (rated_reg < 1)   rated_reg = 1;
+    if (rated_reg > 255) rated_reg = 255;
+    if (od_reg < 1)      od_reg = 1;
+    if (od_reg > 255)    od_reg = 255;
+
+    drv_write(tile, DRV2605L_REG_RATED_VOLTAGE, (uint8_t)rated_reg);
+    drv_write(tile, DRV2605L_REG_OD_CLAMP, (uint8_t)od_reg);
+}
+
+void tile_drive_h_set_resonance_hz(tile_t* tile, uint16_t hz)
+{
+    if (tile->state != TILE_STATE_READY) {
+        TILE_ON_ERROR(tile, "set_resonance_hz: not ready");
+        return;
+    }
+
+    if (hz < 125) hz = 125;
+    if (hz > 300) hz = 300;
+
+    /* DRIVE_TIME = (half-period − 0.5 ms) / 0.1 ms, clamped to [4:0]. */
+    uint32_t half_period_us = 500000u / hz;
+    uint32_t n = (half_period_us - 500u) / 100u;
+    if (n > 31u) n = 31u;
+
+    uint8_t ctrl1 = drv_read(tile, DRV2605L_REG_CONTROL1);
+    drv_write(tile, DRV2605L_REG_CONTROL1, (uint8_t)((ctrl1 & 0xE0) | n));
 }
 
 void tile_drive_h_set_resonance_params(tile_t* tile,

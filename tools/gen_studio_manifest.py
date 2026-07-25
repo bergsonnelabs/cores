@@ -1130,7 +1130,7 @@ def main():
             "definition": ROOT / "definitions/Drive-H-a.json",
             "prefix": "tile_drive_h",
             "init": "tile_drive_h_init",
-            "version": "4.1.0",
+            "version": "4.2.0",
         },
         {
             "path": ROOT / "drivers/tile_sense_mic.h",

@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@a5cb41d",
+  "source": "tiles@bc9bb0f",
   "tile": "Drive.H",
   "palette": {
     "label": "Drive.H",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_drive_h",
     "header": "tile_drive_h.h",
-    "version": "4.1.0"
+    "version": "4.2.0"
   },
   "handle": {
     "type": "tile_t",
@@ -216,6 +216,80 @@
           "name": "loop_gain",
           "type": "int",
           "description": "Loop gain 0..3 (0xFF = no change)"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_loop_mode"
+      ],
+      "symbol": "tile_drive_h_set_loop_mode",
+      "header": "tile_drive_h.h",
+      "category": "tile",
+      "description": "Switch between open-loop and closed-loop drive at runtime.",
+      "params": [
+        {
+          "name": "closed",
+          "type": "int",
+          "description": "1 = closed-loop (smart-loop), 0 = open-loop"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_actuator_voltage"
+      ],
+      "symbol": "tile_drive_h_set_actuator_voltage",
+      "header": "tile_drive_h.h",
+      "category": "tile",
+      "description": "Set the actuator drive levels in millivolts.",
+      "params": [
+        {
+          "name": "rated_mv",
+          "type": "int",
+          "range": [
+            300,
+            3600
+          ],
+          "description": "Rated drive level in mV"
+        },
+        {
+          "name": "overdrive_mv",
+          "type": "int",
+          "range": [
+            300,
+            5000
+          ],
+          "description": "Overdrive clamp in mV"
+        }
+      ],
+      "returns": "void",
+      "receiver": "tile_t*"
+    },
+    {
+      "qname": [
+        "$slot",
+        "set_resonance_hz"
+      ],
+      "symbol": "tile_drive_h_set_resonance_hz",
+      "header": "tile_drive_h.h",
+      "category": "tile",
+      "description": "Set the LRA resonant frequency the driver targets.",
+      "params": [
+        {
+          "name": "hz",
+          "type": "int",
+          "range": [
+            125,
+            300
+          ],
+          "description": "LRA resonant frequency in Hz"
         }
       ],
       "returns": "void",

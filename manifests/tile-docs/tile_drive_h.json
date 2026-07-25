@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@a5cb41d",
+  "source": "tiles@bc9bb0f",
   "file": "tile_drive_h.h",
-  "brief": "LRA haptic driver for the Drive.H tile (rev a).",
-  "description": "Embeds the TI DRV2605L, a haptic driver for LRA (Linear Resonant\nActuator) and ERM actuators with a built-in waveform library\nof 123 effects.\n\nKey specifications:\n  - Output:       full-bridge, 3.0-5.2 Vrms into LRA\n  - Waveform lib: 123 haptic effects (6 libraries)\n  - Auto-cal:     automatic resonance tracking for LRA\n  - Modes:        Internal trigger, RTP, PWM, audio-to-vibe\n\nDatasheet: https://www.bergsonne.io/tiles/drive/h\nIC datasheet: https://www.ti.com/lit/ds/symlink/drv2605l.pdf\n\n\n@studio tile label=Drive.H icon=≋\n\nDriver gaps (chip capabilities not exposed by this driver):\n\nThis driver covers every register-controllable feature of the\nDRV2605L; the only deliberate omission is OTP waveform burning.\n\n@studio unsupported severity=niche category=\"OTP waveform burning\"\n  The DRV2605L can burn custom waveforms into one-time-programmable\n  memory. This is implemented in firmware (tile_drive_h_program_otp())\n  but intentionally NOT exposed to Studio: it permanently and\n  irreversibly modifies the chip. Driver-deferred by policy, not a\n  hardware gap — call it from C if you really need it.",
+  "brief": "LRA/ERM haptic driver for the Drive.H tile (rev a).",
+  "description": "Embeds the TI DRV2605 (DEVICE_ID 3 — the non-L part), a haptic\ndriver for LRA (Linear Resonant Actuator) and ERM actuators with\na built-in waveform library of 123 effects. The actuator is\nexternal, connected via the tile's OUT+ / OUT- pads; V_MOTOR\naccepts 2.5-5.5 V.\n\nThe chip regulates output amplitude itself: the supply rail only\nsets headroom. Full-scale drive level comes from RATED_VOLTAGE /\nOD_CLAMP (see tile_drive_h_set_actuator_voltage()), NOT from the\nvoltage applied to V_MOTOR.\n\nKey specifications:\n  - Output:       full-bridge, amplitude regulated per config\n  - Waveform lib: 123 haptic effects (6 libraries)\n  - Smart-loop:   automatic resonance tracking for LRA (closed loop)\n  - Modes:        Internal trigger, RTP, PWM, audio-to-vibe\n\nDatasheet: https://www.bergsonne.io/tiles/drive/h\nIC datasheet: https://www.ti.com/lit/ds/symlink/drv2605.pdf\n\n\n@studio tile label=Drive.H icon=≋\n\nDriver gaps (chip capabilities not exposed by this driver):\n\nThis driver covers every register-controllable feature of the\nDRV2605L; the only deliberate omission is OTP waveform burning.\n\n@studio unsupported severity=niche category=\"OTP waveform burning\"\n  The DRV2605L can burn custom waveforms into one-time-programmable\n  memory. This is implemented in firmware (tile_drive_h_program_otp())\n  but intentionally NOT exposed to Studio: it permanently and\n  irreversibly modifies the chip. Driver-deferred by policy, not a\n  hardware gap — call it from C if you really need it.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -27,7 +27,7 @@
     },
     {
       "name": "TILE_DRIVE_H_VERSION_MINOR",
-      "value": "1",
+      "value": "2",
       "description": "",
       "section": ""
     },
@@ -199,7 +199,7 @@
     {
       "name": "drive_h_cfg_t",
       "brief": "",
-      "description": "Optional init config. Pass NULL for defaults (LRA open-loop, library 6,\nvoltage parameters for the Drive.H onboard actuator).\nTo match a different LRA, set rated_voltage and od_clamp using the\nformulas in the DRV2605 datasheet (section 7.5.2). Typical values:\n| LRA rated voltage | rated_voltage | od_clamp |\n|-------------------|---------------|----------|\n| 0.5 Vrms          | 0x13          | 0x1B     |\n| 0.7 Vrms          | 0x1A          | 0x25     |\n| 1.0 Vrms          | 0x26          | 0x36     |\n| 1.8 Vrms          | 0x56          | 0x8C     |",
+      "description": "Optional init config. Pass NULL for defaults: LRA closed-loop,\nlibrary 6, drive levels for a typical 2.0 Vrms-class coin LRA\n(1.8 Vrms rated — the actuator is external, via the OUT± pads).\nIf your actuator is smaller, set rated_voltage and od_clamp using\nthe formulas in the DRV2605 datasheet (section 7.5.2), or call\ntile_drive_h_set_actuator_voltage() with millivolts. Typical values:\n| LRA rated voltage | rated_voltage | od_clamp |\n|-------------------|---------------|----------|\n| 0.5 Vrms          | 0x13          | 0x1B     |\n| 0.7 Vrms          | 0x1A          | 0x25     |\n| 1.0 Vrms          | 0x26          | 0x36     |\n| 1.8 Vrms          | 0x56          | 0x8C     |\nNote: in open-loop mode the chip ignores RATED_VOLTAGE and derives\nfull-scale output from OD_CLAMP alone (and LRA playback does not\nresonance-track on this part) — prefer closed loop for LRAs.",
       "fields": [
         {
           "type": "uint8_t",
@@ -209,7 +209,7 @@
         {
           "type": "uint8_t",
           "name": "closed_loop",
-          "description": "0 = open-loop (default), 1 = closed-loop."
+          "description": ""
         },
         {
           "type": "uint8_t",
@@ -267,7 +267,7 @@
         "Blocks for ~500 ms during init. Call once at startup."
       ],
       "brief": "Initialize the DRV2605L haptic driver.",
-      "description": "Verifies the status register, exits standby, and configures the\nactuator drive mode. Pass cfg=NULL for defaults (LRA open-loop,\nlibrary 6).",
+      "description": "Verifies the device ID, exits standby, and configures the\nactuator drive mode. Pass cfg=NULL for defaults (LRA closed-loop,\nlibrary 6, 1.8 Vrms drive levels).",
       "name": "tile_drive_h_init"
     },
     {
@@ -444,6 +444,67 @@
       "brief": "Tune the actuator drive parameters.",
       "description": "Writes the four registers that the auto-calibration engine and\nsmart-loop architecture consume:\n  - rated_voltage (0x16): full-scale RMS drive level (closed-loop ref).\n  - od_clamp      (0x17): peak overdrive ceiling (also open-loop ref).\n  - fb_brake      (0x1A bits 6:4): feedback brake factor (0=1× .. 6=16×, 7=off).\n  - loop_gain     (0x1A bits 3:2): closed-loop gain (0=Low .. 3=Very high).\n\nPass 0 for rated_voltage / od_clamp to leave that register untouched.\nPass 0xFF for fb_brake / loop_gain to leave them untouched. Run\ntile_drive_h_calibrate() afterwards to update A_CAL_COMP / A_CAL_BEMF.",
       "name": "tile_drive_h_set_actuator_params"
+    },
+    {
+      "signature": "void tile_drive_h_set_loop_mode(tile_t* tile, uint8_t closed)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Pointer to tile handle"
+        },
+        {
+          "name": "closed",
+          "description": "1 = closed-loop (smart-loop), 0 = open-loop"
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Switch between open-loop and closed-loop drive at runtime.",
+      "description": "Closed loop (recommended for LRAs) enables smart-loop back-EMF\nfeedback: automatic resonance tracking, overdrive, and braking,\nwith full-scale amplitude referenced to RATED_VOLTAGE. Open loop\ndrives blind: amplitude is referenced to OD_CLAMP, RATED_VOLTAGE\nis ignored, and LRA playback does NOT resonance-track on this\npart — the commutation frequency comes from DRIVE_TIME (see\ntile_drive_h_set_resonance_hz()).\n\nApplies to whichever actuator type is currently selected\n(set_library() / FEEDBACK_CTRL N_ERM_LRA).",
+      "name": "tile_drive_h_set_loop_mode"
+    },
+    {
+      "signature": "void tile_drive_h_set_actuator_voltage(tile_t* tile, uint16_t rated_mv, uint16_t overdrive_mv)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Pointer to tile handle"
+        },
+        {
+          "name": "rated_mv",
+          "description": "[300..3600] Rated drive level in mV"
+        },
+        {
+          "name": "overdrive_mv",
+          "description": "[300..5000] Overdrive clamp in mV"
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the actuator drive levels in millivolts.",
+      "description": "The friendly-units version of tile_drive_h_set_actuator_params():\nconverts voltages to the RATED_VOLTAGE (0x16) and OD_CLAMP (0x17)\nregister values using the DRV2605 datasheet equations (section\n7.5.2, Eq. 2-5), honouring the currently selected actuator type\n(ERM vs LRA) and, for LRAs, the drive frequency currently\nprogrammed via tile_drive_h_set_resonance_hz().\n\n  - rated_mv:     steady-state full-scale level (RMS for LRA,\n                  average for ERM). Closed-loop reference.\n  - overdrive_mv: peak ceiling for overdrive/braking; also the\n                  full-scale reference in open-loop mode. Must be\n                  >= rated_mv; typically 1.3-1.5x for LRAs.\n\nRun tile_drive_h_calibrate() afterwards — the datasheet requires\nrecalibration whenever these references change.",
+      "name": "tile_drive_h_set_actuator_voltage"
+    },
+    {
+      "signature": "void tile_drive_h_set_resonance_hz(tile_t* tile, uint16_t hz)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Pointer to tile handle"
+        },
+        {
+          "name": "hz",
+          "description": "[125..300] LRA resonant frequency in Hz"
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "config",
+      "brief": "Set the LRA resonant frequency the driver targets.",
+      "description": "Programs CONTROL1 DRIVE_TIME to half the LRA period — the\ndatasheet-optimal value. In closed-loop mode this seeds the\nauto-resonance tracker (which then follows the real resonance);\nin open-loop mode it directly sets the commutation frequency.\nRead the actuator's actual resonance with\ntile_drive_h_get_resonance_hz() while driving in closed loop.",
+      "name": "tile_drive_h_set_resonance_hz"
     },
     {
       "signature": "void tile_drive_h_set_resonance_params(tile_t* tile, uint8_t sample_time, uint8_t blanking_time, uint8_t idiss_time)",
@@ -835,7 +896,7 @@
     }
   ],
   "source_file": "tile_drive_h.h",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "tile_family": "Drive",
   "tile_name": "H",
   "display_name": "Drive.H"

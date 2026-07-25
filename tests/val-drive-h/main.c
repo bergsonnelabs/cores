@@ -109,6 +109,15 @@ int main(void)
     tile_drive_h_set_resonance_params(&haptic, 3, 1, 1);
     tile_drive_h_set_resonance_params(&haptic, 0xFF, 0xFF, 0xFF); /* no-op */
 
+    tile_drive_h_set_loop_mode(&haptic, 0);
+    tile_drive_h_set_loop_mode(&haptic, 1);
+
+    tile_drive_h_set_actuator_voltage(&haptic, 1800, 2500);
+    tile_drive_h_set_actuator_voltage(&haptic, 0, 9999);    /* clamped */
+
+    tile_drive_h_set_resonance_hz(&haptic, 241);
+    tile_drive_h_set_resonance_hz(&haptic, 50);             /* clamped */
+
     /* ---- Library waveform timing offsets ---- */
     tile_drive_h_set_waveform_timing(&haptic, 0, 0, 0, 0);
     tile_drive_h_set_waveform_timing(&haptic, 4, -2, 1, 8);
