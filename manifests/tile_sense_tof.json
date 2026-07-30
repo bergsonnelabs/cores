@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@fb52ca7",
+  "source": "tiles@be0209a",
   "tile": "Sense.TOF",
   "palette": {
     "label": "Sense.TOF",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_sense_tof",
     "header": "tile_sense_tof.h",
-    "version": "1.4.0"
+    "version": "1.4.1"
   },
   "handle": {
     "type": "tile_t",

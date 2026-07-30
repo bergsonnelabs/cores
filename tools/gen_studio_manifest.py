@@ -1200,7 +1200,7 @@ def main():
             "definition": ROOT / "definitions/Sense-TOF-a.json",
             "prefix": "tile_sense_tof",
             "init": "tile_sense_tof_init",
-            "version": "1.4.0",
+            "version": "1.4.1",
         },
         {
             "path": ROOT / "drivers/tile_drive_dc_h.h",

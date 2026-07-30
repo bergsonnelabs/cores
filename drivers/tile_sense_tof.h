@@ -71,7 +71,7 @@
 
 #define TILE_SENSE_TOF_VERSION_MAJOR  1
 #define TILE_SENSE_TOF_VERSION_MINOR  4
-#define TILE_SENSE_TOF_VERSION_PATCH  0
+#define TILE_SENSE_TOF_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);
 
@@ -372,8 +372,8 @@ uint8_t tile_sense_tof_measure_single(tile_t *tile, sense_tof_result_t *result,
  * new data is available — call tile_sense_tof_result_ready() first
  * or use tile_sense_tof_get_result() for full status.
  *
- * When no object is detected (reliability below
- * SENSE_TOF_PRESENCE_RELIABILITY_MIN) this SATURATES to tile_sense_tof_max_range_mm()
+ * When nothing is in range the sensor reports 0; this SATURATES that to
+ * tile_sense_tof_max_range_mm()
  * rather than returning 0, so `if (distance < threshold)` behaves correctly
  * with no special case — "out of range" reads as "very far away", which is
  * what it physically means. Use tile_sense_tof_get_result() when you need to
