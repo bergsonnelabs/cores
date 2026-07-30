@@ -390,13 +390,21 @@ uint8_t tile_sense_tof_measure_single(tile_t *tile, sense_tof_result_t *result,
 
 uint16_t tile_sense_tof_get_distance_mm(tile_t *tile)
 {
-    uint8_t buf[2] = {0, 0};
-    tof_read_regs(tile, TMF8806_REG_DISTANCE_LSB, buf, 2);
+    /* Must be a bulk read STARTING AT 0x1D. Per the TMF8806
+     * HostDriverCommunication guide, "always start reading from 0x1D with a
+     * bulk read to correctly read registers" — the result block is only
+     * coherent when the burst begins at STATUS. Reading the two distance
+     * bytes directly at 0x22 (as this did) returns zeros forever, which is
+     * why measure_single()/get_result() worked while a plain
+     * get_distance_mm() poll always read 0. Same 7-byte window as
+     * get_result(); distance is the last two bytes (0x22 LSB, 0x23 MSB). */
+    uint8_t buf[7] = {0};
+    tof_read_regs(tile, TMF8806_REG_STATUS, buf, 7);
 
     /* Clear result interrupt */
     tof_write_reg(tile, TMF8806_REG_INT_STATUS, TMF8806_INT_RESULT);
 
-    return (uint16_t)(((uint16_t)buf[1] << 8) | (uint16_t)buf[0]);
+    return (uint16_t)(((uint16_t)buf[6] << 8) | (uint16_t)buf[5]);
 }
 
 void tile_sense_tof_get_result(tile_t *tile, sense_tof_result_t *result)
