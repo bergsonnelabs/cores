@@ -1,6 +1,6 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@8e8046f",
+  "source": "tiles@fb52ca7",
   "file": "tile_sense_tof.h",
   "brief": "TMF8806 time-of-flight distance sensor.",
   "description": "Platform-agnostic driver for the AMS/Sciosense TMF8806 direct time-of-flight\n(dToF) sensor with integrated VCSEL emitter and SPAD detector array.\n\nKey specifications:\n - Distance measurement up to 5000 mm (short-range, 2.5 m, and 5 m modes)\n - 16-bit distance output in millimeters\n - Configurable measurement period (30 ms to 2000 ms, or single-shot)\n - Configurable iteration count for accuracy vs. speed trade-off\n - 6-bit reliability indicator (0 = no object, 63 = highest confidence)\n - On-chip factory calibration with host-side storage and reload\n - Algorithm state save/restore for ultra-low-power resume\n - Embedded 8-bit temperature sensor\n\n\nDatasheet: https://ams.com/tmf8806\n\n@studio tile label=Sense.TOF icon=◊\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=common category=\"10 m extended-range mode\" section=advanced\n  Deferred to a dedicated session. TMF8806 App0 firmware supports\n  up to 5 m range out of ROM; 10 m mode requires downloading a\n  binary RAM patch from AMS via the bootloader's W_RAM +\n  RAMREMAP_RESET protocol — non-trivial firmware-loading flow not\n  in scope for this driver-coverage pass.\n\n@studio unsupported severity=niche category=\"GPIO0 / GPIO1 runtime control\"\n  GPIO0 is routed to tile pad 3 but is consumed as a hardware\n  strap: a 100 k on-board pull-up to V+ holds GPIO0 high at\n  startup, selecting the 1.8-3.3 V digital-I/O level required by\n  this tile's 2.7-3.6 V rail (TMF8806 datasheet §6.7). It is NOT\n  an I2C-address strap (the address is fixed at 0x41, changed only\n  via command 0x49). Because the strap fixes GPIO0 high, runtime\n  GPIO0 output modes (object-detect / VCSEL-sync, command 0x0F)\n  are not exposed — driving the pad would fight the pull-up and\n  risk changing the I/O level. GPIO1 is not routed to a pad.\n\n@note All bus I/O is routed through tiles_pal_t function pointers.\n      This driver contains no platform-specific code.",
@@ -33,13 +33,13 @@
     },
     {
       "name": "TILE_SENSE_TOF_VERSION_MINOR",
-      "value": "3",
+      "value": "4",
       "description": "",
       "section": ""
     },
     {
       "name": "TILE_SENSE_TOF_VERSION_PATCH",
-      "value": "2",
+      "value": "0",
       "description": "",
       "section": ""
     },
@@ -475,10 +475,26 @@
       "notes": [],
       "studio_exposed": true,
       "studio_section": "runtime",
-      "return": "Distance in millimeters, or 0 if no object detected.",
+      "return": "Distance in millimeters, saturating at the configured max range.",
       "brief": "Read the distance from the most recent result.",
-      "description": "Returns the peak distance in millimeters. Does not check whether\nnew data is available — call tile_sense_tof_result_ready() first\nor use tile_sense_tof_get_result() for full status.",
+      "description": "Returns the peak distance in millimeters. Does not check whether\nnew data is available — call tile_sense_tof_result_ready() first\nor use tile_sense_tof_get_result() for full status.\n\nWhen no object is detected (reliability below\nSENSE_TOF_PRESENCE_RELIABILITY_MIN) this SATURATES to tile_sense_tof_max_range_mm()\nrather than returning 0, so `if (distance < threshold)` behaves correctly\nwith no special case — \"out of range\" reads as \"very far away\", which is\nwhat it physically means. Use tile_sense_tof_get_result() when you need to\ntell \"no target\" from \"target at max range\"; that reports the raw value.",
       "name": "tile_sense_tof_get_distance_mm"
+    },
+    {
+      "signature": "uint16_t tile_sense_tof_max_range_mm(tile_t *tile)",
+      "params": [
+        {
+          "name": "tile",
+          "description": "Initialised tile handle."
+        }
+      ],
+      "notes": [],
+      "studio_exposed": true,
+      "studio_section": "runtime",
+      "return": "Maximum range in millimeters.",
+      "brief": "Maximum measurable distance for the configured range mode.",
+      "description": "200 mm (short range), 2500 mm, or 5000 mm. This is the value\ntile_sense_tof_get_distance_mm() saturates to when no object is detected,\nso `distance >= max_range_mm()` is the explicit \"nothing in range\" test.",
+      "name": "tile_sense_tof_max_range_mm"
     },
     {
       "signature": "void tile_sense_tof_get_result(tile_t *tile, sense_tof_result_t *result)",
@@ -1066,7 +1082,7 @@
     }
   ],
   "source_file": "tile_sense_tof.h",
-  "version": "1.3.2",
+  "version": "1.4.0",
   "tile_family": "Sense",
   "tile_name": "TOF",
   "display_name": "Sense.TOF"

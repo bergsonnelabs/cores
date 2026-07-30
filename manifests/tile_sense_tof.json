@@ -1,6 +1,6 @@
 {
   "schema": "studio-manifest/v1",
-  "source": "tiles@8e8046f",
+  "source": "tiles@fb52ca7",
   "tile": "Sense.TOF",
   "palette": {
     "label": "Sense.TOF",
@@ -9,7 +9,7 @@
   "driver": {
     "prefix": "tile_sense_tof",
     "header": "tile_sense_tof.h",
-    "version": "1.3.2"
+    "version": "1.4.0"
   },
   "handle": {
     "type": "tile_t",
@@ -90,6 +90,20 @@
       "header": "tile_sense_tof.h",
       "category": "tile",
       "description": "Read the distance from the most recent result.",
+      "params": [],
+      "returns": "uint16_t",
+      "dsl_returns": "int",
+      "receiver": "tile_t *"
+    },
+    {
+      "qname": [
+        "$slot",
+        "max_range_mm"
+      ],
+      "symbol": "tile_sense_tof_max_range_mm",
+      "header": "tile_sense_tof.h",
+      "category": "tile",
+      "description": "Maximum measurable distance for the configured range mode.",
       "params": [],
       "returns": "uint16_t",
       "dsl_returns": "int",

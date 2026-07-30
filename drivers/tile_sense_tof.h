@@ -70,8 +70,8 @@
 /* ---- Driver version ---- */
 
 #define TILE_SENSE_TOF_VERSION_MAJOR  1
-#define TILE_SENSE_TOF_VERSION_MINOR  3
-#define TILE_SENSE_TOF_VERSION_PATCH  2
+#define TILE_SENSE_TOF_VERSION_MINOR  4
+#define TILE_SENSE_TOF_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
 
@@ -372,10 +372,30 @@ uint8_t tile_sense_tof_measure_single(tile_t *tile, sense_tof_result_t *result,
  * new data is available — call tile_sense_tof_result_ready() first
  * or use tile_sense_tof_get_result() for full status.
  *
+ * When no object is detected (reliability below
+ * SENSE_TOF_PRESENCE_RELIABILITY_MIN) this SATURATES to tile_sense_tof_max_range_mm()
+ * rather than returning 0, so `if (distance < threshold)` behaves correctly
+ * with no special case — "out of range" reads as "very far away", which is
+ * what it physically means. Use tile_sense_tof_get_result() when you need to
+ * tell "no target" from "target at max range"; that reports the raw value.
+ *
  * @param  tile  Initialised tile handle.
- * @return Distance in millimeters, or 0 if no object detected.
+ * @return Distance in millimeters, saturating at the configured max range.
  */
 uint16_t tile_sense_tof_get_distance_mm(tile_t *tile);
+
+/**
+ * @brief  Maximum measurable distance for the configured range mode.
+ * @studio expose category=tile name=max_range_mm returns=int section=runtime
+ *
+ * 200 mm (short range), 2500 mm, or 5000 mm. This is the value
+ * tile_sense_tof_get_distance_mm() saturates to when no object is detected,
+ * so `distance >= max_range_mm()` is the explicit "nothing in range" test.
+ *
+ * @param  tile  Initialised tile handle.
+ * @return Maximum range in millimeters.
+ */
+uint16_t tile_sense_tof_max_range_mm(tile_t *tile);
 
 /**
  * @brief  Read the full measurement result.
