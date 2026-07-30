@@ -159,24 +159,35 @@ static uint8_t tof_poll_reg(tile_t *tile, uint8_t reg, uint8_t expected,
  */
 static uint8_t tof_boot_sequence(tile_t *tile)
 {
-    /* Step 1: Wait for bootloader to enter sleep (ENABLE == 0x00) */
-    if (!tof_poll_reg(tile, TMF8806_REG_ENABLE, 0x00, 0xFF,
-                      TMF8806_BOOT_TIMEOUT_MS)) {
-        TILE_ON_ERROR(tile, "sense_tof: bootloader not sleeping");
-        return 0;
+    /* Step 1: Ensure the CPU is powered and ready (ENABLE == 0x41).
+     *
+     * This used to first wait for ENABLE == 0x00 ("bootloader sleeping") and
+     * bail out if it never arrived. The part does not power up that way: a
+     * cold TMF8806 comes up with ENABLE == 0x41 (PON already set, CPU ready)
+     * and APPID == 0x80 (bootloader). So that poll ALWAYS timed out, init
+     * always returned failure, step 4 was never reached, App0 was never
+     * requested — and every result register read back 0x00. It only ever
+     * appeared to work when App0 happened to already be running from an
+     * earlier session (a warm MCU reset does not power-cycle the tile).
+     *
+     * Set PON only if it isn't set, then wait for CPU ready. Already-ready is
+     * success, not an error. */
+    if (tof_read_reg(tile, TMF8806_REG_ENABLE) != TMF8806_ENABLE_CPU_READY) {
+        tof_write_reg(tile, TMF8806_REG_ENABLE, TMF8806_ENABLE_PON);
     }
-
-    /* Step 2: Wake bootloader (set PON = 1) */
-    tof_write_reg(tile, TMF8806_REG_ENABLE, TMF8806_ENABLE_PON);
-
-    /* Step 3: Wait for CPU ready (ENABLE == 0x41) */
     if (!tof_poll_reg(tile, TMF8806_REG_ENABLE, TMF8806_ENABLE_CPU_READY,
                       0xFF, TMF8806_BOOT_TIMEOUT_MS)) {
         TILE_ON_ERROR(tile, "sense_tof: CPU not ready");
         return 0;
     }
 
-    /* Step 4: Request App0 measurement application */
+    /* Step 2: Already running the measurement app? Nothing more to do — this
+     * is the warm-reset case, where the tile kept running across an MCU reset. */
+    if (tof_read_reg(tile, TMF8806_REG_APPID) == TMF8806_APPID_APP0) {
+        return 1;
+    }
+
+    /* Step 3: Request App0 measurement application */
     tof_write_reg(tile, TMF8806_REG_APPREQID, TMF8806_APPID_APP0);
 
     /* Step 5: Wait for App0 to start (APPID == 0xC0) */

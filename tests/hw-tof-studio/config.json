@@ -1,0 +1,19 @@
+{
+  "core": "Core.ST.L4.1",
+  "clock": "medium",
+  "bootloader": "rom",
+  "pads": {
+    "4": "I2C1.CLK",
+    "5": "I2C1.DAT"
+  },
+  "interfaces": {
+    "I2C1": {}
+  },
+  "tiles": [
+    {
+      "tile": "Sense.TOF",
+      "bus": "I2C1",
+      "instance": 0
+    }
+  ]
+}
