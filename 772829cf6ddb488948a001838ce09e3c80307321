@@ -1,0 +1,11 @@
+CORRECTION: this did NOT fix the all-zeros bug. The stated cause (the 0x1D
+bulk-read rule) was wrong — tests/hw-tof-motor returned good data with the old
+two-byte read at 0x22 all along.
+
+The real cause was #171: tile_sense_tof_init() never started App0 on a cold
+tile (boot sequence waited for ENABLE == 0x00; the part powers up at 0x41 /
+APPID 0x80), so nothing was measuring and every result register read 0x00.
+
+The code here is kept and is fine — the 7-byte burst matches get_result() and
+yields reliability for free, which #172 then used. It is simply not a fix.
+See PR #170 comments and tests/hw-tof-diag.
