@@ -190,7 +190,7 @@ static uint8_t tof_boot_sequence(tile_t *tile)
     /* Step 3: Request App0 measurement application */
     tof_write_reg(tile, TMF8806_REG_APPREQID, TMF8806_APPID_APP0);
 
-    /* Step 5: Wait for App0 to start (APPID == 0xC0) */
+    /* Step 4: Wait for App0 to start (APPID == 0xC0) */
     if (!tof_poll_reg(tile, TMF8806_REG_APPID, TMF8806_APPID_APP0,
                       0xFF, TMF8806_BOOT_TIMEOUT_MS)) {
         TILE_ON_ERROR(tile, "sense_tof: App0 did not start");
