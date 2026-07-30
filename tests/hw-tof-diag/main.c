@@ -76,7 +76,7 @@ int main(void)
     core_init();
     core_led_heartbeat(1000, 100);
     core_usb_init();
-    core_delay_ms(6000);   /* CDC eats early prints; wide window so a host can attach */
+    core_delay_ms(2500);   /* CDC eats early prints; wide window so a host can attach */
 
     core_usb_printf("\r\n=== hw-tof-diag: Studio sequence vs settled sequence ===\r\n");
 
@@ -112,9 +112,10 @@ int main(void)
     core_usb_printf("--- streaming: ready / driver distance / raw block ---\r\n");
     for (;;) {
         core_watchdog_feed();   /* harmless if unarmed */
-        core_usb_printf("ready=%u driver_mm=%u\r\n",
+        core_usb_printf("ready=%u driver_mm=%u max=%u\r\n",
                         tile_sense_tof_result_ready(&tof) ? 1u : 0u,
-                        tile_sense_tof_get_distance_mm(&tof));
+                        tile_sense_tof_get_distance_mm(&tof),
+                        tile_sense_tof_max_range_mm(&tof));
         dump_result_block(hal);
         core_delay_ms(500);
     }

@@ -190,7 +190,7 @@ static uint8_t tof_boot_sequence(tile_t *tile)
     /* Step 3: Request App0 measurement application */
     tof_write_reg(tile, TMF8806_REG_APPREQID, TMF8806_APPID_APP0);
 
-    /* Step 5: Wait for App0 to start (APPID == 0xC0) */
+    /* Step 4: Wait for App0 to start (APPID == 0xC0) */
     if (!tof_poll_reg(tile, TMF8806_REG_APPID, TMF8806_APPID_APP0,
                       0xFF, TMF8806_BOOT_TIMEOUT_MS)) {
         TILE_ON_ERROR(tile, "sense_tof: App0 did not start");
@@ -399,23 +399,65 @@ uint8_t tile_sense_tof_measure_single(tile_t *tile, sense_tof_result_t *result,
 
 /* ---- Result reading ---- */
 
+uint16_t tile_sense_tof_max_range_mm(tile_t *tile)
+{
+    tof_state_t *s = state_for(tile);
+    switch (s->cfg.mode) {
+    case SENSE_TOF_SHORT_RANGE:  return 200;
+    case SENSE_TOF_RANGE_5000MM: return 5000;
+    case SENSE_TOF_RANGE_2500MM:
+    default:                     return 2500;
+    }
+}
+
 uint16_t tile_sense_tof_get_distance_mm(tile_t *tile)
 {
-    /* Must be a bulk read STARTING AT 0x1D. Per the TMF8806
-     * HostDriverCommunication guide, "always start reading from 0x1D with a
-     * bulk read to correctly read registers" — the result block is only
-     * coherent when the burst begins at STATUS. Reading the two distance
-     * bytes directly at 0x22 (as this did) returns zeros forever, which is
-     * why measure_single()/get_result() worked while a plain
-     * get_distance_mm() poll always read 0. Same 7-byte window as
-     * get_result(); distance is the last two bytes (0x22 LSB, 0x23 MSB). */
+    /* Same 7-byte window as get_result() (0x1D..0x23), so both take the
+     * reading exactly the same way; distance is the last two bytes
+     * (0x22 LSB, 0x23 MSB) and reliability comes from RESULT_INFO (0x21).
+     *
+     * (An earlier revision read only the two distance bytes at 0x22. That was
+     * changed to this burst on the theory that the TMF8806's "always start
+     * reading from 0x1D" rule made the short read return zeros — it does not;
+     * the all-zeros bug was init never starting App0. The burst is kept
+     * because it matches get_result() and yields reliability for free.) */
     uint8_t buf[7] = {0};
     tof_read_regs(tile, TMF8806_REG_STATUS, buf, 7);
 
     /* Clear result interrupt */
     tof_write_reg(tile, TMF8806_REG_INT_STATUS, TMF8806_INT_RESULT);
 
-    return (uint16_t)(((uint16_t)buf[6] << 8) | (uint16_t)buf[5]);
+    const uint8_t reliability = buf[4] & 0x3F;
+    const uint16_t mm = (uint16_t)(((uint16_t)buf[6] << 8) | (uint16_t)buf[5]);
+
+    /* Nothing in range SATURATES to the configured maximum rather than
+     * returning 0.
+     *
+     * The sensor reports "no object" as distance 0, which sits at the CLOSE
+     * end of the number line — so the natural way to write proximity logic,
+     * `if (distance < threshold)`, fires when there is nothing there at all.
+     * That makes correct-looking code wrong and forces every caller to
+     * special-case 0. Zero is never a real measurement (the part's minimum
+     * range is well above it), so nothing is lost by remapping it.
+     *
+     * Saturating to max range makes "out of range" behave like "very far
+     * away", which is what it physically means: threshold comparisons are then
+     * correct with no special case. Callers who must distinguish "no target"
+     * from "target at max range" compare against tile_sense_tof_max_range_mm(),
+     * or read tile_sense_tof_get_result() for the raw distance plus status and
+     * reliability — that path is unchanged and still reports the raw value.
+     *
+     * "No object" is SENSE_TOF_PRESENCE_RELIABILITY_MIN, the same threshold
+     * tile_sense_tof_is_object_within() uses, so the driver has one definition
+     * of "there is a target". Testing reliability == 0 is NOT enough: with an
+     * empty field of view this part reports distance 1 mm at reliability 1, not
+     * 0/0 (measured on hardware — the header's "0 = no object" understates it),
+     * and a bare 1 mm reading leaking through is exactly the nonsense value
+     * this is meant to eliminate. */
+    if (reliability < SENSE_TOF_PRESENCE_RELIABILITY_MIN || mm == 0) {
+        return tile_sense_tof_max_range_mm(tile);
+    }
+    return mm;
 }
 
 void tile_sense_tof_get_result(tile_t *tile, sense_tof_result_t *result)
