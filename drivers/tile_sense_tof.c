@@ -427,34 +427,24 @@ uint16_t tile_sense_tof_get_distance_mm(tile_t *tile)
     /* Clear result interrupt */
     tof_write_reg(tile, TMF8806_REG_INT_STATUS, TMF8806_INT_RESULT);
 
-    const uint8_t reliability = buf[4] & 0x3F;
     const uint16_t mm = (uint16_t)(((uint16_t)buf[6] << 8) | (uint16_t)buf[5]);
 
-    /* Nothing in range SATURATES to the configured maximum rather than
-     * returning 0.
+    /* Out of range SATURATES to the configured maximum instead of returning 0.
      *
-     * The sensor reports "no object" as distance 0, which sits at the CLOSE
-     * end of the number line — so the natural way to write proximity logic,
+     * The sensor reports "no object" as distance 0, which sits at the CLOSE end
+     * of the number line — so the natural way to write proximity logic,
      * `if (distance < threshold)`, fires when there is nothing there at all.
-     * That makes correct-looking code wrong and forces every caller to
-     * special-case 0. Zero is never a real measurement (the part's minimum
-     * range is well above it), so nothing is lost by remapping it.
+     * Mapping it to max range makes "out of range" behave like "very far away",
+     * which is what it physically means.
      *
-     * Saturating to max range makes "out of range" behave like "very far
-     * away", which is what it physically means: threshold comparisons are then
-     * correct with no special case. Callers who must distinguish "no target"
-     * from "target at max range" compare against tile_sense_tof_max_range_mm(),
-     * or read tile_sense_tof_get_result() for the raw distance plus status and
-     * reliability — that path is unchanged and still reports the raw value.
-     *
-     * "No object" is SENSE_TOF_PRESENCE_RELIABILITY_MIN, the same threshold
-     * tile_sense_tof_is_object_within() uses, so the driver has one definition
-     * of "there is a target". Testing reliability == 0 is NOT enough: with an
-     * empty field of view this part reports distance 1 mm at reliability 1, not
-     * 0/0 (measured on hardware — the header's "0 = no object" understates it),
-     * and a bare 1 mm reading leaking through is exactly the nonsense value
-     * this is meant to eliminate. */
-    if (reliability < SENSE_TOF_PRESENCE_RELIABILITY_MIN || mm == 0) {
+     * This is deliberately the ONLY transformation: 0 becomes max, every other
+     * reading passes through untouched. An earlier version also discarded
+     * readings below SENSE_TOF_PRESENCE_RELIABILITY_MIN, which threw away valid
+     * close-range measurements — that threshold is for the presence question
+     * (is_object_within), where demanding confidence is right, not for reporting
+     * a distance. Confidence belongs to the caller: tile_sense_tof_get_result()
+     * reports distance, status and reliability, unchanged. */
+    if (mm == 0) {
         return tile_sense_tof_max_range_mm(tile);
     }
     return mm;
