@@ -1189,6 +1189,7 @@ TILE_DRIVER_MAP = {
     "Sense.BP":    {"header": "tile_sense_bp.h",  "source": "tile_sense_bp",  "prefix": "tile_sense_bp"},
     "Sense.TOF":   {"header": "tile_sense_tof.h", "source": "tile_sense_tof", "prefix": "tile_sense_tof"},
     "Sense.ACP":   {"header": "tile_sense_acp.h", "source": "tile_sense_acp", "prefix": "tile_sense_acp"},
+    "Sense.CAP":   {"header": "tile_sense_cap.h", "source": "tile_sense_cap", "prefix": "tile_sense_cap"},
 }
 
 
