@@ -1,7 +1,7 @@
 /**
  * @file   tile_sense_cap.h
  * @brief  Capacitive trackpad driver for the Sense.CAP tile (IQS7211A).
- * @version 0.1.0
+ * @version 0.3.1
  *
  * Azoteq IQS7211A mutual-capacitance trackpad controller: up to 2-finger
  * absolute XY tracking, relative XY, per-channel touch status, built-in
@@ -154,7 +154,7 @@
 
 #define TILE_SENSE_CAP_VERSION_MAJOR  0
 #define TILE_SENSE_CAP_VERSION_MINOR  3
-#define TILE_SENSE_CAP_VERSION_PATCH  0
+#define TILE_SENSE_CAP_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);
 
@@ -557,8 +557,15 @@ typedef struct {
  * The r0 Sense.CAP 2x3 surface: two Rx strips (tile pads 2, 9 = RX3,
  * RX6) across three Tx blocks (tile pads 6, 7, 8 = TX11, TX9, TX8).
  * X runs along the three Tx columns (switch_xy), 256 points between
- * electrodes: X 0-511, Y 0-255. ATI target 300 counts (datasheet
- * example value — a bring-up starting point, not a characterised one).
+ * electrodes: X 0-511, Y 0-255.
+ *
+ * Tuning (hardware-characterised 2026-08-06, socket and breadboard
+ * attachments): ATI base 0x023F (coarse divider 31) with target 900 —
+ * the working point where a finger produces ~100-190 delta counts.
+ * The chip-default base converges at target 300 but yields almost no
+ * touch signal on this surface. Touch thresholds 8/5 (~56/35 counts).
+ * Re-run ATI (or power cycle) after any mechanical change: cover
+ * bonding, mounting surface, enclosure.
  */
 extern const sense_cap_surface_t sense_cap_surface_2x3;
 

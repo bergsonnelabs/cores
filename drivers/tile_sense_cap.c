@@ -507,9 +507,16 @@ const sense_cap_surface_t sense_cap_surface_2x3 = {
     .flip_y     = 0,
     .x_res      = 512,             /* 256 points between electrodes: (3-1)*256 */
     .y_res      = 256,             /* (2-1)*256 */
-    .ati_target = 300,
+    .ati_target = 900,             /* validated on hardware 2026-08-06: the
+                                      div31 base + 900-count working point is
+                                      where this surface's touch signal lives
+                                      (~100-190 counts); chip-default base at
+                                      target 300 tunes but is nearly deaf. */
     .alp_enable = 1,               /* whole surface as one mutual wake channel */
     .alp_ati_target = 200,
+    .ati_base = 0x023F,            /* fine 1, mult 1, coarse div 31 */
+    .touch_set_mult = 8,           /* ~56-count set threshold at target */
+    .touch_clear_mult = 5,
 };
 
 /** Prox-block of a chip Rx pin: RX0-3 sense in block A, RX4-7 in block B. */
@@ -540,31 +547,46 @@ static uint8_t surface_re_ati(tile_t *tile, uint8_t with_alp)
      * cadence. */
     tile->hal->delay_ms(300);
 
+    /* Wait for completion, but never trust the flags alone: ATI-error
+     * raises transiently while the chip's own retry passes converge
+     * (seen on hardware), and the completion flag can be consumed
+     * between polls. The flags only end the wait early — the verdict
+     * below comes from the outcome. */
     for (uint8_t i = 0; i < 40; i++) {
         uint16_t info = iqs_read(tile, IQS7211A_REG_INFO_FLAGS);
 
-        if (info != IQS7211A_INVALID_RESPONSE) {
-            if (info & IQS7211A_INFO_ATI_ERROR)       return 0;
-            if (info & IQS7211A_INFO_RE_ATI_OCCURRED) return 1;
-        }
+        if (info != IQS7211A_INVALID_RESPONSE &&
+            (info & IQS7211A_INFO_RE_ATI_OCCURRED))
+            break;
         tile->hal->delay_ms(50);
     }
 
-    /* The completion flag is transient and can be consumed between polls
-     * (seen on hardware: counts at target, flag never observed). Judge by
-     * the outcome instead: every configured channel within 25% of the
-     * target counts as tuned. */
+    /* Judge by result: every configured channel within 25% of the
+     * target counts as tuned. Convergence after a cold geometry write
+     * can take several passes (seen on hardware), so re-queue and
+     * re-check a few times before giving up. */
     iqs7211a_state_t *s = state_for(tile);
     uint16_t target = iqs_read(tile, IQS7211A_REG_TP_ATI_TARGET);
     if (target == IQS7211A_INVALID_RESPONSE || target == 0 ||
         s->num_channels == 0)
         return 0;
-    for (uint8_t ch = 0; ch < s->num_channels; ch++) {
-        uint16_t c = tile_sense_cap_get_channel_count(tile, ch);
-        if (c < target - target / 4 || c > target + target / 4)
-            return 0;
+
+    for (uint8_t round = 0; round < 4; round++) {
+        uint8_t in_range = 1;
+        for (uint8_t ch = 0; ch < s->num_channels; ch++) {
+            uint16_t c = tile_sense_cap_get_channel_count(tile, ch);
+            if (c < target - target / 4 || c > target + target / 4) {
+                in_range = 0;
+                break;
+            }
+        }
+        if (in_range) return 1;
+        if (round < 3) {
+            iqs_command(tile, IQS7211A_CTRL_TP_RE_ATI);
+            tile->hal->delay_ms(600);
+        }
     }
-    return 1;
+    return 0;
 }
 
 uint8_t tile_sense_cap_configure_surface(tile_t *tile,
