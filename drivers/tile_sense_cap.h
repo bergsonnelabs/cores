@@ -8,18 +8,17 @@
  * gesture engine (tap, press-and-hold, four-way swipe), and an Alternate
  * Low-Power (ALP) channel for presence wake-up.
  *
- * **Pre-release — the sensor surface is not yet defined.** The trackpad's
- * electrical geometry (Rx/Tx count and mapping, conversion cycles, ATI
- * targets, XY resolution) is a property of the physical electrode surface,
- * which does not exist yet for this tile. Until it does, this driver
- * deliberately does NOT overwrite the chip's memory map: it identifies the
- * part, clears the reset flag, and exposes the runtime + config API. The
- * device runs on its own factory defaults, which are not tuned for any
- * particular surface, so XY output is not meaningful yet. See the
- * `@studio unsupported` blocks below for exactly what is deferred.
- *
- * What IS validated on hardware today: find, init, product/version
- * identification, reset acknowledge, info-flag and charging-mode reads.
+ * **Surface configuration.** The trackpad's electrical geometry (Rx/Tx
+ * count and mapping, conversion cycles, XY resolution, ATI target) is a
+ * property of the physical electrode surface. init() deliberately does
+ * NOT overwrite the chip's memory map — call
+ * tile_sense_cap_configure_surface() after init with a
+ * sense_cap_surface_t describing the attached surface, which writes the
+ * geometry, packs the sensing cycles, sets the ATI target and runs
+ * re-ATI. The r0 2x3 surface (2 Rx strips x 3 Tx blocks) ships as the
+ * built-in preset sense_cap_surface_2x3; setup_2x3() is the one-call
+ * form. Without a surface config the device runs on factory defaults
+ * and XY output is not meaningful.
  *
  * Communication windows: the device only serves register data inside a
  * communication window. In its default streaming mode a window opens every
@@ -40,10 +39,14 @@
  *
  * Two communication modes:
  *   - **Polled mode** (default): call process() from your main loop.
- *     No RDY pin wiring required — this is what the current Sense.CAP
- *     bring-up wiring (power + I2C only) supports.
- *   - **RDY mode**: provide a rdy_pin in config, if a pad map ever routes
- *     the device's open-drain active-low RDY line to a Core pad. An EXTI
+ *     No RDY pin wiring required. **This is the required mode on r0
+ *     tiles fitted with the IQS7211A** — the board was designed for the
+ *     IQS7211E, whose A5 ball combines RDY+MCLR; on the A variant that
+ *     ball is MCLR only, so tile pad 3 is a hardware reset line (100k
+ *     pull-up on board), and the A's real RDY (ball C3) is unrouted.
+ *   - **RDY mode**: provide a rdy_pin in config. Usable once IQS7211E
+ *     parts are fitted (pad 3 then carries the combined RDY/MCLR line);
+ *     wire it to a Core pad and pass that pad number. An EXTI
  *     falling-edge ISR sets a flag; process() only does I2C when set.
  *
  * Polling example (Cores SDK):
@@ -78,44 +81,39 @@
  *
  * @studio tile label=Sense.CAP icon=⬚
  *
+ * @studio event name=touch_down mask=SENSE_CAP_EV_TOUCH_DOWN
+ * @studio event name=touch_up mask=SENSE_CAP_EV_TOUCH_UP
+ * @studio event name=tap mask=SENSE_CAP_EV_TAP
+ * @studio event name=double_tap mask=SENSE_CAP_EV_DOUBLE_TAP
+ * @studio event name=long_press mask=SENSE_CAP_EV_LONG_PRESS
+ * @studio event name=swipe mask=SENSE_CAP_EV_SWIPE_ANY
+ * @studio event name=drag mask=SENSE_CAP_EV_DRAG
+ *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
- * @studio unsupported severity=common category="Trackpad geometry and cycle setup" section=config
- *   Total Rx/Tx counts, Rx/Tx pin mapping (0x90-0x96) and the per-cycle
- *   channel allocation table (0xA0-0xBB) are not exposed. These describe
- *   the physical electrode surface, which does not exist for Sense.CAP
- *   yet — the values come out of the Azoteq GUI once a real surface is
- *   characterised. Driver-deferred, not hardware-gated: the registers
- *   are reachable today through write_reg for anyone bringing up a
- *   prototype surface by hand.
+ * @studio unsupported severity=advanced category="ATI fine tuning" section=config
+ *   The ATI *target* is part of the surface config, and re_ati() /
+ *   reseed() re-run auto-tuning at any time. The finer knobs — trackpad
+ *   and ALP ATI multipliers/dividers, compensation dividers and drift
+ *   limits (0x30-0x31, 0x33-0x3B) — are left at chip defaults, to be
+ *   revisited if re-ATI against the real surface proves insufficient.
+ *   Reachable through write_reg meanwhile.
  *
- * @studio unsupported severity=common category="ATI tuning" section=config
- *   Trackpad and ALP ATI multipliers/dividers, targets, compensation and
- *   drift limits (0x30-0x3B) are not exposed as a typed API. ATI values
- *   are surface-specific and are produced by the GUI alongside the
- *   geometry above, so exposing them before a surface exists would only
- *   invite wrong numbers. re_ati() and reseed() ARE exposed, so a host
- *   can re-run auto-tuning against whatever settings the device holds.
- *
- * @studio unsupported severity=advanced category="Raw per-channel trackpad data" section=runtime
- *   The extended 16-bit blocks holding per-channel counts (0xE0xx),
- *   references (0xE1xx), deltas (0xE2xx) and ATI compensation (0xE3xx)
- *   are not exposed. The tiles PAL does address them correctly (a reg
- *   above 0xFF is sent as two address bytes, MSB first), so this is
- *   driver-deferred; it needs the channel count, which follows from the
- *   surface geometry.
- *
- * @studio unsupported severity=advanced category="ALP channel configuration" section=config
- *   ALP setup and Tx enable (0x72/0x73), ALP threshold and debounce
- *   (0x54/0x56), and the ALP count filter (0x70) are not exposed. The
- *   ALP electrode is part of the same undefined surface. ALP count, LTA
- *   and output status ARE readable at runtime.
+ * @studio unsupported severity=niche category="ALP fine tuning" section=config
+ *   The ALP wake channel is configured by the surface config (electrode
+ *   selection, mutual sensing, count filter, ATI target) and its
+ *   threshold is settable at runtime. Still at chip defaults: the set/
+ *   clear debounce counts (0x56), the count-filter betas (0x70/0x71),
+ *   and the LPX auto-prox cycle setting. ALP count, LTA and output
+ *   status are readable at runtime.
  *
  * @studio unsupported severity=advanced category="XY filtering and trim" section=config
- *   The dynamic/static IIR filter parameters (0x64-0x66), finger-split
- *   factor and stationary-touch threshold (0x67), and X/Y trim (0x68,
- *   0x69) are not exposed. All are surface-tuning parameters; deferred
- *   with the geometry.
+ *   Axis switch and X/Y flips are part of the surface config, and the
+ *   recommended MAV + dynamic-IIR filters are enabled there. The filter
+ *   *parameters* (0x64-0x66), finger-split factor and stationary-touch
+ *   threshold (0x67), and X/Y trim (0x68, 0x69) are not exposed —
+ *   surface-tuning knobs, left at chip defaults until real-finger
+ *   testing says otherwise.
  *
  * @studio unsupported severity=niche category="Analog hardware settings" section=advanced
  *   Main oscillator selection and adjustment, calibration-capacitor
@@ -130,12 +128,12 @@
  *   whenever a read comes back invalid — but does not expose a setter for
  *   the bit itself, since the automatic fallback covers both settings.
  *
- * @studio unsupported severity=niche category="MCLR hardware reset / RDY interrupt" section=lifecycle
- *   Hardware-gated on the current bring-up wiring: the Sense.CAP tile is
- *   wired power + I2C only, so the device's MCLR reset pin and its RDY
- *   interrupt line are not reachable from the Core. Software reset and
- *   polled operation cover both. If a future pad map routes RDY, the
- *   driver already supports it — set cfg.rdy_pin. (There is no
+ * @studio unsupported severity=niche category="MCLR hardware reset" section=lifecycle
+ *   Driver-deferred: on r0 tiles with the IQS7211A fitted, tile pad 3
+ *   carries the chip's MCLR (active-low reset, 100k pull-up on board) —
+ *   a Core pad wired there could hard-reset a comms-locked device, the
+ *   one failure the software reset cannot reach. Not yet exposed as an
+ *   API; software reset covers normal operation. (There is no
  *   definitions/Sense-CAP-*.json yet; when one lands, this note should
  *   be re-checked against the real pad table.)
  *
@@ -155,7 +153,7 @@
  * ================================================================ */
 
 #define TILE_SENSE_CAP_VERSION_MAJOR  0
-#define TILE_SENSE_CAP_VERSION_MINOR  1
+#define TILE_SENSE_CAP_VERSION_MINOR  3
 #define TILE_SENSE_CAP_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -230,16 +228,56 @@ TILES_CHECK_VERSION(1, 0);
 #define IQS7211A_REG_REF_UPDATE_TIME 0x49
 #define IQS7211A_REG_I2C_TIMEOUT     0x4A
 
+/* Trackpad ATI (0x30-0x35; ALP equivalents 0x36-0x3B untouched) */
+#define IQS7211A_REG_TP_ATI_MULTDIV  0x30  /**< ATI multipliers/dividers (Table A.5) */
+#define IQS7211A_REG_TP_ATI_COMP_DIV 0x31  /**< ATI compensation divider */
+#define IQS7211A_REG_TP_ATI_TARGET   0x32  /**< ATI target (counts) */
+#define IQS7211A_REG_TP_REF_DRIFT    0x33  /**< Reference drift limit */
+#define IQS7211A_REG_TP_MIN_COUNT    0x34  /**< Minimum count re-ATI value */
+#define IQS7211A_REG_REATI_RETRY     0x35  /**< Re-ATI retry time (s) */
+#define IQS7211A_REG_ALP_ATI_TARGET  0x38  /**< ALP ATI target (counts) */
+
 /* Control / configuration */
 #define IQS7211A_REG_SYSTEM_CONTROL  0x50
 #define IQS7211A_REG_CONFIG_SETTINGS 0x51
 #define IQS7211A_REG_OTHER_SETTINGS  0x52
+#define IQS7211A_REG_TOUCH_MULT      0x53  /**< high: clear mult, low: set mult (§5.5.1) */
+#define IQS7211A_REG_ALP_THRESHOLD   0x54  /**< ALP output delta threshold (§5.5.2) */
 
 /* Trackpad sizing */
 #define IQS7211A_REG_TP_SETTINGS     0x60  /**< high: total Rxs, low: trackpad settings */
 #define IQS7211A_REG_TP_TOUCHES      0x61  /**< high: max multi-touches, low: total Txs */
 #define IQS7211A_REG_X_RESOLUTION    0x62
 #define IQS7211A_REG_Y_RESOLUTION    0x63
+
+/* Trackpad settings bits (0x60 low byte, Table A.11) */
+#define IQS7211A_TP_FLIP_X           (1U << 0)  /**< Invert X output */
+#define IQS7211A_TP_FLIP_Y           (1U << 1)  /**< Invert Y output */
+#define IQS7211A_TP_SWITCH_XY        (1U << 2)  /**< X along Txs, Y along Rxs */
+#define IQS7211A_TP_IIR_FILTER       (1U << 3)  /**< XY IIR filter (recommended on) */
+#define IQS7211A_TP_IIR_STATIC       (1U << 4)  /**< Fixed (vs dynamic) IIR damping */
+#define IQS7211A_TP_MAV_FILTER       (1U << 5)  /**< XY moving-average filter (recommended on) */
+
+/* Surface geometry (write via configure_surface) */
+#define IQS7211A_REG_RXTX_MAP_BASE   0x90  /**< RxTx mapping <1..0> .. <11..10> */
+#define IQS7211A_REG_CYCLE_BASE_0    0xA0  /**< Cycles 0-9: 3 bytes each, packed */
+#define IQS7211A_REG_CYCLE_BASE_10   0xB0  /**< Cycles 10-17: 3 bytes each, packed */
+#define IQS7211A_CYCLE_PROX_BYTE     0x05  /**< Fixed first byte of every cycle record */
+#define IQS7211A_CHANNEL_NONE        0xFF  /**< "No channel allocated" in a cycle slot */
+
+/* Extended memory map (16-bit register addresses; the PAL sends two
+ * address bytes MSB-first for regs above 0xFF). One 16-bit value per
+ * channel, indexed by channel number. */
+#define IQS7211A_REG_EXT_COUNTS      0xE000  /**< Per-channel count values */
+#define IQS7211A_REG_EXT_REFS        0xE100  /**< Per-channel reference values */
+#define IQS7211A_REG_EXT_DELTAS      0xE200  /**< Per-channel delta values */
+#define IQS7211A_REG_EXT_ATI_COMP    0xE300  /**< Per-channel ATI compensation */
+
+/* ALP channel setup */
+#define IQS7211A_REG_ALP_SETUP       0x72  /**< Table A.12: filter, sensing method, Rx enables */
+#define IQS7211A_REG_ALP_TX_ENABLE   0x73  /**< Table A.13: Tx enable bits, one per TXn */
+#define IQS7211A_ALP_SETUP_MUTUAL    (1U << 8)  /**< 1 = mutual-capacitive ALP sensing */
+#define IQS7211A_ALP_SETUP_FILTER    (1U << 9)  /**< 1 = ALP count filter enabled */
 
 /* Settings version label (0x74): high byte major, low byte minor */
 #define IQS7211A_REG_SETTINGS_VER    0x74
@@ -286,6 +324,29 @@ TILES_CHECK_VERSION(1, 0);
 #define SENSE_CAP_GESTURE_SWIPE_Y_POS   (1U << 4)  /**< Swipe in +Y */
 #define SENSE_CAP_GESTURE_SWIPE_Y_NEG   (1U << 5)  /**< Swipe in -Y */
 #define SENSE_CAP_GESTURE_ALL           0x3FU      /**< Every supported gesture */
+
+/* ---- High-level touch event bits (get_touch_events) ---- */
+
+#define SENSE_CAP_EV_TOUCH_DOWN   (1U << 0)   /**< A finger arrived */
+#define SENSE_CAP_EV_TOUCH_UP     (1U << 1)   /**< A finger left */
+#define SENSE_CAP_EV_TAP          (1U << 2)   /**< Single tap completed */
+#define SENSE_CAP_EV_DOUBLE_TAP   (1U << 3)   /**< Two taps in quick succession */
+#define SENSE_CAP_EV_LONG_PRESS   (1U << 4)   /**< Stationary hold past the hold time */
+#define SENSE_CAP_EV_SWIPE_LEFT   (1U << 5)   /**< Swipe toward -X */
+#define SENSE_CAP_EV_SWIPE_RIGHT  (1U << 6)   /**< Swipe toward +X */
+#define SENSE_CAP_EV_SWIPE_UP     (1U << 7)   /**< Swipe toward -Y */
+#define SENSE_CAP_EV_SWIPE_DOWN   (1U << 8)   /**< Swipe toward +Y */
+#define SENSE_CAP_EV_DRAG         (1U << 9)   /**< Finger moving beyond the tap radius */
+#define SENSE_CAP_EV_PINCH        (1U << 10)  /**< Two-finger spread changed */
+#define SENSE_CAP_EV_SWIPE_ANY    (SENSE_CAP_EV_SWIPE_LEFT | SENSE_CAP_EV_SWIPE_RIGHT | \
+                                   SENSE_CAP_EV_SWIPE_UP | SENSE_CAP_EV_SWIPE_DOWN)
+
+/* ---- Swipe directions (sense_cap_swipe_cb_t) ---- */
+
+#define SENSE_CAP_DIR_LEFT   0  /**< Toward -X */
+#define SENSE_CAP_DIR_RIGHT  1  /**< Toward +X */
+#define SENSE_CAP_DIR_UP     2  /**< Toward -Y */
+#define SENSE_CAP_DIR_DOWN   3  /**< Toward +Y */
 
 /* ================================================================
  * System Control (0x50) bits — Table A.6
@@ -361,6 +422,55 @@ typedef enum {
 typedef void (*sense_cap_event_cb_t)(tile_t *tile, uint16_t info, void *ctx);
 
 /* ================================================================
+ * Touch events (mobile-style)
+ * ================================================================ */
+
+/** Phase of a touch event, iOS/Android style. */
+typedef enum {
+    SENSE_CAP_TOUCH_DOWN  = 0,  /**< Finger arrived */
+    SENSE_CAP_TOUCH_MOVED = 1,  /**< Position changed while down */
+    SENSE_CAP_TOUCH_UP    = 2,  /**< Finger left */
+} sense_cap_phase_t;
+
+/**
+ * One touch event. Produced by process() from finger-state transitions;
+ * consumed via the on_touch() callback or by polling next_touch_event().
+ * Velocities are in resolution-pixels per second, computed from the
+ * config-supplied millisecond clock (or an internal report-rate estimate
+ * when none was provided).
+ */
+typedef struct {
+    uint8_t  phase;     /**< sense_cap_phase_t value. */
+    uint8_t  finger;    /**< Finger slot, 0 or 1. */
+    uint16_t x;         /**< Position in the configured X resolution. */
+    uint16_t y;         /**< Position in the configured Y resolution. */
+    int16_t  dx;        /**< X movement since the previous event. */
+    int16_t  dy;        /**< Y movement since the previous event. */
+    int16_t  vx;        /**< X velocity, pixels/second. */
+    int16_t  vy;        /**< Y velocity, pixels/second. */
+    uint16_t strength;  /**< Touch strength at this event. */
+    uint32_t t_ms;      /**< Timestamp, driver clock. */
+} sense_cap_touch_t;
+
+/** Raw touch-event stream callback (every DOWN/MOVED/UP). */
+typedef void (*sense_cap_touch_cb_t)(tile_t *tile,
+                                     const sense_cap_touch_t *ev, void *ctx);
+/** Tap recognizer callback. taps = 1 (single) or 2 (double). */
+typedef void (*sense_cap_tap_cb_t)(tile_t *tile, uint8_t taps,
+                                   uint16_t x, uint16_t y, void *ctx);
+/** Long-press recognizer callback, fired once per hold. */
+typedef void (*sense_cap_hold_cb_t)(tile_t *tile,
+                                    uint16_t x, uint16_t y, void *ctx);
+/** Swipe recognizer callback. direction = SENSE_CAP_DIR_*. */
+typedef void (*sense_cap_swipe_cb_t)(tile_t *tile, uint8_t direction,
+                                     int16_t vx, int16_t vy, void *ctx);
+/** Drag (pan) recognizer callback, fired on every movement while dragging. */
+typedef void (*sense_cap_drag_cb_t)(tile_t *tile, int16_t dx, int16_t dy,
+                                    uint16_t x, uint16_t y, void *ctx);
+/** Two-finger pinch callback. delta > 0 = spreading, < 0 = pinching in. */
+typedef void (*sense_cap_pinch_cb_t)(tile_t *tile, int16_t delta, void *ctx);
+
+/* ================================================================
  * Configuration
  * ================================================================ */
 
@@ -385,7 +495,72 @@ typedef struct {
     uint16_t active_rate_ms;        /**< Active-mode report rate. 0 = leave as-is. */
     uint8_t  max_touches;           /**< Max simultaneous fingers, 1 or 2. 0 = leave as-is. */
     uint8_t  event_mode;            /**< 1 = event mode (comms only on events), 0 = leave as-is. */
+
+    /* Millisecond clock for touch-event timestamps and velocities (e.g.
+     * wrap core_millis()). NULL = timestamps estimated from the report
+     * rate — events still flow, velocities are approximate. */
+    uint32_t (*millis)(void *ctx);  /**< Monotonic ms clock, or NULL. */
+    void *millis_ctx;               /**< Context for the clock callback. */
 } sense_cap_cfg_t;
+
+/* ================================================================
+ * Surface description
+ * ================================================================ */
+
+/** Maximum Rx electrodes the IQS7211A can sense (RX0-RX7). */
+#define SENSE_CAP_MAX_RX  8
+/** Maximum Tx electrodes the IQS7211A can drive (TX0-TX11). */
+#define SENSE_CAP_MAX_TX  12
+/** RxTx-mapping slots in hardware — total_rx + total_tx must fit. */
+#define SENSE_CAP_MAX_MAP 12
+
+/**
+ * Electrical description of an electrode surface attached to the tile.
+ *
+ * Pin numbers are the chip's Rx/Tx numbers, in trackpad order: rx_pins[0]
+ * is Rx row/column 0, and so on. Channel numbers follow the datasheet
+ * rule (§5.1.1): along the Rxs first, then to the next Tx. The sensing
+ * cycles are derived automatically — each cycle pairs one channel from
+ * prox block A (RX0-3) with one from block B (RX4-7) on the same Tx,
+ * so a surface that mixes blocks packs two channels per cycle.
+ */
+typedef struct {
+    uint8_t  total_rx;                    /**< Rx electrode count, 1-8. */
+    uint8_t  total_tx;                    /**< Tx electrode count, 1-12. */
+    uint8_t  rx_pins[SENSE_CAP_MAX_RX];   /**< Chip RXn numbers, surface order. */
+    uint8_t  tx_pins[SENSE_CAP_MAX_TX];   /**< Chip TXn numbers, surface order. */
+    uint8_t  switch_xy;                   /**< 1 = X along Txs, Y along Rxs. */
+    uint8_t  flip_x;                      /**< 1 = invert X output. */
+    uint8_t  flip_y;                      /**< 1 = invert Y output. */
+    uint16_t x_res;                       /**< X output resolution (pixels). */
+    uint16_t y_res;                       /**< Y output resolution (pixels). */
+    uint16_t ati_target;                  /**< Trackpad ATI target (counts). */
+    uint8_t  alp_enable;                  /**< 1 = configure the ALP wake channel
+                                               over the same electrodes (mutual,
+                                               filtered) and ATI it. */
+    uint16_t alp_ati_target;              /**< ALP ATI target (counts), applied
+                                               per prox block (§5.6.3). */
+    uint16_t ati_base;                    /**< ATI multiplier/divider word (0x30,
+                                               Table A.5): [13:9] fine divider,
+                                               [8:5] coarse multiplier, [4:0]
+                                               coarse divider. 0 = chip default.
+                                               High-capacitance attachments need
+                                               a reduced base (e.g. 0x023F for a
+                                               breadboard bench harness). */
+    uint8_t  touch_set_mult;              /**< Touch-set multiplier (§5.5.1).
+                                               0 = chip default. */
+    uint8_t  touch_clear_mult;            /**< Touch-clear multiplier.
+                                               0 = chip default. */
+} sense_cap_surface_t;
+
+/**
+ * The r0 Sense.CAP 2x3 surface: two Rx strips (tile pads 2, 9 = RX3,
+ * RX6) across three Tx blocks (tile pads 6, 7, 8 = TX11, TX9, TX8).
+ * X runs along the three Tx columns (switch_xy), 256 points between
+ * electrodes: X 0-511, Y 0-255. ATI target 300 counts (datasheet
+ * example value — a bring-up starting point, not a characterised one).
+ */
+extern const sense_cap_surface_t sense_cap_surface_2x3;
 
 /* ================================================================
  * Public API
@@ -405,8 +580,8 @@ uint8_t tile_sense_cap_find(tiles_pal_t *hal, uint8_t instance);
  * Probes the bus, verifies the product number (763), caches the firmware
  * version, and acknowledges the power-on reset flag. Applies only the
  * optional settings supplied in @p cfg — the chip's own configuration is
- * otherwise left untouched, because trackpad geometry and ATI values
- * belong to a sensor surface that Sense.CAP does not have yet.
+ * otherwise left untouched. Follow with configure_surface() (or
+ * setup_2x3()) to program the electrode geometry.
  *
  * @param  hal       Tiles HAL handle (I2C bus)
  * @param  instance  Device instance (only 0 exists)
@@ -415,6 +590,212 @@ uint8_t tile_sense_cap_find(tiles_pal_t *hal, uint8_t instance);
  */
 void tile_sense_cap_init(tiles_pal_t *hal, uint8_t instance,
                          tile_t *tile, const sense_cap_cfg_t *cfg);
+
+/* ---- Surface configuration ---- */
+
+/**
+ * @brief  Program the electrode-surface geometry into the device.
+ *
+ * Writes the Rx/Tx totals and pin mapping, packs and writes the sensing-
+ * cycle allocation table (unused cycles cleared), sets XY resolution,
+ * axis orientation and the recommended XY filters, sets the ATI target,
+ * and finishes with a re-ATI against the new geometry. Every write is
+ * window-managed and verified.
+ *
+ * Call after init, before trusting any XY or touch output. The verified
+ * geometry survives in the device until reset, so calling once per boot
+ * is sufficient.
+ *
+ * @param  tile  Initialised tile handle
+ * @param  surf  Surface description (see sense_cap_surface_2x3)
+ * @return 1 if every register verified and re-ATI completed, 0 otherwise.
+ */
+uint8_t tile_sense_cap_configure_surface(tile_t *tile,
+                                         const sense_cap_surface_t *surf);
+
+/**
+ * @brief  Configure the built-in r0 2x3 surface and run ATI.
+ * @studio expose category=tile name=setup_2x3 returns=bool section=lifecycle
+ *
+ * One-call form of configure_surface() with sense_cap_surface_2x3 —
+ * the surface shipped with the r0 tile (2 Rx strips x 3 Tx blocks).
+ *
+ * @param  tile  Initialised tile handle
+ * @return 1 if configuration verified and re-ATI completed, 0 otherwise.
+ */
+uint8_t tile_sense_cap_setup_2x3(tile_t *tile);
+
+/* ---- Touch events (mobile-style) ---- */
+
+/**
+ * @brief  Register the raw touch-event stream callback.
+ *
+ * Fires from process() for every DOWN / MOVED / UP transition, in
+ * main-loop context. Pass NULL to disable.
+ *
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context passed to the callback
+ */
+void tile_sense_cap_on_touch(tile_t *tile, sense_cap_touch_cb_t cb, void *ctx);
+
+/**
+ * @brief  Pop the oldest queued touch event.
+ *
+ * Events queue in an 8-deep ring so a polling loop cannot miss the
+ * transitions that happened between process() calls. Oldest events are
+ * dropped first on overflow.
+ *
+ * @param  tile  Tile handle
+ * @param  ev    Filled with the event when one was available
+ * @return 1 if an event was returned, 0 if the queue is empty.
+ */
+uint8_t tile_sense_cap_next_touch_event(tile_t *tile, sense_cap_touch_t *ev);
+
+/**
+ * @brief  Register the tap recognizer (single and double).
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context
+ */
+void tile_sense_cap_on_tap(tile_t *tile, sense_cap_tap_cb_t cb, void *ctx);
+
+/**
+ * @brief  Register the long-press recognizer.
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context
+ */
+void tile_sense_cap_on_long_press(tile_t *tile, sense_cap_hold_cb_t cb, void *ctx);
+
+/**
+ * @brief  Register the swipe recognizer.
+ *
+ * Uses the chip's four-way swipe engine (enable the swipe gestures in
+ * the init config), enriched with the tracked velocity.
+ *
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context
+ */
+void tile_sense_cap_on_swipe(tile_t *tile, sense_cap_swipe_cb_t cb, void *ctx);
+
+/**
+ * @brief  Register the drag (pan) recognizer.
+ *
+ * Fires on every movement once the finger travels beyond the tap
+ * radius, with per-event deltas — the Android onScroll / iOS pan.
+ *
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context
+ */
+void tile_sense_cap_on_drag(tile_t *tile, sense_cap_drag_cb_t cb, void *ctx);
+
+/**
+ * @brief  Register the two-finger pinch recognizer.
+ * @param  tile  Tile handle
+ * @param  cb    Callback (NULL to disable)
+ * @param  ctx   User context
+ */
+void tile_sense_cap_on_pinch(tile_t *tile, sense_cap_pinch_cb_t cb, void *ctx);
+
+/**
+ * @brief  Read and clear the accumulated touch-event bits.
+ *
+ * Every recognizer result since the previous call, as SENSE_CAP_EV_*
+ * bits — the polling counterpart to the callbacks, latched so nothing
+ * is missed between reads.
+ *
+ * @studio expose category=tile name=get_touch_events returns=int section=runtime
+ * @param  tile  Tile handle
+ * @return Latched SENSE_CAP_EV_* bits; reading clears them.
+ */
+uint16_t tile_sense_cap_get_touch_events(tile_t *tile);
+
+/**
+ * @brief  Did a tap (single or double) complete since the last check?
+ *
+ * Consumes the tap bits from the same latch as get_touch_events().
+ *
+ * @studio expose category=tile name=was_tapped returns=bool section=runtime
+ * @param  tile  Tile handle
+ * @return 1 if a tap completed, 0 otherwise.
+ */
+uint8_t tile_sense_cap_was_tapped(tile_t *tile);
+
+/* ---- Zones (the 2x3 surface as six buttons) ---- */
+
+/**
+ * @brief  Which zone is currently touched?
+ *
+ * Zones are channel numbers (§5.1.1): for the 2x3 surface, column c /
+ * row r is zone c*2 + r — top row 0/2/4 left to right, bottom row
+ * 1/3/5. Computed from the tracked finger position.
+ *
+ * @studio expose category=tile name=get_zone returns=int section=runtime
+ * @param  tile  Tile handle
+ * @return Zone number, or -1 when nothing is touched.
+ */
+int8_t tile_sense_cap_get_zone(tile_t *tile);
+
+/**
+ * @brief  Which zone contains a given position?
+ *
+ * Pure geometry over the configured surface — use it inside tap/touch
+ * callbacks, where the finger has already lifted and get_zone() would
+ * report none ("which button was tapped?").
+ *
+ * @studio expose category=tile name=zone_at returns=int section=runtime
+ * @param  tile  Tile handle
+ * @param  x     X position in the configured resolution
+ * @param  y     Y position in the configured resolution
+ * @return Zone (channel) number, or -1 before configure_surface().
+ */
+int8_t tile_sense_cap_zone_at(tile_t *tile, uint16_t x, uint16_t y);
+
+/**
+ * @brief  Is a specific zone's channel reporting touch?
+ * @studio expose category=tile name=is_zone_touched returns=bool section=runtime
+ * @param  tile  Tile handle
+ * @param  zone  Zone (channel) number, 0-31
+ * @return 1 if that channel's touch bit is set (live read).
+ */
+uint8_t tile_sense_cap_is_zone_touched(tile_t *tile, uint8_t zone);
+
+/**
+ * @brief  Finger position as percentages, resolution-independent.
+ * @studio expose category=tile name=get_position_pct section=runtime
+ * @param  tile   Tile handle
+ * @param  x_pct  0-100 across X (or -1 with no finger); NULL ok
+ * @param  y_pct  0-100 across Y (or -1 with no finger); NULL ok
+ */
+void tile_sense_cap_get_position_pct(tile_t *tile,
+                                     int32_t *x_pct, int32_t *y_pct);
+
+/**
+ * @brief  Block until a finger touches the surface.
+ *
+ * Runs process() internally while waiting.
+ *
+ * @studio expose category=tile name=wait_for_touch returns=bool section=runtime
+ * @param  tile        Tile handle
+ * @param  timeout_ms  Maximum wait
+ * @return 1 on touch, 0 on timeout.
+ */
+uint8_t tile_sense_cap_wait_for_touch(tile_t *tile, uint32_t timeout_ms);
+
+/**
+ * @brief  One-knob touch sensitivity.
+ *
+ * Maps 1 (least sensitive, firm touches only) to 5 (most sensitive,
+ * light touches) onto the touch set/clear multiplier pairs.
+ *
+ * @studio expose category=tile name=set_sensitivity section=config
+ * @param  tile   Tile handle
+ * @param  level  1-5; values outside the range are clamped.
+ */
+void tile_sense_cap_set_sensitivity(tile_t *tile, uint8_t level);
 
 /* ---- Event processing ---- */
 
@@ -642,6 +1023,41 @@ uint32_t tile_sense_cap_get_touch_status(tile_t *tile);
 uint8_t tile_sense_cap_is_touched(tile_t *tile, uint8_t channel);
 
 /**
+ * @brief  Number of trackpad channels in the configured surface.
+ * @studio expose category=tile name=get_num_channels returns=int section=runtime
+ * @param  tile  Tile handle
+ * @return total_rx * total_tx, or 0 before configure_surface().
+ */
+uint8_t tile_sense_cap_get_num_channels(tile_t *tile);
+
+/**
+ * @brief  Read one channel's raw count from the extended memory map.
+ *
+ * Live read. Channel numbers follow the datasheet rule: along the Rxs
+ * first, then to the next Tx (for the 2x3 surface: Tx column n has
+ * channels 2n and 2n+1, top and bottom row).
+ *
+ * @studio expose category=tile name=get_channel_count returns=int section=runtime
+ * @param  tile     Tile handle
+ * @param  channel  Channel number, 0-31
+ * @return Count value, or 0 for an out-of-range channel.
+ */
+uint16_t tile_sense_cap_get_channel_count(tile_t *tile, uint8_t channel);
+
+/**
+ * @brief  Read one channel's delta (count minus reference).
+ *
+ * Live read from the extended memory map. The delta is what the touch
+ * threshold acts on — the primary signal for surface bring-up.
+ *
+ * @studio expose category=tile name=get_channel_delta returns=int section=runtime
+ * @param  tile     Tile handle
+ * @param  channel  Channel number, 0-31
+ * @return Delta value, or 0 for an out-of-range channel.
+ */
+uint16_t tile_sense_cap_get_channel_delta(tile_t *tile, uint8_t channel);
+
+/**
  * @brief  Check whether the ALP channel detects presence.
  * @studio expose category=tile name=is_alp_active returns=bool section=runtime
  * @param  tile  Tile handle
@@ -762,6 +1178,33 @@ void tile_sense_cap_set_max_touches(tile_t *tile, uint8_t fingers);
  * @param  y_res  Y resolution in units
  */
 void tile_sense_cap_set_resolution(tile_t *tile, uint16_t x_res, uint16_t y_res);
+
+/**
+ * @brief  Set the touch set/clear threshold multipliers.
+ * @studio expose category=tile name=set_touch_multipliers section=config
+ *
+ * A channel reports touch when its count rises above
+ * Reference x (1 + multiplier/128) — §5.5.1. Smaller multiplier =
+ * more sensitive. Distinct set and clear values give hysteresis.
+ *
+ * @param  tile        Tile handle
+ * @param  set_mult    Touch-set multiplier, 0-255
+ * @param  clear_mult  Touch-clear multiplier, 0-255
+ */
+void tile_sense_cap_set_touch_multipliers(tile_t *tile, uint8_t set_mult,
+                                          uint8_t clear_mult);
+
+/**
+ * @brief  Set the ALP wake-channel output threshold.
+ * @studio expose category=tile name=set_alp_threshold section=config
+ *
+ * The ALP output asserts when the ALP count deviates from its LTA by
+ * more than this delta (§5.5.2). Lower = wakes on lighter proximity.
+ *
+ * @param  tile       Tile handle
+ * @param  threshold  Count-delta threshold
+ */
+void tile_sense_cap_set_alp_threshold(tile_t *tile, uint16_t threshold);
 
 /**
  * @brief  Enable or disable event-mode communication.
