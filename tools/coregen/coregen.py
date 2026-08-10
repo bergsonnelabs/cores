@@ -1171,6 +1171,7 @@ def build_spi_config(config, mcu, pad_map):
 # ---- Tile peripheral driver mapping ----
 
 TILE_DRIVER_MAP = {
+    "Sense.CAM.P": {"header": "tile_sense_cam_p.h",  "source": "tile_sense_cam_p",  "prefix": "tile_sense_cam_p"},
     "Sense.I.9":   {"header": "tile_sense_i_9.h",    "source": "tile_sense_i_9",    "prefix": "tile_sense_i_9", "extra_sources": ["tile_sense_i_9_dmp3"]},
     "Sense.I.6P8": {"header": "tile_sense_i_6p8.h",  "source": "tile_sense_i_6p8",  "prefix": "tile_sense_i_6p8"},
     "Sense.I.6P6": {"header": "tile_sense_i_6p6.h",  "source": "tile_sense_i_6p6",  "prefix": "tile_sense_i_6p6"},

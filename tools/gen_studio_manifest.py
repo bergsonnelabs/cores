@@ -1112,6 +1112,13 @@ def main():
 
     tile_sources = [
         {
+            "path": ROOT / "drivers/tile_sense_cam_p.h",
+            "definition": ROOT / "definitions/Sense-CAM-P-a.json",
+            "prefix": "tile_sense_cam_p",
+            "init": "tile_sense_cam_p_init",
+            "version": "0.1.0",
+        },
+        {
             "path": ROOT / "drivers/tile_display_rgbw.h",
             "definition": ROOT / "definitions/Display-RGBW-a.json",
             "prefix": "tile_display_rgbw",
