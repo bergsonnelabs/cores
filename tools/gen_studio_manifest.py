@@ -1186,7 +1186,7 @@ def main():
             "definition": ROOT / "definitions/Power-L-1N-a.json",
             "prefix": "tile_power_l_1n",
             "init": "tile_power_l_1n_init",
-            "version": "1.0.0",
+            "version": "1.0.1",
         },
         {
             "path": ROOT / "drivers/tile_sense_acp.h",

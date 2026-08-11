@@ -10,10 +10,27 @@
  * VOUT2 = 3.3 V. buck_set_mv() switches a buck to software control to override
  * its VSET default at runtime.
  *
- * Tile LEDs (physical colours, per the tile schematic):
- *   LED0 = GREEN  → driven in HOST mode    (firmware "ready"/status)
- *   LED1 = YELLOW → driven in CHARGING mode (auto, on while charging)
- *   LED2 = RED    → driven in ERROR mode    (auto, on for charger faults)
+ * Tile LEDs. Three discrete 0201 parts (Power-L1-N-a BOM), not an RGB package:
+ *   U3 = APG015SURKKC-TT  631 nm red
+ *   U4 = APG015SEKKC-TT   605 nm ORANGE   (previously documented as "yellow")
+ *   U5 = APG015CGKKC-TT   571 nm green
+ *
+ * Driver mode assignment made by init():
+ *   LED0 → HOST mode     (firmware "ready"/status)
+ *   LED1 → CHARGING mode (auto, on while charging)
+ *   LED2 → ERROR mode    (auto, on for charger faults)
+ *
+ * @warning The LED index → colour mapping is taken from the schematic and is
+ * NOT verified on hardware. All three LEDDRV channels are confirmed working
+ * (bench, 2026-08-10), but the only tile available was misstuffed with three
+ * identical red parts, so colour could not be checked. The BOM refdes order
+ * (U3 red, U4 orange, U5 green) runs opposite to the LED0/1/2 order assumed
+ * here. This matters: init() puts ERROR on LED2, so if LED2 is in fact the
+ * green part, a charger fault lights GREEN. Verify against a correctly
+ * stuffed tile before relying on colour to convey meaning.
+ *
+ * @note Prefer conveying state by blink PATTERN rather than by colour. A
+ * misstuffed or single-colour tile still communicates correctly that way.
  *
  * Quick start:
  * @code
@@ -61,6 +78,17 @@
  * @studio unsupported severity=niche category="POF warning + buck retention / forced-PWM"
  *   Driver-deferred. Power-fail early-warning (via GPIO) and buck
  *   retention-voltage / forced-PWM modes aren't exposed yet.
+ *
+ * @studio unsupported severity=advanced category="VBUS input current limit (ILIM)"
+ *   Driver-deferred. The nPM1300 boots with a 100 mA VBUS input limit, and
+ *   VBUSINILIM0 (VBUSIN base 0x0200, offset 0x1) plus the TASKUPDATEILIMSW
+ *   commit are not exposed, so it cannot be raised for a 500 mA USB or a
+ *   1500 mA USB-C supply. This is not cosmetic: measured on the bench,
+ *   enabling a 100 mA charge collapsed VSYS from 5.15 V to ~3.65 V as input
+ *   current hit the limit (datasheet Fig. 6). Both bucks stayed in
+ *   regulation — VSYSMIN is 2.7 V — but headroom on a 3.3 V VOUT2 drops to
+ *   ~350 mV, and a load with a startup surge can brown the rail out
+ *   entirely (see the Sense.CAM.P bring-up).
  */
 
 #ifndef INC_TILE_POWER_L_1N_H_
@@ -75,7 +103,7 @@
 
 #define TILE_POWER_L_1N_VERSION_MAJOR  1
 #define TILE_POWER_L_1N_VERSION_MINOR  0
-#define TILE_POWER_L_1N_VERSION_PATCH  0
+#define TILE_POWER_L_1N_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);  /* requires tiles.h >= 1.0 */
 
@@ -236,6 +264,20 @@ uint8_t tile_power_l_1n_is_charge_complete(tile_t* tile);
 
 /**
  * @brief  Whether a battery is detected.
+ *
+ * @warning Only meaningful while charging is ENABLED. This reads
+ * BATTERYDETECTED in BCHGCHARGESTATUS, a charger-domain bit: the datasheet
+ * states "CHARGER waits until a battery is detected before charging", i.e.
+ * detection runs as part of the charge cycle. With the charger disabled the
+ * bit reads 0 whether or not a cell is fitted — measured on the bench with a
+ * battery physically attached (0 before enable, 1 after).
+ *
+ * Do NOT gate a charge-enable decision on this; that deadlocks. Enable
+ * charging first, poll this for a second or two, and disable again if nothing
+ * appears. Note also that get_vbat_mv() cannot substitute: an open battery
+ * terminal reads a plausible ~3 V once charger current has pushed the VBAT
+ * decoupling cap up.
+ *
  * @studio expose category=tile name=battery_present returns=bool section=runtime
  * @return 1 if a battery is present, 0 otherwise.
  */
