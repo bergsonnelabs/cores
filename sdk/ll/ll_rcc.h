@@ -734,12 +734,13 @@ static inline void ll_rcc_ahb5_clk_sleep_disable(void)
 
 /* ---- PWR: backup domain access ---- */
 
-#ifndef PWR_BASE
-#define PWR_BASE          (AHB5_BASE + 0x0800UL)  /* 0x46020800 */
-#endif
-
-/* ll_pwr_enable_backup_access() is defined in ll_pwr.h.
- * Include ll_pwr.h if you need PWR/backup domain access. */
+/* PWR_BASE has one definition, ll_pwr.h's per-MCU table. This header used to
+ * carry a second (AHB5_BASE + 0x0800UL, the same address) behind an #ifndef —
+ * whichever header a translation unit reached first won, and the other warned
+ * "PWR_BASE redefined" on every WBA build. Identical values made that harmless
+ * but include-order-dependent; a change to one would have diverged silently.
+ * (ll_pwr.h pulls in only ll_common.h, so there is no cycle here.) */
+#include "ll_pwr.h"
 
 /** Get radio power mode (PWR_SR1 bits [2:1]) */
 static inline uint32_t ll_pwr_get_radio_mode(void)
@@ -849,6 +850,10 @@ static inline void ll_rcc_ahb2_clk_enable(uint32_t mask)
 #elif defined(STM32H523xx)
     SET_BITS(REG32(RCC_BASE + 0x8CUL), mask);
 #endif
+    /* No L011 branch: that part has no AHB2 bus. Nothing reaches here on it
+     * either — it has no RNG/AES/DAC, and its ADC clock is enabled from
+     * APB2ENR directly (_adc_clk_enable in hal_adc.c). */
+    (void)mask;
     (void)REG32(RCC_BASE);
 }
 

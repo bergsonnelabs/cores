@@ -178,6 +178,9 @@ static void fault_sos(void)
 
 /* ---- Fault type names ---- */
 
+/* Only the USB CDC dump below names the fault, and that is L422-only — on every
+ * other Core this is dead code the compiler rightly complains about. */
+#if defined(STM32L422xx)
 static const char *fault_name(hal_fault_type_t type)
 {
     switch (type) {
@@ -188,6 +191,7 @@ static const char *fault_name(hal_fault_type_t type)
     default:                  return "Unknown";
     }
 }
+#endif /* STM32L422xx */
 
 /* ---- Common fault handler ---- */
 
@@ -258,9 +262,14 @@ static void fault_handler(hal_fault_type_t type, uint32_t *stack)
  * These are normal (non-naked) C functions — the naked handler below
  * passes the stack pointer in r0 and branches here. */
 static void fault_hard(uint32_t *stack)      { fault_handler(HAL_FAULT_HARD, stack); }
+/* Cortex-M0+ has only HardFault — no MemManage/Bus/Usage exception exists to
+ * trampoline into, so these three have no entry point there (see the L011 case
+ * below) and the compiler flags them as dead. */
+#if !defined(STM32L011xx)
 static void fault_memmanage(uint32_t *stack)  { fault_handler(HAL_FAULT_MEMMANAGE, stack); }
 static void fault_bus(uint32_t *stack)        { fault_handler(HAL_FAULT_BUS, stack); }
 static void fault_usage(uint32_t *stack)      { fault_handler(HAL_FAULT_USAGE, stack); }
+#endif
 
 /* Naked entry points — read the correct SP and branch to the trampoline.
  * The trampoline address is loaded from a literal pool via ldr. */
