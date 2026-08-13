@@ -12,6 +12,7 @@ __pycache__/
 !tools/coregen/**
 tests/**/core.h
 examples/**/core.h
+templates/**/core.h
 
 # Generated tile handles (regenerated on build)
 **/tile_handles.h
