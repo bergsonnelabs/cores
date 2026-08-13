@@ -134,11 +134,15 @@ void hal_spi_xfer(hal_spi_t *h, const uint8_t *tx, uint8_t *rx, uint32_t len)
  *   WBA/H5: GPDMA — not yet implemented (SPI v2 needs TSIZE work)
  * ============================================================ */
 
+/* Only the L422 path below wires these into a DMA channel; on the families
+ * whose GPDMA support is still outstanding they are dead storage. */
+#if defined(STM32L422xx)
 /* Dummy byte for TX when tx==NULL (read-only transfer) */
 static const uint8_t _spi_dma_dummy_tx = 0x00;
 
 /* Dummy byte for RX when rx==NULL (write-only transfer) */
 static uint8_t _spi_dma_dummy_rx;
+#endif
 
 hal_status_t hal_spi_xfer_dma(hal_spi_t *h, const uint8_t *tx, uint8_t *rx,
                                uint32_t len, hal_callback_t cb, void *ctx)
@@ -209,10 +213,12 @@ hal_status_t hal_spi_xfer_dma(hal_spi_t *h, const uint8_t *tx, uint8_t *rx,
 #elif defined(STM32WBA55xx) || defined(STM32H523xx)
     /* GPDMA SPI DMA not yet implemented — SPI v2 requires TSIZE
        to be set while SPE=0, which complicates DMA setup. */
+    (void)tx;   /* consumed only by the L422 path above */
     h->busy = 0;
     return HAL_ERROR;
 
 #else
+    (void)tx;
     h->busy = 0;
     return HAL_ERROR;
 #endif
