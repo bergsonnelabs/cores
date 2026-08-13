@@ -33,6 +33,21 @@ from gen_studio_manifest import (  # noqa: E402
 )
 
 
+# ---- Console encoding ----------------------------------------------------
+# Windows Python falls back to the legacy ANSI code page (cp1252) whenever
+# stdout isn't a real console — which is exactly the case under make, where it
+# is a pipe. Any non-ASCII in our progress output then raises
+# UnicodeEncodeError and takes the build down with it. Force UTF-8 on the
+# streams we own; errors="replace" keeps a terminal that genuinely cannot
+# render a character from crashing over it.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        if (getattr(_stream, "encoding", "") or "").lower().replace("-", "") != "utf8":
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError, ValueError):
+        pass
+
+
 class ParseEnumBody(unittest.TestCase):
     def test_simple(self):
         self.assertEqual(

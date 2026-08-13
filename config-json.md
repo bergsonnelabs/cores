@@ -107,6 +107,7 @@ markers** — re-running coregen will clobber them. Edit `config.json` instead.
 | `tiles`        | array  | no       | `[]`           | ✅ |
 | `usb`          | object | no       | disabled       | ✅ |
 | `bootloader`   | string | no       | `"none"`       | ✅ |
+| `iwdg`         | object | no       | disabled       | ✅ |
 | `timer`        | object | no       | none           | ✅ (Studio only) |
 | `pins`         | object | no       | —              | ✅ (legacy alias for `pads`) |
 | `ble`          | object | no       | —              | ❌ **ignored** (see §10) |
@@ -344,7 +345,7 @@ The set of valid `tile` names is the `TILE_DRIVER_MAP` dict in
 
 ---
 
-## 10. `usb` and `bootloader`
+## 10. `usb`, `bootloader`, and `iwdg`
 
 ### `usb`
 
@@ -379,11 +380,42 @@ USB-capable MCU (L4 or H5); on a non-USB core it's a no-op/warning.
 | Value      | Layout                                              | Cores               | Needs USB |
 |------------|-----------------------------------------------------|---------------------|-----------|
 | `"none"`   | app at `0x08000000`, SWD programming only (default) | all                 | no        |
-| `"custom"` | 8 KB DFU at `0x08000000`, app at `0x08002000`       | L4 / H5             | yes       |
+| `"custom"` | 8 KB DFU at `0x08000000`, app at `0x08002000`       | L4 / H5 — **parked** | yes      |
 | `"rom"`    | ST ROM DfuSe, app at `0x08000000`                   | L4 (full); H5 (needs power cycle) | yes |
 
 Sets the `BOOTLOADER` / `ROM_DFU` Make variables automatically. A non-`none`
 value on a non-USB core warns. Any other string → exit.
+
+`"rom"` is the fleet standard — Studio's default, and where the L4
+strike→ROM-DFU brick recovery lives. **`"custom"` is parked**: the Makefile
+refuses `BOOTLOADER=1` unless you also pass `CUSTOM_BOOTLOADER_ACK=1`, because
+flashing a custom-layout image onto a ROM-DFU board writes at `0x08002000` and
+corrupts the resident app. Use `"rom"` unless you know the board carries the
+custom bootloader.
+
+### `iwdg`
+
+```json
+"iwdg": { "enabled": true, "timeout_ms": 5000 }
+```
+
+| Field        | Type | Default | Meaning                                  |
+|--------------|------|---------|------------------------------------------|
+| `enabled`    | bool | `false` | Start the independent watchdog in `core_init()` |
+| `timeout_ms` | int  | `5000`  | Reset if not fed within this window       |
+
+Opt-in, so regenerating an existing project never surprises it with resets.
+When enabled, `core_init()` starts the IWDG (and freezes it under the debugger)
+— **your loop must call `core_watchdog_feed()`**, or the Core resets.
+
+Best paired with `"bootloader": "rom"`, where the strike counter escalates
+repeated watchdog resets into ROM DFU instead of a soft-brick; coregen warns if
+you enable it without ROM mode, since an un-fed watchdog then just reset-loops
+with no recovery escape. The strike→ROM-DFU logic itself is compiled into every
+ROM_DFU build and stays dormant until a watchdog is actually running.
+
+The [project templates](templates/) for the USB-capable Cores ship with
+this configured and fed.
 
 ### `timer` (Studio only)
 
@@ -411,7 +443,6 @@ though older docs described them. Don't rely on them:
 | `timers`      | per-timer freq/tick         | No-op. Use `interfaces.TIM<n>.freq` (§7).                   |
 | `pwm`         | per-channel duty            | No-op. Duty is a runtime API call.                          |
 | `capture`     | input-capture mapping       | No-op. (Capture isn't config-driven.)                      |
-| `iwdg`        | watchdog enable/timeout     | No-op.                                                      |
 
 Because unknown keys are ignored rather than rejected, putting any of these in
 your file is harmless but does nothing. If you need one of these behaviours,

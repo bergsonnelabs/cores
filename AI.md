@@ -62,21 +62,34 @@ cores/
 ├── tiles_pal.h                 # Platform abstraction interface
 ├── definitions/                # Tile JSON definitions (canonical source)
 ├── drivers/                    # Tile peripheral drivers (tile_*.h/c)
+│   └── _template/              # Driver scaffolding (tile_template.{h,c})
 ├── hal/                        # Tile PAL adapters (Arduino / ESP-IDF / STM32)
-├── templates/                  # Driver scaffolding (tile_template.{h,c})
 ├── manifests/                  # Generated manifests (per-tile + SDK)
 ├── tools/
 │   └── coregen/
 │       ├── coregen.py          # Main generator — entry point
 │       ├── templates/          # Jinja2 templates (see below)
 │       └── config-schema.json
+├── templates/                  # One minimal, buildable starter per Core — copy one
+│   ├── core-st-l0-1/           # Makefile + config.json + main.c
+│   ├── core-st-l4-1/
+│   ├── core-st-l4-2/
+│   ├── core-st-w5/
+│   └── core-st-h5-1/
 ├── projects/                   # User projects (each has config.json)
 │   └── my-project/
 └── examples/                   # Reference projects (no config.json changes needed)
-    ├── blink/
-    ├── sdk-demo/               # SPI + I2C + tiles example
+    ├── u2-blink/
+    ├── h1-usb-hid/             # USB HID example
     └── ...
 ```
+
+**Starting a new project:** copy the `templates/` folder for your Core rather
+than hand-assembling one. Each is a complete, building project, and the
+USB-capable ones (L4.1 / L4.2 / H5.1) come pre-wired in the fleet-standard
+shape — `bootloader: "rom"`, USB CDC up before `main()`, and the `iwdg`
+watchdog + strike→ROM-DFU brick recovery, fed from the starter loop. See
+[`templates/README.md`](templates/README.md).
 
 ---
 
@@ -93,6 +106,9 @@ cores/
 | `BOOTLOADER` | from config.json | `1` = custom DFU bootloader (app at 0x08002000) |
 | `ROM_DFU` | from config.json | `1` = ROM DfuSe bootloader (app at 0x08000000) |
 | `V` | `0` | Verbosity (1 = show all commands) |
+| `PYTHON` | auto-probed | Python 3 for coregen — tries `python3`, `py -3`, `python` |
+| `SERIAL_PORT` | auto-detected | CDC port for the 1200-baud touch; required on Windows (`COM5`) |
+| `STM32_PROG_CLI` | per-host default | STM32CubeProgrammer CLI path (Core.ST.W5 SWD flashing) |
 
 ### Common Commands
 
@@ -105,7 +121,44 @@ make flash                                     # Flash via OpenOCD / ST-Link
 make flash-dfu                                 # Flash via USB DFU
 make clean                                     # Remove build artefacts
 make distclean                                 # Remove build + coregen output
+make doctor                                    # Check the toolchain, report what's missing
 ```
+
+### Host Platforms
+
+macOS, Linux, and Windows are all supported; Windows must build from **Git Bash
+or MSYS2**, never `cmd.exe` or PowerShell. The Makefile relies on POSIX shell
+builtins throughout (`[`, `mkdir -p`, `rm -rf`, `ls`), so it forces
+`SHELL := sh.exe` on Windows and hard-errors if no POSIX shell is on PATH —
+without that, make silently falls back to `cmd.exe` *per recipe line* and the
+build dies in a cascade of `'[' is not recognized`.
+
+Four more host differences the Makefile handles, each with its own trap:
+
+- **Python.** On Windows a bare `python3` is usually the Microsoft Store alias
+  stub, which resolves but does nothing. `PYTHON` is probed by actually running
+  each candidate (`python3`, `py -3`, `python`), so the stub is rejected rather
+  than silently accepted; no working Python 3 is a hard error, not a config-less
+  coregen run.
+- **Serial port.** The 1200-baud DFU touch needs a device node:
+  `/dev/tty.usbmodem*` + `stty -f` on macOS, `/dev/ttyACM*` + `stty -F` on
+  Linux. Windows COM ports have no `/dev` entry, so `make flash-dfu` there
+  either takes `SERIAL_PORT=COM5` (touch via pyserial) or expects the board to
+  be put into DFU by hand — and `dfu-util` needs WinUSB bound with Zadig first.
+- **Console encoding.** Windows Python encodes stdout with the legacy ANSI code
+  page (cp1252) whenever stdout is not a real console — under make it is a pipe,
+  so that is always. One non-ASCII character in a tool's output (coregen's `→`,
+  validate's `✓`, the `µ` and `—` all over driver briefs) raises
+  `UnicodeEncodeError` and takes the build down. **Every `tools/*.py` entry
+  point forces UTF-8 on its own streams** in a short block after its imports —
+  copy it into any new tool — and the Makefile exports `PYTHONIOENCODING=utf-8`
+  to cover the inline `python -c` calls. Reproduce the failure on any host with
+  `PYTHONIOENCODING=cp1252 make …`.
+- **Paths with spaces.** Make cannot represent a space in a target or
+  prerequisite name, so a project under `C:/Users/First Last/…` cannot be built
+  at all. Both `SDK_DIR` and `PROJECT_DIR` are checked up front and rejected
+  with the remedy, instead of failing later as `No rule to make target
+  'Last/main.c'`.
 
 ### Build Flow
 
