@@ -203,7 +203,7 @@
     "type": "T44",
     "size_x": 4000,
     "size_y": 4000,
-    "size_z": 2500
+    "size_z": 0
   },
   "tile_id": 78,
   "headline": "monochrome QVGA camera",
@@ -297,7 +297,7 @@
       ]
     }
   ],
-  "updated_at": "2026-08-10T12:44:09.278Z",
+  "updated_at": "2026-08-10T08:53:21.990Z",
   "description": "An ultra-low-power machine-vision tile built around the PixArt PAG7920J3, a 320 × 240 monochrome global-shutter camera module with an integrated lens. It captures 8-bit RAW frames at up to 180 fps over SPI, with 3.0 µm pixels, a 71.3° × 53.7° field of view, and 64 dB of dynamic range. Configuration is over I2C. A proprietary on-chip motion-detection mode draws under 100 µW (compared to 760 µW for QVGA output at 15 fps) making the tile practical to leave always-on in a battery-powered system, with auto exposure and gain control, auto black cancellation, mirror/flip, windowing, LED strobe, and multi-sensor frame sync built in.\n\n",
   "json_version": "0.7",
   "application_notes": [
