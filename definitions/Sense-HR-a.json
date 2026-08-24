@@ -29,7 +29,7 @@
       },
       "functions": [
         {
-          "note": "internal pull-up sets the default I2C address to 0xD6; connect to GND to switch to 0xD5.",
+          "note": "internal pull-up sets the default I2C address to 0xD6; connect to GND to switch to 0xD5; do not connect > 2.0V",
           "type": "digital",
           "function": "I2C.AD0",
           "direction": "input",
@@ -54,14 +54,14 @@
       },
       "functions": [
         {
-          "note": "internal pull-up enables I2C by default; connect to GND to switch to SPI",
+          "note": "internal pull-up enables I2C by default; connect to GND to switch to SPI; do not connect > 2.0V",
           "type": "digital",
           "function": "I2C.EN",
           "direction": "input",
           "interface": "I2C"
         },
         {
-          "note": "",
+          "note": "6V tolerant",
           "type": "digital",
           "function": "SPI.CS",
           "direction": "",
@@ -79,14 +79,14 @@
       },
       "functions": [
         {
-          "note": "",
+          "note": "6V tolerant",
           "type": "digital",
           "function": "I2C.CLK",
           "direction": "bidirectional",
           "interface": "I2C"
         },
         {
-          "note": "",
+          "note": "6V tolerant",
           "type": "digital",
           "function": "SPI.CLK",
           "direction": "",
@@ -104,7 +104,7 @@
       },
       "functions": [
         {
-          "note": "",
+          "note": "6V tolerant",
           "type": "digital",
           "function": "I2C.DAT",
           "direction": "bidirectional",
@@ -112,7 +112,7 @@
           "is_default": true
         },
         {
-          "note": "",
+          "note": "6V tolerant",
           "type": "digital",
           "function": "SPI.MOSI",
           "direction": "",
@@ -486,8 +486,8 @@
       ]
     }
   ],
-  "updated_at": "2026-05-01T12:38:58.131Z",
+  "updated_at": "2026-08-11T04:01:16.794Z",
   "description": "The fully-integrated Sense.HR optical heart-rate and SpO₂ sensor combines the advanced Analog Devices MAX86174A photoplethysmography (PPG) front end with dual Vishay VEMD1060X01 silicon PIN photodiodes and four LEDs (two green, one red, one IR) for multi-wavelength reflective optical sensing.  The 20-bit ADC with a 256-word FIFO provides data at configurable rates from 1 to 2048 frames per second for external processing.",
-  "json_version": "0.9",
+  "json_version": "0.10",
   "application_notes": []
 }
