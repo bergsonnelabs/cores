@@ -88,6 +88,11 @@
     "adv.i3c_ctrl": "",
     "adv.i3c_target": "",
     "adv.comp": "na",
-    "adv.dac": "verified"
+    "adv.dac": "verified",
+    "ble.adv": "na",
+    "ble.gatt": "na",
+    "ble.notify": "na",
+    "ble.pairing": "na",
+    "ble.central": "na"
   }
 }

@@ -486,6 +486,42 @@
           "desc": "Digital-to-Analog Converter — generates a continuous analog voltage from a digital value."
         }
       ]
+    },
+    {
+      "id": "ble",
+      "name": "Bluetooth LE",
+      "features": [
+        {
+          "id": "ble.adv",
+          "layer": "Core",
+          "name": "advertising",
+          "desc": "Start/stop connectable advertising with a device name. Peripheral role only."
+        },
+        {
+          "id": "ble.gatt",
+          "layer": "Core",
+          "name": "GATT services + characteristics",
+          "desc": "Build services and characteristics at init; read/write/notify access modes."
+        },
+        {
+          "id": "ble.notify",
+          "layer": "Core",
+          "name": "notify / on-write callbacks",
+          "desc": "Push characteristic values to a connected central, and receive writes via callback."
+        },
+        {
+          "id": "ble.pairing",
+          "layer": "Core",
+          "name": "pairing + bonding",
+          "desc": "Just Works legacy pairing with bonding; keys persist in flash NVM."
+        },
+        {
+          "id": "ble.central",
+          "layer": "Core",
+          "name": "central / scanner role",
+          "desc": "Scanning and GATT-client connections. Not implemented — peripheral role only."
+        }
+      ]
     }
   ]
 }
