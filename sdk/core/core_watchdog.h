@@ -112,12 +112,27 @@ static inline void core_watchdog_clear_flags(void)
  *  Firmware-side so it holds for any probe/toolchain (rev b exposes SWD on L4). */
 static inline void core_watchdog_debug_freeze(void)
 {
-#if defined(STM32L422xx)
-    /* DBGMCU_APB1FZR1 (0xE0042008), DBG_IWDG_STOP = bit 12 */
+    /* DBG_IWDG_STOP is bit 12 everywhere; only the register moves. Note the two
+     * Cortex-M33 parts do NOT put DBGMCU at 0xE0042000 — that is the CoreSight
+     * CTI block on both (confirmed on a WBA55 by walking its ROM table). */
+#if defined(STM32L011xx)
+    /* RM0377 27.9.4: DBG_APB1_FZ is mapped at 0x40015808. */
+    SET_BITS(REG32(0x40015808UL), (1UL << 12));
+#elif defined(STM32L422xx)
+    /* RM0394: DBGMCU_APB1FZR1 at 0xE0042008. */
     SET_BITS(REG32(0xE0042008UL), (1UL << 12));
+#elif defined(STM32WBA55xx)
+    /* RM0493 43.12.7: DBGMCU @ 0xE0044000, DBGMCU_APB1LFZR at offset 0x08.
+     * The RM documents only the debugger base, so software access was verified
+     * on hardware: firmware writes bit 12 and reads it back, and a 6 s halt
+     * under the CoreProbe with a 2 s IWDG no longer resets the part. */
+    SET_BITS(REG32(0xE0044008UL), (1UL << 12));
 #elif defined(STM32H523xx)
-    /* DBGMCU APB1 freeze (0xE004203C), IWDG stop = bit 12 */
-    SET_BITS(REG32(0xE004203CUL), (1UL << 12));
+    /* RM0481 59.12.4: DBGMCU is at 0xE00E4000 for the DEBUGGER and 0x44024000
+     * for SOFTWARE; DBGMCU_APB1LFZR is at offset 0x08. Firmware must use the
+     * software base. (This previously wrote 0xE004203C — the CTI block — so the
+     * freeze never took effect on the H5.) */
+    SET_BITS(REG32(0x44024008UL), (1UL << 12));
 #endif
 }
 

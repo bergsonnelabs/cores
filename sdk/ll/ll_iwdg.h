@@ -149,7 +149,9 @@ static inline int ll_iwdg_caused_reset(void)
 #elif defined(STM32L422xx)
     return (REG32(RCC_BASE + 0x94UL) & (1UL << 29)) != 0;  /* CSR: IWDGRSTF */
 #elif defined(STM32WBA55xx)
-    return (REG32(RCC_BASE + 0xE4UL) & (1UL << 29)) != 0;
+    /* RM0493: RCC_CSR is at offset 0x0F4 (was 0xE4 here, which reads 0 — so
+     * this returned false after a real watchdog reset. Caught on hardware.) */
+    return (REG32(RCC_BASE + 0xF4UL) & (1UL << 29)) != 0;  /* CSR: IWDGRSTF */
 #elif defined(STM32H523xx)
     return (REG32(RCC_BASE + 0xF4UL) & (1UL << 29)) != 0;
 #endif
@@ -166,7 +168,7 @@ static inline void ll_rcc_clear_reset_flags(void)
 #elif defined(STM32L422xx)
     SET_BITS(REG32(RCC_BASE + 0x94UL), (1UL << 23));  /* CSR: RMVF */
 #elif defined(STM32WBA55xx)
-    SET_BITS(REG32(RCC_BASE + 0xE4UL), (1UL << 23));
+    SET_BITS(REG32(RCC_BASE + 0xF4UL), (1UL << 23));  /* CSR: RMVF */
 #elif defined(STM32H523xx)
     SET_BITS(REG32(RCC_BASE + 0xF4UL), (1UL << 23));
 #endif

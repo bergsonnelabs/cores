@@ -1,0 +1,62 @@
+name: firmware-build
+
+# Compiles firmware for every Core on every PR that touches the SDK, the
+# generators, or the starter templates.
+#
+# Why this exists: `core_watchdog.h` includes `hal_dfu.h`, which defined its
+# reserved-SRAM addresses only for the USB-capable parts while leaving the DFU
+# entry points unguarded — so including it on a WBA55 was a hard compile error,
+# and EVERY Core.ST.W5 project Studio generated failed to build. Nothing in CI
+# compiled firmware, so it shipped. A header that builds on one MCU family and
+# not another is exactly the class of break this job catches.
+
+on:
+  pull_request:
+    paths:
+      - 'sdk/**'
+      - 'drivers/**'
+      - 'templates/**'
+      - 'tools/coregen/**'
+      - 'tests/val-watchdog/**'
+      - 'Makefile'
+      - '.github/workflows/firmware-build.yml'
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        core: [Core.ST.L0.1, Core.ST.L4.1, Core.ST.W5, Core.ST.H5.1]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install arm-none-eabi-gcc
+        uses: carlosperate/arm-none-eabi-gcc-action@v1
+        with:
+          release: '13.2.Rel1'
+
+      - name: Install Jinja2 (coregen)
+        run: python3 -m pip install --quiet jinja2
+
+      # Exercises the Core watchdog API on every Core. This is the regression pin
+      # for the hal_dfu.h break described above.
+      - name: val-watchdog (${{ matrix.core }})
+        run: make -C tests/val-watchdog TILE=${{ matrix.core }}
+
+      # The starter templates are what a new user's first build actually runs.
+      - name: starter template (${{ matrix.core }})
+        run: |
+          case "${{ matrix.core }}" in
+            Core.ST.L0.1) DIR=core-st-l0-1 ;;
+            Core.ST.L4.1) DIR=core-st-l4-1 ;;
+            Core.ST.W5)   DIR=core-st-w5   ;;
+            Core.ST.H5.1) DIR=core-st-h5-1 ;;
+          esac
+          make -C "templates/$DIR" SDK_ROOT="$GITHUB_WORKSPACE"
