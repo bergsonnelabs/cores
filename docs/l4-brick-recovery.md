@@ -202,9 +202,18 @@ this design rather than fighting it:
 
 **Separate but related workstream — Studio "SWD for all Core.ST.x":** SWD should
 be selectable for every Core.ST core (L0 = *only* way in, L4.2 always, L4.1 rev b
-new, H5 already, W5 done), but Studio's `stLinkTransport` currently ships only a
-**WBA** flash driver (rejects DEV_ID ≠ `0x492`) and is gated `tileId ===
-'Core-ST-W5-b'`. Un-gating needs **per-family flash drivers keyed on DEV_ID**
-(L4/L422 ≈ `0x435` — algorithm already in `sdk/bootloader/main.c`; H5 quad-word;
-L0). Note: with no L0 driver and no L0 USB-DFU, **Studio can't flash an L0 at all
-today.** Tracked separately from this firmware doc.
+new, H5 already, W5 done).
+
+*Transport: done.* Studio speaks two SWD probes — ST-Link (`lib/stlink/probe.ts`)
+and the in-house **CoreProbe** over WebHID CMSIS-DAP v1 (`lib/cmsisdap/coreprobe.ts`,
+plus vendor commands 0x80+ for target power / `V_shift`). `TransportKind` covers
+`usb-dfu | st-link | cmsis-dap`, and the FlashPanel exposes a USB-DFU/SWD toggle.
+Neither is gated to `Core-ST-W5-b` any more.
+
+*Flash drivers: still one.* `lib/stlink/flash-wba.ts` (shared by both probes) is
+the only family driver, so SWD flashing still reaches **WBA only**. Un-gating the
+rest needs **per-family flash drivers keyed on DBGMCU DEV_ID** — per Studio's own
+table in `lib/coreId.ts`: L4/L422 `0x464` (algorithm already in
+`sdk/bootloader/main.c`), H5/H523 `0x478` (quad-word), L0/L011 `0x457`. With no L0
+driver and no L0 USB-DFU, **Studio can't flash an L0 at all today.** Tracked
+separately from this firmware doc.

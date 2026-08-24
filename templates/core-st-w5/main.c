@@ -1,16 +1,17 @@
 /**
  * Core.ST.W5 starter — blink the status LED.
  *
- * The W5 is the radio one: STM32WBA55, Cortex-M33 with Bluetooth LE. Two
- * things differ from the L4/H5 templates:
+ * The W5 is the radio one: STM32WBA55, Cortex-M33 with Bluetooth LE. What
+ * differs from the L4/H5 templates:
  *
  *   - No USB. The WBA55 has no USB peripheral, so there is no CDC, no
  *     1200-baud touch, and no `make flash-dfu`. Flash over SWD with
- *     `make flash`, which routes through STM32CubeProgrammer (OpenOCD has no
- *     WBA55 support).
- *   - No watchdog in config.json. The `iwdg` + strike-counter brick recovery
- *     escapes into ROM DFU, which needs USB — without it an un-fed watchdog
- *     just reset-loops, so this template leaves it off.
+ *     `make flash` (STM32CubeProgrammer + an ST-Link; OpenOCD has no WBA55
+ *     support), or from Studio / probe-rs over the CoreProbe.
+ *   - The watchdog is on (5 s), same as every other Core — the IWDG is plain
+ *     hardware here and works fine. What the W5 does NOT get is the
+ *     strike-counter escape into ROM DFU, which needs USB. Recovery on this
+ *     Core is SWD, which a probe can always reach.
  *
  * For BLE, build with BLE_ENABLED=1 and see the ble-* projects under tests/.
  *
@@ -19,13 +20,16 @@
  */
 
 #include "core.h"
+#include "core_watchdog.h"
 
 int main(void)
 {
-    core_init();
+    core_init();      /* clock + watchdog, both from config.json */
     core_led_init();
 
     while (1) {
+        core_watchdog_feed();
+
         LED_TOGGLE();
         core_delay_ms(250);
     }

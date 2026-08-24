@@ -603,8 +603,13 @@ size: $(TARGET).elf
 	$(Q)$(SIZE) $<
 	@echo ""
 
+# Generated sources compile in place, so their objects live in GEN_DIR rather
+# than BUILD_DIR. Sweep those too: leaving them behind means switching a project
+# between a soft-float Core (L0) and a hard-float one (L4/W5/H5) links a stale
+# object with the wrong FP ABI and fails with "uses VFP register arguments".
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -f $(GEN_DIR)/*.o $(GEN_DIR)/*.d
 
 distclean: clean
 	rm -rf $(GEN_DIR)

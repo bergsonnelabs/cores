@@ -1527,19 +1527,25 @@ def generate(tile_path, output_dir, config_path=None):
         # Bootloader mode: "none", "custom", or "rom" (from config.json)
         ctx["bootloader_mode"] = project.get("bootloader", "none")
         # Watchdog-by-default (Part A) + strike→ROM-DFU brick recovery (Part B).
-        # Opt-in: absent iwdg config → OFF, so regenerating an existing project
-        # never surprises it with resets. "On by default" is delivered by the
-        # Studio starter scaffolding, which writes iwdg.enabled=true AND feeds the
-        # dog. The strike→ROM-DFU recovery itself is always compiled into ROM_DFU
-        # builds (dormant until a watchdog is actually running). Best paired with
-        # ROM_DFU mode, where an un-fed reset parks in DFU instead of hard-bricking.
+        # These are INDEPENDENT and the split matters:
+        #   - The watchdog is plain IWDG (ll_iwdg) and works on EVERY Core. It is
+        #     armed by default by the Studio starter scaffolding and by the
+        #     starter templates, which write iwdg.enabled=true AND feed the dog.
+        #   - The strike→SOS→ROM-DFU escape needs USB, so it only compiles into
+        #     ROM_DFU builds of a usb_capable part (see core_init.c.j2).
+        # A Core without USB (W5, L0) recovers over SWD instead — a probe can
+        # always halt and reflash it — so arming the watchdog there is normal.
+        # Still opt-in at the config level: absent iwdg config → OFF, so
+        # regenerating an existing project never surprises it with resets.
         _iwdg_cfg = project.get("iwdg", {}) or {}
         ctx["iwdg_enabled"] = bool(_iwdg_cfg.get("enabled", False))
         ctx["iwdg_timeout_ms"] = int(_iwdg_cfg.get("timeout_ms", 5000))
-        if ctx["iwdg_enabled"] and ctx["bootloader_mode"] != "rom":
+        if ctx["iwdg_enabled"] and ctx["usb_capable"] and ctx["bootloader_mode"] != "rom":
             print(
-                "  WARNING: iwdg is enabled without ROM_DFU bootloader mode — an "
-                "un-fed watchdog will reset-loop with no auto-DFU recovery escape."
+                "  WARNING: iwdg is enabled on a USB-capable Core without ROM_DFU "
+                "bootloader mode — an un-fed watchdog will reset-loop, giving up "
+                'the strike→DFU recovery this Core could have had. Set '
+                '"bootloader": "rom" to get it.'
             )
         ctx["timer_pads"] = build_timer_config(project, pad_map)
 

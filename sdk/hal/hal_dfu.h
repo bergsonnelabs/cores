@@ -87,6 +87,15 @@ static inline uint32_t hal_recovery_stashed_cause(void)
 #define SCB_AIRCR_SYSRESETREQ  (1UL << 2)
 #define SCB_AIRCR_VECTKEY      (0x05FAUL << 16)
 
+/* The DFU entry points exist only where hal_dfu.h defined the reserved-SRAM
+ * addresses above (USB-capable Cores). On a Core without a DFU path — e.g.
+ * Core.ST.W5 / STM32WBA55, which has no USB — these would reference undefined
+ * DFU_MAGIC_ADDR / DFU_ROM_ADDR, and merely INCLUDING this header would fail to
+ * compile. Self-guard them the same way the recovery helpers above do, so
+ * core_watchdog.h (which includes this header unconditionally) stays usable on
+ * every Core. */
+#ifdef DFU_MAGIC_ADDR
+
 /**
  * Reboot into DFU mode. Does not return.
  *
@@ -162,5 +171,7 @@ static inline void hal_dfu_jump_to_rom(void)
 
     __builtin_unreachable();
 }
+
+#endif /* DFU_MAGIC_ADDR */
 
 #endif /* HAL_DFU_H */
