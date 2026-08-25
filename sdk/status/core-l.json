@@ -98,6 +98,11 @@
       "status": "compile",
       "note": "L011 has COMP1/COMP2 but not routed on Core.ST.L0.1 pinout"
     },
-    "adv.dac": "na"
+    "adv.dac": "na",
+    "ble.adv": "na",
+    "ble.gatt": "na",
+    "ble.notify": "na",
+    "ble.pairing": "na",
+    "ble.central": "na"
   }
 }

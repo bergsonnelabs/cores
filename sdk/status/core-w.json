@@ -81,6 +81,14 @@
     "conn.fdcan": "na",
     "adv.i3c_ctrl": "na",
     "adv.i3c_target": "na",
-    "adv.dac": "na"
+    "adv.dac": "na",
+    "ble.adv": "verified",
+    "ble.gatt": "verified",
+    "ble.notify": "verified",
+    "ble.pairing": {
+      "status": "partial",
+      "note": "Just Works legacy pairing + bonding only; no LE Secure Connections / passkey"
+    },
+    "ble.central": "none"
   }
 }

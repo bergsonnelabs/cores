@@ -402,7 +402,18 @@ ifeq ($(WAMR_ENABLED),1)
 endif
 
 # ---- BLE support (Core.ST.W5 only) ----
-BLE_ENABLED ?= 0
+#
+# Driven from config.json, the same way "bootloader" is:
+#
+#   "ble": { "enabled": true }
+#
+# This is what lets Studio (and the cloud build service) turn BLE on for a
+# project: they only ever write config.json, and previously BLE_ENABLED was a
+# Makefile-only flag, so a BLE project simply could not be built through
+# Studio — not even in escape-to-C. `?=` keeps `make BLE_ENABLED=1` working as
+# an override for local one-offs.
+_BLE_CFG := $(shell $(PYTHON) -c "import json; c=json.load(open('$(CONFIG_JSON)')); print(1 if (c.get('ble') or {}).get('enabled') else 0)" 2>/dev/null || echo 0)
+BLE_ENABLED ?= $(_BLE_CFG)
 ifeq ($(BLE_ENABLED),1)
   ifeq ($(MCU_PART),STM32WBA55xx)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32wba55hg_ble.ld
@@ -419,7 +430,8 @@ ifeq ($(BLE_ENABLED),1)
     BLE_OBJS = $(addprefix $(BUILD_DIR)/sdk/ble/, $(notdir $(BLE_SOURCES:.c=.o)))
     BLE_OBJS += $(BUILD_DIR)/sdk/core/core_ble.o
   else
-    $(error BLE_ENABLED=1 is only supported for Core.ST.W5 (STM32WBA55xx))
+    $(error BLE is only supported on Core.ST.W5 (STM32WBA55xx) — this build is \
+$(MCU_PART). Remove "ble" from config.json, or build for Core.ST.W5.)
   endif
 endif
 
