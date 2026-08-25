@@ -127,6 +127,18 @@ static uint16_t svc_add_uuid16(uint8_t num_chars, uint16_t uuid16)
     return svc_handle;
 }
 
+/* Cap on the Characteristic User Description (0x2901) we publish per
+ * characteristic. Long enough for a readable label, short enough that a device
+ * with many characteristics does not spend its attribute budget on prose. */
+#define CHAR_DESC_MAX_LEN  20
+
+/* NOTE: `name` is deliberately unused for SERVICES. GATT provides no
+ * service-name mechanism — a Characteristic User Description (0x2901) attaches
+ * to a characteristic, and there is no service equivalent. A scanner resolves a
+ * service name only by recognising a SIG-assigned UUID in its own table, so a
+ * custom service always displays as a raw UUID. The argument is kept for
+ * readable call sites and for the generated contract/client, which do carry it.
+ */
 uint16_t ble_svc_add_service(const char *name, uint8_t num_chars)
 {
     (void)name;
@@ -158,6 +170,7 @@ uint16_t ble_svc_add_service_sig(const char *name, uint8_t num_chars, uint16_t u
 /* Register a characteristic from a prepared UUID (type + pointer). Shared by
  * the custom-128 and SIG-16 paths — props mapping + bookkeeping in one place. */
 static uint16_t char_register(uint16_t svc_handle, uint8_t uuid_type, const void *uuid_ptr,
+                              const char *name,
                               uint8_t access, uint8_t value_len,
                               void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                               void *ctx)
@@ -202,6 +215,33 @@ static uint16_t char_register(uint16_t svc_handle, uint8_t uuid_type, const void
                       0,      /* not fixed length */
                       &char_handle);
 
+    /* Publish the human-readable name as a Characteristic User Description
+     * (0x2901) so generic scanners can show it. Without this the name argument
+     * is invisible on the wire and every custom characteristic reads as a bare
+     * 128-bit UUID in LightBlue / nRF Connect — which is exactly what it did
+     * before, because this function used to drop `name` on the floor.
+     *
+     * Characteristics only. GATT has no service-name mechanism: a service is
+     * resolved solely by a scanner recognising a SIG-assigned UUID, so a custom
+     * service shows as a raw UUID no matter what we do here.
+     *
+     * Best-effort — a device that has run out of attribute space still gets a
+     * working characteristic, just an anonymous one. */
+    if (char_handle && name && name[0]) {
+        uint16_t desc_handle = 0;
+        uint16_t desc_uuid   = CHAR_USER_DESC_UUID;
+        uint8_t  len         = 0;
+        while (name[len] && len < CHAR_DESC_MAX_LEN) len++;
+        aci_gatt_add_char_desc(svc_handle, char_handle,
+                               UUID_TYPE_16, (Char_Desc_Uuid_t *)&desc_uuid,
+                               len, len, (const uint8_t *)name,
+                               ATTR_PERMISSION_NONE, ATTR_ACCESS_READ_ONLY,
+                               0,      /* no event mask - we never see writes  */
+                               10,     /* encryption key size (matches chars)  */
+                               0,      /* fixed length                          */
+                               &desc_handle);
+    }
+
     /* Store record */
     chars[char_count].svc_handle  = svc_handle;
     chars[char_count].char_handle = char_handle;
@@ -215,23 +255,23 @@ static uint16_t char_register(uint16_t svc_handle, uint8_t uuid_type, const void
 }
 
 /* Characteristic with an explicit 16-bit ID in the shared custom base UUID. */
-static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16,
+static uint16_t char_add_uuid16(uint16_t svc_handle, uint16_t uuid16, const char *name,
                                 uint8_t access, uint8_t value_len,
                                 void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                                 void *ctx)
 {
     uint8_t uuid[16];
     make_uuid(uuid, (uint8_t)(uuid16 >> 8), (uint8_t)(uuid16 & 0xFFu));
-    return char_register(svc_handle, UUID_TYPE_128, uuid, access, value_len, on_write, ctx);
+    return char_register(svc_handle, UUID_TYPE_128, uuid, name, access, value_len, on_write, ctx);
 }
 
 /* Characteristic with a 16-bit SIG-adopted UUID (e.g. 0x2A19 Battery Level). */
-static uint16_t char_add_sig(uint16_t svc_handle, uint16_t uuid16,
+static uint16_t char_add_sig(uint16_t svc_handle, uint16_t uuid16, const char *name,
                              uint8_t access, uint8_t value_len,
                              void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                              void *ctx)
 {
-    return char_register(svc_handle, UUID_TYPE_16, &uuid16, access, value_len, on_write, ctx);
+    return char_register(svc_handle, UUID_TYPE_16, &uuid16, name, access, value_len, on_write, ctx);
 }
 
 uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
@@ -239,13 +279,12 @@ uint16_t ble_svc_add_char(uint16_t svc_handle, const char *name,
                            void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                            void *ctx)
 {
-    (void)name;
     /* Auto ID: last-added service hi byte + per-service characteristic index. */
     uint8_t char_idx = 0;
     for (uint8_t i = 0; i < char_count; i++)
         if (chars[i].svc_handle == svc_handle) char_idx++;
     uint16_t uuid16 = (uint16_t)(((0xB0 + svc_count - 1) << 8) | (char_idx + 1));
-    return char_add_uuid16(svc_handle, uuid16, access, value_len, on_write, ctx);
+    return char_add_uuid16(svc_handle, uuid16, name, access, value_len, on_write, ctx);
 }
 
 uint16_t ble_svc_add_char_id(uint16_t svc_handle, const char *name, uint16_t uuid16,
@@ -253,8 +292,7 @@ uint16_t ble_svc_add_char_id(uint16_t svc_handle, const char *name, uint16_t uui
                               void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                               void *ctx)
 {
-    (void)name;
-    return char_add_uuid16(svc_handle, uuid16, access, value_len, on_write, ctx);
+    return char_add_uuid16(svc_handle, uuid16, name, access, value_len, on_write, ctx);
 }
 
 uint16_t ble_svc_add_char_sig(uint16_t svc_handle, const char *name, uint16_t uuid16,
@@ -262,8 +300,7 @@ uint16_t ble_svc_add_char_sig(uint16_t svc_handle, const char *name, uint16_t uu
                                void (*on_write)(const uint8_t *data, uint16_t len, void *ctx),
                                void *ctx)
 {
-    (void)name;
-    return char_add_sig(svc_handle, uuid16, access, value_len, on_write, ctx);
+    return char_add_sig(svc_handle, uuid16, name, access, value_len, on_write, ctx);
 }
 
 int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)
