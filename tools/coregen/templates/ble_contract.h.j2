@@ -15,8 +15,9 @@
 #include <stdint.h>
 #include "core_ble.h"
 
-{% if ble_radio and ble_radio.name %}
-/* Advertised name from config.json — pass it to core_ble_advertise(). */
+{% if ble_radio %}
+/* Advertised name: `ble.name` from config.json, else the project name. Studio's
+ * generated main.c advertises with this, so it is always defined. */
 #define BLE_DEVICE_NAME  "{{ ble_radio.name }}"
 {% endif %}
 

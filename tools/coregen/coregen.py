@@ -1536,7 +1536,7 @@ def build_ble_contract(project, config_path, errors):
 BLE_TX_POWER = {"low": 0, "medium": 1, "high": 2}
 
 
-def build_ble_radio(project, errors):
+def build_ble_radio(project, project_name, errors):
     """Radio-level settings from the `ble` block -> generated setter calls.
 
     Every field maps to a real core_ble setter; nothing here is decorative.
@@ -1546,7 +1546,13 @@ def build_ble_radio(project, errors):
     if not ble.get("enabled"):
         return None
 
-    out = {"name": ble.get("name") or ble.get("device_name")}
+    # Always resolve a name. Studio's generated main.c advertises with
+    # BLE_DEVICE_NAME, so the macro has to exist even when nobody typed one —
+    # otherwise "enable BLE" produces firmware that will not compile. Falling
+    # back to the project name means a project that enables the radio and
+    # changes nothing else still shows up in a scanner under a recognisable
+    # name, which is the whole point of the toggle.
+    out = {"name": ble.get("name") or ble.get("device_name") or project_name}
 
     tx = ble.get("tx_power")
     if tx is not None:
@@ -1656,7 +1662,13 @@ def generate(tile_path, output_dir, config_path=None):
         # Parsed alongside the other validation so a malformed contract fails
         # the build with a clear message rather than emitting broken C.
         ctx["ble_contract"] = build_ble_contract(project, config_path, errors)
-        ctx["ble_radio"] = build_ble_radio(project, errors)
+        ctx["ble_radio"] = build_ble_radio(
+            project,
+            os.path.basename(os.path.dirname(os.path.abspath(config_path)))
+            if config_path
+            else "Bergsonne",
+            errors,
+        )
 
         for w in warnings:
             print(f"  WARNING: {w}")
