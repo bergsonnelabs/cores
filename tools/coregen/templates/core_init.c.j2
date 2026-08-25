@@ -46,7 +46,7 @@
 {% if iwdg_enabled %}
 #include "core_watchdog.h"
 {% endif %}
-{% if ble_contract %}
+{% if ble_contract or ble_radio %}
 #include "ble_contract.h"
 {% endif %}
 {% if dac_enabled %}
@@ -557,10 +557,14 @@ void core_init(void)
     REG32(0xE000ED08UL) = APP_OFFSET;
 #endif
 
+{% if ble_contract or ble_radio %}
+    /* Radio settings (TX power, advertising interval, pairing) must be applied
+     * before core_ble_init(); the generated GATT builder must be registered
+     * before it too. The builder itself runs later, inside core_ble_init(). */
+    ble_contract_configure();
 {% if ble_contract %}
-    /* Register the generated GATT builder before any core_ble_init(). The
-     * builder itself runs later, inside core_ble_init(). */
     core_ble_set_services(ble_contract_build);
+{% endif %}
 {% endif %}
     core_clock_init();
     core_pads_init();

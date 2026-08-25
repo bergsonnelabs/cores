@@ -15,6 +15,20 @@
 #include <stdint.h>
 #include "core_ble.h"
 
+{% if ble_radio and ble_radio.name %}
+/* Advertised name from config.json — pass it to core_ble_advertise(). */
+#define BLE_DEVICE_NAME  "{{ ble_radio.name }}"
+{% endif %}
+
+/**
+ * Apply the radio settings declared in config.json (TX power, advertising
+ * interval, pairing). core_init() calls this before your core_ble_init(), which
+ * is when they must be set. Nothing is emitted for a field you did not declare,
+ * so the SDK default stands.
+ */
+void ble_contract_configure(void);
+
+{% if ble_contract %}
 /* ---- Ids (frozen — mirror these in any client) ---- */
 {% for s in ble_contract.services %}
 #define {{ s.define }}{{ ' ' * (28 - s.define|length if s.define|length < 28 else 1) }}{{ s.uuid }}   /* {{ s.name }}{{ ' (SIG)' if s.is_sig else '' }} */
@@ -52,5 +66,6 @@ void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);
  * only call it yourself if you are driving core_ble by hand.
  */
 void ble_contract_build(void);
+{% endif %}
 
 #endif /* BLE_CONTRACT_H */

@@ -8,6 +8,25 @@
  */
 #include "ble_contract.h"
 
+void ble_contract_configure(void)
+{
+{% if ble_radio and ble_radio.tx_power is defined %}
+    core_ble_set_tx_power({{ ble_radio.tx_power }});   /* 0 = -20dBm, 1 = 0dBm, 2 = +10dBm */
+{% endif %}
+{% if ble_radio and ble_radio.adv_min is defined %}
+    core_ble_set_adv_interval({{ ble_radio.adv_min }}, {{ ble_radio.adv_max }});
+{% endif %}
+{% if ble_radio and ble_radio.pairing %}
+    /* Just Works + bonding. Every characteristic now sits behind an encrypted
+     * link, so a client must pair before it can read or write anything. */
+    core_ble_enable_pairing();
+{% endif %}
+{% if not ble_radio or (ble_radio.tx_power is not defined and ble_radio.adv_min is not defined and not ble_radio.pairing) %}
+    /* Nothing declared — the SDK defaults stand. */
+{% endif %}
+}
+
+{% if ble_contract %}
 {% for c in ble_contract.chars %}
 core_ble_char_t ble_ch_{{ c.sym }};
 {% endfor %}
@@ -62,3 +81,4 @@ void ble_contract_build(void)
 
 {% endfor %}
 }
+{% endif %}

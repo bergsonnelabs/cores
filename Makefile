@@ -414,10 +414,13 @@ endif
 # an override for local one-offs.
 _BLE_CFG := $(shell $(PYTHON) -c "import json; c=json.load(open('$(CONFIG_JSON)')); print(1 if (c.get('ble') or {}).get('enabled') else 0)" 2>/dev/null || echo 0)
 BLE_ENABLED ?= $(_BLE_CFG)
-# A declared GATT contract makes coregen emit ble_contract.{h,c}. Detected here
-# rather than with $(wildcard) because on a clean build the files do not exist
-# until coregen has run, and wildcard is evaluated before that.
-_BLE_CONTRACT := $(shell $(PYTHON) -c "import json; c=json.load(open('$(CONFIG_JSON)')); print(1 if (c.get('ble') or {}).get('contract') else 0)" 2>/dev/null || echo 0)
+# coregen emits ble_contract.{h,c} whenever config.json enables BLE — the file
+# carries the radio settings (TX power, advertising interval, pairing) even when
+# no GATT contract is declared, and core_init() calls into it. Keyed off the
+# CONFIG value rather than BLE_ENABLED, so a command-line `make BLE_ENABLED=1`
+# on a project whose config says nothing still matches what coregen generated.
+# Detected here rather than with $(wildcard) because on a clean build the files
+# do not exist until coregen has run, and wildcard is evaluated before that.
 ifeq ($(BLE_ENABLED),1)
   ifeq ($(MCU_PART),STM32WBA55xx)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32wba55hg_ble.ld
@@ -488,7 +491,7 @@ GEN_HEADERS = $(GEN_DIR)/core_pads.h $(GEN_DIR)/core_board.h $(GEN_DIR)/core_int
 ifeq ($(CONFIG_FOUND),1)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
-  ifeq ($(_BLE_CONTRACT),1)
+  ifeq ($(_BLE_CFG),1)
     GEN_HEADERS += $(GEN_DIR)/ble_contract.h
     GEN_SOURCES += $(GEN_DIR)/ble_contract.c
   endif

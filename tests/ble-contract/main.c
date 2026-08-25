@@ -7,7 +7,7 @@
  * characteristic whose weak handler is overridden below, and a trailing
  * service carrying a `note`.
  *
- * Compile/link validation. Flash it and it advertises as "BSN-CONTRACT" with
+ * Compile/link validation. Flash it and it advertises as BLE_DEVICE_NAME with
  * the four characteristics, each named via its 0x2901 descriptor.
  */
 #include "core.h"
@@ -31,7 +31,7 @@ int main(void)
     core_init();                 /* registers ble_contract_build() */
     core_led_init();
     core_ble_init();
-    core_ble_advertise("BSN-CONTRACT");
+    core_ble_advertise(BLE_DEVICE_NAME);   /* generated from ble.name */
 
     uint32_t uptime = 0;
     while (1) {
