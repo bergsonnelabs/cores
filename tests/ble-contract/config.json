@@ -1,0 +1,34 @@
+{
+  "core": "Core.ST.W5",
+  "clock": "medium",
+  "ble": {
+    "enabled": true,
+    "contract": [
+      {
+        "name": "Battery",
+        "sig": "0x180F",
+        "characteristics": [
+          { "name": "Battery Level", "sig": "0x2A19", "access": ["read", "notify"], "type": "uint8" }
+        ]
+      },
+      {
+        "name": "Demo System",
+        "id": "0xFE40",
+        "characteristics": [
+          { "name": "Uptime",  "id": "0xFE41", "access": ["read", "notify"], "type": "uint32" },
+          { "name": "Status",  "id": "0xFE42", "access": ["read", "notify"], "type": "bytes", "len": 7 },
+          { "name": "Command", "id": "0xFE43", "access": ["read", "write", "notify"], "type": "bytes", "len": 5 }
+        ]
+      },
+      {
+        "name": "Demo Sense",
+        "id": "0xFC40",
+        "note": "Appended last: a trailing service never shifts the handles above it.",
+        "characteristics": [
+          { "name": "Level", "id": "0xFC41", "access": ["read", "notify"], "type": "uint16" }
+        ]
+      }
+    ]
+  },
+  "pads": {}
+}

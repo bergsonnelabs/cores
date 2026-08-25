@@ -1,0 +1,56 @@
+/**
+ * ble_contract.h — GENERATED from the project's BLE contract. Do not edit.
+ *
+ * Regenerate with `make generate`. Edit the contract in config.json (or the
+ * file its `ble.contract` points at), not this header.
+ *
+ * Ids are frozen: they come from the contract verbatim, never from position,
+ * so inserting a service never renumbers the ones after it and already-deployed
+ * clients keep working.
+ */
+#ifndef BLE_CONTRACT_H
+#define BLE_CONTRACT_H
+
+#include <stddef.h>   /* NULL, used by the generated builder */
+#include <stdint.h>
+#include "core_ble.h"
+
+/* ---- Ids (frozen — mirror these in any client) ---- */
+{% for s in ble_contract.services %}
+#define {{ s.define }}{{ ' ' * (28 - s.define|length if s.define|length < 28 else 1) }}{{ s.uuid }}   /* {{ s.name }}{{ ' (SIG)' if s.is_sig else '' }} */
+{% for c in s.characteristics %}
+#define {{ c.define }}{{ ' ' * (28 - c.define|length if c.define|length < 28 else 1) }}{{ c.uuid }}   /* {{ c.name }}{{ ' (SIG)' if c.is_sig else '' }} */
+{% endfor %}
+{% endfor %}
+
+/* ---- Characteristic handles ---- */
+{% for c in ble_contract.chars %}
+extern core_ble_char_t ble_ch_{{ c.sym }};
+{% endfor %}
+
+/* ---- Publish a value ---- */
+{% for c in ble_contract.chars %}
+{% if c.c_type %}
+void ble_{{ c.sym }}_set({{ c.c_type }} value);
+{% else %}
+void ble_{{ c.sym }}_set(const void *data, uint16_t len);   /* {{ c.len }} bytes max */
+{% endif %}
+{% endfor %}
+
+/* ---- Writes from the central ----
+ * Each writable characteristic gets a weak no-op. Define the same symbol in
+ * your own file to receive writes; leave it alone and writes are ignored.
+ */
+{% for c in ble_contract.chars %}
+{% if c.writable %}
+void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);
+{% endif %}
+{% endfor %}
+
+/**
+ * Build the GATT database. core_init() registers this automatically, so you
+ * only call it yourself if you are driving core_ble by hand.
+ */
+void ble_contract_build(void);
+
+#endif /* BLE_CONTRACT_H */
