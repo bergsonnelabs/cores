@@ -1,5 +1,4 @@
 #include "core.h"
-#include "tile_handles.h"
 #include "core_ble.h"
 #include "ble_services.h"
 
@@ -20,7 +19,10 @@ int main(void)
 
     /* ---- BLE ---- */
     core_ble_set_services(app_ble_services);
-    core_ble_init(CORE_BLE_PAIRING_NONE);
+    /* No pairing: characteristics are open on an unencrypted link. Call
+     * core_ble_enable_pairing() before init to require a bonded, encrypted
+     * link instead — that replaced the old core_ble_init(pairing_mode) arg. */
+    core_ble_init();
     core_ble_advertise("Core.ST.W5");
 
     uint8_t counter = 0;

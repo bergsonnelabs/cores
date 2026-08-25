@@ -1,5 +1,4 @@
 #include "core.h"
-#include "tile_handles.h"
 #include "core_ble.h"
 
 int main(void)
@@ -8,9 +7,11 @@ int main(void)
     core_init();
 
     /* ---- BLE ---- */
-    /* To add GATT services, export from the BLE Contract Editor into ble_services/ */
-    /* core_ble_set_services(app_ble_services); */
-    core_ble_init(CORE_BLE_PAIRING_NONE);
+    /* To add GATT services, define a builder and register it before init:
+     *   core_ble_set_services(app_ble_services);
+     * See tests/ble-test for a worked example. (The SDK build compiles only
+     * PROJECT_DIR/*.c, so keep those sources at the project root.) */
+    core_ble_init();
     core_ble_advertise("Core.ST.W5");
 
     while (1) {
