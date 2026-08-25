@@ -1533,6 +1533,61 @@ def build_ble_contract(project, config_path, errors):
             "chars": [c for s in services for c in s["characteristics"]]}
 
 
+BLE_TX_POWER = {"low": 0, "medium": 1, "high": 2}
+
+
+def build_ble_radio(project, errors):
+    """Radio-level settings from the `ble` block -> generated setter calls.
+
+    Every field maps to a real core_ble setter; nothing here is decorative.
+    Absent fields are simply not emitted, so the SDK default stands.
+    """
+    ble = project.get("ble") or {}
+    if not ble.get("enabled"):
+        return None
+
+    out = {"name": ble.get("name") or ble.get("device_name")}
+
+    tx = ble.get("tx_power")
+    if tx is not None:
+        if isinstance(tx, str):
+            if tx.lower() not in BLE_TX_POWER:
+                errors.append(
+                    f"ble.tx_power: '{tx}' is not one of low / medium / high")
+            else:
+                out["tx_power"] = BLE_TX_POWER[tx.lower()]
+        elif isinstance(tx, int) and 0 <= tx <= 2:
+            out["tx_power"] = tx
+        else:
+            errors.append(f"ble.tx_power: expected low/medium/high or 0-2, got {tx!r}")
+
+    adv = ble.get("adv_interval_ms", ble.get("adv_interval"))
+    if adv is not None:
+        lo = hi = None
+        if isinstance(adv, dict):
+            lo, hi = adv.get("min"), adv.get("max")
+        elif isinstance(adv, (int, float)):
+            lo = hi = int(adv)
+        if not isinstance(lo, int) or not isinstance(hi, int):
+            errors.append("ble.adv_interval_ms: expected a number, or {min, max}")
+        elif not (20 <= lo <= 10240 and 20 <= hi <= 10240):
+            errors.append(
+                f"ble.adv_interval_ms: {lo}-{hi} ms is outside the 20-10240 ms the radio allows")
+        elif lo > hi:
+            errors.append(f"ble.adv_interval_ms: min {lo} is greater than max {hi}")
+        else:
+            out["adv_min"], out["adv_max"] = lo, hi
+
+    # Pairing is Just Works + bonding, and it is all-or-nothing: once on, every
+    # characteristic sits behind an encrypted link.
+    pairing = ble.get("pairing")
+    if isinstance(pairing, str):
+        pairing = pairing.lower() not in ("none", "off", "false", "")
+    out["pairing"] = bool(pairing)
+
+    return out
+
+
 def generate(tile_path, output_dir, config_path=None):
     """Generate all headers from a tile JSON and optional project config."""
     with open(tile_path, encoding="utf-8") as f:
@@ -1601,6 +1656,7 @@ def generate(tile_path, output_dir, config_path=None):
         # Parsed alongside the other validation so a malformed contract fails
         # the build with a clear message rather than emitting broken C.
         ctx["ble_contract"] = build_ble_contract(project, config_path, errors)
+        ctx["ble_radio"] = build_ble_radio(project, errors)
 
         for w in warnings:
             print(f"  WARNING: {w}")
@@ -1707,7 +1763,7 @@ def generate(tile_path, output_dir, config_path=None):
         templates.append("core_init.h.j2")
         templates.append("core_init.c.j2")
         templates.append("core.h.j2")
-        if ctx.get("ble_contract"):
+        if ctx.get("ble_contract") or ctx.get("ble_radio"):
             templates.append("ble_contract.h.j2")
             templates.append("ble_contract.c.j2")
 
