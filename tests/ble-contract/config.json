@@ -59,6 +59,15 @@
             ],
             "type": "bytes",
             "len": 5
+          },
+          {
+            "name": "Brightness",
+            "id": "0xFE44",
+            "access": [
+              "read",
+              "write"
+            ],
+            "type": "uint16"
           }
         ]
       },

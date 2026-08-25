@@ -7,6 +7,7 @@
  * already cached the GATT layout keep working.
  */
 #include "ble_contract.h"
+#include <string.h>   /* memcpy, for decoding scalar writes */
 
 void ble_contract_configure(void)
 {
@@ -37,6 +38,36 @@ core_ble_char_t ble_ch_{{ c.sym }};
  */
 {% for c in ble_contract.chars %}
 {% if c.writable %}
+{% if c.c_type %}
+/* Scalar: the contract declares the width, so the handler takes the value
+ * rather than a buffer. The dispatcher decodes it; a short write is dropped
+ * instead of being padded into a plausible-looking wrong number. Multi-byte
+ * fields are little-endian per the contract, which is also this MCU's order,
+ * so the copy needs no swapping.
+ *
+ * The parameter is `int`, not the exact width. A Studio DSL handler overrides
+ * this symbol from another translation unit, and the DSL's only integer type
+ * lowers to `int` -- an exact-width prototype here would collide with that
+ * definition and fail to link. Decoding still happens at the declared width,
+ * so the value is right; it is only widened afterwards.
+ *
+ * One consequence worth knowing: a uint32 characteristic whose value exceeds
+ * INT32_MAX arrives negative. The DSL has no unsigned type either, so this
+ * loses nothing a DSL author could have expressed. */
+__attribute__((weak)) void ble_{{ c.sym }}_on_write(int value)
+{
+    (void)value;
+}
+
+static void ble_dispatch_{{ c.sym }}(const uint8_t *data, uint16_t len, void *ctx)
+{
+    (void)ctx;
+    {{ c.c_type }} decoded = 0;
+    if (len < sizeof decoded) return;
+    memcpy(&decoded, data, sizeof decoded);
+    ble_{{ c.sym }}_on_write((int)decoded);
+}
+{% else %}
 __attribute__((weak)) void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len)
 {
     (void)data; (void)len;
@@ -47,6 +78,7 @@ static void ble_dispatch_{{ c.sym }}(const uint8_t *data, uint16_t len, void *ct
     (void)ctx;
     ble_{{ c.sym }}_on_write(data, len);
 }
+{% endif %}
 {% endif %}
 {% endfor %}
 

@@ -16,7 +16,20 @@
 
 static uint8_t s_status[7];
 
-/* Overrides the generated weak no-op — same symbol, different TU. */
+/* Overrides the generated weak no-op — same symbol, different TU.
+ *
+ * Brightness is declared uint16 in the contract, so coregen decodes the
+ * payload at that width and hands over the value as an int (the width a
+ * Studio DSL handler can express); a short write is dropped before it gets
+ * here. Command is `bytes`, which has no declared width, so it still takes the
+ * raw buffer. Both shapes are exercised on purpose. */
+void ble_brightness_on_write(int value)
+{
+    /* Read + write, so publish the accepted value straight back: a client that
+     * reads after writing sees what actually took effect. */
+    ble_brightness_set(value);
+}
+
 void ble_command_on_write(const uint8_t *data, uint16_t len)
 {
     if (len >= 1) {

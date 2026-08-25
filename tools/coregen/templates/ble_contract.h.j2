@@ -55,10 +55,18 @@ void ble_{{ c.sym }}_set(const void *data, uint16_t len);   /* {{ c.len }} bytes
 /* ---- Writes from the central ----
  * Each writable characteristic gets a weak no-op. Define the same symbol in
  * your own file to receive writes; leave it alone and writes are ignored.
+ *
+ * A characteristic with a scalar type takes that type directly -- the contract
+ * declared the width, so there is nothing for the handler to decode. Only
+ * variable-length payloads (bytes / string) hand over a buffer and a length.
  */
 {% for c in ble_contract.chars %}
 {% if c.writable %}
-void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);
+{% if c.c_type %}
+void ble_{{ c.sym }}_on_write(int value);   /* decoded from {{ c.c_type }} */
+{% else %}
+void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);   /* {{ c.len }} bytes max */
+{% endif %}
 {% endif %}
 {% endfor %}
 
