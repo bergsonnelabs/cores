@@ -414,6 +414,10 @@ endif
 # an override for local one-offs.
 _BLE_CFG := $(shell $(PYTHON) -c "import json; c=json.load(open('$(CONFIG_JSON)')); print(1 if (c.get('ble') or {}).get('enabled') else 0)" 2>/dev/null || echo 0)
 BLE_ENABLED ?= $(_BLE_CFG)
+# A declared GATT contract makes coregen emit ble_contract.{h,c}. Detected here
+# rather than with $(wildcard) because on a clean build the files do not exist
+# until coregen has run, and wildcard is evaluated before that.
+_BLE_CONTRACT := $(shell $(PYTHON) -c "import json; c=json.load(open('$(CONFIG_JSON)')); print(1 if (c.get('ble') or {}).get('contract') else 0)" 2>/dev/null || echo 0)
 ifeq ($(BLE_ENABLED),1)
   ifeq ($(MCU_PART),STM32WBA55xx)
     LDSCRIPT = $(SDK_DIR)sdk/device/stm32wba55hg_ble.ld
@@ -484,6 +488,10 @@ GEN_HEADERS = $(GEN_DIR)/core_pads.h $(GEN_DIR)/core_board.h $(GEN_DIR)/core_int
 ifeq ($(CONFIG_FOUND),1)
   GEN_HEADERS  += $(GEN_DIR)/core_config.h $(GEN_DIR)/core_init.h
   GEN_SOURCES   = $(GEN_DIR)/core_init.c
+  ifeq ($(_BLE_CONTRACT),1)
+    GEN_HEADERS += $(GEN_DIR)/ble_contract.h
+    GEN_SOURCES += $(GEN_DIR)/ble_contract.c
+  endif
   COREGEN_FLAGS = --config "$(CONFIG_JSON)"
   # Per-project WAMR natives ride alongside core_init.c so the adapters
   # for pad/pwm/adc/dac (which reach into PAD_*_PORT macros, core_dac,

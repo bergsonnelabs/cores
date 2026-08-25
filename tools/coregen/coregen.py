@@ -1405,6 +1405,134 @@ def generate_tiles_h(env, ctx, project_dir):
 
 # ---- Generation ----
 
+
+# ---- BLE contract ------------------------------------------------------
+
+BLE_ACCESS_FLAGS = {"read": "CORE_BLE_READ", "write": "CORE_BLE_WRITE",
+                    "notify": "CORE_BLE_NOTIFY"}
+BLE_SCALARS = {"bool": ("CORE_BLE_BOOL", "uint8_t"), "uint8": ("CORE_BLE_UINT8", "uint8_t"),
+               "int8": ("CORE_BLE_INT8", "int8_t"), "uint16": ("CORE_BLE_UINT16", "uint16_t"),
+               "int16": ("CORE_BLE_INT16", "int16_t"), "uint32": ("CORE_BLE_UINT32", "uint32_t"),
+               "int32": ("CORE_BLE_INT32", "int32_t")}
+
+
+def _ble_ident(name):
+    """'Power Status' -> 'power_status'. Used for C symbols, so it must be stable."""
+    out = "".join(c.lower() if c.isalnum() else "_" for c in name)
+    while "__" in out:
+        out = out.replace("__", "_")
+    return out.strip("_") or "unnamed"
+
+
+def build_ble_contract(project, config_path, errors):
+    """Parse the `ble.contract` block into template context.
+
+    Accepts the contract inline, or as a filename resolved relative to the
+    project directory. The file form is for hand- and agent-authored projects
+    (surgical edits, sane diffs); Studio always emits inline because the cloud
+    build service materialises only main.c / config.json / Makefile and has no
+    file map to carry a second document.
+
+    Ids must be explicit. Studio assigns one when a characteristic is created
+    and persists it (auto-assign-then-freeze), so by the time a contract reaches
+    coregen every id is already pinned. coregen deliberately does not invent
+    ids: a generated id would be positional, and inserting a service would then
+    renumber everything after it and break already-deployed clients.
+    """
+    ble = project.get("ble") or {}
+    contract = ble.get("contract")
+    if contract is None:
+        return None
+
+    if isinstance(contract, str):
+        base = os.path.dirname(config_path) if config_path else "."
+        path = os.path.join(base, contract)
+        if not os.path.isfile(path):
+            errors.append(f"ble.contract: no such file '{contract}' (looked in {base})")
+            return None
+        try:
+            with open(path, encoding="utf-8") as f:
+                contract = json.load(f)
+        except json.JSONDecodeError as e:
+            errors.append(f"ble.contract: {contract} is not valid JSON - {e}")
+            return None
+
+    services_in = contract.get("services") if isinstance(contract, dict) else contract
+    if not isinstance(services_in, list):
+        errors.append("ble.contract: expected a list of services (or an object with 'services')")
+        return None
+
+    services, seen_ids, seen_syms = [], {}, {}
+    for svc in services_in:
+        sname = svc.get("name")
+        if not sname:
+            errors.append("ble.contract: every service needs a 'name'")
+            continue
+        sid, ssig = svc.get("id"), svc.get("sig")
+        if (sid is None) == (ssig is None):
+            errors.append(f"ble.contract: service '{sname}' needs exactly one of 'id' or 'sig'")
+            continue
+        chars = []
+        for ch in svc.get("characteristics", []):
+            cname = ch.get("name")
+            if not cname:
+                errors.append(f"ble.contract: a characteristic in '{sname}' has no 'name'")
+                continue
+            cid, csig = ch.get("id"), ch.get("sig")
+            if (cid is None) == (csig is None):
+                errors.append(
+                    f"ble.contract: characteristic '{cname}' needs exactly one of 'id' or 'sig'")
+                continue
+            uuid = cid if cid is not None else csig
+            key = str(uuid).lower()
+            if key in seen_ids:
+                errors.append(
+                    f"ble.contract: id {uuid} used by both '{seen_ids[key]}' and '{cname}'")
+            seen_ids[key] = cname
+
+            access = ch.get("access") or ["read"]
+            bad = [a for a in access if a not in BLE_ACCESS_FLAGS]
+            if bad:
+                errors.append(f"ble.contract: '{cname}' has unknown access {bad}")
+                continue
+
+            ctype = ch.get("type", "bytes")
+            if ctype in BLE_SCALARS:
+                size_expr, c_type = BLE_SCALARS[ctype]
+                length = None
+            else:
+                length = ch.get("len") or ch.get("max_len")
+                if not length:
+                    errors.append(
+                        f"ble.contract: '{cname}' is type '{ctype}' so it needs 'len'")
+                    continue
+                size_expr, c_type = f"CORE_BLE_BYTES({length})", None
+
+            sym = _ble_ident(cname)
+            if sym in seen_syms:
+                errors.append(
+                    f"ble.contract: '{cname}' and '{seen_syms[sym]}' both map to the C symbol "
+                    f"'{sym}' - rename one")
+            seen_syms[sym] = cname
+
+            chars.append({
+                "name": cname, "sym": sym, "uuid": uuid, "is_sig": csig is not None,
+                "access_expr": " | ".join(BLE_ACCESS_FLAGS[a] for a in access),
+                "writable": "write" in access,
+                "notify": "notify" in access,
+                "size_expr": size_expr, "c_type": c_type, "len": length,
+                "define": "BLE_CH_" + sym.upper(),
+            })
+        services.append({
+            "name": sname, "sym": _ble_ident(sname), "uuid": sid if sid is not None else ssig,
+            "is_sig": ssig is not None, "note": svc.get("note"), "characteristics": chars,
+            "define": "BLE_SVC_" + _ble_ident(sname).upper(),
+        })
+
+    return {"services": services,
+            "chars": [c for s in services for c in s["characteristics"]]}
+
+
 def generate(tile_path, output_dir, config_path=None):
     """Generate all headers from a tile JSON and optional project config."""
     with open(tile_path, encoding="utf-8") as f:
@@ -1468,6 +1596,12 @@ def generate(tile_path, output_dir, config_path=None):
 
         # Validate pin/interface/clock assignments
         warnings, errors = validate_project_config(project, tile, pad_map, mcu)
+
+        # BLE contract: declared services/characteristics -> generated GATT.
+        # Parsed alongside the other validation so a malformed contract fails
+        # the build with a clear message rather than emitting broken C.
+        ctx["ble_contract"] = build_ble_contract(project, config_path, errors)
+
         for w in warnings:
             print(f"  WARNING: {w}")
         if errors:
@@ -1573,6 +1707,9 @@ def generate(tile_path, output_dir, config_path=None):
         templates.append("core_init.h.j2")
         templates.append("core_init.c.j2")
         templates.append("core.h.j2")
+        if ctx.get("ble_contract"):
+            templates.append("ble_contract.h.j2")
+            templates.append("ble_contract.c.j2")
 
     # Set up Jinja2
     templates_dir = os.path.join(os.path.dirname(__file__), "templates")

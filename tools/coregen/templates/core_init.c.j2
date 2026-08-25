@@ -46,6 +46,9 @@
 {% if iwdg_enabled %}
 #include "core_watchdog.h"
 {% endif %}
+{% if ble_contract %}
+#include "ble_contract.h"
+{% endif %}
 {% if dac_enabled %}
 #include "hal_dac.h"
 {% endif %}
@@ -554,6 +557,11 @@ void core_init(void)
     REG32(0xE000ED08UL) = APP_OFFSET;
 #endif
 
+{% if ble_contract %}
+    /* Register the generated GATT builder before any core_ble_init(). The
+     * builder itself runs later, inside core_ble_init(). */
+    core_ble_set_services(ble_contract_build);
+{% endif %}
     core_clock_init();
     core_pads_init();
 {% if usb_capable %}
