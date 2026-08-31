@@ -68,13 +68,29 @@ jobs:
             echo "definitions/ and manifests/ already match the DB — nothing to sync."
             exit 0
           fi
-          branch="auto/sync-definitions-${{ github.run_id }}"
+          # ONE branch, reused. This used to embed ${{ github.run_id }}, which
+          # made every nightly run open a brand new PR — so an unmerged sync was
+          # re-proposed every night and the queue grew by one a day. Twenty
+          # identical PRs had accumulated before anyone worked out they were the
+          # same change. A fixed name means the open PR simply updates itself
+          # and stays current with the DB until someone merges it.
+          branch="auto/sync-definitions"
           git config user.name  "tiles-sync[bot]"
           git config user.email "tiles-sync@users.noreply.github.com"
-          git checkout -b "$branch"
+          # Fetch it first so --force-with-lease has a remote-tracking ref to
+          # compare against; without one it refuses rather than pushing, and a
+          # fresh CI checkout has never seen this branch.
+          git fetch origin "$branch" || true
+          git checkout -B "$branch"
           git add definitions/ manifests/
           git commit -m "chore(definitions): sync from canonical product DB + regen manifests"
-          git push -u origin "$branch"
+          git push -u --force-with-lease origin "$branch"
+          # Already open? The push above has just refreshed it; say so and stop.
+          existing="$(gh pr list --head "$branch" --state open --json number -q '.[0].number')"
+          if [ -n "$existing" ]; then
+            echo "Refreshed the open sync PR #$existing with the current DB state."
+            exit 0
+          fi
           gh pr create --fill \
             --title "chore(definitions): sync from canonical product DB" \
             --body "Automated drift sync from the product DB via \`tools/sync_definitions.py\`, with the derived manifests regenerated in the same change. Review the definition changes before merging — renames/deletes here ripple into coregen aliases, the Makefile, manifests, and the web mirrors. Pure \`source:\` stamp churn is dropped; once merged, notify-web-on-manifests re-vendors the manifests into the web repo."
