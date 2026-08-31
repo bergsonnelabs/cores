@@ -17,6 +17,7 @@ on:
       - 'drivers/**'
       - 'templates/**'
       - 'tools/coregen/**'
+      - 'tools/test_ble_contract.py'
       - 'tests/val-watchdog/**'
       - 'tests/ble-*/**'
       - 'tests/val-ble*/**'
@@ -84,6 +85,12 @@ jobs:
 
       - name: Install Jinja2 (coregen)
         run: python3 -m pip install --quiet jinja2
+
+      # Every way a BLE contract can be wrong. Lives here rather than beside the
+      # other Python tests because it imports coregen, which needs Jinja2, and
+      # this is the job that already has it.
+      - name: BLE contract binding tests
+        run: python3 tools/test_ble_contract.py
 
       # These take BLE_ENABLED from their config.json "ble" block, so they also
       # exercise the config-driven path Studio and the build service rely on.
