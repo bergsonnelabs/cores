@@ -7,7 +7,7 @@
  * already cached the GATT layout keep working.
  */
 #include "ble_contract.h"
-#include <string.h>   /* memcpy, for decoding scalar writes */
+#include <string.h>   /* memcpy / strlen, for decoding writes */
 
 void ble_contract_configure(void)
 {
@@ -67,6 +67,25 @@ static void ble_dispatch_{{ c.sym }}(const uint8_t *data, uint16_t len, void *ct
     memcpy(&decoded, data, sizeof decoded);
     ble_{{ c.sym }}_on_write((int)decoded);
 }
+{% elif c.is_string %}
+/* A GATT write is not NUL-terminated, so the dispatcher copies into a buffer
+ * one byte longer than the declared length and terminates it. An over-long
+ * write is truncated rather than dropped: the characteristic declares how much
+ * it holds, and the client sent more than that. */
+__attribute__((weak)) void ble_{{ c.sym }}_on_write(const char *value)
+{
+    (void)value;
+}
+
+static void ble_dispatch_{{ c.sym }}(const uint8_t *data, uint16_t len, void *ctx)
+{
+    (void)ctx;
+    char value[{{ c.len }} + 1];
+    if (len > {{ c.len }}) len = {{ c.len }};
+    memcpy(value, data, len);
+    value[len] = '\0';
+    ble_{{ c.sym }}_on_write(value);
+}
 {% else %}
 __attribute__((weak)) void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len)
 {
@@ -95,6 +114,14 @@ void ble_{{ c.sym }}_set(const void *data, uint16_t len)
     if (len > {{ c.len }}) len = {{ c.len }};
     core_ble_set_value(ble_ch_{{ c.sym }}, data, len);
 }
+{% if c.is_string %}
+void ble_{{ c.sym }}_set_str(const char *s)
+{
+    size_t n = strlen(s);
+    if (n > {{ c.len }}) n = {{ c.len }};
+    core_ble_set_value(ble_ch_{{ c.sym }}, s, (uint16_t)n);
+}
+{% endif %}
 {% endif %}
 {% endfor %}
 

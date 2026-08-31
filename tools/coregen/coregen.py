@@ -1521,6 +1521,10 @@ def build_ble_contract(project, config_path, errors):
                 "writable": "write" in access,
                 "notify": "notify" in access,
                 "size_expr": size_expr, "c_type": c_type, "len": length,
+                # string and bytes are the same on the wire, but not in the API
+                # we can offer: a string has a NUL-terminated form the DSL can
+                # pass and receive, where a raw byte buffer does not.
+                "is_string": ctype == "string",
                 "define": "BLE_CH_" + sym.upper(),
             })
         services.append({
