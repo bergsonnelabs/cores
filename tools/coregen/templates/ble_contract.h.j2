@@ -49,6 +49,11 @@ extern core_ble_char_t ble_ch_{{ c.sym }};
 void ble_{{ c.sym }}_set({{ c.c_type }} value);
 {% else %}
 void ble_{{ c.sym }}_set(const void *data, uint16_t len);   /* {{ c.len }} bytes max */
+{% if c.is_string %}
+/* Same characteristic, NUL-terminated: length comes from the string, clamped to
+ * {{ c.len }}. The DSL can express this one; the raw form above it cannot. */
+void ble_{{ c.sym }}_set_str(const char *s);
+{% endif %}
 {% endif %}
 {% endfor %}
 
@@ -64,6 +69,8 @@ void ble_{{ c.sym }}_set(const void *data, uint16_t len);   /* {{ c.len }} bytes
 {% if c.writable %}
 {% if c.c_type %}
 void ble_{{ c.sym }}_on_write(int value);   /* decoded from {{ c.c_type }} */
+{% elif c.is_string %}
+void ble_{{ c.sym }}_on_write(const char *value);   /* NUL-terminated, {{ c.len }} chars max */
 {% else %}
 void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);   /* {{ c.len }} bytes max */
 {% endif %}

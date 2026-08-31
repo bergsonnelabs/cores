@@ -68,6 +68,16 @@
               "write"
             ],
             "type": "uint16"
+          },
+          {
+            "name": "Label",
+            "id": "0xFE45",
+            "access": [
+              "read",
+              "write"
+            ],
+            "type": "string",
+            "len": 12
           }
         ]
       },

@@ -30,6 +30,13 @@ void ble_brightness_on_write(int value)
     ble_brightness_set(value);
 }
 
+/* String: coregen hands over a NUL-terminated copy, so no length juggling and
+ * no risk of reading past the write. Echoed back the same way. */
+void ble_label_on_write(const char *value)
+{
+    ble_label_set_str(value);
+}
+
 void ble_command_on_write(const uint8_t *data, uint16_t len)
 {
     if (len >= 1) {
