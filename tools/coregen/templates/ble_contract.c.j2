@@ -7,7 +7,8 @@
  * already cached the GATT layout keep working.
  */
 #include "ble_contract.h"
-#include <string.h>   /* memcpy / strlen, for decoding writes */
+#include <string.h>   /* memcpy / strlen / strncmp, for decoding and publishing */
+#include "core_timing.h"   /* core_millis(), for the publish rate limit */
 
 void ble_contract_configure(void)
 {
@@ -125,6 +126,79 @@ void ble_{{ c.sym }}_set_str(const char *s)
 {% endif %}
 {% endfor %}
 
+{% if ble_contract.bound %}
+/* ---- Bound values ----
+ * Each name below is a variable in YOUR program, read straight from here, so it
+ * needs external linkage: a file-scope `int count;` in main.c links, a
+ * `static int count;` does not. Studio emits bound variables without `static`
+ * for exactly this reason.
+ *
+ * The storage is `int` or `const char *` because those are the two the DSL
+ * lowers to. The characteristic's declared type decides what goes on the wire;
+ * the cast happens at the set() call.
+ */
+{% for c in ble_contract.bound %}
+extern {{ c.bind.storage }} {{ c.bind.var }};
+{% endfor %}
+
+/* Publisher state. `_next` is the earliest millis at which this characteristic
+ * may go out again; `_seen` distinguishes "unchanged" from "never published",
+ * so a bound value that happens to be zero is still sent once. */
+{% for c in ble_contract.bound %}
+{% if c.is_string %}
+static char     ble_last_{{ c.sym }}[{{ c.len }} + 1];
+{% else %}
+static int      ble_last_{{ c.sym }};
+{% endif %}
+static uint32_t ble_next_{{ c.sym }};
+static uint8_t  ble_seen_{{ c.sym }};
+{% endfor %}
+
+void ble_contract_publish(void)
+{
+    /* Nothing is published to nobody. This is the single biggest battery lever
+     * in a generated project: the alternative free-runs the radio path even
+     * when disconnected. */
+    if (!core_ble_connected()) return;
+
+    const uint32_t now = core_millis();
+{% for c in ble_contract.bound %}
+
+    /* {{ c.name }} <- {{ c.bind.var }}, {{ c.bind.mode }}, at most {{ c.bind.hz }} Hz{{ ', once subscribed' if c.bind.gate == 'subscribed' else '' }}.
+     * Signed difference so the comparison still holds when millis wraps. */
+    if ({{ 'core_ble_subscribed(ble_ch_' + c.sym + ') && ' if c.bind.gate == 'subscribed' else '' }}(int32_t)(now - ble_next_{{ c.sym }}) >= 0) {
+{% if c.is_string %}
+        const char *v = {{ c.bind.var }} ? {{ c.bind.var }} : "";
+{% if c.bind.mode == 'on_change' %}
+        /* Compare contents, not the pointer: a rebuilt string can land at the
+         * same address, and two equal literals need not share one. */
+        if (!ble_seen_{{ c.sym }} || strncmp(v, ble_last_{{ c.sym }}, {{ c.len }}) != 0) {
+{% else %}
+        {
+{% endif %}
+            ble_{{ c.sym }}_set_str(v);
+            strncpy(ble_last_{{ c.sym }}, v, {{ c.len }});
+            ble_last_{{ c.sym }}[{{ c.len }}] = '\0';
+            ble_seen_{{ c.sym }} = 1;
+        }
+{% else %}
+        const int v = {{ c.bind.var }};
+{% if c.bind.mode == 'on_change' %}
+        if (!ble_seen_{{ c.sym }} || v != ble_last_{{ c.sym }}) {
+{% else %}
+        {
+{% endif %}
+            ble_{{ c.sym }}_set(({{ c.c_type }})v);
+            ble_last_{{ c.sym }} = v;
+            ble_seen_{{ c.sym }} = 1;
+        }
+{% endif %}
+        ble_next_{{ c.sym }} = now + {{ c.bind.interval_ms }}u;
+    }
+{% endfor %}
+}
+
+{% endif %}
 void ble_contract_build(void)
 {
 {% for s in ble_contract.services %}

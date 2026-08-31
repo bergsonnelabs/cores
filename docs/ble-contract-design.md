@@ -322,11 +322,52 @@ read it to debug; agents read it to infer intent.
 | Phase | Work | Acceptance |
 |---|---|---|
 | 0 | This note + schema draft | Ring round-trips (**done**) |
-| 1a | coregen emits builder + contract header; every characteristic `source: "code"` | Ring builds from generated code, byte-identical GATT |
-| 1b | binding (`var` / `tile`) + coregen diagnostics | a bound value reaches a phone with no hand-written publish |
+| 1a | coregen emits builder + contract header; every characteristic `source: "code"` | Ring builds from generated code, byte-identical GATT (**done**) |
+| 1b | binding (`var` / `tile`) + coregen diagnostics | a bound value reaches a phone with no hand-written publish (**done for `var`**, see below) |
 | 2 | Swift client generation | Hand-written mirror shrinks measurably |
-| 3 | DSL hosts + events, name-addressed | `on Core.BLE.write("param")`, via the Core.Pad event pipeline |
+| 3 | DSL hosts + events, name-addressed | `on Core.BLE.write("param")`, via the Core.Pad event pipeline (**done**) |
 | 4 | Twin model | DSL testable without hardware |
+
+Phase 3 landed ahead of 1b, so for a while a contract could be read and written
+from the DSL while still needing a hand-written publish.
+
+## 1b as built
+
+`source` and `publish` are fields on the characteristic, parsed by coregen, and
+`tests/ble-contract` exercises both against every characteristic shape.
+
+```json
+{ "name": "Battery Level", "sig": "0x2A19", "access": ["read", "notify"],
+  "type": "uint8", "source": { "var": "battery_pct" }, "publish": { "hz": 1 } }
+```
+
+- `"source": "code"` or no `source` emits a setter and nothing else, so every
+  contract written before this keeps behaving exactly as it did.
+- `{ "var": "name" }` generates `ble_contract_publish()`, which `core_ble_process()`
+  calls through a weak symbol. Nothing is added to the application loop.
+- `{ "tile": "..." }` is **not implemented**. coregen rejects it with a message
+  pointing at the workaround, which is to read the tile into a variable and bind
+  that. It is sugar over `{var}`, not a missing capability.
+
+The bound variable is read from the generated translation unit, so it needs
+external linkage: a file-scope `int count;` links and a `static int count;` does
+not. Studio must emit bound variables without `static`; its DSL codegen makes
+every global `static` today, which is the remaining work on the Studio side.
+
+**Publishing is gated, per the decision above.** `core_ble_subscribed()` was
+added to the SDK for it: `ble_svc.c` now tracks each characteristic's CCCD from
+the attribute-modified event and clears it on disconnect. Before this there was
+no way to ask whether anyone was listening.
+
+Both diagnostics run in coregen, so hand-authored projects get them:
+
+- a readable characteristic with no `source` at all warns that nothing publishes
+  it. An explicit `"code"` does not warn: the author said they would publish it.
+- a `ble_*_on_write` in main.c matching no characteristic warns that it will
+  never be called. A text scan of main.c, not a parse.
+
+Coregen warnings now go to stderr. They went to stdout, which a normal build
+sends to `/dev/null`, so no warning it emitted had ever been visible.
 
 Phase 1's acceptance test is Ring_Av2. If the schema cannot express Ring's
 contract exactly, it is not ready.

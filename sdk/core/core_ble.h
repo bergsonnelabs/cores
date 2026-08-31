@@ -207,6 +207,20 @@ int core_ble_set_value(core_ble_char_t ch, const void *data, uint16_t len);
  */
 int core_ble_notify(core_ble_char_t ch);
 
+/**
+ * @brief  Has a client subscribed to notifications on this characteristic?
+ * @param  ch  handle from core_ble_add_char*()
+ * @return 1 when connected and the client has enabled notify/indicate, else 0.
+ *
+ * The CCCD state, which is the only signal there is that anyone is listening.
+ * Gate periodic publishing on it: a notify characteristic that free-runs while
+ * unsubscribed burns the radio for nobody. Cleared on disconnect, so it never
+ * reports a previous client's subscription.
+ *
+ * Always 0 for a characteristic without CORE_BLE_NOTIFY, which has no CCCD.
+ */
+int core_ble_subscribed(core_ble_char_t ch);
+
 /* ============================================================
  * Connection
  * ============================================================ */
@@ -277,11 +291,25 @@ void core_ble_enable_pairing(void);
 
 /* ---- Coverage gaps (consumed by the SDK Coverage Table) ---- */
 
-// @studio unsupported tier=2 value=H title="No DSL / Twin coverage for BLE"
-//   The whole subsystem is escape-to-C. Notify, on-write, and
-//   on-connect callbacks need a story that maps DSL handlers to the
-//   underlying C function pointers — same pattern as Core.Pad rising/
-//   falling events but with a payload struct.
+// @studio unsupported tier=2 value=M title="No Twin coverage for BLE"
+//   DSL coverage landed: a project declares a contract, gets palette
+//   blocks to publish and receive, and can bind a characteristic to a
+//   variable so coregen generates the publisher. What is still missing
+//   is the simulator side, so a DSL program that uses BLE cannot be
+//   exercised without flashing a board.
+//
+// @studio unsupported tier=2 value=M title="Connect / disconnect are not DSL events"
+//   core_ble_on_connect() and core_ble_on_disconnect() take a callback
+//   pointer rather than overriding a weak symbol, so coregen has no
+//   seam to emit a dispatcher against. Every other event in the DSL
+//   arrives through that weak-symbol pipeline. Until this is wired the
+//   only way to notice a connection from the DSL is to poll.
+//
+// @studio unsupported tier=2 value=L title="Byte-array characteristics have no DSL form"
+//   A `bytes` characteristic can be declared and published from C, but
+//   the DSL has no type that carries a buffer and a length, so it gets
+//   neither a publish block nor a write handler, and it cannot be bound
+//   to a variable. Scalars and strings both work.
 //
 // @studio unsupported tier=1 value=M title="Central / scanner mode"
 //   Peripheral-only today. No scanning, no central-role connections,
@@ -297,10 +325,13 @@ void core_ble_enable_pairing(void);
 //   MITM protection) and directed advertising for fast reconnect to a
 //   known bonded central.
 //
-// @studio unsupported tier=1 value=M title="Custom UUIDs"
-//   Service + characteristic UUIDs are auto-generated from the name
-//   string. No way to declare a fixed 128-bit UUID for interop with
-//   existing apps that expect a specific service identifier.
+// @studio unsupported tier=1 value=L title="Arbitrary 128-bit UUIDs"
+//   Narrower than it used to be. A contract pins its own 16-bit ids,
+//   custom (placed in the Bergsonne base UUID) or SIG-adopted, and
+//   core_ble_add_service_id() / _sig() take them verbatim, so ids never
+//   shift and deployed clients keep working. What is still missing is a
+//   fully arbitrary 128-bit UUID, which is what interop with an existing
+//   app that expects some other vendor's base requires.
 //
 // @studio unsupported tier=1 value=L title="Advanced features (LE Audio, extended adv, multi-link)"
 //   The WBA radio supports LE Audio (LC3), extended advertising / 2M

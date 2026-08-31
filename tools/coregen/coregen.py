@@ -1417,14 +1417,102 @@ BLE_SCALARS = {"bool": ("CORE_BLE_BOOL", "uint8_t"), "uint8": ("CORE_BLE_UINT8",
 
 
 def _ble_ident(name):
-    """'Power Status' -> 'power_status'. Used for C symbols, so it must be stable."""
-    out = "".join(c.lower() if c.isalnum() else "_" for c in name)
+    """'Power Status' -> 'power_status'. Used for C symbols, so it must be stable.
+
+    ASCII only. str.isalnum() is true for Unicode letters, so 'Cafe' spelled with
+    an accent used to survive into ble_caf\u00e9_set(), which is not a portable C
+    identifier. Anything outside ASCII becomes '_' like any other separator; two
+    names that collide after folding are caught by the duplicate-symbol check.
+    """
+    out = "".join(c.lower() if (c.isalnum() and c.isascii()) else "_" for c in name)
     while "__" in out:
         out = out.replace("__", "_")
-    return out.strip("_") or "unnamed"
+    out = out.strip("_")
+    if not out:
+        return "unnamed"
+    # A C identifier cannot start with a digit, and '9 Lives' otherwise folds to
+    # '9_lives' and emits ble_9_lives_set(), which will not compile.
+    return out if out[0].isalpha() or out[0] == "_" else "_" + out
 
 
-def build_ble_contract(project, config_path, errors):
+BLE_PUBLISH_DEFAULT_HZ = 10
+
+# A DSL global lowers to `int` or `const char *`, and those are the only two
+# storages a generated publisher can read. The characteristic's own type says
+# how the value goes on the wire; the binding only has to name a variable whose
+# C type the publisher can declare.
+BLE_BIND_STORAGE = {"scalar": "int", "string": "const char *"}
+
+
+def _ble_binding(ch, cname, c_type, is_string, notify, errors):
+    """Parse `source` / `publish` into publisher context, or None for escape-to-C.
+
+    None means "coregen emits a setter and nothing else", which is source "code"
+    and also the default: a contract written before binding existed keeps
+    behaving exactly as it did.
+    """
+    source = ch.get("source")
+    if source is None or source == "code":
+        return None
+
+    if not isinstance(source, dict):
+        errors.append(
+            f"ble.contract: '{cname}' has source {source!r}. Expected \"code\", "
+            f"{{\"var\": \"name\"}} or {{\"tile\": \"handle.method\"}}")
+        return None
+
+    if "tile" in source:
+        errors.append(
+            f"ble.contract: '{cname}' binds a tile reading ({source['tile']!r}), which "
+            f"coregen cannot emit yet. Read the tile into a variable in your program and "
+            f"bind that instead: \"source\": {{\"var\": \"...\"}}")
+        return None
+
+    var = source.get("var")
+    if not isinstance(var, str) or not var:
+        errors.append(f"ble.contract: '{cname}' has a source with no 'var'")
+        return None
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", var):
+        errors.append(
+            f"ble.contract: '{cname}' binds variable '{var}', which is not a C identifier")
+        return None
+
+    if c_type:
+        storage = BLE_BIND_STORAGE["scalar"]
+    elif is_string:
+        storage = BLE_BIND_STORAGE["string"]
+    else:
+        errors.append(
+            f"ble.contract: '{cname}' is type 'bytes', which has no variable form to bind. "
+            f"Use \"source\": \"code\" and call ble_{_ble_ident(cname)}_set() yourself")
+        return None
+
+    publish = ch.get("publish", "on_change")
+    mode, hz = "on_change", BLE_PUBLISH_DEFAULT_HZ
+    if publish == "always":
+        mode = "always"
+    elif isinstance(publish, dict) and "hz" in publish:
+        hz = publish["hz"]
+        if not isinstance(hz, int) or isinstance(hz, bool) or not 1 <= hz <= 1000:
+            errors.append(
+                f"ble.contract: '{cname}' declares publish hz {publish['hz']!r}; "
+                f"expected a whole number from 1 to 1000")
+            return None
+    elif publish != "on_change":
+        errors.append(
+            f"ble.contract: '{cname}' has publish {publish!r}. Expected \"on_change\", "
+            f"\"always\" or {{\"hz\": N}}")
+        return None
+
+    return {"var": var, "storage": storage, "mode": mode,
+            "interval_ms": max(1, 1000 // hz), "hz": hz,
+            # Nothing is published to nobody. A notify characteristic waits for a
+            # subscriber; a plain read one only needs a connection, because the
+            # central reads the stored value on demand rather than being pushed it.
+            "gate": "subscribed" if notify else "connected"}
+
+
+def build_ble_contract(project, config_path, errors, warnings=None):
     """Parse the `ble.contract` block into template context.
 
     Accepts the contract inline, or as a filename resolved relative to the
@@ -1515,11 +1603,26 @@ def build_ble_contract(project, config_path, errors):
                     f"'{sym}' - rename one")
             seen_syms[sym] = cname
 
+            bind = _ble_binding(ch, cname, c_type, ctype == "string",
+                                "notify" in access, errors)
+
+            # A readable characteristic that names no source at all is the
+            # forgotten-publish case the design calls out. Explicit "code" is
+            # not: the author said they would publish it themselves, which is
+            # what every hand-written contract does.
+            if (warnings is not None and bind is None and "source" not in ch
+                    and ("read" in access or "notify" in access)):
+                warnings.append(
+                    f"ble.contract: nothing publishes '{cname}' - it will always read zero. "
+                    f"Bind it with \"source\": {{\"var\": \"...\"}}, or say "
+                    f"\"source\": \"code\" if you publish it yourself")
+
             chars.append({
                 "name": cname, "sym": sym, "uuid": uuid, "is_sig": csig is not None,
                 "access_expr": " | ".join(BLE_ACCESS_FLAGS[a] for a in access),
                 "writable": "write" in access,
                 "notify": "notify" in access,
+                "bind": bind,
                 "size_expr": size_expr, "c_type": c_type, "len": length,
                 # string and bytes are the same on the wire, but not in the API
                 # we can offer: a string has a NUL-terminated form the DSL can
@@ -1533,8 +1636,44 @@ def build_ble_contract(project, config_path, errors):
             "define": "BLE_SVC_" + _ble_ident(sname).upper(),
         })
 
+    all_chars = [c for s in services for c in s["characteristics"]]
+
+    if warnings is not None:
+        _ble_orphan_handlers(all_chars, config_path, warnings)
+
     return {"services": services,
-            "chars": [c for s in services for c in s["characteristics"]]}
+            "chars": all_chars,
+            "bound": [c for c in all_chars if c["bind"]]}
+
+
+def _ble_orphan_handlers(chars, config_path, warnings):
+    """Flag ble_*_on_write definitions in main.c that match no characteristic.
+
+    A text scan, not a parse: it reads the project's main.c if there is one
+    beside config.json (there is in the cloud path too, which materialises both).
+    Renaming a characteristic leaves the old handler behind silently otherwise,
+    because the weak default still links and the write just stops arriving.
+    """
+    if not config_path:
+        return
+    main_c = os.path.join(os.path.dirname(config_path) or ".", "main.c")
+    if not os.path.isfile(main_c):
+        return
+    try:
+        with open(main_c, encoding="utf-8", errors="replace") as f:
+            src = f.read()
+    except OSError:
+        return
+    known = {c["sym"] for c in chars}
+    seen = set()
+    for m in re.finditer(r"\bble_([A-Za-z0-9_]+)_on_write\s*\(", src):
+        sym = m.group(1)
+        if sym in known or sym in seen:
+            continue
+        seen.add(sym)
+        warnings.append(
+            f"main.c defines 'ble_{sym}_on_write' but no characteristic maps to the symbol "
+            f"'{sym}' - it will never be called. Renamed or removed from the contract?")
 
 
 BLE_TX_POWER = {"low": 0, "medium": 1, "high": 2}
@@ -1665,7 +1804,7 @@ def generate(tile_path, output_dir, config_path=None):
         # BLE contract: declared services/characteristics -> generated GATT.
         # Parsed alongside the other validation so a malformed contract fails
         # the build with a clear message rather than emitting broken C.
-        ctx["ble_contract"] = build_ble_contract(project, config_path, errors)
+        ctx["ble_contract"] = build_ble_contract(project, config_path, errors, warnings)
         ctx["ble_radio"] = build_ble_radio(
             project,
             os.path.basename(os.path.dirname(os.path.abspath(config_path)))
@@ -1674,8 +1813,11 @@ def generate(tile_path, output_dir, config_path=None):
             errors,
         )
 
+        # stderr, not stdout: a normal build runs coregen with stdout sent to
+        # /dev/null (Makefile V=0), so a warning printed to stdout is a warning
+        # nobody ever sees.
         for w in warnings:
-            print(f"  WARNING: {w}")
+            eprint(f"  WARNING: {w}")
         if errors:
             for e in errors:
                 eprint(f"  ERROR: {e}")
