@@ -110,10 +110,11 @@ markers** — re-running coregen will clobber them. Edit `config.json` instead.
 | `iwdg`         | object | no       | disabled       | ✅ |
 | `timer`        | object | no       | none           | ✅ (Studio only) |
 | `pins`         | object | no       | —              | ✅ (legacy alias for `pads`) |
-| `ble`          | object | no       | —              | ❌ **ignored** (see §10) |
+| `ble`          | object | no       | —              | ✅ (radio + GATT contract) |
 | `debug`        | object | no       | —              | ❌ **ignored** |
 | `isp`          | object | no       | —              | ❌ **ignored** |
 | `programming`  | object | no       | —              | ❌ **ignored** |
+| `probe`        | object | no       | self-powered   | ❌ (read by the flash tooling, see §10.5) |
 
 > Keys not in this table are silently ignored — coregen reads a fixed allowlist
 > and never sees anything else. A typo'd key name is **not** an error; it just
@@ -425,6 +426,55 @@ this configured and fed.
 
 `tick_ms` feeds the Studio simulation tick dispatcher only — it does **not**
 configure a hardware kernel tick. Rarely used outside Studio projects.
+
+---
+
+## 10.5 `probe` — how the CoreProbe should power this board
+
+Only relevant when flashing over SWD with a CoreProbe, which can supply the
+board it is programming. coregen never reads this; `make flash-coreprobe` and
+Studio do.
+
+```json
+"probe": {
+  "target_power": "3v3",
+  "target_logic": "3v3"
+}
+```
+
+| Field          | Values                     | Meaning |
+|----------------|----------------------------|---------|
+| `target_power` | `off` `1v8` `3v3` `5v`     | What the probe puts on T.V+. Default `off`. |
+| `target_logic` | `1v8` `3v3`                | The level the board runs its IO at. **Required** whenever `target_power` is not `off`. |
+
+**Why both, and why neither is inferred.** Supplying the wrong voltage is
+destructive — 5 V into a 1V8 part kills it — so nothing guesses. And the two
+are independent: a board with an onboard regulator fed 5 V still runs 3V3
+logic, so the supply does not tell you the logic level. A probe-powered board
+must state both.
+
+**Why it lives in the project.** It is a property of *the board*, so it belongs
+with the project rather than being remembered per probe or per session: a probe
+setting outlives the board it was chosen for, and a stale `5v` meeting a 1V8
+target is exactly the destructive case. Here it travels with the project and
+shows up in a diff.
+
+**Omitting it means self-powered**, which is what a project that never thought
+about this means. The probe then supplies nothing and senses the board's logic
+level from its SWDIO pull-up.
+
+**A board that already has its own rail is never fed**, whatever this says. The
+probe's three supply switches share one node and the hardware has no contention
+protection, so the tooling senses first and declines to supply a live board.
+
+```sh
+make flash-coreprobe    # applies the declaration, then flashes via probe-rs
+make probe-power-check  # says what it WOULD do, drives nothing
+```
+
+`5v` is currently **refused** by both Studio and the SDK tooling: it back-feeds
+the probe's own 3V3 rail through the load switch, measured at 4.4 V on the
+shifter supply and on the target's SWDIO. Pending a hardware fix.
 
 ---
 

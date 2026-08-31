@@ -191,6 +191,7 @@ CONFIG_FOUND := $(shell [ -f "$(CONFIG_JSON)" ] && echo 1)
 ifeq ($(TILE),$(filter $(TILE),Core-ST-L4-1-a Core-ST-L4-1-b Core-ST-L4-2-a))
   MCU_FAMILY  = stm32l4xx
   MCU_PART    = STM32L422xx
+  PROBE_RS_CHIP = STM32L422KB
   CPU         = cortex-m4
   FPU         = fpv4-sp-d16
   FLOAT_ABI   = hard
@@ -200,6 +201,7 @@ ifeq ($(TILE),$(filter $(TILE),Core-ST-L4-1-a Core-ST-L4-1-b Core-ST-L4-2-a))
 else ifeq ($(TILE),Core-ST-L0-1-a)
   MCU_FAMILY  = stm32l0xx
   MCU_PART    = STM32L011xx
+  PROBE_RS_CHIP = STM32L011K4
   CPU         = cortex-m0plus
   LDSCRIPT    = $(SDK_DIR)sdk/device/stm32l011e4.ld
   STARTUP     = $(SDK_DIR)sdk/device/stm32l0xx/startup_stm32l011xx.s
@@ -207,6 +209,7 @@ else ifeq ($(TILE),Core-ST-L0-1-a)
 else ifeq ($(TILE),Core-ST-W5-b)
   MCU_FAMILY  = stm32wbaxx
   MCU_PART    = STM32WBA55xx
+  PROBE_RS_CHIP = STM32WBA55CG
   CPU         = cortex-m33
   FPU         = fpv5-sp-d16
   FLOAT_ABI   = hard
@@ -217,6 +220,7 @@ else ifeq ($(TILE),Core-ST-W5-b)
 else ifeq ($(TILE),Core-ST-H5-1-a)
   MCU_FAMILY  = stm32h5xx
   MCU_PART    = STM32H523xx
+  PROBE_RS_CHIP = STM32H523CE
   CPU         = cortex-m33
   FPU         = fpv5-sp-d16
   FLOAT_ABI   = hard
@@ -538,7 +542,7 @@ generate: $(GEN_STAMP)
 
 # ---- Rules ----
 
-.PHONY: all clean distclean flash size
+.PHONY: all clean distclean flash flash-coreprobe probe-power-check size
 
 all: $(TARGET).bin $(TARGET).hex size
 
@@ -640,6 +644,33 @@ distclean: clean
 	rm -rf $(GEN_DIR)
 	rm -f $(PROJECT_DIR)/core.h
 	rm -f $(PROJECT_DIR)/tiles.h
+
+# ---- Flash via CoreProbe (CMSIS-DAP + probe-rs) ----
+#
+# Separate from `flash` (OpenOCD / CubeProgrammer over an ST-Link) because the
+# CoreProbe can also POWER the board, and that is a decision no tool may make on
+# its own: 5 V into a 1V8 part destroys it. tools/coreprobe_power.py reads the
+# project's declaration out of config.json and refuses rather than guessing —
+# see its module docstring for the rules and the config keys.
+#
+# The power step runs first and gates the flash: if it refuses, nothing is
+# programmed. A board that already has its own rail is never fed, whatever the
+# project declares.
+flash-coreprobe: $(TARGET).elf
+	@command -v probe-rs >/dev/null 2>&1 || { \
+		echo "  SWD   probe-rs not found. Install it once:"; \
+		echo "  SWD     curl -LsSf https://github.com/probe-rs/probe-rs/releases/latest/download/probe-rs-tools-installer.sh | sh"; \
+		exit 1; }
+	@$(PYTHON) "$(SDK_DIR)tools/coreprobe_power.py" apply --config "$(CONFIG_JSON)"
+	@echo "  SWD   probe-rs download ($(PROBE_RS_CHIP))"
+	probe-rs download --chip $(PROBE_RS_CHIP) --binary-format elf $<
+	probe-rs reset --chip $(PROBE_RS_CHIP)
+
+# What the power step would do, without driving anything. Useful when bringing
+# up an unfamiliar board, and the only safe way to find out what a project
+# declares before it is acted on.
+probe-power-check:
+	@$(PYTHON) "$(SDK_DIR)tools/coreprobe_power.py" apply --config "$(CONFIG_JSON)" --dry-run
 
 # ---- Flash via OpenOCD (ST-Link) ----
 
