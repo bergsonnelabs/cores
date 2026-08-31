@@ -16,6 +16,19 @@
 
 static uint8_t s_status[7];
 
+/* ---- Bound values ----
+ * These three are named by `source` in config.json, so the generated publisher
+ * reads them directly and nothing here calls a set(). Deliberately NOT static:
+ * ble_contract.c is a different translation unit, so a bound variable needs
+ * external linkage or the link fails with an undefined reference.
+ *
+ * Publishing is gated, so none of these go out while nothing is connected, and
+ * Battery Level and Uptime additionally wait for a subscriber because they
+ * carry notify. Caption is read-only, so it only needs the connection. */
+int battery_pct;
+int uptime_s;
+const char *caption = "idle";
+
 /* Overrides the generated weak no-op — same symbol, different TU.
  *
  * Brightness is declared uint16 in the contract, so coregen decodes the
@@ -55,10 +68,17 @@ int main(void)
 
     uint32_t uptime = 0;
     while (1) {
+        /* Publishes every bound characteristic as a side effect. */
         core_ble_process();
 
-        ble_uptime_set(uptime++);
-        ble_battery_level_set((uint8_t)(uptime & 0x7Fu));
+        /* Bound: assign and the contract publishes it. Uptime declares 1 Hz, so
+         * it goes out at most once a second however often this loop runs. */
+        uptime++;
+        uptime_s    = (int)uptime;
+        battery_pct = (int)(uptime & 0x7Fu);
+        caption     = (uptime & 8u) ? "busy" : "idle";
+
+        /* Level stays source "code": both styles in one contract on purpose. */
         ble_level_set((uint16_t)(uptime * 3u));
 
         LED_ON();

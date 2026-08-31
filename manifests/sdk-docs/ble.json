@@ -1,6 +1,6 @@
 {
   "schema": "studio-sdk-docs/v2",
-  "source": "tiles@990ad75",
+  "source": "tiles@5149237",
   "category": "ble",
   "label": "Core.BLE",
   "icon": "ᛒ",
@@ -275,6 +275,21 @@
         {
           "name": "ch",
           "ctype": "core_ble_char_t"
+        }
+      ],
+      "studio_exposed": false,
+      "layer": "core"
+    },
+    {
+      "name": "core_ble_subscribed",
+      "signature": "core_ble_subscribed(core_ble_char_t ch)",
+      "returns": "int",
+      "brief": "Has a client subscribed to notifications on this characteristic?",
+      "params": [
+        {
+          "name": "ch",
+          "ctype": "core_ble_char_t",
+          "description": "handle from core_ble_add_char*()"
         }
       ],
       "studio_exposed": false,

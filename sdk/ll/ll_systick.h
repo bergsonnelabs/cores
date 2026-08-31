@@ -13,6 +13,7 @@
 #define LL_SYSTICK_H
 
 #include <stdint.h>
+#include "ll_common.h"   /* REG32 — this header is unusable without it */
 
 /* ---- SysTick registers (ARM Cortex-M, same on all cores) ---- */
 

@@ -23,6 +23,9 @@ uint32_t SystemCoreClock = SYSCLK_HZ;
 
 /* ---- Connection state (readable from core_ble.c) ---- */
 
+/* Defined in ble_svc.c, which owns the per-characteristic CCCD state. */
+extern void ble_svc_clear_subscriptions(void);
+
 volatile uint8_t  ble_connected;
 volatile uint16_t ble_conn_handle;
 
@@ -71,6 +74,8 @@ SVCCTL_UserEvtFlowStatus_t SVCCTL_App_Notification(void *p_Pckt)
         ble_conn_handle = 0xFFFF;
         ble_need_readvertise = 1;
         ble_conn_param_req_pending = 0;
+        /* CCCD state belongs to the connection that set it. */
+        ble_svc_clear_subscriptions();
         gap_cmd_resp_release();
         if (ble_on_disconnect_cb) ble_on_disconnect_cb(ble_on_disconnect_ctx);
         break;

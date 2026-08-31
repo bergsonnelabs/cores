@@ -22,7 +22,10 @@
               "read",
               "notify"
             ],
-            "type": "uint8"
+            "type": "uint8",
+            "source": {
+              "var": "battery_pct"
+            }
           }
         ]
       },
@@ -37,7 +40,13 @@
               "read",
               "notify"
             ],
-            "type": "uint32"
+            "type": "uint32",
+            "source": {
+              "var": "uptime_s"
+            },
+            "publish": {
+              "hz": 1
+            }
           },
           {
             "name": "Status",
@@ -47,7 +56,8 @@
               "notify"
             ],
             "type": "bytes",
-            "len": 7
+            "len": 7,
+            "source": "code"
           },
           {
             "name": "Command",
@@ -58,7 +68,8 @@
               "notify"
             ],
             "type": "bytes",
-            "len": 5
+            "len": 5,
+            "source": "code"
           },
           {
             "name": "Brightness",
@@ -67,7 +78,8 @@
               "read",
               "write"
             ],
-            "type": "uint16"
+            "type": "uint16",
+            "source": "code"
           },
           {
             "name": "Label",
@@ -77,7 +89,8 @@
               "write"
             ],
             "type": "string",
-            "len": 12
+            "len": 12,
+            "source": "code"
           }
         ]
       },
@@ -93,7 +106,20 @@
               "read",
               "notify"
             ],
-            "type": "uint16"
+            "type": "uint16",
+            "source": "code"
+          },
+          {
+            "name": "Caption",
+            "id": "0xFC42",
+            "access": [
+              "read"
+            ],
+            "type": "string",
+            "len": 10,
+            "source": {
+              "var": "caption"
+            }
           }
         ]
       }

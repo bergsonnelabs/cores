@@ -32,6 +32,7 @@ typedef struct {
     uint8_t  value_len;     /* max value length */
     void (*on_write)(const uint8_t *data, uint16_t len, void *ctx);
     void *on_write_ctx;
+    uint8_t  subscribed;    /* client has written the CCCD to enable notify */
 } ble_char_record_t;
 
 /* ---- State ---- */
@@ -54,6 +55,9 @@ static void make_uuid(uint8_t *uuid, uint8_t id_hi, uint8_t id_lo)
     uuid[12] = id_lo;
     uuid[13] = id_hi;
 }
+
+/* Defined below; ble_svc_init() clears subscriptions before anything is added. */
+void ble_svc_clear_subscriptions(void);
 
 /* ---- Event handler ---- */
 
@@ -83,6 +87,18 @@ static SVCCTL_EvtAckStatus_t BLE_SVC_EventHandler(void *p_Event)
                 }
                 return SVCCTL_EvtAckFlowEnable;
             }
+
+            /* The CCCD sits at char_handle + 2 when the characteristic carries
+             * NOTIFY: the stack allocates it with the characteristic, ahead of
+             * any descriptor we add afterwards. A client writes it to subscribe
+             * and unsubscribe, and that is the only signal there is that anyone
+             * is listening. Bit 0 is notify, bit 1 indicate; either counts. */
+            if (p_mod->Attr_Handle == chars[i].char_handle + 2)
+            {
+                if (p_mod->Attr_Data_Length > 0)
+                    chars[i].subscribed = (p_mod->Attr_Data[0] & 0x03u) ? 1 : 0;
+                return SVCCTL_EvtAckFlowEnable;
+            }
         }
     }
 
@@ -93,6 +109,7 @@ static SVCCTL_EvtAckStatus_t BLE_SVC_EventHandler(void *p_Event)
 
 void ble_svc_init(void)
 {
+    ble_svc_clear_subscriptions();
     char_count = 0;
     svc_count = 0;
     secure_mode = 0;
@@ -316,6 +333,30 @@ int ble_svc_set_value(uint16_t char_handle, const void *data, uint16_t len)
 
     tBleStatus ret = aci_gatt_update_char_value(svc_handle, char_handle, 0, len, (const uint8_t *)data);
     return (ret == 0) ? 0 : -1;
+}
+
+/* Has a client enabled notifications on this characteristic?
+ *
+ * There is no way to ask the stack, so this is the CCCD state as last written
+ * by a client. It answers the only question a publisher needs: is anyone
+ * listening. A characteristic without NOTIFY never has a CCCD and so always
+ * reads 0, which is why core_ble_subscribed() is only consulted for notify
+ * characteristics. */
+int ble_svc_subscribed(uint16_t char_handle)
+{
+    for (uint8_t i = 0; i < char_count; i++)
+        if (chars[i].char_handle == char_handle)
+            return chars[i].subscribed;
+    return 0;
+}
+
+/* Forget every subscription. Called on disconnect: CCCD state belongs to a
+ * connection, and without this the next client would inherit the last one's
+ * subscriptions and be sent notifications it never asked for. */
+void ble_svc_clear_subscriptions(void)
+{
+    for (uint8_t i = 0; i < MAX_CHARS; i++)
+        chars[i].subscribed = 0;
 }
 
 int ble_svc_notify(uint16_t char_handle)

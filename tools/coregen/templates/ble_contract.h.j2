@@ -77,6 +77,20 @@ void ble_{{ c.sym }}_on_write(const uint8_t *data, uint16_t len);   /* {{ c.len 
 {% endif %}
 {% endfor %}
 
+{% if ble_contract.bound %}
+/* ---- Publish bound values ----
+ * core_ble_process() calls this for you, so a bound value reaches a phone with
+ * nothing added to your loop. Call it yourself only if you are driving core_ble
+ * by hand and never reach core_ble_process().
+ *
+ * Publishing is gated and rate-limited, which is a battery decision rather than
+ * a tidiness one: nothing is sent while nobody is connected, a notify
+ * characteristic waits for a subscriber, and a value that has not moved is not
+ * resent. Declare `"publish"` on the characteristic to change the rate.
+ */
+void ble_contract_publish(void);
+
+{% endif %}
 /**
  * Build the GATT database. core_init() registers this automatically, so you
  * only call it yourself if you are driving core_ble by hand.
