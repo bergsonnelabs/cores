@@ -1,7 +1,7 @@
 /**
  * @file   tile_sense_t_c.h
  * @brief  Capacitive touch/proximity driver for the Sense.T.C tile (IQS323).
- * @version 1.2.0
+ * @version 1.3.0
  *
  * Azoteq IQS323 ProxFusion controller with self-capacitive touch sensing.
  * The tile's entire top surface is a touch electrode (CH1/CRx1), and a

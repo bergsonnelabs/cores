@@ -1,7 +1,7 @@
 /**
  * @file   tile_display_rgbw.h
  * @brief  RGBW LED driver for the Display.RGBW tile (LP5811).
- * @version 2.1.0
+ * @version 2.4.0
  *
  * 4-channel LED driver with independent PWM + current control.
  * Channels: R (LED0), G (LED2), B (LED1), W (LED3).
@@ -16,6 +16,13 @@
  * @endcode
  *
  * Version history:
+ *   v2.4.1 — Documentation only, no behavior change. init()'s own doc
+ *            block still claimed "current limits to 50%" after v2.4.0
+ *            changed it to ~1 mA; @version had been stale at 2.1.0
+ *            since v2.2.0, and the generator emits it as the docs
+ *            page's first line; and the eight-address note added in
+ *            v2.4.0 sat in the file blurb, which the docs site does
+ *            not render, so it reached no reader. Moved to find().
  *   v2.4.0 — Safe-by-default drive. init() now leaves the per-channel
  *            current limit at LP5811_DC_DEFAULT (~1 mA at full PWM)
  *            instead of 0x80 (~25.6 mA). The old default was both
@@ -57,12 +64,7 @@
  *   The variant bits are fixed at the factory — not pin-strapped or
  *   register-configurable — and Display.RGBW (rev a) ships only the
  *   A variant, so alternate addresses need a tile hardware revision.
- *
- * NOTE (not a gap — expected behavior): a healthy Display.RGBW ACKs on
- *   EIGHT addresses. 0x50-0x53 are the four register pages in
- *   independent mode; 0x6C-0x6F are the same chip's broadcast address
- *   with the same two page bits. Eight ACKs on a bus scan is one part
- *   behaving correctly, not a second device and not a board fault.
+
  */
 
 #ifndef INC_TILE_DISP_RGBW_H_
@@ -75,7 +77,7 @@
 
 #define TILE_DISP_RGBW_VERSION_MAJOR  2
 #define TILE_DISP_RGBW_VERSION_MINOR  4
-#define TILE_DISP_RGBW_VERSION_PATCH  0
+#define TILE_DISP_RGBW_VERSION_PATCH  1
 
 TILES_CHECK_VERSION(1, 0);
 
@@ -251,7 +253,30 @@ typedef enum {
 
 /* ---- Public API ---- */
 
-/** @brief  Check if a Disp.RGBW is present on the bus. */
+/**
+ * @brief  Check if a Disp.RGBW is present on the bus.
+ *
+ * Probes the instance's independent-mode base address only (0x50 for
+ * instance 0).
+ *
+ * @note A healthy Display.RGBW ACKs on EIGHT addresses, and all eight
+ *       are the same chip. Per datasheet Table 7-4 the 7-bit address
+ *       carries the chip address AND the top two bits of the 10-bit
+ *       register address:
+ *
+ *         independent:  1 0 1 Bit4 Bit3 RA9 RA8   -> 0x50-0x53
+ *         broadcast:    1 1 0  1    1   RA9 RA8   -> 0x6C-0x6F
+ *
+ *       So 0x50-0x53 are the four register pages in independent mode
+ *       and 0x6C-0x6F are the same pages under the broadcast address.
+ *       A bus scan showing all eight is one part behaving correctly —
+ *       not a second device, and not a board fault. Do not go hunting
+ *       for it; it has cost bring-up time before.
+ *
+ * @param  hal       Platform abstraction handle
+ * @param  instance  Device instance (0 = default address 0x50)
+ * @return 1 if the device ACKs, 0 otherwise
+ */
 uint8_t tile_display_rgbw_find(tiles_pal_t *hal, uint8_t instance);
 
 /**
@@ -268,8 +293,11 @@ typedef struct {
  * Enables the chip, ramps the boost to 4.5 V in 0.1 V committed
  * steps (~1.6 s — avoids the single-step inrush that can brown-out
  * a marginal supply; see version history v2.3.0), sets max current
- * to 51mA, enables all 4 LED channels, and sets current limits to
- * 50%. LSD action is left at "no shutdown" (driver-level choice) so
+ * full scale to 51 mA, enables all 4 LED channels, and sets the
+ * per-channel current limit to LP5811_DC_DEFAULT — ~1 mA at full
+ * PWM, NOT half scale. See that constant for why it is deliberately
+ * low and how to raise it. LSD action is left at "no shutdown"
+ * (driver-level choice) so
  * a transient short doesn't latch the device into OFAF state without
  * firmware seeing it. Pass cfg=NULL for defaults.
  *
