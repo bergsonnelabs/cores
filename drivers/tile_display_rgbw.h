@@ -16,6 +16,15 @@
  * @endcode
  *
  * Version history:
+ *   v2.4.0 — Safe-by-default drive. init() now leaves the per-channel
+ *            current limit at LP5811_DC_DEFAULT (~1 mA at full PWM)
+ *            instead of 0x80 (~25.6 mA). The old default was both
+ *            painful to look at on a bare, undiffused LED and roughly
+ *            2x above the level at which an abrupt switch-on browns
+ *            out a bench fixture. Raise it with set_current() when you
+ *            actually want the light. Also documents the PWM > 25
+ *            precondition on LOD/LSD, and corrects the multi-address
+ *            note below (page bits vs variant bits).
  *   v2.3.0 — init() ramps the boost 3.0 -> 4.5 V in 0.1 V committed
  *            steps instead of one slam. The single-step commit's
  *            inrush can brown-out a marginal supply (long leads,
@@ -28,15 +37,32 @@
  *
  * Driver gaps (chip capabilities not exposed by this driver):
  *
- * @studio unsupported severity=niche category="Multi-address support (0x50–0x53)"
- *   Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are
- *   selected by Bit4/Bit3 of the chip-address byte, but those bits
- *   are fixed by the factory material variant (LP5811A/B/C/D, see
- *   datasheet §4 Device Comparison). They are not pin-strapped or
- *   register-configurable. The Display.RGBW (rev a) tile ships only
- *   the A variant. Adding the other three addresses requires a tile
- *   hardware revision that places the alternate part numbers on the
- *   PCB — not something the driver can close on its own.
+ * @studio unsupported severity=niche category="Multi-address support (0x50/0x54/0x58/0x5C)"
+ *   Chip-gated. Per datasheet Table 7-4, Address Byte 1 carries the
+ *   chip address AND the top two bits of the 10-bit register address,
+ *   so the 7-bit address a bus scan sees is:
+ *
+ *     independent:  1 0 1 Bit4 Bit3 RA9 RA8
+ *     broadcast:    1 1 0  1    1   RA9 RA8
+ *
+ *   Bit4:Bit3 select the material variant (LP5811A/B/C/D, datasheet
+ *   §4 Device Comparison) and move the base address in steps of 4:
+ *   A = 0x50, then 0x54, 0x58, 0x5C. RA9:RA8 are the REGISTER PAGE,
+ *   which is why one A-variant part answers across 0x50-0x53 — that
+ *   is the mechanism lp_read_page() relies on, not four devices.
+ *   (An earlier version of this note claimed the variants sat at
+ *   0x50/0x51/0x52/0x53. They do not; that range is one chip's four
+ *   pages, and a second part placed at 0x51 would collide with it.)
+ *
+ *   The variant bits are fixed at the factory — not pin-strapped or
+ *   register-configurable — and Display.RGBW (rev a) ships only the
+ *   A variant, so alternate addresses need a tile hardware revision.
+ *
+ * NOTE (not a gap — expected behavior): a healthy Display.RGBW ACKs on
+ *   EIGHT addresses. 0x50-0x53 are the four register pages in
+ *   independent mode; 0x6C-0x6F are the same chip's broadcast address
+ *   with the same two page bits. Eight ACKs on a bus scan is one part
+ *   behaving correctly, not a second device and not a board fault.
  */
 
 #ifndef INC_TILE_DISP_RGBW_H_
@@ -48,7 +74,7 @@
 /* ---- Driver version ---- */
 
 #define TILE_DISP_RGBW_VERSION_MAJOR  2
-#define TILE_DISP_RGBW_VERSION_MINOR  3
+#define TILE_DISP_RGBW_VERSION_MINOR  4
 #define TILE_DISP_RGBW_VERSION_PATCH  0
 
 TILES_CHECK_VERSION(1, 0);
@@ -112,6 +138,51 @@ TILES_CHECK_VERSION(1, 0);
  * once socketed-tile testing confirms margin.
  */
 #define LP5811_BOOST_RAMP_STEP_MS   100u
+
+/* ---- Safe-by-default drive ---- */
+
+/**
+ * Per-channel DC current limit left in place by init(). Current is
+ * full_scale * (DC/255) * (PWM/255), so at the 51 mA full scale this
+ * is ~1 mA per channel with PWM at maximum.
+ *
+ * Chosen against two measured limits on a Display.RGBW rev a
+ * (bench fixture, Core.ST.L4.1, USB-fed rail, 2026-09-04):
+ *
+ *   - Comfort. ~6.4 mA on a bare, undiffused LED is genuinely painful
+ *     to look at from bench distance; ~2 mA on all four channels at
+ *     once still reads as "flashlight bright". The tile carries no
+ *     diffuser, so during bring-up you look straight at the die.
+ *     Note the asymmetry: this limit is PER CHANNEL, and a white
+ *     set(255,255,255,255) is four of them at once.
+ *   - Supply. An abrupt PWM 0 -> 255 switch-on survived up to ~9.6 mA
+ *     and browned the host MCU out at ~12.8 mA. The v2.3.0 boost ramp
+ *     does not help here: it fixes the slew *to* 4.5 V, not the load
+ *     step once a sink turns on.
+ *
+ * The previous default (0x80, ~25.6 mA at 51 mA scale) sat above both.
+ * ~1 mA per channel is clearly legible as an indicator — it is the
+ * level at which all four colors were correctly identified by eye
+ * during post-saw acceptance — and leaves ~10x margin to the measured
+ * brown-out. Call set_current() when you want the light —
+ * that is the intended escape hatch, and it is worth knowing that
+ * driving hard AND switching on abruptly is what actually bites.
+ */
+#define LP5811_DC_DEFAULT            0x05u
+
+/**
+ * Minimum PWM at which the chip will perform open/short detection.
+ *
+ * Per datasheet §7.3.5.3 and §7.3.5.4, LOD and LSD "can only be
+ * performed when the PWM setting of this LED is above 25" — the chip
+ * needs the on-time to make the measurement. Note this gates on PWM,
+ * NOT on current, so backing the DC limit down for brightness does not
+ * cost you fault coverage; running a channel at a low duty does.
+ *
+ * A channel sitting below this reports clean regardless of its true
+ * state. See the warning on read_faults().
+ */
+#define LP5811_PWM_FAULT_DETECT_MIN   25u
 
 /* ---- Autonomous-animation config registers ---- */
 #define LP5811_REG_CONFIG_3     0x04  /* auto_en[3:0] — per-LED autonomous enable */
@@ -270,6 +341,14 @@ void tile_display_rgbw_set_max_current(tile_t *tile, disp_rgbw_max_current_t mod
  * Open-circuit threshold (VLOD_TH) is fixed by the chip at ~70 mV
  * (25.5 mA mode) or ~180 mV (51 mA mode). Short-circuit threshold
  * (VLSD_TH) is configurable via `set_short_threshold()`.
+ *
+ * @warning Detection requires that channel's PWM to be above
+ *          LP5811_PWM_FAULT_DETECT_MIN (25) — datasheet §7.3.5.3 and
+ *          §7.3.5.4. A channel that is dark, or driven at a very low
+ *          duty, reports NO fault whether or not one exists. Light the
+ *          channel you care about, give it a moment to settle, and read
+ *          faults while it is still lit. Reading them on an idle part
+ *          returns a clean bill of health that means nothing.
  *
  * @studio expose category=tile icon=◑ name=read_faults section=runtime
  * @param  tile  Initialised tile handle

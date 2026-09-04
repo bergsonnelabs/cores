@@ -126,11 +126,17 @@ void tile_display_rgbw_init(tiles_pal_t *hal, uint8_t instance, tile_t *tile,
     /* Enable all 4 LED channels */
     lp_write(tile, LP5811_REG_LED_EN, 0x0F);
 
-    /* Default current limits: 50% */
-    lp_write(tile, LP5811_REG_DC_0, 0x80);
-    lp_write(tile, LP5811_REG_DC_1, 0x80);
-    lp_write(tile, LP5811_REG_DC_2, 0x80);
-    lp_write(tile, LP5811_REG_DC_3, 0x80);
+    /* Default current limits: conservative, NOT half scale.
+     *
+     * ~1 mA per channel at full PWM. The old 0x80 (~25.6 mA) was both
+     * painful to look at on this tile's bare LED and about 2x above the
+     * level at which an abrupt switch-on browns out a bench supply.
+     * See LP5811_DC_DEFAULT for the measurements; set_current() raises
+     * it when the application actually wants the light. */
+    lp_write(tile, LP5811_REG_DC_0, LP5811_DC_DEFAULT);
+    lp_write(tile, LP5811_REG_DC_1, LP5811_DC_DEFAULT);
+    lp_write(tile, LP5811_REG_DC_2, LP5811_DC_DEFAULT);
+    lp_write(tile, LP5811_REG_DC_3, LP5811_DC_DEFAULT);
 
     tile->state = TILE_STATE_READY;
 }
