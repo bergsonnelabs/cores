@@ -1,9 +1,9 @@
 {
   "schema": "tile-docs/v1",
-  "source": "tiles@842d43e",
+  "source": "tiles@8e95159",
   "file": "tile_display_rgbw.h",
   "brief": "RGBW LED driver for the Display.RGBW tile (LP5811).",
-  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.3.0 — init() ramps the boost 3.0 -> 4.5 V in 0.1 V committed\n           steps instead of one slam. The single-step commit's\n           inrush can brown-out a marginal supply (long leads,\n           loaded USB rail) and reset the host MCU.\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50–0x53)\"\n  Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are\n  selected by Bit4/Bit3 of the chip-address byte, but those bits\n  are fixed by the factory material variant (LP5811A/B/C/D, see\n  datasheet §4 Device Comparison). They are not pin-strapped or\n  register-configurable. The Display.RGBW (rev a) tile ships only\n  the A variant. Adding the other three addresses requires a tile\n  hardware revision that places the alternate part numbers on the\n  PCB — not something the driver can close on its own.",
+  "description": "@version 2.1.0\n\n4-channel LED driver with independent PWM + current control.\nChannels: R (LED0), G (LED2), B (LED1), W (LED3).\n\n\nVersion history:\n  v2.4.0 — Safe-by-default drive. init() now leaves the per-channel\n           current limit at LP5811_DC_DEFAULT (~1 mA at full PWM)\n           instead of 0x80 (~25.6 mA). The old default was both\n           painful to look at on a bare, undiffused LED and roughly\n           2x above the level at which an abrupt switch-on browns\n           out a bench fixture. Raise it with set_current() when you\n           actually want the light. Also documents the PWM > 25\n           precondition on LOD/LSD, and corrects the multi-address\n           note below (page bits vs variant bits).\n  v2.3.0 — init() ramps the boost 3.0 -> 4.5 V in 0.1 V committed\n           steps instead of one slam. The single-step commit's\n           inrush can brown-out a marginal supply (long leads,\n           loaded USB rail) and reset the host MCU.\n  v2.1.0 — Tier-2 idiomatic helpers (set_color, pulse, breathe,\n           flash, is_faulted) + section= tagging for Coverage Table.\n  v2.0.0 — Initial tier-1 surface (set, off, current, faults).\n\n@studio tile label=Display.RGBW icon=◑\n\nDriver gaps (chip capabilities not exposed by this driver):\n\n@studio unsupported severity=niche category=\"Multi-address support (0x50/0x54/0x58/0x5C)\"\n  Chip-gated. Per datasheet Table 7-4, Address Byte 1 carries the\n  chip address AND the top two bits of the 10-bit register address,\n  so the 7-bit address a bus scan sees is:\n\n    independent:  1 0 1 Bit4 Bit3 RA9 RA8\n    broadcast:    1 1 0  1    1   RA9 RA8\n\n  Bit4:Bit3 select the material variant (LP5811A/B/C/D, datasheet\n  §4 Device Comparison) and move the base address in steps of 4:\n  A = 0x50, then 0x54, 0x58, 0x5C. RA9:RA8 are the REGISTER PAGE,\n  which is why one A-variant part answers across 0x50-0x53 — that\n  is the mechanism lp_read_page() relies on, not four devices.\n  (An earlier version of this note claimed the variants sat at\n  0x50/0x51/0x52/0x53. They do not; that range is one chip's four\n  pages, and a second part placed at 0x51 would collide with it.)\n\n  The variant bits are fixed at the factory — not pin-strapped or\n  register-configurable — and Display.RGBW (rev a) ships only the\n  A variant, so alternate addresses need a tile hardware revision.\n\nNOTE (not a gap — expected behavior): a healthy Display.RGBW ACKs on\n  EIGHT addresses. 0x50-0x53 are the four register pages in\n  independent mode; 0x6C-0x6F are the same chip's broadcast address\n  with the same two page bits. Eight ACKs on a bus scan is one part\n  behaving correctly, not a second device and not a board fault.",
   "code_examples": [
     {
       "label": "Quick start",
@@ -14,8 +14,8 @@
   "studio_unsupported": [
     {
       "severity": "niche",
-      "category": "Multi-address support (0x50–0x53)",
-      "brief": "Chip-gated. The four LP5811 addresses 0x50/0x51/0x52/0x53 are selected by Bit4/Bit3 of the chip-address byte, but those bits are fixed by the factory material variant (LP5811A/B/C/D, see datasheet §4 Device Comparison). They are not pin-strapped or register-configurable. The Display.RGBW (rev a) tile ships only the A variant. Adding the other three addresses requires a tile hardware revision that places the alternate part numbers on the PCB — not something the driver can close on its own."
+      "category": "Multi-address support (0x50/0x54/0x58/0x5C)",
+      "brief": "Chip-gated. Per datasheet Table 7-4, Address Byte 1 carries the chip address AND the top two bits of the 10-bit register address, so the 7-bit address a bus scan sees is:"
     }
   ],
   "defines": [
@@ -27,7 +27,7 @@
     },
     {
       "name": "TILE_DISP_RGBW_VERSION_MINOR",
-      "value": "3",
+      "value": "4",
       "description": "",
       "section": ""
     },
@@ -64,6 +64,18 @@
     {
       "name": "LP5811_BOOST_RAMP_STEP_MS",
       "value": "100",
+      "description": "",
+      "section": ""
+    },
+    {
+      "name": "LP5811_DC_DEFAULT",
+      "value": "0x05",
+      "description": "",
+      "section": ""
+    },
+    {
+      "name": "LP5811_PWM_FAULT_DETECT_MIN",
+      "value": "25",
       "description": "",
       "section": ""
     }
@@ -300,7 +312,7 @@
       "studio_exposed": true,
       "studio_section": "runtime",
       "brief": "Read the per-channel open / short / thermal fault state.",
-      "description": "Pulls TSD_Config_Status, LOD_Status_0, and LSD_Status_0 from the\nchip's page-3 register space (the LP5811 multiplexes register\npages onto two extra address bits — the driver handles this\ntransparently). Faults latch in the chip until cleared via\n`clear_faults()`.\n\nOpen-circuit threshold (VLOD_TH) is fixed by the chip at ~70 mV\n(25.5 mA mode) or ~180 mV (51 mA mode). Short-circuit threshold\n(VLSD_TH) is configurable via `set_short_threshold()`.",
+      "description": "Pulls TSD_Config_Status, LOD_Status_0, and LSD_Status_0 from the\nchip's page-3 register space (the LP5811 multiplexes register\npages onto two extra address bits — the driver handles this\ntransparently). Faults latch in the chip until cleared via\n`clear_faults()`.\n\nOpen-circuit threshold (VLOD_TH) is fixed by the chip at ~70 mV\n(25.5 mA mode) or ~180 mV (51 mA mode). Short-circuit threshold\n(VLSD_TH) is configurable via `set_short_threshold()`.\n\n         LP5811_PWM_FAULT_DETECT_MIN (25) — datasheet §7.3.5.3 and\n         §7.3.5.4. A channel that is dark, or driven at a very low\n         duty, reports NO fault whether or not one exists. Light the\n         channel you care about, give it a moment to settle, and read\n         faults while it is still lit. Reading them on an idle part\n         returns a clean bill of health that means nothing.",
       "name": "tile_display_rgbw_read_faults"
     },
     {
@@ -752,7 +764,7 @@
     }
   ],
   "source_file": "tile_display_rgbw.h",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "tile_family": "Display",
   "tile_name": "RGBW",
   "display_name": "Display.RGBW"
