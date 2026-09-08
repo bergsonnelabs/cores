@@ -39,6 +39,7 @@
     "timer.tick": "verified",
     "timer.pwm": "verified",
     "timer.capture": "verified",
+    "timer.stepdir": "compile",
     "timer.oneshot": "",
     "timer.encoder": "",
     "timer.lptim": "",
