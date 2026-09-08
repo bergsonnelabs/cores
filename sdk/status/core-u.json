@@ -42,6 +42,7 @@
       "note": "TIM15 PWM → EXTI loopback verified on Core.ST.L4.2 (projects/timers-pwmg_u2)"
     },
     "timer.capture": {
+    "timer.stepdir": { "status": "verified", "note": "DM320T + NEMA 11 over STEP/DIR at 3.3 V, 8 us pulses (projects/RealReeler, 2026-09-08)" },
       "status": "verified",
       "note": "TIM2 32-bit capture measuring TIM15 PWM period — 499995 us @ 2 Hz (projects/timers-pwmg_u2)"
     },

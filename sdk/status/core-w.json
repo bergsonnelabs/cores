@@ -37,6 +37,7 @@
     "timer.tick": "verified",
     "timer.pwm": "compile",
     "timer.wdog": "compile",
+    "timer.stepdir": "compile",
     "adc.raw": "verified",
     "adc.mv": "verified",
     "adc.temp": {

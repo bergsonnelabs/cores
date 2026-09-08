@@ -253,6 +253,7 @@ The `core_` layer provides platform-agnostic naming for application code. It is 
 | `core_watchdog.h` | `core_watchdog_start(ms)`, `core_watchdog_feed()`, `core_watchdog_caused_reset()` |
 | `core_usb.h` | `core_usb_init()`, `core_usb_write()`, `core_usb_printf`, includes `<stdio.h>` |
 | `core_timing.h` | `core_delay_ms/us()`, `core_millis()`, `core_timeout()` |
+| `core_stepper.h` | STEP/DIR pulse generator for external stepper drivers: `core_stepper_init(&s, step_pad, dir_pad)` (STEP pad declared as `TIMx.y` in config.json; the pulse comes from that timer channel, one ISR per step), `set_speed/accel/min_speed()`, `move/move_to/run/stop/halt()`, `busy/position()`. Trapezoidal ramps, 1 us resolution. Backed by `core_stepper.c` (compiled per project like `core_led.c`). |
 
 **Timer init has two variants:**
 - `core_timer_init_freq(&t, TIM2, 1000)` — overflow at 1 kHz (for PWM, periodic tick)
